@@ -1,9 +1,3 @@
-import { type ClassValue, clsx } from 'clsx';
-
-export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
-}
-
 // Flag key normalization according to spec
 export function normalizeKey(input: string): string {
   return input
