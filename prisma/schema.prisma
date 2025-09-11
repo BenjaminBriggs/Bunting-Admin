@@ -1,0 +1,95 @@
+// Prisma schema for Bunting Admin
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model App {
+  id           String   @id @default(cuid())
+  name         String
+  identifier   String   @unique // User-defined app identifier
+  artifactUrl  String   @map("artifact_url")
+  publicKeys   Json     @map("public_keys") // Array of {kid, pem}
+  fetchPolicy  Json     @map("fetch_policy") // {min_interval_seconds, hard_ttl_days}
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  flags      Flag[]
+  cohorts    Cohort[]
+  auditLogs  AuditLog[]
+
+  @@map("apps")
+}
+
+model Flag {
+  id          String   @id @default(cuid())
+  key         String   // Normalized snake_case key
+  displayName String   @map("display_name") // Generated from key
+  type        FlagType
+  defaultValue Json    @map("default_value") // Stored as JSON for all types
+  rules       Json?    @default("[]") // Array of rule objects
+  description String?
+  archived    Boolean  @default(false)
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, key]) // Unique flag keys per app
+  @@map("flags")
+}
+
+model Cohort {
+  id         String   @id @default(cuid())
+  key        String   // Cohort identifier key
+  name       String   // Display name
+  salt       String   // Auto-generated salt for hashing
+  percentage Int      // 0-100
+  description String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, key]) // Unique cohort keys per app
+  @@map("cohorts")
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  configVersion String   @map("config_version") // YYYY-MM-DD.N format
+  publishedAt   DateTime @map("published_at")
+  publishedBy   String?  @map("published_by") // User identifier
+  changelog     String?
+  configDiff    Json     @map("config_diff") // Diff object
+  artifactSize  Int?     @map("artifact_size") // Config JSON size in bytes
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+enum FlagType {
+  BOOL   @map("bool")
+  STRING @map("string")
+  INT    @map("int")
+  DOUBLE @map("double")
+  DATE   @map("date")
+  JSON   @map("json")
+}
