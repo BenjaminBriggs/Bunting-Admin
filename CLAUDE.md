@@ -4,97 +4,144 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Project Overview
 
-Bunting Admin is a Next.js + React web application for managing feature flags and publishing signed config artifacts. It provides a web UI for flag authoring, cohort management, validation, and publishing to CDN/object storage.
+Bunting Admin is a fully implemented Next.js + React web application for managing feature flags and publishing signed config artifacts. It provides a complete web UI for application management, flag authoring, cohort management, validation, and publishing to S3/CDN storage.
 
-## Architecture
+## Current Implementation Status ✅
 
-### Frontend (Next.js + React)
-- **Flag Management**: Create, edit, archive, and delete feature flags
-- **Cohort Management**: Define percentage rollout groups with auto-generated salts
-- **Publishing Interface**: Review changes, add changelog notes, publish configs
-- **Multi-App Support**: App selector for managing multiple applications
-- **Validation Feedback**: Real-time flag key normalization and rule validation
+### Completed Features
+- ✅ **Application Management**: Full CRUD with editable settings and SDK integration
+- ✅ **Feature Flag Management**: Create, edit, archive, delete with visual rule builder
+- ✅ **Cohort Management**: Percentage-based rollout groups with auto-generated salts
+- ✅ **Publishing Pipeline**: Config generation, validation, S3 upload with versioning
+- ✅ **Configuration Validation**: Real-time validation with error/warning categorization
+- ✅ **Multi-App Support**: App selector with per-app isolation
+- ✅ **Real-time Change Tracking**: Changes context with publish button visibility
+- ✅ **SDK Integration**: Downloadable plist files for iOS/macOS apps
 
-### Backend (Next.js API Routes)
-- **Flag CRUD**: RESTful endpoints for flag and cohort operations
-- **Validation Engine**: Blocking vs warning validation rules
-- **Publishing Pipeline**: Config generation, versioning (YYYY-MM-DD.N), signing (JWS)
-- **Storage Integration**: Upload to S3/B2 + CDN with proper headers
-- **Audit Logging**: Track all publishes with diffs and metadata
+### Architecture Implemented
 
-### Key Integrations
-- **CDN/Object Storage**: S3-compatible storage with CloudFront/CDN
-- **Signing**: JWS detached signatures using managed private keys
-- **Database**: Store flags, cohorts, app configs, audit logs (SQLite/PostgreSQL)
+#### Frontend (Next.js 14 + React 18)
+- **Application Settings**: Two-panel interface with editable app configuration
+- **Flag Management**: Full CRUD with type support (bool, string, int, double, date, json)
+- **Rule Builder**: Visual targeting rules with conditions (environment, version, platform, cohorts)
+- **Publishing Interface**: Change detection, validation, and S3 deployment
+- **Responsive Design**: Material-UI v5 with proper mobile support
 
-## Repository Structure
+#### Backend (Next.js API Routes)
+- **Apps API**: `/api/apps` - Application CRUD operations
+- **Flags API**: `/api/flags` - Feature flag CRUD operations  
+- **Cohorts API**: `/api/cohorts` - Cohort CRUD operations
+- **Config API**: `/api/config/*` - Generation, validation, publishing
+- **Real S3 Integration**: Actual file uploads with versioning
+
+#### Database (PostgreSQL + Prisma)
+- **Apps**: Store app configs, artifact URLs, public keys, fetch policies
+- **Flags**: Flag definitions with rules, types, and default values
+- **Cohorts**: Percentage rollout definitions with salts
+- **Audit Logs**: Publish history with versions and metadata
+
+## Repository Structure (Current)
 
 ```
 bunting-admin/
 ├── src/
-│   ├── app/                   # Next.js 13+ app router
-│   │   ├── (dashboard)/       # Main admin interface
-│   │   │   ├── flags/         # Flag management pages
-│   │   │   ├── cohorts/       # Cohort management pages
-│   │   │   └── publish/       # Publishing interface
-│   │   └── api/               # Backend API routes
-│   │       ├── flags/         # Flag CRUD endpoints
-│   │       ├── cohorts/       # Cohort CRUD endpoints
-│   │       ├── validate/      # Validation endpoints
-│   │       └── publish/       # Publishing endpoint
-│   ├── components/            # React components
-│   │   ├── ui/               # Base components (buttons, inputs, etc.)
-│   │   ├── flag-editor/      # Flag editing components
-│   │   └── rule-builder/     # Visual rule builder
-│   ├── lib/                  # Shared utilities
-│   │   ├── validation/       # Flag and rule validation logic
-│   │   ├── storage/          # S3/CDN upload utilities
-│   │   ├── signing/          # JWS signature generation
-│   │   └── db/               # Database schema and queries
-│   └── types/                # TypeScript type definitions
-├── prisma/                   # Database schema (if using Prisma)
-├── tests/
-│   ├── unit/                 # Component and utility tests
-│   └── e2e/                  # End-to-end tests
-├── public/                   # Static assets
-└── docs/                     # Admin-specific documentation
+│   ├── app/                      # Next.js 14+ app router
+│   │   ├── dashboard/            # Main admin interface
+│   │   │   ├── flags/           # Flag management pages
+│   │   │   ├── cohorts/         # Cohort management pages
+│   │   │   ├── publish/         # Publishing interface
+│   │   │   ├── settings/        # Application CRUD interface
+│   │   │   └── layout.tsx       # Dashboard layout with sidebar
+│   │   ├── api/                 # Backend API routes
+│   │   │   ├── apps/           # Application CRUD endpoints
+│   │   │   ├── flags/          # Flag CRUD endpoints
+│   │   │   ├── cohorts/        # Cohort CRUD endpoints
+│   │   │   └── config/         # Config generation, validation, publishing
+│   │   ├── layout.tsx          # Root layout
+│   │   └── page.tsx            # Landing page
+│   ├── components/             # React components
+│   │   ├── flag-editor/       # Flag editing components
+│   │   ├── rule-builder/      # Visual rule builder
+│   │   └── theme-provider.tsx # MUI theme setup
+│   ├── lib/                   # Shared utilities
+│   │   ├── api.ts            # Client-side API functions
+│   │   ├── config-generator.ts # Server-side config generation
+│   │   ├── config-comparison.ts # S3 config comparison
+│   │   ├── changes-context.tsx # Real-time change tracking
+│   │   ├── db.ts             # Prisma client
+│   │   └── utils.ts          # Utility functions
+│   └── types/                # TypeScript definitions
+│       ├── index.ts         # Core types
+│       └── rules.ts         # Rule builder types
+├── prisma/                   # Database schema
+│   └── schema.prisma        # Prisma schema definition
+├── scripts/                 # Utility scripts
+└── package.json            # Dependencies and scripts
 ```
 
 ## Development Commands
 
 ```bash
+# Setup
 npm install                   # Install dependencies
+npm run setup                 # Start Docker + initialize database
+
+# Development
 npm run dev                   # Start development server (http://localhost:3000)
-npm run build                 # Production build
-npm run start                 # Start production server
-npm run test                  # Run unit tests
-npm run test:e2e             # Run E2E tests with Playwright
-npm run lint                 # Lint code with ESLint
-npm run type-check           # TypeScript type checking
+npm run db:studio            # Open Prisma Studio for database management
+
+# Database
+npm run db:generate          # Generate Prisma client
+npm run db:push             # Push schema to database
+npm run db:migrate          # Create database migration
+
+# Docker
+npm run docker:up           # Start PostgreSQL container
+npm run docker:down         # Stop containers
+npm run docker:logs         # View container logs
+
+# Production
+npm run build               # Production build
+npm run start              # Start production server
+npm run lint               # Lint code
+npm run type-check         # TypeScript checking
 ```
 
-## Core Features
+## Core Features Implemented
 
-### Flag Management
-- **Auto-normalization**: "Store: New Paywall" → "store/new_paywall" 
-- **Type Support**: bool, string, int, double, date, json
-- **Rule Builder**: Visual React interface for environment, version, cohort conditions
-- **Validation**: Real-time feedback for invalid keys, unreachable rules (warnings)
+### Application Management
+- **Two-Panel Interface**: App list on left, tabbed settings on right
+- **Editable Settings**: Name and fetch policy (6-hour default minimum interval)
+- **SDK Integration**: Download bunting-config.plist files
+- **App Switching**: Dropdown selector with context switching
+- **CRUD Operations**: Create, edit, delete with confirmation dialogs
 
-### Publishing Workflow
-1. **Change Detection**: Show diff of modified flags/cohorts
-2. **Validation**: Run blocking checks (schema, references, types)
-3. **Versioning**: Auto-increment YYYY-MM-DD.N format
-4. **Signing**: Generate detached JWS signature
-5. **Upload**: Deploy config.json + config.json.sig to CDN
-6. **Audit**: Log publish event with changelog and metadata
+### Feature Flag Management
+- **Auto-normalization**: "Store: New Paywall" → "store/new_paywall"
+- **Type Support**: bool, string, int, double, date, json with proper editors
+- **Targeting Rules**: Visual rule builder with multiple conditions
+- **Validation**: Real-time key validation and rule logic checking
+- **Archiving**: Soft delete functionality
+
+### Cohort Management  
+- **Percentage Rollouts**: 0-100% user targeting
+- **Auto-generated Salts**: Consistent user bucketing
+- **User Estimation**: Mock calculation (needs real analytics integration)
+- **Validation**: Unique keys per application
+
+### Publishing Pipeline
+- **Change Detection**: Real-time tracking of modified flags/cohorts
+- **Config Generation**: Transform database data to SDK format
+- **Validation Engine**: Blocking errors vs warnings
+- **S3 Upload**: Versioned configs with YYYY-MM-DD.N format
+- **Change Comparison**: Before/after diff visualization
 
 ### Multi-App Support
-- User-defined app identifiers (independent of bundle IDs)
-- App-scoped flag management with shared cohort definitions
-- Per-app artifact URLs and signing keys configuration
+- **App Isolation**: Flags and cohorts scoped to applications
+- **Shared Interface**: Single admin UI managing multiple apps
+- **Context Switching**: Seamless app selection with state preservation
 
-## Key Technical Decisions
+## Technical Implementation
 
 ### Flag Key Processing
 ```typescript
@@ -102,127 +149,139 @@ npm run type-check           # TypeScript type checking
 normalizeKey("Store: Use New Paywall Design") 
 // → "store/use_new_paywall_design"
 
-// Validation without approval required
-validateKey("store/new_feature") // → valid
-validateKey("store/123invalid") // → error: cannot start with number
+// Real-time validation
+validateKey("store/new_feature") // → { valid: true }
+validateKey("store/123invalid") // → { valid: false, error: "cannot start with number" }
 ```
 
 ### Config Artifact Generation
 ```typescript
 interface ConfigArtifact {
   schema_version: 1;
-  config_version: string;        // "2025-09-11.1"
+  config_version: string;        // "2025-09-12.1"
   published_at: string;          // ISO8601
   app_identifier: string;        // user-defined
   cohorts: Record<string, Cohort>;
   flags: Record<string, Flag>;
-  metadata?: Record<string, any>;
 }
 ```
 
-### Validation Rules
-- **Blocking**: Invalid JSON, missing defaults, unknown cohort references
-- **Warnings**: Unreachable rules, long descriptions, archived flags still present
-- **Flag Keys**: Must be valid snake_case with optional / namespaces
+### Validation Rules (Implemented)
+- **Blocking Errors**: Invalid JSON, missing defaults, unknown cohort references
+- **Warnings**: Unreachable rules, long descriptions
+- **Flag Keys**: snake_case validation with optional namespaces
 
-## Environment Variables
+## Environment Variables (Required)
 
 ```bash
 # Database
-DATABASE_URL="postgresql://user:pass@localhost/bunting"
+DATABASE_URL="postgresql://user:pass@localhost:5432/bunting"
 
-# Storage
-S3_ENDPOINT="https://s3.amazonaws.com"
+# S3 Storage (Required for publishing)
+AWS_ACCESS_KEY_ID="your-access-key"
+AWS_SECRET_ACCESS_KEY="your-secret-key"
+AWS_REGION="us-east-1"
 S3_BUCKET="bunting-configs"
-CDN_BASE_URL="https://cdn.example.com"
 
-# Signing
-PRIVATE_KEY_PATH="/path/to/private.pem"
-# or PRIVATE_KEY_KMS_KEY_ID for managed keys
-
-# App
-NEXTAUTH_SECRET="your-auth-secret"
-NEXTAUTH_URL="http://localhost:3000"
+# Optional S3 Configuration
+S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible storage
 ```
 
-## Testing Strategy
+## User Interface
 
-### Unit Tests (Jest + React Testing Library)
-- Flag validation logic
-- Key normalization functions
-- Config artifact generation
-- React component behavior
+### Sidebar Navigation
+- **App Selector**: Top-level dropdown with app switching and creation
+- **Main Menu**: Feature Flags, Cohorts (middle section)
+- **Settings**: Bottom section for application management
 
-### E2E Tests (Playwright)
-- Complete flag creation → publish workflow
-- Multi-app switching and isolation
-- Rule validation feedback
-- Error handling for storage/signing failures
-
-### API Testing
-- CRUD operations with proper validation
-- Publishing pipeline edge cases
-- Authentication and authorization
-
-## Security Considerations
-
-- **Input Validation**: Sanitize all user inputs, especially flag keys and JSON values
-- **Authentication**: Secure admin access (consider NextAuth.js)
-- **Key Management**: Never expose private signing keys in logs or client code
-- **CORS**: Proper cross-origin configuration for API endpoints
-- **Rate Limiting**: Prevent abuse of publishing endpoints
-- **Audit Trail**: Log all administrative actions with user attribution
-
-## React Patterns
-
-### Flag Editor Component
-```typescript
-interface FlagEditorProps {
-  flag?: Flag;
-  onSave: (flag: Flag) => void;
-  onCancel: () => void;
-}
-
-export function FlagEditor({ flag, onSave, onCancel }: FlagEditorProps) {
-  const [key, setKey] = useState(flag?.key || '');
-  const [normalizedKey, setNormalizedKey] = useState('');
-  
-  // Auto-normalize keys on blur
-  const handleKeyBlur = () => {
-    const normalized = normalizeKey(key);
-    setNormalizedKey(normalized);
-  };
-  
-  // Show validation errors immediately
-  const validationError = validateKey(normalizedKey);
-  
-  return (
-    // JSX implementation
-  );
-}
-```
+### Application Settings
+- **Settings Tab**: Editable name and fetch policy (in hours)
+- **SDK Integration Tab**: Plist download and integration instructions
+- **Real-time Updates**: Changes immediately reflected across interface
 
 ### Publishing Flow
-```typescript
-// 1. Validate all changes
-const validation = await validateConfig(config);
-if (validation.errors.length > 0) return;
+1. **Make Changes**: Edit flags/cohorts (changes tracked automatically)
+2. **Review Changes**: Publish button appears with change count
+3. **Validation**: Automatic validation with error/warning feedback
+4. **Deploy**: One-click S3 upload with versioning
 
-// 2. Generate versioned config
-const versionedConfig = {
-  ...config,
-  config_version: generateVersion(), // YYYY-MM-DD.N
-  published_at: new Date().toISOString()
-};
+## Known Limitations & TODOs
 
-// 3. Sign and upload
-const signature = await signConfig(versionedConfig);
-await uploadToStorage(versionedConfig, signature);
-```
+### Mock Data Remaining
+- **Cohort User Counts**: `totalUsers = 12500` in cohort forms (needs analytics API)
+
+### Incomplete Features
+- **Authentication**: No user authentication implemented
+- **Publish History**: Database schema exists but queries not implemented
+- **User Management**: No role-based access control
+- **Audit Logging**: Schema exists but not fully implemented
+
+### Future Enhancements
+- **Real-time Collaboration**: Multi-user editing support
+- **Advanced Analytics**: Flag usage metrics and performance data
+- **A/B Test Analysis**: Statistical significance calculations
+- **Bulk Operations**: Mass flag updates and imports
+- **API Documentation**: Swagger/OpenAPI specs
+
+## Security Notes
+
+- **Input Validation**: All user inputs sanitized via Zod schemas
+- **SQL Injection**: Protected by Prisma ORM
+- **XSS Protection**: React's built-in escaping
+- **Missing**: Authentication, authorization, rate limiting
+
+## Testing Status
+
+### Manual Testing ✅
+- All CRUD operations work correctly
+- Publishing pipeline functional with S3
+- App switching and context preservation
+- Form validation and error handling
+
+### Missing Tests
+- Unit tests for components
+- API endpoint testing
+- E2E workflow testing
+- Error boundary testing
 
 ## Integration Points
 
-- **CDN Cache**: Set proper Cache-Control headers (max-age=300, stale-while-revalidate=86400)
-- **ETag Support**: Generate ETags for conditional requests
-- **Historical Versions**: Optionally store /versions/{config_version}.json
-- **SDK Compatibility**: Ensure generated configs match SDK expectations
+### Current Integrations
+- **PostgreSQL**: Full database integration via Prisma
+- **AWS S3**: Real file uploads with versioning
+- **Material-UI**: Complete design system implementation
+
+### Missing Integrations
+- **CDN**: No CDN distribution setup
+- **Analytics**: No user metrics or flag usage data
+- **Authentication**: No user management system
+- **Monitoring**: No error tracking or performance monitoring
+
+## Getting Started
+
+1. **Clone and Install**:
+   ```bash
+   git clone <repo>
+   cd bunting-admin
+   npm install
+   ```
+
+2. **Setup Database**:
+   ```bash
+   npm run setup  # Starts Docker PostgreSQL + pushes schema
+   ```
+
+3. **Configure Environment**:
+   Create `.env.local` with database and AWS credentials
+
+4. **Start Development**:
+   ```bash
+   npm run dev  # Opens http://localhost:3000
+   ```
+
+5. **Access Admin**:
+   - Create your first application in Settings
+   - Add feature flags and cohorts
+   - Test the publishing pipeline
+
+The application is now fully functional for feature flag management with real S3 integration and database persistence.

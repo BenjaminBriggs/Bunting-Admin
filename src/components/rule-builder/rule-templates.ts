@@ -22,6 +22,14 @@ export const conditionTemplates: ConditionTemplate[] = [
     placeholder: '1.0.0, 1.2.0'
   },
   {
+    type: 'os_version',
+    label: 'OS Version', 
+    description: 'Target users based on their operating system version',
+    operators: ['equals', 'not_equals', 'greater_than', 'less_than', 'greater_than_or_equal', 'less_than_or_equal', 'in', 'not_in'],
+    valueType: 'text',
+    placeholder: '18.0, 17.5, 14.0'
+  },
+  {
     type: 'platform',
     label: 'Platform',
     description: 'Target users based on their platform/device',
@@ -78,9 +86,4 @@ export const operatorLabels: Record<string, string> = {
   'is_not_in_cohort': 'is not in cohort'
 };
 
-// Mock cohorts data - would come from API
-export const mockCohorts = [
-  { value: 'beta_users', label: 'Beta Users' },
-  { value: 'premium_subscribers', label: 'Premium Subscribers' },
-  { value: 'early_adopters', label: 'Early Adopters' }
-];
+// Cohorts are now loaded dynamically from the API in ConditionBuilder

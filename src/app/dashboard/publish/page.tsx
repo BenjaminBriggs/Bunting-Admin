@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -20,7 +20,9 @@ import {
   Paper,
   Accordion,
   AccordionSummary,
-  AccordionDetails
+  AccordionDetails,
+  CircularProgress,
+  MenuItem
 } from '@mui/material';
 import { 
   CloudUpload, 
@@ -33,103 +35,144 @@ import {
   History,
   Code
 } from '@mui/icons-material';
+import { useRouter } from 'next/navigation';
+import { 
+  validateConfig, 
+  publishConfig, 
+  getPublishHistory, 
+  generateCurrentConfig, 
+  getPublishedConfig,
+  type ValidationResult, 
+  type PublishHistoryItem 
+} from '@/lib/api';
+import { getConfigChanges, hasConfigChanges, type ConfigChange } from '@/lib/config-comparison';
+import { useChanges } from '@/lib/changes-context';
+import { useApp } from '@/lib/app-context';
 
-// Mock data for changes and validation
-const mockChanges = {
-  flags: {
-    modified: [
-      {
-        key: 'store/use_new_paywall_design',
-        displayName: 'Store / Use New Paywall Design',
-        changes: ['defaultValue: false → true', 'description updated']
-      }
-    ],
-    added: [
-      {
-        key: 'checkout/enable_apple_pay',
-        displayName: 'Checkout / Enable Apple Pay',
-        type: 'bool',
-        defaultValue: false
-      }
-    ],
-    removed: []
-  },
-  cohorts: {
-    modified: [
-      {
-        identifier: 'beta_users',
-        name: 'Beta Users',
-        changes: ['percentage: 10% → 15%']
-      }
-    ],
-    added: [],
-    removed: []
-  }
-};
-
-const mockValidation = {
-  errors: [],
-  warnings: [
-    {
-      type: 'unreachable_rule',
-      message: 'Rule in flag "store/use_new_paywall_design" may be unreachable due to conflicting conditions',
-      flagKey: 'store/use_new_paywall_design'
-    }
-  ]
-};
-
-const mockPublishHistory = [
-  {
-    version: '2025-09-10.2',
-    publishedAt: '2025-09-10T16:45:00Z',
-    publishedBy: 'john@example.com',
-    changelog: 'Updated paywall design flag default value',
-    flagCount: 12,
-    cohortCount: 3
-  },
-  {
-    version: '2025-09-10.1',
-    publishedAt: '2025-09-10T09:15:00Z',
-    publishedBy: 'sarah@example.com',
-    changelog: 'Added new Apple Pay integration flag',
-    flagCount: 11,
-    cohortCount: 3
-  }
-];
 
 export default function PublishPage() {
+  const router = useRouter();
+  const { markChangesPublished } = useChanges();
+  const { selectedApp } = useApp();
   const [changelog, setChangelog] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [changes, setChanges] = useState<ConfigChange[]>([]);
+  const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>([]);
+  const [hasChangesDetected, setHasChangesDetected] = useState(false);
 
-  const hasChanges = mockChanges.flags.modified.length > 0 || 
-                    mockChanges.flags.added.length > 0 || 
-                    mockChanges.flags.removed.length > 0 ||
-                    mockChanges.cohorts.modified.length > 0 || 
-                    mockChanges.cohorts.added.length > 0 || 
-                    mockChanges.cohorts.removed.length > 0;
+  const hasBlockingErrors = validation?.errors.length ? validation.errors.length > 0 : false;
+  const canPublish = hasChangesDetected && !hasBlockingErrors && changelog.trim() && selectedApp;
 
-  const hasBlockingErrors = mockValidation.errors.length > 0;
-  const canPublish = hasChanges && !hasBlockingErrors && changelog.trim();
+  useEffect(() => {
+    if (selectedApp) {
+      loadAppData(selectedApp.id);
+    } else {
+      setLoading(false);
+    }
+  }, [selectedApp]);
+
+  const loadAppData = async (appId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Load validation, changes, and history in parallel
+      const [validationResult, currentConfig, publishedConfigResult, historyResult] = await Promise.all([
+        validateConfig(appId),
+        generateCurrentConfig(appId),
+        getPublishedConfig(selectedApp!.identifier).catch(() => ({ config: null })),
+        getPublishHistory(appId).catch(() => [])
+      ]);
+
+      setValidation(validationResult);
+      setPublishHistory(historyResult);
+
+      // Calculate changes
+      const configChanges = getConfigChanges(currentConfig, publishedConfigResult.config);
+      setChanges(configChanges);
+      setHasChangesDetected(hasConfigChanges(currentConfig, publishedConfigResult.config));
+
+    } catch (err) {
+      console.error('Failed to load app data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load app data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePublish = async () => {
-    if (!canPublish) return;
+    if (!canPublish || !selectedApp) return;
     
     setIsPublishing(true);
+    setPublishError(null);
+    setPublishSuccess(null);
     
-    // Mock publish process
-    setTimeout(() => {
+    try {
+      const result = await publishConfig(selectedApp.id, changelog);
+      setPublishSuccess(`Configuration published successfully as version ${result.version}`);
+      setChangelog('');
+      
+      // Clear changes immediately since we just published
+      markChangesPublished();
+      
+      // Reload data to show updated state
+      await loadAppData(selectedApp.id);
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => setPublishSuccess(null), 5000);
+      
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : 'Failed to publish configuration');
+    } finally {
       setIsPublishing(false);
-      console.log('Published with changelog:', changelog);
-      // TODO: Implement actual publish logic
-    }, 3000);
+    }
   };
 
   const generateVersion = () => {
     const today = new Date().toISOString().split('T')[0];
-    const latestToday = mockPublishHistory.find(h => h.version.startsWith(today));
+    const latestToday = publishHistory.find(h => h.version.startsWith(today));
     const nextNumber = latestToday ? parseInt(latestToday.version.split('.')[1]) + 1 : 1;
     return `${today}.${nextNumber}`;
   };
+
+  const groupedChanges = {
+    flags: {
+      added: changes.filter(c => c.type === 'flag' && c.action === 'added'),
+      modified: changes.filter(c => c.type === 'flag' && c.action === 'modified'),
+      removed: changes.filter(c => c.type === 'flag' && c.action === 'removed')
+    },
+    cohorts: {
+      added: changes.filter(c => c.type === 'cohort' && c.action === 'added'),
+      modified: changes.filter(c => c.type === 'cohort' && c.action === 'modified'),
+      removed: changes.filter(c => c.type === 'cohort' && c.action === 'removed')
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -140,30 +183,53 @@ export default function PublishPage() {
             Publish Configuration
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Review changes and publish your feature flag configuration
+            Review changes and publish your feature flag configuration for {selectedApp?.name}
           </Typography>
         </Box>
       </Box>
 
+      {/* No App Selected */}
+      {!selectedApp && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          Please select an application from the sidebar to publish configuration changes.
+        </Alert>
+      )}
+
+      {/* Success Alert */}
+      {publishSuccess && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {publishSuccess}
+        </Alert>
+      )}
+
+      {/* Publish Error Alert */}
+      {publishError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {publishError}
+        </Alert>
+      )}
+
+      {selectedApp && (
       <Grid container spacing={3}>
         {/* Main Content */}
         <Grid item xs={12} md={8}>
           <Stack spacing={3}>
+
             {/* Validation Results */}
-            {(mockValidation.errors.length > 0 || mockValidation.warnings.length > 0) && (
+            {validation && (validation.errors.length > 0 || validation.warnings.length > 0) && (
               <Card>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2 }}>
                     Validation Results
                   </Typography>
                   
-                  {mockValidation.errors.map((error, index) => (
+                  {validation.errors.map((error, index) => (
                     <Alert key={index} severity="error" sx={{ mb: 1 }}>
                       {error.message}
                     </Alert>
                   ))}
                   
-                  {mockValidation.warnings.map((warning, index) => (
+                  {validation.warnings.map((warning, index) => (
                     <Alert key={index} severity="warning" sx={{ mb: 1 }}>
                       {warning.message}
                     </Alert>
@@ -179,71 +245,91 @@ export default function PublishPage() {
                   Changes to Publish
                 </Typography>
                 
-                {!hasChanges ? (
+                {!hasChangesDetected ? (
                   <Alert severity="info">
                     No changes detected. Make some changes to your flags or cohorts before publishing.
                   </Alert>
                 ) : (
                   <Stack spacing={2}>
                     {/* Flag Changes */}
-                    {(mockChanges.flags.modified.length > 0 || 
-                      mockChanges.flags.added.length > 0 || 
-                      mockChanges.flags.removed.length > 0) && (
+                    {(groupedChanges.flags.modified.length > 0 || 
+                      groupedChanges.flags.added.length > 0 || 
+                      groupedChanges.flags.removed.length > 0) && (
                       <Accordion defaultExpanded>
                         <AccordionSummary expandIcon={<ExpandMore />}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Flag />
                             <Typography variant="subtitle1">
                               Feature Flags ({
-                                mockChanges.flags.modified.length + 
-                                mockChanges.flags.added.length + 
-                                mockChanges.flags.removed.length
+                                groupedChanges.flags.modified.length + 
+                                groupedChanges.flags.added.length + 
+                                groupedChanges.flags.removed.length
                               } changes)
                             </Typography>
                           </Box>
                         </AccordionSummary>
                         <AccordionDetails>
                           <Stack spacing={2}>
-                            {mockChanges.flags.added.length > 0 && (
+                            {groupedChanges.flags.added.length > 0 && (
                               <Box>
                                 <Typography variant="body2" color="success.main" sx={{ fontWeight: 500, mb: 1 }}>
-                                  Added ({mockChanges.flags.added.length})
+                                  Added ({groupedChanges.flags.added.length})
                                 </Typography>
-                                {mockChanges.flags.added.map((flag, index) => (
+                                {groupedChanges.flags.added.map((change, index) => (
                                   <Box key={index} sx={{ ml: 2, mb: 1 }}>
                                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                                      {flag.key}
+                                      {change.key}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                      {flag.displayName} ({flag.type}, default: {JSON.stringify(flag.defaultValue)})
+                                      {change.name}
                                     </Typography>
                                   </Box>
                                 ))}
                               </Box>
                             )}
                             
-                            {mockChanges.flags.modified.length > 0 && (
+                            {groupedChanges.flags.modified.length > 0 && (
                               <Box>
                                 <Typography variant="body2" color="warning.main" sx={{ fontWeight: 500, mb: 1 }}>
-                                  Modified ({mockChanges.flags.modified.length})
+                                  Modified ({groupedChanges.flags.modified.length})
                                 </Typography>
-                                {mockChanges.flags.modified.map((flag, index) => (
+                                {groupedChanges.flags.modified.map((change, index) => (
                                   <Box key={index} sx={{ ml: 2, mb: 1 }}>
                                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                                      {flag.key}
+                                      {change.key}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                      {flag.displayName}
+                                      {change.name}
                                     </Typography>
-                                    <List dense sx={{ ml: 1 }}>
-                                      {flag.changes.map((change, changeIndex) => (
-                                        <ListItem key={changeIndex} sx={{ py: 0, px: 0 }}>
-                                          <Typography variant="caption" color="text.secondary">
-                                            • {change}
-                                          </Typography>
-                                        </ListItem>
-                                      ))}
-                                    </List>
+                                    {change.details && change.details.length > 0 && (
+                                      <List dense sx={{ ml: 1 }}>
+                                        {change.details.map((detail, detailIndex) => (
+                                          <ListItem key={detailIndex} sx={{ py: 0, px: 0 }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                              • {detail}
+                                            </Typography>
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    )}
+                                  </Box>
+                                ))}
+                              </Box>
+                            )}
+                            
+                            {groupedChanges.flags.removed.length > 0 && (
+                              <Box>
+                                <Typography variant="body2" color="error.main" sx={{ fontWeight: 500, mb: 1 }}>
+                                  Removed ({groupedChanges.flags.removed.length})
+                                </Typography>
+                                {groupedChanges.flags.removed.map((change, index) => (
+                                  <Box key={index} sx={{ ml: 2, mb: 1 }}>
+                                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                                      {change.key}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {change.name}
+                                    </Typography>
                                   </Box>
                                 ))}
                               </Box>
@@ -254,46 +340,84 @@ export default function PublishPage() {
                     )}
 
                     {/* Cohort Changes */}
-                    {(mockChanges.cohorts.modified.length > 0 || 
-                      mockChanges.cohorts.added.length > 0 || 
-                      mockChanges.cohorts.removed.length > 0) && (
+                    {(groupedChanges.cohorts.modified.length > 0 || 
+                      groupedChanges.cohorts.added.length > 0 || 
+                      groupedChanges.cohorts.removed.length > 0) && (
                       <Accordion>
                         <AccordionSummary expandIcon={<ExpandMore />}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <BarChart />
                             <Typography variant="subtitle1">
                               Cohorts ({
-                                mockChanges.cohorts.modified.length + 
-                                mockChanges.cohorts.added.length + 
-                                mockChanges.cohorts.removed.length
+                                groupedChanges.cohorts.modified.length + 
+                                groupedChanges.cohorts.added.length + 
+                                groupedChanges.cohorts.removed.length
                               } changes)
                             </Typography>
                           </Box>
                         </AccordionSummary>
                         <AccordionDetails>
                           <Stack spacing={2}>
-                            {mockChanges.cohorts.modified.length > 0 && (
+                            {groupedChanges.cohorts.added.length > 0 && (
                               <Box>
-                                <Typography variant="body2" color="warning.main" sx={{ fontWeight: 500, mb: 1 }}>
-                                  Modified ({mockChanges.cohorts.modified.length})
+                                <Typography variant="body2" color="success.main" sx={{ fontWeight: 500, mb: 1 }}>
+                                  Added ({groupedChanges.cohorts.added.length})
                                 </Typography>
-                                {mockChanges.cohorts.modified.map((cohort, index) => (
+                                {groupedChanges.cohorts.added.map((change, index) => (
                                   <Box key={index} sx={{ ml: 2, mb: 1 }}>
                                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                                      {cohort.identifier}
+                                      {change.key}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                      {cohort.name}
+                                      {change.name}
                                     </Typography>
-                                    <List dense sx={{ ml: 1 }}>
-                                      {cohort.changes.map((change, changeIndex) => (
-                                        <ListItem key={changeIndex} sx={{ py: 0, px: 0 }}>
-                                          <Typography variant="caption" color="text.secondary">
-                                            • {change}
-                                          </Typography>
-                                        </ListItem>
-                                      ))}
-                                    </List>
+                                  </Box>
+                                ))}
+                              </Box>
+                            )}
+                            
+                            {groupedChanges.cohorts.modified.length > 0 && (
+                              <Box>
+                                <Typography variant="body2" color="warning.main" sx={{ fontWeight: 500, mb: 1 }}>
+                                  Modified ({groupedChanges.cohorts.modified.length})
+                                </Typography>
+                                {groupedChanges.cohorts.modified.map((change, index) => (
+                                  <Box key={index} sx={{ ml: 2, mb: 1 }}>
+                                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                                      {change.key}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {change.name}
+                                    </Typography>
+                                    {change.details && change.details.length > 0 && (
+                                      <List dense sx={{ ml: 1 }}>
+                                        {change.details.map((detail, detailIndex) => (
+                                          <ListItem key={detailIndex} sx={{ py: 0, px: 0 }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                              • {detail}
+                                            </Typography>
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    )}
+                                  </Box>
+                                ))}
+                              </Box>
+                            )}
+                            
+                            {groupedChanges.cohorts.removed.length > 0 && (
+                              <Box>
+                                <Typography variant="body2" color="error.main" sx={{ fontWeight: 500, mb: 1 }}>
+                                  Removed ({groupedChanges.cohorts.removed.length})
+                                </Typography>
+                                {groupedChanges.cohorts.removed.map((change, index) => (
+                                  <Box key={index} sx={{ ml: 2, mb: 1 }}>
+                                    <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                                      {change.key}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {change.name}
+                                    </Typography>
                                   </Box>
                                 ))}
                               </Box>
@@ -308,7 +432,7 @@ export default function PublishPage() {
             </Card>
 
             {/* Changelog */}
-            {hasChanges && (
+            {hasChangesDetected && (
               <Card>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2 }}>
@@ -341,7 +465,7 @@ export default function PublishPage() {
                   Publish Actions
                 </Typography>
                 
-                {hasChanges && (
+                {hasChangesDetected && (
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                       Next version: 
@@ -364,7 +488,7 @@ export default function PublishPage() {
                   {isPublishing ? 'Publishing...' : 'Publish Configuration'}
                 </Button>
 
-                {!hasChanges && (
+                {!hasChangesDetected && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
                     No changes to publish
                   </Typography>
@@ -386,7 +510,12 @@ export default function PublishPage() {
                 </Typography>
                 
                 <Stack spacing={2}>
-                  {mockPublishHistory.map((publish, index) => (
+                  {publishHistory.length === 0 ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                      No publish history available
+                    </Typography>
+                  ) : (
+                    publishHistory.map((publish, index) => (
                     <Paper key={index} variant="outlined" sx={{ p: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <History sx={{ fontSize: 16, color: 'text.secondary' }} />
@@ -416,13 +545,15 @@ export default function PublishPage() {
                         {new Date(publish.publishedAt).toLocaleString()} by {publish.publishedBy}
                       </Typography>
                     </Paper>
-                  ))}
+                    ))
+                  )}
                 </Stack>
               </CardContent>
             </Card>
           </Stack>
         </Grid>
       </Grid>
+      )}
     </Box>
   );
 }

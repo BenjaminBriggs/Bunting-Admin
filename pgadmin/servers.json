@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Local Postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "bunting_admin",
+      "Username": "admin",
+      "Password": "admin123",
+      "SSLMode": "prefer"
+    }
+  }
+}

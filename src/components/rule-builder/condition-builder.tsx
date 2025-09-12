@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   FormControl,
@@ -16,18 +16,36 @@ import {
 } from '@mui/material';
 import { Delete, Add } from '@mui/icons-material';
 import { RuleCondition, RuleConditionType, RuleOperator } from '@/types/rules';
-import { conditionTemplates, operatorLabels, mockCohorts } from './rule-templates';
+import { conditionTemplates, operatorLabels } from './rule-templates';
+import { fetchCohorts, type Cohort } from '@/lib/api';
 
 interface ConditionBuilderProps {
   condition: RuleCondition;
   onChange: (condition: RuleCondition) => void;
   onDelete: () => void;
   canDelete?: boolean;
+  appId?: string;
+  showCohortConditions?: boolean;
 }
 
-export function ConditionBuilder({ condition, onChange, onDelete, canDelete = true }: ConditionBuilderProps) {
+export function ConditionBuilder({ condition, onChange, onDelete, canDelete = true, appId, showCohortConditions = true }: ConditionBuilderProps) {
   const template = conditionTemplates.find(t => t.type === condition.type);
   const [valueInput, setValueInput] = useState('');
+  const [cohorts, setCohorts] = useState<Cohort[]>([]);
+
+  useEffect(() => {
+    if (appId && condition.type === 'cohort') {
+      const loadCohorts = async () => {
+        try {
+          const cohortsData = await fetchCohorts(appId);
+          setCohorts(cohortsData);
+        } catch (error) {
+          console.error('Failed to load cohorts:', error);
+        }
+      };
+      loadCohorts();
+    }
+  }, [appId, condition.type]);
 
   const handleTypeChange = (newType: RuleConditionType) => {
     const newTemplate = conditionTemplates.find(t => t.type === newType);
@@ -96,7 +114,9 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
             label="Condition"
             onChange={(e) => handleTypeChange(e.target.value as RuleConditionType)}
           >
-            {conditionTemplates.map((template) => (
+            {conditionTemplates
+              .filter(template => showCohortConditions || template.type !== 'cohort')
+              .map((template) => (
               <MenuItem key={template.type} value={template.type}>
                 {template.label}
               </MenuItem>
@@ -142,8 +162,8 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
         {template.valueType === 'cohort' ? (
           <Autocomplete
             multiple
-            options={mockCohorts}
-            value={mockCohorts.filter(cohort => condition.values.includes(cohort.value))}
+            options={cohorts.map(c => ({ value: c.key, label: c.name }))}
+            value={cohorts.map(c => ({ value: c.key, label: c.name })).filter(cohort => condition.values.includes(cohort.value))}
             onChange={(_, newValue) => {
               handleValuesChange(newValue.map(item => item.value));
             }}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Box,
   Card,
@@ -17,62 +17,25 @@ import {
   Alert,
   Paper
 } from '@mui/material';
-import { ArrowBack, Save, Shuffle, Delete } from '@mui/icons-material';
+import { ArrowBack, Save, Delete } from '@mui/icons-material';
 import Link from 'next/link';
+import { fetchCohort, updateCohort, deleteCohort, type Cohort } from '@/lib/api';
+import { useChanges } from '@/lib/changes-context';
+import { CohortTargetingRule } from '@/types/rules';
+import { CohortRulesContainer } from '@/components/rule-builder/cohort-rules-container';
 
-// Generate a random salt for cohort calculations
-function generateSalt(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-}
-
-// Normalize cohort identifier
-function normalizeCohortId(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
-// Mock data for cohorts - would come from API
-const mockCohorts = [
-  {
-    id: '1',
-    name: 'Beta Users',
-    identifier: 'beta_users',
-    description: 'Users enrolled in beta testing program',
-    percentage: 10,
-    userCount: 1250,
-    salt: 'abc123def456',
-    updatedAt: '2025-09-11T15:30:00Z'
-  },
-  {
-    id: '2',
-    name: 'Premium Subscribers',
-    identifier: 'premium_subscribers',
-    description: 'Users with active premium subscriptions',
-    percentage: 25,
-    userCount: 3200,
-    salt: 'xyz789uvw012',
-    updatedAt: '2025-09-11T14:20:00Z'
-  },
-  {
-    id: '3',
-    name: 'Early Adopters',
-    identifier: 'early_adopters',
-    description: 'Users who signed up in the first month',
-    percentage: 5,
-    userCount: 680,
-    salt: 'mno345pqr678',
-    updatedAt: '2025-09-10T10:15:00Z'
-  }
-];
 
 export default function EditCohortPage() {
   const params = useParams();
+  const router = useRouter();
+  const { markChangesDetected } = useChanges();
   const cohortId = params?.id as string;
   
   const [loading, setLoading] = useState(true);
-  const [cohort, setCohort] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [cohort, setCohort] = useState<Cohort | null>(null);
   const [name, setName] = useState('');
   const [originalName, setOriginalName] = useState('');
   const [identifier, setIdentifier] = useState('');
@@ -80,66 +43,78 @@ export default function EditCohortPage() {
   const [description, setDescription] = useState('');
   const [percentage, setPercentage] = useState(10);
   const [salt, setSalt] = useState('');
-  const [estimatedUsers, setEstimatedUsers] = useState(0);
-
-  // Mock total user count - would come from API
-  const totalUsers = 12500;
+  const [rules, setRules] = useState<CohortTargetingRule[]>([]);
 
   useEffect(() => {
-    // Mock API call - replace with actual API
-    const loadCohort = () => {
-      const foundCohort = mockCohorts.find(c => c.id === cohortId);
-      if (foundCohort) {
-        setCohort(foundCohort);
-        setName(foundCohort.name);
-        setOriginalName(foundCohort.name);
-        setIdentifier(foundCohort.identifier);
-        setOriginalIdentifier(foundCohort.identifier);
-        setDescription(foundCohort.description || '');
-        setPercentage(foundCohort.percentage);
-        setSalt(foundCohort.salt);
-        setEstimatedUsers(Math.round(totalUsers * (foundCohort.percentage / 100)));
+    const loadCohort = async () => {
+      try {
+        setLoading(true);
+        const cohortData = await fetchCohort(cohortId);
+        setCohort(cohortData);
+        setName(cohortData.name);
+        setOriginalName(cohortData.name);
+        setIdentifier(cohortData.key);
+        setOriginalIdentifier(cohortData.key);
+        setDescription(cohortData.description || '');
+        setPercentage(cohortData.percentage);
+        setSalt(cohortData.salt);
+        setRules(cohortData.rules || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load cohort');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadCohort();
   }, [cohortId]);
 
-  const handleNameChange = (value: string) => {
-    setName(value);
-    setIdentifier(normalizeCohortId(value));
-  };
-
   const handlePercentageChange = (_: Event, newValue: number | number[]) => {
     const newPercentage = Array.isArray(newValue) ? newValue[0] : newValue;
     setPercentage(newPercentage);
-    setEstimatedUsers(Math.round(totalUsers * (newPercentage / 100)));
-  };
-
-  const handleGenerateNewSalt = () => {
-    setSalt(generateSalt());
   };
 
   const handleSave = async () => {
-    const updatedCohort = {
-      ...cohort,
-      name,
-      identifier,
-      description,
-      percentage,
-      salt,
-      estimatedUsers
-    };
+    if (!cohort) return;
+    
+    try {
+      setSaving(true);
+      const updateData = {
+        description,
+        percentage,
+        rules,
+      };
 
-    console.log('Would update cohort:', updatedCohort);
-    // TODO: Implement API call to update cohort
+      const updatedCohort = await updateCohort(cohort.id, updateData);
+      setCohort(updatedCohort);
+      setDescription(updatedCohort.description || '');
+      setSuccessMessage('Cohort updated successfully!');
+      
+      // Trigger change detection
+      markChangesDetected();
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save cohort');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
+    if (!cohort) return;
+    
     if (confirm('Are you sure you want to delete this cohort? This action cannot be undone.')) {
-      console.log('Would delete cohort:', cohortId);
-      // TODO: Implement API call to delete cohort
+      try {
+        await deleteCohort(cohortId);
+        
+        // Trigger change detection
+        markChangesDetected();
+        router.push('/dashboard/cohorts');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete cohort');
+      }
     }
   };
 
@@ -147,6 +122,19 @@ export default function EditCohortPage() {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
         <Typography>Loading cohort...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button component={Link} href="/dashboard/cohorts">
+          Back to Cohorts
+        </Button>
       </Box>
     );
   }
@@ -163,10 +151,9 @@ export default function EditCohortPage() {
   }
 
   const isValid = name && percentage > 0 && percentage <= 100;
-  const hasChanges = name !== originalName || 
-                    description !== (cohort.description || '') ||
-                    percentage !== cohort.percentage ||
-                    salt !== cohort.salt;
+  const hasChanges = description !== (cohort?.description || '') ||
+                    percentage !== cohort?.percentage ||
+                    JSON.stringify(rules) !== JSON.stringify(cohort?.rules || []);
 
   return (
     <Box>
@@ -201,6 +188,12 @@ export default function EditCohortPage() {
         </Button>
       </Box>
 
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          {successMessage}
+        </Alert>
+      )}
+
       <Grid container spacing={3}>
         {/* Main Configuration */}
         <Grid item xs={12} md={8}>
@@ -212,27 +205,38 @@ export default function EditCohortPage() {
                 </Typography>
                 
                 <Stack spacing={3}>
-                  {/* Name */}
-                  <TextField
-                    label="Cohort Name"
-                    value={name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    placeholder="e.g., Beta Users"
-                    helperText="Human-readable name for this cohort"
-                    fullWidth
-                    required
-                  />
-
-                  {/* Auto-generated Identifier Display */}
+                  {/* Name - Read Only */}
                   <Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Auto-generated Identifier
+                      Cohort Name
+                    </Typography>
+                    <Box
+                      sx={{
+                        fontSize: '1rem',
+                        bgcolor: 'grey.50',
+                        p: 1.5,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider'
+                      }}
+                    >
+                      {name}
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      Cohort name cannot be changed after creation to maintain consistency
+                    </Typography>
+                  </Box>
+
+                  {/* Identifier Display */}
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Cohort Identifier
                     </Typography>
                     <Box
                       sx={{
                         fontFamily: 'monospace',
                         fontSize: '0.875rem',
-                        bgcolor: 'grey.100',
+                        bgcolor: 'grey.50',
                         p: 1.5,
                         borderRadius: 1,
                         border: '1px solid',
@@ -241,17 +245,9 @@ export default function EditCohortPage() {
                     >
                       {identifier}
                     </Box>
-
-                    {originalIdentifier !== identifier && (
-                      <Alert severity="warning" sx={{ mt: 2 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
-                          Identifier will change from <code>{originalIdentifier}</code> to <code>{identifier}</code>
-                        </Typography>
-                        <Typography variant="body2">
-                          This will require updating your code that references this cohort. Make sure to update all places where you use this cohort before publishing.
-                        </Typography>
-                      </Alert>
-                    )}
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      Used in code to reference this cohort
+                    </Typography>
                   </Box>
 
                   {/* Description */}
@@ -287,37 +283,39 @@ export default function EditCohortPage() {
                     />
                   </Box>
 
-                  {/* Salt Configuration */}
+                  {/* Salt Configuration - Read Only */}
                   <Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant="body1">
-                        Salt Value
-                      </Typography>
-                      <Button
-                        size="small"
-                        startIcon={<Shuffle />}
-                        onClick={handleGenerateNewSalt}
-                      >
-                        Generate New
-                      </Button>
-                    </Box>
-                    <TextField
-                      value={salt}
-                      onChange={(e) => setSalt(e.target.value)}
-                      fullWidth
-                      InputProps={{
-                        sx: { fontFamily: 'monospace' }
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Salt Value
+                    </Typography>
+                    <Box
+                      sx={{
+                        fontFamily: 'monospace',
+                        fontSize: '0.875rem',
+                        bgcolor: 'grey.50',
+                        p: 1.5,
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        wordBreak: 'break-all'
                       }}
-                      helperText="Random string used for consistent user assignment to cohorts"
-                    />
-                    <Alert severity="info" sx={{ mt: 2 }}>
-                      The salt ensures users are consistently assigned to the same cohort across sessions. 
-                      Changing the salt will reassign users to different cohorts.
-                    </Alert>
+                    >
+                      {salt}
+                    </Box>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      Salt is fixed after creation to ensure consistent user assignment to cohorts
+                    </Typography>
                   </Box>
                 </Stack>
               </CardContent>
             </Card>
+
+            {/* Targeting Rules */}
+            <CohortRulesContainer
+              rules={rules}
+              onChange={setRules}
+              appId={cohort?.appId}
+            />
           </Stack>
         </Grid>
 
@@ -435,6 +433,11 @@ export default function EditCohortPage() {
                         • Percentage: <code>{cohort.percentage}%</code> → <code>{percentage}%</code>
                       </Typography>
                     )}
+                    {JSON.stringify(rules) !== JSON.stringify(cohort?.rules || []) && (
+                      <Typography variant="body2">
+                        • Targeting rules updated
+                      </Typography>
+                    )}
                     {salt !== cohort.salt && (
                       <Typography variant="body2">
                         • Salt regenerated
@@ -451,11 +454,11 @@ export default function EditCohortPage() {
                 variant="contained"
                 startIcon={<Save />}
                 onClick={handleSave}
-                disabled={!isValid || !hasChanges}
+                disabled={!isValid || !hasChanges || saving}
                 fullWidth
                 size="large"
               >
-                {!hasChanges ? 'No Changes to Save' : 'Save Changes'}
+                {saving ? 'Saving...' : (!hasChanges ? 'No Changes to Save' : 'Save Changes')}
               </Button>
               <Button
                 variant="outlined"

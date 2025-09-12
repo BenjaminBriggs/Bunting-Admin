@@ -1,428 +1,602 @@
 'use client';
 
-import { useState } from 'react';
+import React from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Card,
   CardContent,
   Button,
   Typography,
-  TextField,
-  Stack,
+  CircularProgress,
   Grid,
-  Alert,
-  Divider,
-  Switch,
-  FormControlLabel,
-  Select,
+  CardActions,
+  IconButton,
+  Menu,
   MenuItem,
-  FormControl,
-  InputLabel,
-  Chip,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  ListItemIcon,
+  Tabs,
   Tab,
-  Tabs
+  Paper,
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
+  TextField,
+  Stack
 } from '@mui/material';
-import { 
-  Save, 
-  Key, 
-  Cloud, 
-  Security, 
-  Notifications,
-  Storage,
-  Code,
-  ContentCopy
-} from '@mui/icons-material';
-
-interface TabPanelProps {
-  children?: React.ReactNode;
-  index: number;
-  value: number;
-}
-
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`settings-tabpanel-${index}`}
-      aria-labelledby={`settings-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
-    </div>
-  );
-}
+import { Add, Apps, MoreVert, Edit, Delete, Download, Settings, Code, Warning } from '@mui/icons-material';
+import { fetchApps, updateApp, type App } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState(0);
-  
-  // General settings
-  const [appName, setAppName] = useState('Bunting Admin');
-  const [appIdentifier, setAppIdentifier] = useState('com.example.myapp');
-  const [enableNotifications, setEnableNotifications] = useState(true);
-  
-  // Storage settings
-  const [storageProvider, setStorageProvider] = useState('s3');
-  const [s3Bucket, setS3Bucket] = useState('bunting-configs');
-  const [s3Region, setS3Region] = useState('us-east-1');
-  const [cdnUrl, setCdnUrl] = useState('https://cdn.example.com');
-  
-  // Security settings
-  const [signingEnabled, setSigningEnabled] = useState(true);
-  const [keyRotationDays, setKeyRotationDays] = useState(90);
-  
-  // API settings
-  const [apiBaseUrl, setApiBaseUrl] = useState('https://api.example.com');
-  const [apiTimeout, setApiTimeout] = useState(30);
+  const router = useRouter();
+  const [apps, setApps] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedApp, setSelectedApp] = useState<App | null>(null);
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [appToDelete, setAppToDelete] = useState<App | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    minIntervalHours: 6,
+    hardTtlDays: 7,
+    storageConfig: {
+      bucket: '',
+      region: 'us-east-1',
+      endpoint: '',
+      accessKeyId: '',
+      secretAccessKey: ''
+    }
+  });
 
-  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
+  useEffect(() => {
+    const loadApps = async () => {
+      try {
+        setLoading(true);
+        const appsData = await fetchApps();
+        setApps(appsData);
+        if (appsData.length > 0 && !selectedApp) {
+          setSelectedApp(appsData[0]);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load apps');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadApps();
+  }, []);
+
+  // Update form data when selected app changes
+  useEffect(() => {
+    if (selectedApp && !editMode) {
+      setFormData({
+        name: selectedApp.name,
+        minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
+        hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
+        storageConfig: {
+          bucket: selectedApp.storageConfig.bucket,
+          region: selectedApp.storageConfig.region,
+          endpoint: selectedApp.storageConfig.endpoint || '',
+          accessKeyId: selectedApp.storageConfig.accessKeyId || '',
+          secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
+        }
+      });
+    }
+  }, [selectedApp, editMode]);
+
+  const handleEditStart = () => {
+    if (selectedApp) {
+      setFormData({
+        name: selectedApp.name,
+        minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
+        hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
+        storageConfig: {
+          bucket: selectedApp.storageConfig.bucket,
+          region: selectedApp.storageConfig.region,
+          endpoint: selectedApp.storageConfig.endpoint || '',
+          accessKeyId: selectedApp.storageConfig.accessKeyId || '',
+          secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
+        }
+      });
+      setEditMode(true);
+    }
   };
 
-  const handleSave = () => {
-    console.log('Saving settings...');
-    // TODO: Implement settings save
+  const handleEditCancel = () => {
+    setEditMode(false);
+    setError(null);
   };
 
-  const handleCopySDKSnippet = () => {
-    const snippet = `// iOS (Swift)
-import Bunting
+  const handleSave = async () => {
+    if (!selectedApp) return;
 
-let bunting = Bunting(
-    appIdentifier: "${appIdentifier}",
-    configURL: "${cdnUrl}/config.json"
-)
-
-// Check a feature flag
-if bunting.isEnabled("store/use_new_paywall_design") {
-    // Show new paywall design
-}`;
+    // Basic validation
+    if (!formData.name.trim()) {
+      setError('Application name is required');
+      return;
+    }
     
-    navigator.clipboard.writeText(snippet);
+    if (formData.minIntervalHours < 0.5 || formData.minIntervalHours > 24) {
+      setError('Minimum interval must be between 0.5 and 24 hours');
+      return;
+    }
+    
+    if (formData.hardTtlDays < 1 || formData.hardTtlDays > 365) {
+      setError('Hard TTL must be between 1 and 365 days');
+      return;
+    }
+
+    if (!formData.storageConfig.bucket.trim()) {
+      setError('S3 bucket is required');
+      return;
+    }
+
+    if (!formData.storageConfig.region.trim()) {
+      setError('AWS region is required');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const updatedApp = await updateApp(selectedApp.id, {
+        name: formData.name,
+        fetchPolicy: {
+          min_interval_seconds: formData.minIntervalHours * 3600,
+          hard_ttl_days: formData.hardTtlDays
+        },
+        storageConfig: {
+          bucket: formData.storageConfig.bucket,
+          region: formData.storageConfig.region,
+          endpoint: formData.storageConfig.endpoint || undefined,
+          accessKeyId: formData.storageConfig.accessKeyId || undefined,
+          secretAccessKey: formData.storageConfig.secretAccessKey || undefined
+        }
+      });
+
+      // Update the apps list and selected app
+      setApps(apps.map(app => 
+        app.id === selectedApp.id ? updatedApp : app
+      ));
+      setSelectedApp(updatedApp);
+      setEditMode(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save application');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  function generatePlistContent(app: App): string {
+    const publicKeysXml = app.publicKeys.map(key => `
+      <dict>
+        <key>kid</key>
+        <string>${key.kid}</string>
+        <key>pem</key>
+        <string>${key.pem}</string>
+      </dict>`).join('');
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>artifact_url</key>
+  <string>${app.artifactUrl}</string>
+  <key>public_keys</key>
+  <array>${publicKeysXml}
+  </array>
+  <key>fetch_policy</key>
+  <dict>
+    <key>min_interval_seconds</key>
+    <integer>${app.fetchPolicy.min_interval_seconds}</integer>
+    <key>hard_ttl_days</key>
+    <integer>${app.fetchPolicy.hard_ttl_days}</integer>
+  </dict>
+</dict>
+</plist>`;
+  }
+
+  function downloadPlist(app: App): void {
+    const content = generatePlistContent(app);
+    const blob = new Blob([content], { type: 'application/x-plist' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${app.identifier}-bunting-config.plist`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  const handleDeleteApp = (app: App) => {
+    setAppToDelete(app);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (appToDelete) {
+      try {
+        // await deleteApp(appToDelete.id);
+        // setApps(apps.filter(app => app.id !== appToDelete.id));
+        // if (selectedApp?.id === appToDelete.id) {
+        //   setSelectedApp(apps.find(app => app.id !== appToDelete.id) || null);
+        // }
+        console.log('Delete app:', appToDelete.name);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete app');
+      }
+    }
+    setDeleteConfirmOpen(false);
+    setAppToDelete(null);
   };
 
   return (
     <Box>
-      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-        <Box>
-          <Typography variant="h4" component="h2" sx={{ mb: 1 }}>
-            Settings
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Configure your Bunting admin interface and integrations
-          </Typography>
-        </Box>
-        <Button 
-          variant="contained" 
-          startIcon={<Save />}
-          onClick={handleSave}
-        >
-          Save Changes
-        </Button>
+        <Typography variant="h4" component="h2">
+          Application Settings
+        </Typography>
       </Box>
+      
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
 
-      <Card>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={activeTab} onChange={handleTabChange}>
-            <Tab label="General" icon={<Security />} iconPosition="start" />
-            <Tab label="Storage" icon={<Storage />} iconPosition="start" />
-            <Tab label="Security" icon={<Key />} iconPosition="start" />
-            <Tab label="SDK Setup" icon={<Code />} iconPosition="start" />
-          </Tabs>
+      {apps.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8 }}>
+          <Apps sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+            No applications configured
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            Let's set up your first application with guided setup
+          </Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<Add />}
+            onClick={() => router.push('/setup')}
+          >
+            Set Up Your First Application
+          </Button>
         </Box>
-
-        <TabPanel value={activeTab} index={0}>
-          {/* General Settings */}
-          <CardContent sx={{ p: 3 }}>
-            <Stack spacing={3}>
-              <Typography variant="h6">General Configuration</Typography>
-              
-              <TextField
-                label="Application Name"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                helperText="Display name for your application"
-                fullWidth
-              />
-              
-              <TextField
-                label="App Identifier"
-                value={appIdentifier}
-                onChange={(e) => setAppIdentifier(e.target.value)}
-                helperText="Unique identifier for your app (e.g., bundle ID)"
-                fullWidth
-                InputProps={{
-                  sx: { fontFamily: 'monospace' }
-                }}
-              />
-
+      ) : (
+        <Grid container spacing={3}>
+          {/* Left Panel - Application List */}
+          <Grid item xs={12} md={4}>
+            <Paper sx={{ height: 'fit-content' }}>
+              <List>
+                {apps.map((app) => (
+                  <ListItem key={app.id} disablePadding>
+                    <ListItemButton
+                      selected={selectedApp?.id === app.id}
+                      onClick={() => setSelectedApp(app)}
+                    >
+                      <ListItemIcon>
+                        <Apps />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={app.name}
+                        secondary={`${app._count?.flags || 0} flags, ${app._count?.cohorts || 0} cohorts`}
+                      />
+                      {apps.length > 1 && (
+                        <IconButton
+                          edge="end"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteApp(app);
+                          }}
+                          color="error"
+                        >
+                          <Delete />
+                        </IconButton>
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
               <Divider />
-
-              <Typography variant="h6">Preferences</Typography>
-              
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={enableNotifications}
-                    onChange={(e) => setEnableNotifications(e.target.checked)}
-                  />
-                }
-                label="Enable email notifications for publishes"
-              />
-            </Stack>
-          </CardContent>
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={1}>
-          {/* Storage Settings */}
-          <CardContent sx={{ p: 3 }}>
-            <Stack spacing={3}>
-              <Typography variant="h6">Storage Configuration</Typography>
-              
-              <FormControl fullWidth>
-                <InputLabel>Storage Provider</InputLabel>
-                <Select
-                  value={storageProvider}
-                  label="Storage Provider"
-                  onChange={(e) => setStorageProvider(e.target.value)}
+              <Box sx={{ p: 2 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  fullWidth
+                  onClick={() => router.push('/setup')}
                 >
-                  <MenuItem value="s3">Amazon S3</MenuItem>
-                  <MenuItem value="gcs">Google Cloud Storage</MenuItem>
-                  <MenuItem value="azure">Azure Blob Storage</MenuItem>
-                  <MenuItem value="b2">Backblaze B2</MenuItem>
-                </Select>
-              </FormControl>
-
-              {storageProvider === 's3' && (
-                <>
-                  <TextField
-                    label="S3 Bucket"
-                    value={s3Bucket}
-                    onChange={(e) => setS3Bucket(e.target.value)}
-                    helperText="Name of the S3 bucket to store configurations"
-                    fullWidth
-                  />
-                  
-                  <TextField
-                    label="AWS Region"
-                    value={s3Region}
-                    onChange={(e) => setS3Region(e.target.value)}
-                    helperText="AWS region where your bucket is located"
-                    fullWidth
-                  />
-                </>
-              )}
-
-              <Divider />
-
-              <Typography variant="h6">CDN Configuration</Typography>
-              
-              <TextField
-                label="CDN Base URL"
-                value={cdnUrl}
-                onChange={(e) => setCdnUrl(e.target.value)}
-                helperText="Base URL where your configurations will be served"
-                fullWidth
-                InputProps={{
-                  sx: { fontFamily: 'monospace' }
-                }}
-              />
-
-              <Alert severity="info">
-                Configuration files will be available at: <br />
-                <code>{cdnUrl}/config.json</code> (main configuration)<br />
-                <code>{cdnUrl}/config.json.sig</code> (JWS signature)
-              </Alert>
-            </Stack>
-          </CardContent>
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={2}>
-          {/* Security Settings */}
-          <CardContent sx={{ p: 3 }}>
-            <Stack spacing={3}>
-              <Typography variant="h6">Signing Configuration</Typography>
-              
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={signingEnabled}
-                    onChange={(e) => setSigningEnabled(e.target.checked)}
-                  />
-                }
-                label="Enable JWS signature verification"
-              />
-
-              {signingEnabled && (
-                <>
-                  <Alert severity="info">
-                    JWS signatures ensure the integrity of your configuration files. 
-                    Your SDK will verify signatures before applying configurations.
-                  </Alert>
-
-                  <TextField
-                    label="Key Rotation Period (days)"
-                    type="number"
-                    value={keyRotationDays}
-                    onChange={(e) => setKeyRotationDays(parseInt(e.target.value))}
-                    helperText="How often signing keys should be rotated"
-                    InputProps={{ inputProps: { min: 30, max: 365 } }}
-                  />
-
-                  <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Current Signing Key
-                    </Typography>
-                    <Chip 
-                      label="key-2025-09-11" 
-                      sx={{ fontFamily: 'monospace' }}
-                      color="success"
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ ml: 2 }}>
-                      Generated 1 day ago
-                    </Typography>
-                  </Box>
-                </>
-              )}
-
-              <Divider />
-
-              <Typography variant="h6">API Configuration</Typography>
-              
-              <TextField
-                label="API Base URL"
-                value={apiBaseUrl}
-                onChange={(e) => setApiBaseUrl(e.target.value)}
-                helperText="Base URL for your Bunting API"
-                fullWidth
-                InputProps={{
-                  sx: { fontFamily: 'monospace' }
-                }}
-              />
-              
-              <TextField
-                label="Request Timeout (seconds)"
-                type="number"
-                value={apiTimeout}
-                onChange={(e) => setApiTimeout(parseInt(e.target.value))}
-                helperText="Timeout for API requests"
-                InputProps={{ inputProps: { min: 5, max: 120 } }}
-              />
-            </Stack>
-          </CardContent>
-        </TabPanel>
-
-        <TabPanel value={activeTab} index={3}>
-          {/* SDK Setup */}
-          <CardContent sx={{ p: 3 }}>
-            <Stack spacing={3}>
-              <Typography variant="h6">SDK Integration</Typography>
-              
-              <Alert severity="info">
-                Use these configuration values to integrate Bunting into your application.
-              </Alert>
-
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    App Identifier
-                  </Typography>
-                  <Box
-                    sx={{
-                      fontFamily: 'monospace',
-                      fontSize: '0.875rem',
-                      bgcolor: 'grey.100',
-                      p: 1,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider'
-                    }}
-                  >
-                    {appIdentifier}
-                  </Box>
-                </Grid>
-                
-                <Grid item xs={12} md={6}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    Config URL
-                  </Typography>
-                  <Box
-                    sx={{
-                      fontFamily: 'monospace',
-                      fontSize: '0.875rem',
-                      bgcolor: 'grey.100',
-                      p: 1,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider'
-                    }}
-                  >
-                    {cdnUrl}/config.json
-                  </Box>
-                </Grid>
-              </Grid>
-
-              <Divider />
-
-              <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">SDK Code Example</Typography>
-                  <Button
-                    size="small"
-                    startIcon={<ContentCopy />}
-                    onClick={handleCopySDKSnippet}
-                  >
-                    Copy
-                  </Button>
-                </Box>
-                
-                <Box
-                  component="pre"
-                  sx={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.875rem',
-                    bgcolor: 'grey.900',
-                    color: 'grey.100',
-                    p: 2,
-                    borderRadius: 1,
-                    overflow: 'auto',
-                    whiteSpace: 'pre-wrap'
-                  }}
-                >
-{`// iOS (Swift)
-import Bunting
-
-let bunting = Bunting(
-    appIdentifier: "${appIdentifier}",
-    configURL: "${cdnUrl}/config.json"
-)
-
-// Check a feature flag
-if bunting.isEnabled("store/use_new_paywall_design") {
-    // Show new paywall design
-}
-
-// Get a typed value
-let retryLimit = bunting.intValue("checkout/retry_limit", default: 3)
-
-// Check if user is in a cohort
-if bunting.isInCohort("beta_users") {
-    // Show beta features
-}`}
-                </Box>
+                  Add Application
+                </Button>
               </Box>
+            </Paper>
+          </Grid>
 
-              <Alert severity="warning">
-                Make sure to replace the placeholder values with your actual configuration 
-                before integrating the SDK into your application.
-              </Alert>
-            </Stack>
-          </CardContent>
-        </TabPanel>
-      </Card>
+          {/* Right Panel - Selected App Details */}
+          <Grid item xs={12} md={8}>
+            {selectedApp ? (
+              <Paper>
+                <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)}>
+                  <Tab label="Settings" icon={<Settings />} />
+                  <Tab label="SDK Integration" icon={<Code />} />
+                </Tabs>
+                <Divider />
+                <Box sx={{ p: 3 }}>
+                  {selectedTab === 0 && (
+                    <Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography variant="h6">
+                          Application Settings
+                        </Typography>
+                        {!editMode ? (
+                          <Button
+                            variant="outlined"
+                            startIcon={<Edit />}
+                            onClick={handleEditStart}
+                          >
+                            Edit
+                          </Button>
+                        ) : (
+                          <Stack direction="row" spacing={1}>
+                            <Button
+                              variant="outlined"
+                              onClick={handleEditCancel}
+                              disabled={saving}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="contained"
+                              onClick={handleSave}
+                              disabled={saving}
+                            >
+                              {saving ? 'Saving...' : 'Save'}
+                            </Button>
+                          </Stack>
+                        )}
+                      </Box>
+
+                      {editMode ? (
+                        <Stack spacing={3}>
+                          <TextField
+                            label="Application Name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            fullWidth
+                            required
+                            helperText="Display name for this application"
+                          />
+                          
+                          <Typography variant="subtitle1" sx={{ mt: 2 }}>
+                            Fetch Policy
+                          </Typography>
+                          
+                          <TextField
+                            label="Minimum Interval (hours)"
+                            type="number"
+                            value={formData.minIntervalHours}
+                            onChange={(e) => setFormData({ ...formData, minIntervalHours: parseFloat(e.target.value) || 0 })}
+                            fullWidth
+                            inputProps={{ min: 0.5, max: 24, step: 0.5 }}
+                            helperText="Minimum time between config fetches (0.5 to 24 hours)"
+                          />
+                          
+                          <TextField
+                            label="Hard TTL (days)"
+                            type="number"
+                            value={formData.hardTtlDays}
+                            onChange={(e) => setFormData({ ...formData, hardTtlDays: parseInt(e.target.value) || 0 })}
+                            fullWidth
+                            inputProps={{ min: 1, max: 365 }}
+                            helperText="Maximum age before config is considered stale (1-365 days)"
+                          />
+
+                          <Typography variant="subtitle1" sx={{ mt: 2 }}>
+                            Storage Configuration
+                          </Typography>
+
+                          <TextField
+                            label="S3 Bucket"
+                            value={formData.storageConfig.bucket}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              storageConfig: { ...formData.storageConfig, bucket: e.target.value }
+                            })}
+                            fullWidth
+                            required
+                            helperText="AWS S3 bucket name for storing config artifacts"
+                          />
+
+                          <TextField
+                            label="AWS Region"
+                            value={formData.storageConfig.region}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              storageConfig: { ...formData.storageConfig, region: e.target.value }
+                            })}
+                            fullWidth
+                            required
+                            helperText="AWS region where the bucket is located (e.g., us-east-1)"
+                          />
+
+                          <TextField
+                            label="Custom Endpoint (Optional)"
+                            value={formData.storageConfig.endpoint}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              storageConfig: { ...formData.storageConfig, endpoint: e.target.value }
+                            })}
+                            fullWidth
+                            helperText="Custom S3-compatible endpoint (leave empty for AWS S3)"
+                          />
+
+                          <TextField
+                            label="Access Key ID (Optional)"
+                            value={formData.storageConfig.accessKeyId}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              storageConfig: { ...formData.storageConfig, accessKeyId: e.target.value }
+                            })}
+                            fullWidth
+                            helperText="Leave empty to use environment variables or IAM roles"
+                          />
+
+                          <TextField
+                            label="Secret Access Key (Optional)"
+                            type="password"
+                            value={formData.storageConfig.secretAccessKey}
+                            onChange={(e) => setFormData({ 
+                              ...formData, 
+                              storageConfig: { ...formData.storageConfig, secretAccessKey: e.target.value }
+                            })}
+                            fullWidth
+                            helperText="Leave empty to use environment variables or IAM roles"
+                          />
+                        </Stack>
+                      ) : (
+                        <Stack spacing={2}>
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Name
+                            </Typography>
+                            <Typography variant="body1">
+                              {selectedApp.name}
+                            </Typography>
+                          </Box>
+                          
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Identifier
+                            </Typography>
+                            <Typography variant="body1">
+                              {selectedApp.identifier}
+                            </Typography>
+                          </Box>
+                          
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Artifact URL
+                            </Typography>
+                            <Typography variant="body1">
+                              {selectedApp.artifactUrl}
+                            </Typography>
+                          </Box>
+                          
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Public Keys
+                            </Typography>
+                            <Typography variant="body1">
+                              {selectedApp.publicKeys.length} configured
+                            </Typography>
+                          </Box>
+                          
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Fetch Policy
+                            </Typography>
+                            <Typography variant="body1">
+                              {selectedApp.fetchPolicy.min_interval_seconds / 3600} hour interval, {selectedApp.fetchPolicy.hard_ttl_days} day TTL
+                            </Typography>
+                          </Box>
+
+                          <Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Storage Configuration
+                            </Typography>
+                            <Typography variant="body1">
+                              Bucket: {selectedApp.storageConfig.bucket}
+                            </Typography>
+                            <Typography variant="body1">
+                              Region: {selectedApp.storageConfig.region}
+                            </Typography>
+                            {selectedApp.storageConfig.endpoint && (
+                              <Typography variant="body1">
+                                Endpoint: {selectedApp.storageConfig.endpoint}
+                              </Typography>
+                            )}
+                            <Typography variant="body1">
+                              Credentials: {selectedApp.storageConfig.accessKeyId ? 'Custom keys configured' : 'Using environment/IAM'}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      )}
+                    </Box>
+                  )}
+                  {selectedTab === 1 && (
+                    <Box>
+                      <Typography variant="h6" sx={{ mb: 2 }}>
+                        SDK Integration
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 3 }}>
+                        Download the configuration file needed for your iOS/macOS application to connect to this Bunting instance.
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={<Download />}
+                        onClick={() => downloadPlist(selectedApp)}
+                        sx={{ mb: 2 }}
+                      >
+                        Download bunting-config.plist
+                      </Button>
+                      <Typography variant="body2" color="text.secondary">
+                        Add this file to your Xcode project and the Bunting SDK will automatically use these settings.
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Paper>
+            ) : (
+              <Paper sx={{ p: 8, textAlign: 'center' }}>
+                <Typography variant="h6" color="text.secondary">
+                  Select an application to view its settings
+                </Typography>
+              </Paper>
+            )}
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+      >
+        <DialogTitle>
+          <Warning sx={{ mr: 1, verticalAlign: 'middle' }} />
+          Delete Application
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete "{appToDelete?.name}"? This will permanently remove the application and all its feature flags and cohorts. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button onClick={confirmDelete} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

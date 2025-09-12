@@ -1,13 +1,11 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
     container_name: bunting-postgres
     environment:
       POSTGRES_DB: bunting_admin
-      POSTGRES_USER: bunting
-      POSTGRES_PASSWORD: bunting_dev
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
     ports:
       - "5432:5432"
     volumes:
@@ -24,11 +22,11 @@ services:
     container_name: bunting-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: bunting
-      MINIO_ROOT_PASSWORD: bunting_dev
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123
     ports:
-      - "9000:9000"  # MinIO API
-      - "9001:9001"  # MinIO Console (Web UI)
+      - "9000:9000" # MinIO API
+      - "9001:9001" # MinIO Console (Web UI)
     volumes:
       - minio_data:/data
     healthcheck:
@@ -46,12 +44,28 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      mc alias set minio http://minio:9000 bunting bunting_dev;
+      mc alias set minio http://minio:9000 admin admin123;
       mc mb minio/bunting-configs --ignore-existing;
       mc policy set public minio/bunting-configs;
       echo 'MinIO setup complete';
       "
 
+  pgadmin:
+    image: dpage/pgadmin4:9
+    container_name: bunting-pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80" # open http://localhost:5050
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+
 volumes:
   postgres_data:
   minio_data:
+  pgadmin_data:

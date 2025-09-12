@@ -39,6 +39,7 @@ interface TargetingRuleBuilderProps {
   flagType: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
   canDelete?: boolean;
   index: number;
+  appId?: string;
 }
 
 export function TargetingRuleBuilder({ 
@@ -47,7 +48,8 @@ export function TargetingRuleBuilder({
   onDelete, 
   flagType, 
   canDelete = true,
-  index
+  index,
+  appId
 }: TargetingRuleBuilderProps) {
   const [expanded, setExpanded] = useState(true);
 
@@ -249,8 +251,8 @@ export function TargetingRuleBuilder({
               </Box>
 
               {rule.conditions.length === 0 ? (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  No conditions defined. This rule will never match any users.
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  No conditions defined. Every rule must have at least one condition. Please add a condition or delete this rule.
                 </Alert>
               ) : (
                 <Stack spacing={2}>
@@ -270,6 +272,7 @@ export function TargetingRuleBuilder({
                         onChange={(updatedCondition) => handleConditionChange(condition.id, updatedCondition)}
                         onDelete={() => handleRemoveCondition(condition.id)}
                         canDelete={rule.conditions.length > 1}
+                        appId={appId}
                       />
                     </Box>
                   ))}

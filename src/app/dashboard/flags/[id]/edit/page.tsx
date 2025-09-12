@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import {
   Box,
   Card,
@@ -21,13 +21,16 @@ import {
   FormControlLabel,
   Collapse,
   IconButton,
-  Paper
+  Paper,
+  CircularProgress
 } from '@mui/material';
 import { ArrowBack, Save, Archive, Delete, ExpandMore, ExpandLess, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import Link from 'next/link';
 import { normalizeKey, validateKey } from '@/lib/utils';
 import { TargetingRule } from '@/types/rules';
 import { RulesContainer } from '@/components/rule-builder/rules-container';
+import { fetchFlag, updateFlag, deleteFlag, type Flag as FlagType } from '@/lib/api';
+import { useChanges } from '@/lib/changes-context';
 
 const flagTypes = [
   { value: 'bool', label: 'Boolean' },
@@ -38,49 +41,17 @@ const flagTypes = [
   { value: 'json', label: 'JSON' }
 ];
 
-// Mock data - would come from API
-const mockFlags = [
-  {
-    id: '1',
-    key: 'store/use_new_paywall_design',
-    displayName: 'Store / Use New Paywall Design',
-    type: 'bool' as const,
-    defaultValue: false,
-    description: 'Enable the new paywall UI design',
-    archived: false,
-    updatedAt: '2025-09-11T15:30:00Z',
-    rules: []
-  },
-  {
-    id: '2', 
-    key: 'onboarding/show_welcome_banner',
-    displayName: 'Onboarding / Show Welcome Banner',
-    type: 'bool' as const,
-    defaultValue: true,
-    description: 'Display welcome banner for new users',
-    archived: false,
-    updatedAt: '2025-09-11T14:20:00Z',
-    rules: []
-  },
-  {
-    id: '3',
-    key: 'checkout/retry_limit',
-    displayName: 'Checkout / Retry Limit',
-    type: 'int' as const,
-    defaultValue: 3,
-    description: 'Maximum number of payment retry attempts',
-    archived: true,
-    updatedAt: '2025-09-10T10:15:00Z',
-    rules: []
-  }
-];
 
 export default function EditFlagPage() {
   const params = useParams();
+  const router = useRouter();
+  const { markChangesDetected } = useChanges();
   const flagId = params?.id as string;
   
   const [loading, setLoading] = useState(true);
-  const [flag, setFlag] = useState<any>(null);
+  const [flag, setFlag] = useState<FlagType | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [key, setKey] = useState('');
   const [originalKey, setOriginalKey] = useState('');
@@ -95,22 +66,25 @@ export default function EditFlagPage() {
   const [rules, setRules] = useState<TargetingRule[]>([]);
 
   useEffect(() => {
-    // Mock API call - replace with actual API
-    const loadFlag = () => {
-      const foundFlag = mockFlags.find(f => f.id === flagId);
-      if (foundFlag) {
-        setFlag(foundFlag);
-        setDisplayName(foundFlag.displayName);
-        setKey(foundFlag.key);
-        setOriginalKey(foundFlag.key);
-        setNormalizedKey(foundFlag.key);
-        setType(foundFlag.type);
-        setDefaultValue(String(foundFlag.defaultValue));
-        setDescription(foundFlag.description || '');
-        setArchived(foundFlag.archived);
-        setRules(foundFlag.rules || []);
+    const loadFlag = async () => {
+      try {
+        setLoading(true);
+        const flagData = await fetchFlag(flagId);
+        setFlag(flagData);
+        setDisplayName(flagData.displayName);
+        setKey(flagData.key);
+        setOriginalKey(flagData.key);
+        setNormalizedKey(flagData.key);
+        setType(flagData.type.toLowerCase());
+        setDefaultValue(String(flagData.defaultValue));
+        setDescription(flagData.description || '');
+        setArchived(flagData.archived);
+        setRules(flagData.rules || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load flag');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadFlag();
@@ -184,23 +158,35 @@ export default function EditFlagPage() {
   };
 
   const handleSave = async () => {
-    if (validationError) return;
+    if (validationError || !flag) return;
     
-    const updatedFlag = {
-      ...flag,
-      key: normalizedKey,
-      displayName,
-      type,
-      defaultValue: type === 'bool' ? defaultValue === 'true' : 
-                   type === 'int' ? parseInt(defaultValue) :
-                   type === 'double' ? parseFloat(defaultValue) :
-                   type === 'json' ? JSON.parse(defaultValue) : defaultValue,
-      description,
-      archived
-    };
+    setSaving(true);
+    setError(null);
+    
+    try {
+      const processedDefaultValue = type === 'bool' ? defaultValue === 'true' : 
+                                   type === 'int' ? parseInt(defaultValue) :
+                                   type === 'double' ? parseFloat(defaultValue) :
+                                   type === 'json' ? JSON.parse(defaultValue) : defaultValue;
 
-    console.log('Would update flag:', updatedFlag);
-    // TODO: Implement API call to update flag
+      await updateFlag(flagId, {
+        key: normalizedKey,
+        displayName,
+        type,
+        defaultValue: processedDefaultValue,
+        description,
+        archived,
+        rules
+      });
+
+      // Trigger change detection
+      markChangesDetected();
+      router.push('/dashboard/flags');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update flag');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleArchive = async () => {
@@ -210,16 +196,39 @@ export default function EditFlagPage() {
   };
 
   const handleDelete = async () => {
+    if (!flag) return;
+    
     if (confirm('Are you sure you want to delete this flag? This action cannot be undone.')) {
-      console.log('Would delete flag:', flagId);
-      // TODO: Implement API call to delete flag
+      try {
+        await deleteFlag(flagId);
+        
+        // Trigger change detection
+        markChangesDetected();
+        router.push('/dashboard/flags');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete flag');
+      }
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+        <CircularProgress sx={{ mr: 2 }} />
         <Typography>Loading flag...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ textAlign: 'center', py: 8 }}>
+        <Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+          {error}
+        </Alert>
+        <Button component={Link} href="/dashboard/flags">
+          Back to Flags
+        </Button>
       </Box>
     );
   }
@@ -486,6 +495,7 @@ export default function EditFlagPage() {
                            type === 'int' ? parseInt(defaultValue) :
                            type === 'double' ? parseFloat(defaultValue) :
                            type === 'json' ? (jsonError ? defaultValue : JSON.parse(defaultValue)) : defaultValue}
+              appId={flag?.appId}
             />
           </Stack>
         </Grid>
@@ -613,13 +623,13 @@ export default function EditFlagPage() {
             <Stack spacing={2}>
               <Button
                 variant="contained"
-                startIcon={<Save />}
+                startIcon={saving ? <CircularProgress size={20} /> : <Save />}
                 onClick={handleSave}
-                disabled={!isValid || !hasChanges}
+                disabled={!isValid || !hasChanges || saving}
                 fullWidth
                 size="large"
               >
-                {!hasChanges ? 'No Changes to Save' : 'Save Changes'}
+                {saving ? 'Saving...' : !hasChanges ? 'No Changes to Save' : 'Save Changes'}
               </Button>
               <Button
                 variant="outlined"

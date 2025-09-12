@@ -1,99 +1,144 @@
-'use client';
+"use client";
 
-import { 
-  Box, 
-  Drawer, 
-  AppBar, 
-  Toolbar, 
-  List, 
-  Typography, 
-  ListItem, 
-  ListItemButton, 
-  ListItemIcon, 
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Drawer,
+  AppBar,
+  Toolbar,
+  List,
+  Typography,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
   ListItemText,
   Select,
   MenuItem,
   FormControl,
-  InputLabel
-} from '@mui/material';
-import { 
-  Flag, 
-  Settings, 
-  BarChart, 
-  Description 
-} from '@mui/icons-material';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+  InputLabel,
+  Button,
+  Chip,
+  Menu,
+  Divider,
+} from "@mui/material";
+import {
+  Flag,
+  Settings,
+  BarChart,
+  CloudUpload,
+  KeyboardArrowDown,
+  Add,
+  Apps,
+  History,
+} from "@mui/icons-material";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { ChangesProvider, useChanges } from "@/lib/changes-context";
+import { AppProvider, useApp } from "@/lib/app-context";
 
 const drawerWidth = 256;
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { hasChanges, getChangeCount } = useChanges();
+  const { apps, selectedApp, setSelectedApp } = useApp();
+
+  const [appMenuAnchor, setAppMenuAnchor] = useState<null | HTMLElement>(null);
 
   const menuItems = [
     {
-      path: '/dashboard/flags',
-      label: 'Feature Flags',
+      path: "/dashboard/flags",
+      label: "Feature Flags",
       icon: <Flag />,
     },
     {
-      path: '/dashboard/cohorts',
-      label: 'Cohorts',
+      path: "/dashboard/cohorts",
+      label: "Cohorts",
       icon: <BarChart />,
     },
     {
-      path: '/dashboard/publish',
-      label: 'Publish',
-      icon: <Description />,
-    },
-    {
-      path: '/dashboard/settings',
-      label: 'Settings',
-      icon: <Settings />,
+      path: "/dashboard/releases",
+      label: "Releases",
+      icon: <History />,
     },
   ];
+
+  const settingsItem = {
+    path: "/dashboard/settings",
+    label: "Settings",
+    icon: <Settings />,
+  };
 
   const isSelected = (path: string) => {
     return pathname?.startsWith(path) || false;
   };
 
+  const handleAppMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAppMenuAnchor(event.currentTarget);
+  };
+
+  const handleAppMenuClose = () => {
+    setAppMenuAnchor(null);
+  };
+
+  const handleAppSelect = (app: any) => {
+    setSelectedApp(app);
+    handleAppMenuClose();
+  };
+
+  const handleAddApplication = () => {
+    handleAppMenuClose();
+    // Always use the setup flow for new applications
+    router.push("/setup");
+  };
+
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: "flex" }}>
       {/* App Bar */}
       <AppBar
         position="fixed"
         sx={{
           width: `calc(100% - ${drawerWidth}px)`,
           ml: `${drawerWidth}px`,
-          bgcolor: 'background.paper',
-          color: 'text.primary',
+          bgcolor: "background.paper",
+          color: "text.primary",
           boxShadow: 1,
         }}
       >
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Flag sx={{ color: 'primary.main' }} />
+        <Toolbar sx={{ justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Flag sx={{ color: "primary.main" }} />
             <Typography variant="h6" component="h1">
               Bunting Admin
             </Typography>
           </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2">App:</Typography>
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel>Select Application</InputLabel>
-              <Select
-                value=""
-                label="Select Application"
-                disabled
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            {/* Publish Button - conditionally visible */}
+            {hasChanges && (
+              <Button
+                variant="contained"
+                startIcon={<CloudUpload />}
+                color="success"
+                size="small"
+                component={Link}
+                href="/dashboard/publish"
               >
-                <MenuItem value="">Select Application</MenuItem>
-              </Select>
-            </FormControl>
+                Publish
+                <Chip
+                  label={getChangeCount()}
+                  size="small"
+                  sx={{
+                    ml: 1,
+                    bgcolor: "rgba(255,255,255,0.2)",
+                    color: "inherit",
+                    height: 20,
+                    "& .MuiChip-label": { fontSize: "0.75rem", px: 1 },
+                  }}
+                />
+              </Button>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
@@ -103,18 +148,38 @@ export default function DashboardLayout({
         sx={{
           width: drawerWidth,
           flexShrink: 0,
-          '& .MuiDrawer-paper': {
+          "& .MuiDrawer-paper": {
             width: drawerWidth,
-            boxSizing: 'border-box',
+            boxSizing: "border-box",
             borderRight: 1,
-            borderColor: 'divider',
+            borderColor: "divider",
           },
         }}
         variant="permanent"
         anchor="left"
       >
         <Toolbar /> {/* Spacer for AppBar */}
-        <List>
+        {/* App Selector at Top */}
+        <Box sx={{ paddingBottom: 2, borderBottom: 1, borderColor: "divider" }}>
+          <ListItemButton
+            onClick={handleAppMenuClick}
+            sx={{
+              borderRadius: 1,
+              "&:hover": {
+                bgcolor: "action.hover",
+              },
+            }}
+          >
+            <Typography variant="h6" component="h1">
+              <ListItemText
+                primary={selectedApp ? selectedApp.name : "Select Application"}
+              />
+            </Typography>
+            <KeyboardArrowDown />
+          </ListItemButton>
+        </Box>
+        {/* Main Menu */}
+        <List sx={{ flexGrow: 1 }}>
           {menuItems.map((item) => (
             <ListItem key={item.path} disablePadding>
               <ListItemButton
@@ -122,14 +187,58 @@ export default function DashboardLayout({
                 href={item.path}
                 selected={isSelected(item.path)}
               >
-                <ListItemIcon>
-                  {item.icon}
-                </ListItemIcon>
+                <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.label} />
               </ListItemButton>
             </ListItem>
           ))}
         </List>
+        {/* Settings at Bottom */}
+        <List>
+          <Divider />
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              href={settingsItem.path}
+              selected={isSelected(settingsItem.path)}
+            >
+              <ListItemIcon>{settingsItem.icon}</ListItemIcon>
+              <ListItemText primary={settingsItem.label} />
+            </ListItemButton>
+          </ListItem>
+        </List>
+        {/* App Menu Dropdown */}
+        <Menu
+          anchorEl={appMenuAnchor}
+          open={Boolean(appMenuAnchor)}
+          onClose={handleAppMenuClose}
+          PaperProps={{
+            sx: { minWidth: 220 },
+          }}
+        >
+          {apps.map((app) => (
+            <MenuItem
+              key={app.id}
+              onClick={() => handleAppSelect(app)}
+              selected={selectedApp?.id === app.id}
+            >
+              <ListItemIcon>
+                <Apps />
+              </ListItemIcon>
+              <ListItemText
+                primary={app.name}
+                secondary={`${app._count?.flags || 0} flags, ${app._count?.cohorts || 0} cohorts`}
+              />
+            </MenuItem>
+          ))}
+          <Divider />
+          <MenuItem onClick={handleAddApplication}>
+            <ListItemIcon>
+              <Add />
+            </ListItemIcon>
+            <ListItemText primary="Add Application" />
+          </MenuItem>
+        </Menu>
       </Drawer>
 
       {/* Main content */}
@@ -137,14 +246,28 @@ export default function DashboardLayout({
         component="main"
         sx={{
           flexGrow: 1,
-          bgcolor: 'background.default',
+          bgcolor: "background.default",
           p: 3,
-          minHeight: '100vh',
+          minHeight: "100vh",
         }}
       >
         <Toolbar /> {/* Spacer for AppBar */}
         {children}
       </Box>
     </Box>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AppProvider>
+      <ChangesProvider>
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </ChangesProvider>
+    </AppProvider>
   );
 }

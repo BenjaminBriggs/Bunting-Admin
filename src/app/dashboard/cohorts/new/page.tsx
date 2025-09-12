@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Card,
@@ -13,10 +13,18 @@ import {
   Grid,
   Alert,
   Chip,
-  LinearProgress
+  LinearProgress,
+  CircularProgress,
+  MenuItem
 } from '@mui/material';
 import { ArrowBack, Save, Shuffle } from '@mui/icons-material';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { createCohort } from '@/lib/api';
+import { useApp } from '@/lib/app-context';
+import { useChanges } from '@/lib/changes-context';
+import { TargetingRule } from '@/types/rules';
+import { RulesContainer } from '@/components/rule-builder/rules-container';
 
 // Generate a random salt for cohort calculations
 function generateSalt(): string {
@@ -32,15 +40,24 @@ function normalizeCohortId(name: string): string {
 }
 
 export default function NewCohortPage() {
+  const router = useRouter();
+  const { selectedApp } = useApp();
+  const { markChangesDetected } = useChanges();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [description, setDescription] = useState('');
   const [percentage, setPercentage] = useState(10);
   const [salt, setSalt] = useState(generateSalt());
-  const [estimatedUsers, setEstimatedUsers] = useState(0);
+  const [rules, setRules] = useState<TargetingRule[]>([]);
 
-  // Mock total user count - would come from API
-  const totalUsers = 12500;
+  // Redirect if no app is selected
+  useEffect(() => {
+    if (!selectedApp) {
+      router.push('/dashboard');
+    }
+  }, [selectedApp, router]);
 
   const handleNameChange = (value: string) => {
     setName(value);
@@ -50,7 +67,6 @@ export default function NewCohortPage() {
   const handlePercentageChange = (_: Event, newValue: number | number[]) => {
     const newPercentage = Array.isArray(newValue) ? newValue[0] : newValue;
     setPercentage(newPercentage);
-    setEstimatedUsers(Math.round(totalUsers * (newPercentage / 100)));
   };
 
   const handleGenerateNewSalt = () => {
@@ -58,20 +74,35 @@ export default function NewCohortPage() {
   };
 
   const handleSave = async () => {
-    const cohort = {
-      name,
-      identifier,
-      description,
-      percentage,
-      salt,
-      estimatedUsers
-    };
+    if (!selectedApp) {
+      setError('No application selected');
+      return;
+    }
 
-    console.log('Would save cohort:', cohort);
-    // TODO: Implement API call to save cohort
+    try {
+      setSaving(true);
+      const cohortData = {
+        appId: selectedApp.id,
+        key: identifier,
+        name,
+        description,
+        percentage,
+        rules: rules,
+      };
+
+      const newCohort = await createCohort(cohortData);
+      
+      // Trigger change detection
+      markChangesDetected();
+      router.push(`/dashboard/cohorts/${newCohort.id}/edit`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create cohort');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const isValid = name && percentage > 0 && percentage <= 100;
+  const isValid = name && selectedApp && percentage > 0 && percentage <= 100;
 
   return (
     <Box>
@@ -95,7 +126,12 @@ export default function NewCohortPage() {
         </Box>
       </Box>
 
-      <Grid container spacing={3}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+        <Grid container spacing={3}>
         {/* Main Configuration */}
         <Grid item xs={12} md={8}>
           <Card>
@@ -181,6 +217,15 @@ export default function NewCohortPage() {
               </Stack>
             </CardContent>
           </Card>
+
+          {/* Targeting Rules */}
+          <RulesContainer
+            rules={rules}
+            onChange={setRules}
+            flagType="bool"
+            defaultValue={true}
+            appId={selectedApp?.id || ''}
+          />
         </Grid>
 
         {/* Preview & Actions */}
@@ -261,6 +306,17 @@ export default function NewCohortPage() {
                           [identifier]: {
                             percentage,
                             salt,
+                            rules: rules.map(rule => ({
+                              enabled: rule.enabled,
+                              conditions: rule.conditions.map(condition => ({
+                                type: condition.type,
+                                operator: condition.operator,
+                                values: condition.values
+                              })),
+                              conditionLogic: rule.conditionLogic,
+                              value: rule.value,
+                              priority: rule.priority
+                            })),
                             ...(description && { description })
                           }
                         }, null, 2)}
@@ -283,10 +339,10 @@ export default function NewCohortPage() {
                 variant="contained"
                 startIcon={<Save />}
                 onClick={handleSave}
-                disabled={!isValid}
+                disabled={!isValid || saving}
                 fullWidth
               >
-                Create Cohort
+                {saving ? 'Creating...' : 'Create Cohort'}
               </Button>
               <Button
                 variant="outlined"
@@ -299,7 +355,7 @@ export default function NewCohortPage() {
             </Stack>
           </Stack>
         </Grid>
-      </Grid>
+        </Grid>
     </Box>
   );
 }

@@ -1,8 +1,15 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Belanosima, Nunito } from 'next/font/google';
 import CustomThemeProvider from '@/components/theme-provider';
 
-const inter = Inter({ subsets: ['latin'] });
+const belanosima = Belanosima({ 
+  subsets: ['latin'],
+  weight: ['400', '600', '700']
+});
+const nunito = Nunito({ 
+  subsets: ['latin'],
+  weight: ['400', '600', '700']
+});
 
 export const metadata: Metadata = {
   title: 'Bunting Admin',
@@ -16,8 +23,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <CustomThemeProvider>
+      <body className={nunito.className}>
+        <CustomThemeProvider belanosima={belanosima.style.fontFamily} inter={nunito.style.fontFamily}>
           {children}
         </CustomThemeProvider>
       </body>

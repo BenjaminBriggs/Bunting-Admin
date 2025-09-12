@@ -25,9 +25,10 @@ interface RulesContainerProps {
   onChange: (rules: TargetingRule[]) => void;
   flagType: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
   defaultValue: any;
+  appId?: string;
 }
 
-export function RulesContainer({ rules, onChange, flagType, defaultValue }: RulesContainerProps) {
+export function RulesContainer({ rules, onChange, flagType, defaultValue, appId }: RulesContainerProps) {
 
   const generateRuleId = () => {
     return `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -92,6 +93,15 @@ export function RulesContainer({ rules, onChange, flagType, defaultValue }: Rule
           ruleId: rule.id,
           message: `Rule ${ruleIndex + 1} is disabled and will not be evaluated`,
           type: 'warning'
+        });
+      }
+
+      // Check for empty rules (no conditions) - this should not happen
+      if (rule.conditions.length === 0) {
+        errors.push({
+          ruleId: rule.id,
+          message: `Rule ${ruleIndex + 1} has no conditions. Every rule must have at least one condition.`,
+          type: 'error'
         });
       }
     });
@@ -160,9 +170,9 @@ export function RulesContainer({ rules, onChange, flagType, defaultValue }: Rule
             {/* Rules */}
             {rules.length === 0 ? (
               <Alert severity="info" icon={<Info />}>
-                No targeting rules defined. This flag will use its default value for all users.
+                No targeting rules defined. This flag will return its default value for all users.
                 <br />
-                Add rules to control when different values are returned.
+                Add rules to conditionally return different values based on user attributes.
               </Alert>
             ) : (
               <Stack spacing={2}>
@@ -177,23 +187,25 @@ export function RulesContainer({ rules, onChange, flagType, defaultValue }: Rule
                     onChange={(updatedRule) => handleRuleChange(rule.id, updatedRule)}
                     onDelete={() => handleDeleteRule(rule.id)}
                     flagType={flagType}
-                    canDelete={rules.length > 1}
+                    canDelete={true}
                     index={index}
+                    appId={appId}
                   />
                 ))}
               </Stack>
             )}
 
             {/* Default Value Notice */}
-            {rules.length > 0 && (
-              <Alert severity="info" size="small">
-                <Typography variant="body2">
-                  <strong>Default Value:</strong> {JSON.stringify(defaultValue)}
-                  <br />
-                  This value will be returned when no rules match or all rules are disabled.
-                </Typography>
-              </Alert>
-            )}
+            <Alert severity="info" size="small">
+              <Typography variant="body2">
+                <strong>Default Value:</strong> {JSON.stringify(defaultValue)}
+                <br />
+                {rules.length === 0 
+                  ? 'This value will be returned for all users since no targeting rules are defined.'
+                  : 'This value will be returned when no rules match or all rules are disabled.'
+                }
+              </Typography>
+            </Alert>
 
             {/* Add Rule Button */}
           <Button

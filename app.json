@@ -1,0 +1,40 @@
+{
+  "name": "Bunting Admin",
+  "description": "Next.js admin that writes config to Postgres and emits a JSON file.",
+  "repository": "https://github.com/you/your-repo",
+  "keywords": ["nextjs", "react", "node", "postgres"],
+  "env": {
+    "NODE_ENV": { "value": "production" },
+    "NEXT_RUNTIME": { "value": "nodejs" },
+    "NEXT_PUBLIC_APP_NAME": { "required": false, "value": "My App" },
+
+    "DATABASE_URL": {
+      "description": "Set automatically by Heroku Postgres.",
+      "required": false
+    },
+
+    "CONFIG_BUCKET_PROVIDER": {
+      "description": "none | r2 | b2",
+      "required": false,
+      "value": "none"
+    },
+    "CONFIG_BUCKET_NAME": { "required": false },
+    "CONFIG_BUCKET_PUBLIC_BASE_URL": {
+      "required": false,
+      "description": "e.g. https://cdn.example.com/config/"
+    },
+    "S3_ENDPOINT": {
+      "required": false,
+      "description": "e.g. https://<accountid>.r2.cloudflarestorage.com"
+    },
+    "S3_REGION": { "required": false, "value": "auto" },
+    "S3_ACCESS_KEY_ID": { "required": false },
+    "S3_SECRET_ACCESS_KEY": { "required": false }
+  },
+  "addons": ["heroku-postgresql:essential-1"],
+  "buildpacks": [{ "url": "heroku/nodejs" }],
+  "scripts": {
+    "postdeploy": "npm run db:migrate && npm run seed:optional || echo 'postdeploy done'"
+  },
+  "success_url": "/"
+}

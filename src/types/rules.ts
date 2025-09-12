@@ -3,6 +3,7 @@
 export type RuleConditionType = 
   | 'environment'
   | 'app_version'
+  | 'os_version'
   | 'platform'
   | 'country'
   | 'cohort';
@@ -38,6 +39,15 @@ export interface TargetingRule {
   conditions: RuleCondition[];
   conditionLogic: 'AND' | 'OR'; // How to combine multiple conditions
   value: any; // The value to return when this rule matches
+  priority: number; // Lower numbers = higher priority
+}
+
+// Cohort targeting rules don't have a return value - they just define membership criteria
+export interface CohortTargetingRule {
+  id: string;
+  enabled: boolean;
+  conditions: RuleCondition[];
+  conditionLogic: 'AND' | 'OR'; // How to combine multiple conditions
   priority: number; // Lower numbers = higher priority
 }
 

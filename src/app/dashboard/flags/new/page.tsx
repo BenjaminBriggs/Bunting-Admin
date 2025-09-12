@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Card,
@@ -19,13 +20,17 @@ import {
   Grid,
   Collapse,
   IconButton,
-  Paper
+  Paper,
+  CircularProgress
 } from '@mui/material';
 import { ArrowBack, Save, ExpandMore, ExpandLess, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import Link from 'next/link';
 import { normalizeKey, validateKey } from '@/lib/utils';
 import { TargetingRule } from '@/types/rules';
 import { RulesContainer } from '@/components/rule-builder/rules-container';
+import { createFlag } from '@/lib/api';
+import { useApp } from '@/lib/app-context';
+import { useChanges } from '@/lib/changes-context';
 
 const flagTypes = [
   { value: 'bool', label: 'Boolean' },
@@ -37,6 +42,9 @@ const flagTypes = [
 ];
 
 export default function NewFlagPage() {
+  const router = useRouter();
+  const { selectedApp } = useApp();
+  const { markChangesDetected } = useChanges();
   const [displayName, setDisplayName] = useState('');
   const [key, setKey] = useState('');
   const [normalizedKey, setNormalizedKey] = useState('');
@@ -47,6 +55,15 @@ export default function NewFlagPage() {
   const [jsonExpanded, setJsonExpanded] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [rules, setRules] = useState<TargetingRule[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Redirect if no app is selected
+  useEffect(() => {
+    if (!selectedApp) {
+      router.push('/dashboard');
+    }
+  }, [selectedApp, router]);
 
   const handleDisplayNameChange = (value: string) => {
     setDisplayName(value);
@@ -116,26 +133,38 @@ export default function NewFlagPage() {
   };
 
   const handleSave = async () => {
-    if (validationError) return;
+    if (validationError || !selectedApp) return;
     
-    const flag = {
-      key: normalizedKey,
-      displayName,
-      type,
-      defaultValue: type === 'bool' ? defaultValue === 'true' : 
-                   type === 'int' ? parseInt(defaultValue) :
-                   type === 'double' ? parseFloat(defaultValue) :
-                   type === 'json' ? JSON.parse(defaultValue) : defaultValue,
-      description,
-      archived: false,
-      rules: rules
-    };
+    setSaving(true);
+    setSaveError(null);
+    
+    try {
+      const processedDefaultValue = type === 'bool' ? defaultValue === 'true' : 
+                                   type === 'int' ? parseInt(defaultValue) :
+                                   type === 'double' ? parseFloat(defaultValue) :
+                                   type === 'json' ? JSON.parse(defaultValue) : defaultValue;
 
-    console.log('Would save flag:', flag);
-    // TODO: Implement API call to save flag
+      await createFlag({
+        appId: selectedApp.id,
+        key: normalizedKey,
+        displayName,
+        type,
+        defaultValue: processedDefaultValue,
+        description,
+        rules: rules
+      });
+
+      // Trigger change detection
+      markChangesDetected();
+      router.push('/dashboard/flags');
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Failed to create flag');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const isValid = !validationError && !jsonError && displayName && defaultValue !== '';
+  const isValid = !validationError && !jsonError && displayName && defaultValue !== '' && selectedApp;
 
   return (
     <Box>
@@ -158,6 +187,13 @@ export default function NewFlagPage() {
           </Typography>
         </Box>
       </Box>
+
+      {/* Error Alert */}
+      {saveError && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {saveError}
+        </Alert>
+      )}
 
       <Grid container spacing={3}>
         {/* Main Configuration */}
@@ -306,6 +342,7 @@ export default function NewFlagPage() {
                            type === 'int' ? parseInt(defaultValue) :
                            type === 'double' ? parseFloat(defaultValue) :
                            type === 'json' ? (jsonError ? defaultValue : JSON.parse(defaultValue)) : defaultValue}
+              appId={selectedApp?.id || ''}
             />
           </Stack>
         </Grid>
@@ -407,12 +444,12 @@ export default function NewFlagPage() {
             <Stack spacing={2}>
               <Button
                 variant="contained"
-                startIcon={<Save />}
+                startIcon={saving ? <CircularProgress size={20} /> : <Save />}
                 onClick={handleSave}
-                disabled={!isValid}
+                disabled={!isValid || saving}
                 fullWidth
               >
-                Create Flag
+                {saving ? 'Creating...' : 'Create Flag'}
               </Button>
               <Button
                 variant="outlined"
