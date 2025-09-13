@@ -4,28 +4,21 @@ import React, { useState, useEffect } from "react";
 import {
   Box,
   Drawer,
-  AppBar,
-  Toolbar,
   List,
   Typography,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  Chip,
   Menu,
+  MenuItem,
   Divider,
+  Badge,
 } from "@mui/material";
 import {
   Flag,
   Settings,
   BarChart,
-  CloudUpload,
   KeyboardArrowDown,
   Add,
   Apps,
@@ -61,6 +54,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       path: "/dashboard/releases",
       label: "Releases",
       icon: <History />,
+      badge: true, // This will show the changes badge
     },
   ];
 
@@ -95,54 +89,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <Box sx={{ display: "flex" }}>
-      {/* App Bar */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: `calc(100% - ${drawerWidth}px)`,
-          ml: `${drawerWidth}px`,
-          bgcolor: "background.paper",
-          color: "text.primary",
-          boxShadow: 1,
-        }}
-      >
-        <Toolbar sx={{ justifyContent: "space-between" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Flag sx={{ color: "primary.main" }} />
-            <Typography variant="h6" component="h1">
-              Bunting Admin
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            {/* Publish Button - conditionally visible */}
-            {hasChanges && (
-              <Button
-                variant="contained"
-                startIcon={<CloudUpload />}
-                color="success"
-                size="small"
-                component={Link}
-                href="/dashboard/publish"
-              >
-                Publish
-                <Chip
-                  label={getChangeCount()}
-                  size="small"
-                  sx={{
-                    ml: 1,
-                    bgcolor: "rgba(255,255,255,0.2)",
-                    color: "inherit",
-                    height: 20,
-                    "& .MuiChip-label": { fontSize: "0.75rem", px: 1 },
-                  }}
-                />
-              </Button>
-            )}
-          </Box>
-        </Toolbar>
-      </AppBar>
-
       {/* Sidebar */}
       <Drawer
         sx={{
@@ -158,9 +104,33 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         variant="permanent"
         anchor="left"
       >
-        <Toolbar /> {/* Spacer for AppBar */}
-        {/* App Selector at Top */}
-        <Box sx={{ paddingBottom: 2, borderBottom: 1, borderColor: "divider" }}>
+        {/* Logo at Top */}
+        <Box
+          sx={{
+            p: 3,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Link href="/dashboard" style={{ textDecoration: "none" }}>
+            <img
+              src="/images/Logotype.png"
+              alt="Bunting"
+              style={{
+                height: "32px",
+                width: "auto",
+                objectFit: "contain",
+                cursor: "pointer",
+              }}
+            />
+          </Link>
+        </Box>
+
+        {/* App Selector */}
+        <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
           <ListItemButton
             onClick={handleAppMenuClick}
             sx={{
@@ -180,17 +150,29 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </Box>
         {/* Main Menu */}
         <List sx={{ flexGrow: 1 }}>
-          {menuItems.map((item) => (
-            <ListItem key={item.path} disablePadding>
-              <ListItemButton
-                component={Link}
-                href={item.path}
-                selected={isSelected(item.path)}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            </ListItem>
+          {menuItems.map((item, index) => (
+            <React.Fragment key={item.path}>
+              {/* Add divider before releases (index 2) */}
+              {index === 2 && <Divider sx={{ my: 1 }} />}
+              <ListItem disablePadding>
+                <ListItemButton
+                  component={Link}
+                  href={item.path}
+                  selected={isSelected(item.path)}
+                >
+                  <ListItemIcon>
+                    {item.badge && hasChanges ? (
+                      <Badge badgeContent={getChangeCount()} color="primary">
+                        {item.icon}
+                      </Badge>
+                    ) : (
+                      item.icon
+                    )}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              </ListItem>
+            </React.Fragment>
           ))}
         </List>
         {/* Settings at Bottom */}
@@ -222,9 +204,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               onClick={() => handleAppSelect(app)}
               selected={selectedApp?.id === app.id}
             >
-              <ListItemIcon>
-                <Apps />
-              </ListItemIcon>
               <ListItemText
                 primary={app.name}
                 secondary={`${app._count?.flags || 0} flags, ${app._count?.cohorts || 0} cohorts`}
@@ -251,7 +230,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           minHeight: "100vh",
         }}
       >
-        <Toolbar /> {/* Spacer for AppBar */}
         {children}
       </Box>
     </Box>

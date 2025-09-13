@@ -26,15 +26,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setError(null);
       const appsData = await fetchApps();
       setApps(appsData);
-      
-      // If we don't have a selected app, or the selected app no longer exists, select the first one
-      if (!selectedApp || !appsData.find(app => app.id === selectedApp.id)) {
-        if (appsData.length > 0) {
-          setSelectedAppState(appsData[0]);
-        } else {
-          setSelectedAppState(null);
-        }
-      }
     } catch (err) {
       console.error('Error loading apps:', err);
       setError(err instanceof Error ? err.message : 'Failed to load applications');
@@ -53,6 +44,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshApps();
   }, []);
+
+  // Auto-select first app when apps change and no app is selected
+  useEffect(() => {
+    if (apps.length > 0 && !selectedApp) {
+      setSelectedAppState(apps[0]);
+    }
+  }, [apps, selectedApp]);
 
   const value: AppContextType = {
     apps,

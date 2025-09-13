@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   Box,
   Card,
@@ -22,43 +22,56 @@ import {
   Collapse,
   IconButton,
   Paper,
-  CircularProgress
-} from '@mui/material';
-import { ArrowBack, Save, Archive, Delete, ExpandMore, ExpandLess, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
-import Link from 'next/link';
-import { normalizeKey, validateKey } from '@/lib/utils';
-import { TargetingRule } from '@/types/rules';
-import { RulesContainer } from '@/components/rule-builder/rules-container';
-import { fetchFlag, updateFlag, deleteFlag, type Flag as FlagType } from '@/lib/api';
-import { useChanges } from '@/lib/changes-context';
+  CircularProgress,
+} from "@mui/material";
+import {
+  ArrowBack,
+  Save,
+  Archive,
+  Delete,
+  ExpandMore,
+  ExpandLess,
+  CheckCircle,
+  Error as ErrorIcon,
+} from "@mui/icons-material";
+import Link from "next/link";
+import { normalizeKey, validateKey } from "@/lib/utils";
+import { TargetingRule } from "@/types/rules";
+import { RulesContainer } from "@/components/rule-builder/rules-container";
+import {
+  fetchFlag,
+  updateFlag,
+  deleteFlag,
+  type Flag as FlagType,
+} from "@/lib/api";
+import { useChanges } from "@/lib/changes-context";
 
 const flagTypes = [
-  { value: 'bool', label: 'Boolean' },
-  { value: 'string', label: 'String' },
-  { value: 'int', label: 'Integer' },
-  { value: 'double', label: 'Double' },
-  { value: 'date', label: 'Date' },
-  { value: 'json', label: 'JSON' }
+  { value: "bool", label: "Boolean" },
+  { value: "string", label: "String" },
+  { value: "int", label: "Integer" },
+  { value: "double", label: "Double" },
+  { value: "date", label: "Date" },
+  { value: "json", label: "JSON" },
 ];
-
 
 export default function EditFlagPage() {
   const params = useParams();
   const router = useRouter();
   const { markChangesDetected } = useChanges();
   const flagId = params?.id as string;
-  
+
   const [loading, setLoading] = useState(true);
   const [flag, setFlag] = useState<FlagType | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState('');
-  const [key, setKey] = useState('');
-  const [originalKey, setOriginalKey] = useState('');
-  const [normalizedKey, setNormalizedKey] = useState('');
-  const [type, setType] = useState('bool');
-  const [defaultValue, setDefaultValue] = useState('false');
-  const [description, setDescription] = useState('');
+  const [displayName, setDisplayName] = useState("");
+  const [key, setKey] = useState("");
+  const [originalKey, setOriginalKey] = useState("");
+  const [normalizedKey, setNormalizedKey] = useState("");
+  const [type, setType] = useState("bool");
+  const [defaultValue, setDefaultValue] = useState("false");
+  const [description, setDescription] = useState("");
   const [archived, setArchived] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [jsonExpanded, setJsonExpanded] = useState(false);
@@ -77,11 +90,11 @@ export default function EditFlagPage() {
         setNormalizedKey(flagData.key);
         setType(flagData.type.toLowerCase());
         setDefaultValue(String(flagData.defaultValue));
-        setDescription(flagData.description || '');
+        setDescription(flagData.description || "");
         setArchived(flagData.archived);
         setRules(flagData.rules || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load flag');
+        setError(err instanceof Error ? err.message : "Failed to load flag");
       } finally {
         setLoading(false);
       }
@@ -95,20 +108,29 @@ export default function EditFlagPage() {
     const normalized = normalizeKey(value);
     setKey(value);
     setNormalizedKey(normalized);
-    
+
     const validation = validateKey(normalized);
-    setValidationError(validation.valid ? null : validation.error || 'Invalid key');
+    setValidationError(
+      validation.valid ? null : validation.error || "Invalid key",
+    );
   };
 
   const getDefaultValueForType = (flagType: string) => {
     switch (flagType) {
-      case 'bool': return 'false';
-      case 'string': return '';
-      case 'int': return '0';
-      case 'double': return '0.0';
-      case 'date': return new Date().toISOString().split('T')[0];
-      case 'json': return '{}';
-      default: return '';
+      case "bool":
+        return "false";
+      case "string":
+        return "";
+      case "int":
+        return "0";
+      case "double":
+        return "0.0";
+      case "date":
+        return new Date().toISOString().split("T")[0];
+      case "json":
+        return "{}";
+      default:
+        return "";
     }
   };
 
@@ -118,11 +140,11 @@ export default function EditFlagPage() {
     setDefaultValue(newDefaultValue);
     setJsonError(null);
     setJsonExpanded(false);
-    
+
     // Update existing rule values to match new type
-    const updatedRules = rules.map(rule => ({
+    const updatedRules = rules.map((rule) => ({
       ...rule,
-      value: newDefaultValue
+      value: newDefaultValue,
     }));
     setRules(updatedRules);
   };
@@ -132,22 +154,26 @@ export default function EditFlagPage() {
       JSON.parse(jsonString);
       return null;
     } catch (error) {
-      return error instanceof Error ? error.message : 'Invalid JSON';
+      return error instanceof Error ? error.message : "Invalid JSON";
     }
   };
 
   const getJSONSummary = (jsonString: string): string => {
     try {
       const parsed = JSON.parse(jsonString);
-      if (typeof parsed === 'object' && parsed !== null) {
+      if (typeof parsed === "object" && parsed !== null) {
         const keys = Object.keys(parsed);
-        if (keys.length === 0) return '{}';
+        if (keys.length === 0) return "{}";
         if (keys.length === 1) return `{ ${keys[0]}: ... }`;
-        return `{ ${keys[0]}, ${keys[1]}${keys.length > 2 ? ', ...' : ''} }`;
+        return `{ ${keys[0]}, ${keys[1]}${keys.length > 2 ? ", ..." : ""} }`;
       }
-      return jsonString.length > 30 ? jsonString.substring(0, 30) + '...' : jsonString;
+      return jsonString.length > 30
+        ? jsonString.substring(0, 30) + "..."
+        : jsonString;
     } catch {
-      return jsonString.length > 30 ? jsonString.substring(0, 30) + '...' : jsonString;
+      return jsonString.length > 30
+        ? jsonString.substring(0, 30) + "..."
+        : jsonString;
     }
   };
 
@@ -159,15 +185,21 @@ export default function EditFlagPage() {
 
   const handleSave = async () => {
     if (validationError || !flag) return;
-    
+
     setSaving(true);
     setError(null);
-    
+
     try {
-      const processedDefaultValue = type === 'bool' ? defaultValue === 'true' : 
-                                   type === 'int' ? parseInt(defaultValue) :
-                                   type === 'double' ? parseFloat(defaultValue) :
-                                   type === 'json' ? JSON.parse(defaultValue) : defaultValue;
+      const processedDefaultValue =
+        type === "bool"
+          ? defaultValue === "true"
+          : type === "int"
+            ? parseInt(defaultValue)
+            : type === "double"
+              ? parseFloat(defaultValue)
+              : type === "json"
+                ? JSON.parse(defaultValue)
+                : defaultValue;
 
       await updateFlag(flagId, {
         key: normalizedKey,
@@ -176,14 +208,14 @@ export default function EditFlagPage() {
         defaultValue: processedDefaultValue,
         description,
         archived,
-        rules
+        rules,
       });
 
       // Trigger change detection
       markChangesDetected();
-      router.push('/dashboard/flags');
+      router.push("/dashboard/flags");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update flag');
+      setError(err instanceof Error ? err.message : "Failed to update flag");
     } finally {
       setSaving(false);
     }
@@ -197,23 +229,34 @@ export default function EditFlagPage() {
 
   const handleDelete = async () => {
     if (!flag) return;
-    
-    if (confirm('Are you sure you want to delete this flag? This action cannot be undone.')) {
+
+    if (
+      confirm(
+        "Are you sure you want to delete this flag? This action cannot be undone.",
+      )
+    ) {
       try {
         await deleteFlag(flagId);
-        
+
         // Trigger change detection
         markChangesDetected();
-        router.push('/dashboard/flags');
+        router.push("/dashboard/flags");
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete flag');
+        setError(err instanceof Error ? err.message : "Failed to delete flag");
       }
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          py: 8,
+        }}
+      >
         <CircularProgress sx={{ mr: 2 }} />
         <Typography>Loading flag...</Typography>
       </Box>
@@ -222,8 +265,8 @@ export default function EditFlagPage() {
 
   if (error) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
-        <Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: "auto" }}>
           {error}
         </Alert>
         <Button component={Link} href="/dashboard/flags">
@@ -235,8 +278,10 @@ export default function EditFlagPage() {
 
   if (!flag) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>Flag Not Found</Typography>
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Flag Not Found
+        </Typography>
         <Button component={Link} href="/dashboard/flags">
           Back to Flags
         </Button>
@@ -244,20 +289,29 @@ export default function EditFlagPage() {
     );
   }
 
-  const isValid = !validationError && !jsonError && displayName && defaultValue !== '';
-  const hasChanges = displayName !== flag.displayName || 
-                    normalizedKey !== originalKey ||
-                    type !== flag.type ||
-                    defaultValue !== String(flag.defaultValue) ||
-                    description !== (flag.description || '') ||
-                    archived !== flag.archived ||
-                    JSON.stringify(rules) !== JSON.stringify(flag.rules || []);
+  const isValid =
+    !validationError && !jsonError && displayName && defaultValue !== "";
+  const hasChanges =
+    displayName !== flag.displayName ||
+    normalizedKey !== originalKey ||
+    type !== flag.type ||
+    defaultValue !== String(flag.defaultValue) ||
+    description !== (flag.description || "") ||
+    archived !== flag.archived ||
+    JSON.stringify(rules) !== JSON.stringify(flag.rules || []);
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
           <Button
             startIcon={<ArrowBack />}
             component={Link}
@@ -276,14 +330,14 @@ export default function EditFlagPage() {
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1 }}>
           <Button
             variant="outlined"
             startIcon={<Archive />}
             onClick={handleArchive}
             color={archived ? "primary" : "warning"}
           >
-            {archived ? 'Unarchive' : 'Archive'}
+            {archived ? "Unarchive" : "Archive"}
           </Button>
           <Button
             variant="outlined"
@@ -298,7 +352,8 @@ export default function EditFlagPage() {
 
       {archived && (
         <Alert severity="warning" sx={{ mb: 3 }}>
-          This flag is archived and will not be included in published configurations.
+          This flag is archived and will not be included in published
+          configurations.
         </Alert>
       )}
 
@@ -311,7 +366,7 @@ export default function EditFlagPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Basic Configuration
                 </Typography>
-                
+
                 <Stack spacing={3}>
                   {/* Display Name */}
                   <TextField
@@ -326,42 +381,56 @@ export default function EditFlagPage() {
 
                   {/* Auto-generated Key Display */}
                   <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
                       Auto-generated Key
                     </Typography>
                     <Box
                       sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
-                        bgcolor: 'grey.100',
+                        fontFamily: "monospace",
+                        fontSize: "0.875rem",
+                        bgcolor: "grey.100",
                         p: 1.5,
                         borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: validationError ? 'error.main' : 'divider'
+                        border: "1px solid",
+                        borderColor: validationError ? "error.main" : "divider",
                       }}
                     >
                       {normalizedKey}
                     </Box>
                     {validationError && (
-                      <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                      <Typography
+                        variant="caption"
+                        color="error"
+                        sx={{ mt: 0.5, display: "block" }}
+                      >
                         {validationError}
                       </Typography>
                     )}
 
                     {originalKey !== normalizedKey && (
                       <Alert severity="warning" sx={{ mt: 2 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 500, mb: 1 }}>
-                          Key will change from <code>{originalKey}</code> to <code>{normalizedKey}</code>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 500, mb: 1 }}
+                        >
+                          Key will change from <code>{originalKey}</code> to{" "}
+                          <code>{normalizedKey}</code>
                         </Typography>
                         <Typography variant="body2">
-                          This will require updating your code that references this flag. Make sure to update all places where you use this flag before publishing.
+                          This will require updating your code that references
+                          this flag. Make sure to update all places where you
+                          use this flag before publishing.
                         </Typography>
                       </Alert>
                     )}
                   </Box>
 
                   {/* Type and Default Value */}
-                  <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Box sx={{ display: "flex", gap: 2 }}>
                     <FormControl sx={{ minWidth: 200 }}>
                       <InputLabel>Type</InputLabel>
                       <Select
@@ -377,7 +446,7 @@ export default function EditFlagPage() {
                       </Select>
                     </FormControl>
 
-{type === 'bool' ? (
+                    {type === "bool" ? (
                       <FormControl sx={{ flexGrow: 1 }}>
                         <InputLabel>Default Value</InputLabel>
                         <Select
@@ -389,36 +458,60 @@ export default function EditFlagPage() {
                           <MenuItem value="true">true</MenuItem>
                         </Select>
                       </FormControl>
-                    ) : type === 'json' ? (
+                    ) : type === "json" ? (
                       <Box sx={{ flexGrow: 1 }}>
-                        <Paper 
-                          variant="outlined" 
-                          sx={{ 
-                            p: 1, 
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: 'grey.50' }
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            p: 1,
+                            cursor: "pointer",
+                            "&:hover": { bgcolor: "grey.50" },
                           }}
                           onClick={() => setJsonExpanded(!jsonExpanded)}
                         >
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-                              <Typography variant="body2" color="text.secondary">
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                                flexGrow: 1,
+                              }}
+                            >
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
                                 JSON Value:
                               </Typography>
-                              <Typography 
-                                variant="body2" 
-                                sx={{ 
-                                  fontFamily: 'monospace',
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  fontFamily: "monospace",
                                   flexGrow: 1,
-                                  color: jsonError ? 'error.main' : 'text.primary'
+                                  color: jsonError
+                                    ? "error.main"
+                                    : "text.primary",
                                 }}
                               >
                                 {getJSONSummary(defaultValue)}
                               </Typography>
                               {jsonError ? (
-                                <ErrorIcon color="error" sx={{ fontSize: 16 }} />
+                                <ErrorIcon
+                                  color="error"
+                                  sx={{ fontSize: 16 }}
+                                />
                               ) : (
-                                <CheckCircle color="success" sx={{ fontSize: 16 }} />
+                                <CheckCircle
+                                  color="success"
+                                  sx={{ fontSize: 16 }}
+                                />
                               )}
                             </Box>
                             <IconButton size="small">
@@ -426,7 +519,7 @@ export default function EditFlagPage() {
                             </IconButton>
                           </Box>
                         </Paper>
-                        
+
                         <Collapse in={jsonExpanded}>
                           <Box sx={{ mt: 1 }}>
                             <TextField
@@ -439,7 +532,10 @@ export default function EditFlagPage() {
                               error={Boolean(jsonError)}
                               helperText={jsonError || "Enter valid JSON"}
                               InputProps={{
-                                sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
+                                sx: {
+                                  fontFamily: "monospace",
+                                  fontSize: "0.875rem",
+                                },
                               }}
                             />
                           </Box>
@@ -453,13 +549,16 @@ export default function EditFlagPage() {
                         sx={{ flexGrow: 1 }}
                         required
                         helperText="Value returned when no targeting rules match"
-                        type={type === 'int' || type === 'double' ? 'number' : 
-                             type === 'date' ? 'date' : 'text'}
+                        type={
+                          type === "int" || type === "double"
+                            ? "number"
+                            : type === "date"
+                              ? "date"
+                              : "text"
+                        }
                       />
                     )}
                   </Box>
-
-
 
                   {/* Description */}
                   <TextField
@@ -471,17 +570,6 @@ export default function EditFlagPage() {
                     rows={3}
                     fullWidth
                   />
-
-                  {/* Archive Status */}
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={archived}
-                        onChange={(e) => setArchived(e.target.checked)}
-                      />
-                    }
-                    label="Archived"
-                  />
                 </Stack>
               </CardContent>
             </Card>
@@ -491,10 +579,19 @@ export default function EditFlagPage() {
               rules={rules}
               onChange={setRules}
               flagType={type as any}
-              defaultValue={type === 'bool' ? defaultValue === 'true' : 
-                           type === 'int' ? parseInt(defaultValue) :
-                           type === 'double' ? parseFloat(defaultValue) :
-                           type === 'json' ? (jsonError ? defaultValue : JSON.parse(defaultValue)) : defaultValue}
+              defaultValue={
+                type === "bool"
+                  ? defaultValue === "true"
+                  : type === "int"
+                    ? parseInt(defaultValue)
+                    : type === "double"
+                      ? parseFloat(defaultValue)
+                      : type === "json"
+                        ? jsonError
+                          ? defaultValue
+                          : JSON.parse(defaultValue)
+                        : defaultValue
+              }
               appId={flag?.appId}
             />
           </Stack>
@@ -508,10 +605,14 @@ export default function EditFlagPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Preview
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
                   How this flag will appear in your configuration
                 </Typography>
-                
+
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
@@ -521,25 +622,25 @@ export default function EditFlagPage() {
                       {displayName}
                     </Typography>
                   </Box>
-                  
+
                   <Box>
                     <Typography variant="caption" color="text.secondary">
                       Key
                     </Typography>
                     <Box
                       sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
-                        bgcolor: 'grey.100',
+                        fontFamily: "monospace",
+                        fontSize: "0.875rem",
+                        bgcolor: "grey.100",
                         p: 1,
                         borderRadius: 1,
-                        mt: 0.5
+                        mt: 0.5,
                       }}
                     >
                       {normalizedKey}
                     </Box>
                   </Box>
-                  
+
                   <Box>
                     <Typography variant="caption" color="text.secondary">
                       JSON Configuration
@@ -547,31 +648,38 @@ export default function EditFlagPage() {
                     <Box
                       component="pre"
                       sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.75rem',
-                        bgcolor: 'grey.100',
+                        fontFamily: "monospace",
+                        fontSize: "0.75rem",
+                        bgcolor: "grey.100",
                         p: 1.5,
                         borderRadius: 1,
                         mt: 0.5,
-                        overflow: 'auto',
-                        whiteSpace: 'pre-wrap'
+                        overflow: "auto",
+                        whiteSpace: "pre-wrap",
                       }}
                     >
-                      {JSON.stringify({
-                        [normalizedKey]: {
-                          type,
-                          default: type === 'bool' ? defaultValue === 'true' : defaultValue,
-                          rules: [],
-                          ...(description && { description })
-                        }
-                      }, null, 2)}
+                      {JSON.stringify(
+                        {
+                          [normalizedKey]: {
+                            type,
+                            default:
+                              type === "bool"
+                                ? defaultValue === "true"
+                                : defaultValue,
+                            rules: [],
+                            ...(description && { description }),
+                          },
+                        },
+                        null,
+                        2,
+                      )}
                     </Box>
                   </Box>
                 </Stack>
               </CardContent>
             </Card>
 
-{/* Change Summary */}
+            {/* Change Summary */}
             {hasChanges && (
               <Card>
                 <CardContent sx={{ p: 3 }}>
@@ -581,12 +689,14 @@ export default function EditFlagPage() {
                   <Stack spacing={1}>
                     {displayName !== flag.displayName && (
                       <Typography variant="body2">
-                        • Display name: <code>{flag.displayName}</code> → <code>{displayName}</code>
+                        • Display name: <code>{flag.displayName}</code> →{" "}
+                        <code>{displayName}</code>
                       </Typography>
                     )}
                     {normalizedKey !== originalKey && (
                       <Typography variant="body2">
-                        • Key: <code>{originalKey}</code> → <code>{normalizedKey}</code>
+                        • Key: <code>{originalKey}</code> →{" "}
+                        <code>{normalizedKey}</code>
                       </Typography>
                     )}
                     {type !== flag.type && (
@@ -596,22 +706,31 @@ export default function EditFlagPage() {
                     )}
                     {defaultValue !== String(flag.defaultValue) && (
                       <Typography variant="body2">
-                        • Default value: <code>{JSON.stringify(flag.defaultValue)}</code> → <code>{type === 'bool' ? defaultValue : JSON.stringify(defaultValue)}</code>
+                        • Default value:{" "}
+                        <code>{JSON.stringify(flag.defaultValue)}</code> →{" "}
+                        <code>
+                          {type === "bool"
+                            ? defaultValue
+                            : JSON.stringify(defaultValue)}
+                        </code>
                       </Typography>
                     )}
-                    {description !== (flag.description || '') && (
+                    {description !== (flag.description || "") && (
                       <Typography variant="body2">
                         • Description updated
                       </Typography>
                     )}
                     {archived !== flag.archived && (
                       <Typography variant="body2">
-                        • Status: {flag.archived ? 'Archived' : 'Active'} → {archived ? 'Archived' : 'Active'}
+                        • Status: {flag.archived ? "Archived" : "Active"} →{" "}
+                        {archived ? "Archived" : "Active"}
                       </Typography>
                     )}
-                    {JSON.stringify(rules) !== JSON.stringify(flag.rules || []) && (
+                    {JSON.stringify(rules) !==
+                      JSON.stringify(flag.rules || []) && (
                       <Typography variant="body2">
-                        • Targeting rules updated ({rules.length} rule{rules.length !== 1 ? 's' : ''})
+                        • Targeting rules updated ({rules.length} rule
+                        {rules.length !== 1 ? "s" : ""})
                       </Typography>
                     )}
                   </Stack>
@@ -629,7 +748,11 @@ export default function EditFlagPage() {
                 fullWidth
                 size="large"
               >
-                {saving ? 'Saving...' : !hasChanges ? 'No Changes to Save' : 'Save Changes'}
+                {saving
+                  ? "Saving..."
+                  : !hasChanges
+                    ? "No Changes to Save"
+                    : "Save Changes"}
               </Button>
               <Button
                 variant="outlined"

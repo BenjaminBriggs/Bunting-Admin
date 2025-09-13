@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -6,11 +9,79 @@ import {
   Typography,
   Grid,
   CardActions,
+  CircularProgress,
+  Alert,
+  Avatar,
 } from "@mui/material";
-import { Add, Flag, BarChart, Description } from "@mui/icons-material";
+import { 
+  Add, 
+  Flag, 
+  BarChart, 
+  Apps, 
+  TrendingUp 
+} from "@mui/icons-material";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { fetchApps, type App } from "@/lib/api";
+import { useApp } from "@/lib/app-context";
+import { formatTimestamp } from "@/lib/utils";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { setSelectedApp } = useApp();
+  const [apps, setApps] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadApps = async () => {
+      try {
+        setLoading(true);
+        const appsData = await fetchApps();
+        setApps(appsData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load apps");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadApps();
+  }, []);
+
+  const handleAppClick = (app: App) => {
+    setSelectedApp(app);
+    router.push("/dashboard/flags");
+  };
+
+  const getTotalStats = () => {
+    return apps.reduce(
+      (acc, app) => ({
+        flags: acc.flags + (app._count?.flags || 0),
+        cohorts: acc.cohorts + (app._count?.cohorts || 0),
+      }),
+      { flags: 0, cohorts: 0 }
+    );
+  };
+
+  const totalStats = getTotalStats();
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert severity="error" sx={{ mb: 3 }}>
+        {error}
+      </Alert>
+    );
+  }
+
   return (
     <Box>
       {/* Header */}
@@ -27,39 +98,56 @@ export default function DashboardPage() {
             Dashboard
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Manage your feature flags and rollout configurations
+            Overview of all your applications and feature flags
           </Typography>
         </Box>
         <Button
           variant="contained"
           startIcon={<Add />}
           component={Link}
-          href="/dashboard/flags/new"
+          href="/setup"
         >
-          New Flag
+          New Application
         </Button>
       </Box>
 
-      {/* Quick Stats */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={4}>
+      {/* Overview Stats */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <Flag sx={{ mr: 2, color: "primary.main" }} />
-                <Typography variant="h6">Active Flags</Typography>
+                <Apps sx={{ mr: 2, color: "primary.main" }} />
+                <Typography variant="h6">Applications</Typography>
               </Box>
               <Typography variant="h3" component="div">
-                0
+                {apps.length}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                No flags created yet
+                Total applications
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                <Flag sx={{ mr: 2, color: "primary.main" }} />
+                <Typography variant="h6">Feature Flags</Typography>
+              </Box>
+              <Typography variant="h3" component="div">
+                {totalStats.flags}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Across all apps
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -67,100 +155,138 @@ export default function DashboardPage() {
                 <Typography variant="h6">Cohorts</Typography>
               </Box>
               <Typography variant="h3" component="div">
-                0
+                {totalStats.cohorts}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                No cohorts defined
+                User targeting groups
               </Typography>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={3}>
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <Description sx={{ mr: 2, color: "primary.main" }} />
-                <Typography variant="h6">Last Publish</Typography>
+                <TrendingUp sx={{ mr: 2, color: "primary.main" }} />
+                <Typography variant="h6">Total Rules</Typography>
               </Box>
               <Typography variant="h3" component="div">
-                Never
+                {apps.reduce((acc, app) => acc + (app._count?.flags || 0) + (app._count?.cohorts || 0), 0)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                No configurations published
+                Combined flags & cohorts
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Quick Actions
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Get started by creating your first feature flag or cohort
-          </Typography>
+      {/* Applications */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" component="h3" sx={{ mb: 2 }}>
+          Applications
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Click on an application to manage its feature flags and cohorts
+        </Typography>
 
+        {apps.length === 0 ? (
+          <Card>
+            <CardContent sx={{ textAlign: "center", py: 8 }}>
+              <Apps sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                No applications yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                Create your first application to start managing feature flags
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                component={Link}
+                href="/setup"
+              >
+                Create Application
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card
-                variant="outlined"
-                sx={{ height: "100%", cursor: "pointer" }}
-              >
-                <CardContent sx={{ textAlign: "center", p: 3 }}>
-                  <Flag sx={{ fontSize: 48, color: "primary.main", mb: 2 }} />
-                  <Typography variant="h6" sx={{ mb: 1 }}>
-                    Create Feature Flag
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Define a new feature flag with rules and targeting
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ justifyContent: "center", pb: 3 }}>
-                  <Button
-                    variant="outlined"
-                    component={Link}
-                    href="/dashboard/flags/new"
-                  >
-                    Get Started
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
+            {apps.map((app) => (
+              <Grid item xs={12} md={6} lg={4} key={app.id}>
+                <Card 
+                  sx={{ 
+                    height: "100%", 
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: 4,
+                    }
+                  }}
+                  onClick={() => handleAppClick(app)}
+                >
+                  <CardContent>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                      <Avatar 
+                        sx={{ 
+                          width: 40, 
+                          height: 40, 
+                          mr: 2, 
+                          bgcolor: "primary.main",
+                          fontSize: "1.2rem"
+                        }}
+                      >
+                        {app.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="h6" component="h4">
+                          {app.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {app.identifier}
+                        </Typography>
+                      </Box>
+                    </Box>
 
-            <Grid item xs={12} md={6}>
-              <Card
-                variant="outlined"
-                sx={{ height: "100%", cursor: "pointer" }}
-              >
-                <CardContent sx={{ textAlign: "center", p: 3 }}>
-                  <BarChart
-                    sx={{ fontSize: 48, color: "primary.main", mb: 2 }}
-                  />
-                  <Typography variant="h6" sx={{ mb: 1 }}>
-                    Create Cohort
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Define user groups for percentage rollouts
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ justifyContent: "center", pb: 3 }}>
-                  <Button
-                    variant="outlined"
-                    component={Link}
-                    href="/dashboard/cohorts/new"
-                  >
-                    Get Started
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
+                    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                      <Box sx={{ textAlign: "center" }}>
+                        <Typography variant="h4" color="primary.main">
+                          {app._count?.flags || 0}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Flags
+                        </Typography>
+                      </Box>
+                      <Box sx={{ textAlign: "center" }}>
+                        <Typography variant="h4" color="primary.main">
+                          {app._count?.cohorts || 0}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Cohorts
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Typography variant="caption" color="text.secondary">
+                      Updated {formatTimestamp(app.updatedAt)}
+                    </Typography>
+                  </CardContent>
+                  <CardActions>
+                    <Button size="small" startIcon={<Flag />}>
+                      Manage Flags
+                    </Button>
+                    <Button size="small" startIcon={<BarChart />}>
+                      View Cohorts
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-        </CardContent>
-      </Card>
+        )}
+      </Box>
     </Box>
   );
 }
