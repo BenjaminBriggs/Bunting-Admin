@@ -4,15 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Project Overview
 
-Bunting Admin is a fully implemented Next.js + React web application for managing feature flags and publishing signed config artifacts. It provides a complete web UI for application management, flag authoring, cohort management, validation, and publishing to S3/CDN storage.
+Bunting Admin is a fully implemented Next.js + React web application for managing feature flags with environment-specific configurations, A/B testing, and gradual rollouts. It provides a complete web UI for application management, environment-first flag authoring, A/B tests, rollouts, rule-based cohorts, and publishing to S3/CDN storage.
 
 ## Current Implementation Status ✅
 
 ### Completed Features
 - ✅ **Application Management**: Full CRUD with editable settings and SDK integration
-- ✅ **Feature Flag Management**: Create, edit, archive, delete with visual rule builder
-- ✅ **Cohort Management**: Percentage-based rollout groups with auto-generated salts
-- ✅ **Publishing Pipeline**: Config generation, validation, S3 upload with versioning
+- ✅ **Environment-First Flags**: Separate default values for development/staging/production
+- ✅ **A/B Testing**: Multi-variant tests with traffic splitting and statistical analysis
+- ✅ **Gradual Rollouts**: Percentage-based feature rollouts with real-time controls
+- ✅ **Rule-Based Cohorts**: Reusable condition groups for user targeting
+- ✅ **Conditional Variants**: Environment-specific rule-based overrides
+- ✅ **Publishing Pipeline**: Environment-first config generation with schema v2
 - ✅ **Configuration Validation**: Real-time validation with error/warning categorization
 - ✅ **Multi-App Support**: App selector with per-app isolation
 - ✅ **Real-time Change Tracking**: Changes context with publish button visibility
@@ -22,22 +25,28 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 
 #### Frontend (Next.js 14 + React 18)
 - **Application Settings**: Two-panel interface with editable app configuration
-- **Flag Management**: Full CRUD with type support (bool, string, int, double, date, json)
+- **Environment-First Flags**: Flag management with per-environment defaults and variants
+- **A/B Test Management**: Traffic splitting, variant configuration, and result tracking
+- **Rollout Management**: Interactive percentage sliders with real-time updates
+- **Rule-Based Cohorts**: Condition group management without percentage/salt complexity
 - **Rule Builder**: Visual targeting rules with conditions (environment, version, platform, cohorts)
-- **Publishing Interface**: Change detection, validation, and S3 deployment
+- **Publishing Interface**: Environment-aware change detection, validation, and S3 deployment
 - **Responsive Design**: Material-UI v5 with proper mobile support
 
 #### Backend (Next.js API Routes)
-- **Apps API**: `/api/apps` - Application CRUD operations
-- **Flags API**: `/api/flags` - Feature flag CRUD operations  
-- **Cohorts API**: `/api/cohorts` - Cohort CRUD operations
-- **Config API**: `/api/config/*` - Generation, validation, publishing
+- **Apps API**: `/api/apps` - Application CRUD with test_rollouts counting
+- **Flags API**: `/api/flags` - Environment-first flag CRUD with defaultValues/variants
+- **Tests API**: `/api/tests` - A/B test management with traffic validation
+- **Rollouts API**: `/api/rollouts` - Gradual rollout management with archiving
+- **Cohorts API**: `/api/cohorts` - Rule-based cohort groups (no percentage/salt)
+- **Config API**: `/api/config/*` - Environment-first generation with schema v2
 - **Real S3 Integration**: Actual file uploads with versioning
 
 #### Database (PostgreSQL + Prisma)
 - **Apps**: Store app configs, artifact URLs, public keys, fetch policies
-- **Flags**: Flag definitions with rules, types, and default values
-- **Cohorts**: Percentage rollout definitions with salts
+- **Flags**: Environment-first definitions with defaultValues (dev/staging/prod) and variants
+- **TestRollouts**: Unified model for both A/B tests (with variants) and rollouts (with percentage)
+- **Cohorts**: Rule-based condition groups (conditions JSON, no percentage/salt)
 - **Audit Logs**: Publish history with versions and metadata
 
 ## Repository Structure (Current)
@@ -47,34 +56,39 @@ bunting-admin/
 ├── src/
 │   ├── app/                      # Next.js 14+ app router
 │   │   ├── dashboard/            # Main admin interface
-│   │   │   ├── flags/           # Flag management pages
-│   │   │   ├── cohorts/         # Cohort management pages
-│   │   │   ├── publish/         # Publishing interface
+│   │   │   ├── flags/           # Environment-first flag management
+│   │   │   ├── tests/           # A/B test management with variants
+│   │   │   ├── rollouts/        # Gradual rollout management
+│   │   │   ├── cohorts/         # Rule-based cohort groups
+│   │   │   ├── releases/        # Publishing interface with change tracking
 │   │   │   ├── settings/        # Application CRUD interface
-│   │   │   └── layout.tsx       # Dashboard layout with sidebar
+│   │   │   └── layout.tsx       # Dashboard layout with Tests/Rollouts nav
 │   │   ├── api/                 # Backend API routes
 │   │   │   ├── apps/           # Application CRUD endpoints
-│   │   │   ├── flags/          # Flag CRUD endpoints
-│   │   │   ├── cohorts/        # Cohort CRUD endpoints
-│   │   │   └── config/         # Config generation, validation, publishing
+│   │   │   ├── flags/          # Environment-first flag CRUD
+│   │   │   ├── tests/          # A/B test CRUD with traffic validation
+│   │   │   ├── rollouts/       # Rollout CRUD with archiving
+│   │   │   ├── test-rollouts/  # Unified test/rollout management
+│   │   │   ├── cohorts/        # Rule-based cohort CRUD
+│   │   │   └── config/         # Environment-first config generation
 │   │   ├── layout.tsx          # Root layout
 │   │   └── page.tsx            # Landing page
 │   ├── components/             # React components
-│   │   ├── flag-editor/       # Flag editing components
+│   │   ├── flag-editor/       # Environment-aware flag editing
 │   │   ├── rule-builder/      # Visual rule builder
 │   │   └── theme-provider.tsx # MUI theme setup
 │   ├── lib/                   # Shared utilities
 │   │   ├── api.ts            # Client-side API functions
-│   │   ├── config-generator.ts # Server-side config generation
+│   │   ├── config-generator.ts # Environment-first config generation
 │   │   ├── config-comparison.ts # S3 config comparison
 │   │   ├── changes-context.tsx # Real-time change tracking
 │   │   ├── db.ts             # Prisma client
 │   │   └── utils.ts          # Utility functions
 │   └── types/                # TypeScript definitions
-│       ├── index.ts         # Core types
+│       ├── index.ts         # Core types with schema v2
 │       └── rules.ts         # Rule builder types
 ├── prisma/                   # Database schema
-│   └── schema.prisma        # Prisma schema definition
+│   └── schema.prisma        # Updated schema with TestRollouts
 ├── scripts/                 # Utility scripts
 └── package.json            # Dependencies and scripts
 ```
@@ -116,18 +130,29 @@ npm run type-check         # TypeScript checking
 - **App Switching**: Dropdown selector with context switching
 - **CRUD Operations**: Create, edit, delete with confirmation dialogs
 
-### Feature Flag Management
+### Environment-First Feature Flags
 - **Auto-normalization**: "Store: New Paywall" → "store/new_paywall"
+- **Environment Defaults**: Separate default values for development, staging, production
+- **Conditional Variants**: Per-environment rule-based value overrides
 - **Type Support**: bool, string, int, double, date, json with proper editors
-- **Targeting Rules**: Visual rule builder with multiple conditions
-- **Validation**: Real-time key validation and rule logic checking
+- **Visual Interface**: Expandable cards with environment columns and variant sections
+- **Validation**: Real-time key validation and environment consistency checking
 - **Archiving**: Soft delete functionality
 
-### Cohort Management  
-- **Percentage Rollouts**: 0-100% user targeting
-- **Auto-generated Salts**: Consistent user bucketing
-- **User Estimation**: Mock calculation (needs real analytics integration)
-- **Validation**: Unique keys per application
+### A/B Testing & Rollouts
+- **A/B Tests**: Multi-variant testing with traffic percentage allocation
+- **Gradual Rollouts**: Simple percentage-based feature rollouts with real-time sliders
+- **Test Management**: Create, run, pause, and complete tests with statistical tracking
+- **Rollout Controls**: Interactive percentage controls with optimistic UI updates
+- **Archive Functionality**: Cancel (0%) or complete (100%) tests and rollouts
+- **Flag Integration**: Tests and rollouts can target multiple flags simultaneously
+
+### Rule-Based Cohorts
+- **Condition Groups**: Pure rule-based user targeting without percentages
+- **Reusable Rules**: Create cohorts once, use across multiple flags and tests
+- **Visual Rule Builder**: Define complex targeting conditions with AND/OR logic
+- **No Salt Complexity**: Simplified model focused on rule definition only
+- **Validation**: Unique keys per application with circular reference prevention
 
 ### Publishing Pipeline
 - **Change Detection**: Real-time tracking of modified flags/cohorts
@@ -154,15 +179,31 @@ validateKey("store/new_feature") // → { valid: true }
 validateKey("store/123invalid") // → { valid: false, error: "cannot start with number" }
 ```
 
-### Config Artifact Generation
+### Config Artifact Generation (Schema v2)
 ```typescript
 interface ConfigArtifact {
-  schema_version: 1;
+  schema_version: 2;
   config_version: string;        // "2025-09-12.1"
   published_at: string;          // ISO8601
   app_identifier: string;        // user-defined
-  cohorts: Record<string, Cohort>;
-  flags: Record<string, Flag>;
+  
+  // Environment-first structure
+  development: EnvironmentConfig;
+  staging: EnvironmentConfig;
+  production: EnvironmentConfig;
+}
+
+interface EnvironmentConfig {
+  cohorts: Record<string, ConditionGroup>;
+  flags: Record<string, EnvironmentFlag>;
+  tests: Record<string, EnvironmentTest>;
+  rollouts: Record<string, EnvironmentRollout>;
+}
+
+interface EnvironmentFlag {
+  type: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
+  default: any;
+  variants?: ConditionalVariant[];
 }
 ```
 
@@ -190,8 +231,10 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
 ## User Interface
 
 ### Sidebar Navigation
+- **Logo**: Clickable logo at top linking to dashboard
 - **App Selector**: Top-level dropdown with app switching and creation
-- **Main Menu**: Feature Flags, Cohorts (middle section)
+- **Main Menu**: Feature Flags, A/B Tests, Rollouts, Cohorts (middle section)
+- **Releases**: Publishing interface with change count badge
 - **Settings**: Bottom section for application management
 
 ### Application Settings
@@ -200,26 +243,31 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
 - **Real-time Updates**: Changes immediately reflected across interface
 
 ### Publishing Flow
-1. **Make Changes**: Edit flags/cohorts (changes tracked automatically)
-2. **Review Changes**: Publish button appears with change count
-3. **Validation**: Automatic validation with error/warning feedback
-4. **Deploy**: One-click S3 upload with versioning
+1. **Make Changes**: Edit flags, create tests/rollouts, modify cohorts (changes tracked automatically)
+2. **Review Changes**: Releases page shows pending changes with badge count in sidebar
+3. **Environment Selection**: Choose which environment(s) to publish (dev/staging/prod)
+4. **Validation**: Automatic validation with environment-specific error/warning feedback
+5. **Deploy**: One-click S3 upload with environment-aware versioning
 
 ## Known Limitations & TODOs
 
 ### Mock Data Remaining
-- **Cohort User Counts**: `totalUsers = 12500` in cohort forms (needs analytics API)
+- **Test Result Analytics**: Statistical significance calculations need real data
+- **Rollout Impact Metrics**: User impact estimation needs analytics integration
 
 ### Incomplete Features
 - **Authentication**: No user authentication implemented
-- **Publish History**: Database schema exists but queries not implemented
+- **Test Analytics**: A/B test statistical analysis needs implementation
+- **Flag Creation Flow**: Still needs update to new environment-first model
 - **User Management**: No role-based access control
-- **Audit Logging**: Schema exists but not fully implemented
+- **Advanced Rollout Scheduling**: Time-based rollout progression not implemented
 
 ### Future Enhancements
 - **Real-time Collaboration**: Multi-user editing support
 - **Advanced Analytics**: Flag usage metrics and performance data
-- **A/B Test Analysis**: Statistical significance calculations
+- **Statistical Analysis**: Confidence intervals, significance testing for A/B tests
+- **Automated Rollouts**: Time-based percentage progression
+- **Environment Promotion**: Promote configs from staging to production
 - **Bulk Operations**: Mass flag updates and imports
 - **API Documentation**: Swagger/OpenAPI specs
 
@@ -281,7 +329,9 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
 
 5. **Access Admin**:
    - Create your first application in Settings
-   - Add feature flags and cohorts
-   - Test the publishing pipeline
+   - Add environment-first feature flags with development/staging/production defaults
+   - Create A/B tests with traffic splitting or gradual rollouts
+   - Define reusable rule-based cohorts
+   - Test the environment-aware publishing pipeline
 
-The application is now fully functional for feature flag management with real S3 integration and database persistence.
+The application is now fully functional for environment-first feature flag management, A/B testing, gradual rollouts, and rule-based user targeting with real S3 integration and database persistence.

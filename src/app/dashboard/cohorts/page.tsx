@@ -11,7 +11,6 @@ import {
   InputAdornment,
   Chip,
   IconButton,
-  LinearProgress,
   Alert,
   CircularProgress,
   MenuItem,
@@ -19,9 +18,7 @@ import {
 import {
   Add,
   Search,
-  FilterList,
-  BarChart,
-  MoreVert,
+  Group,
   Edit,
   People,
 } from "@mui/icons-material";
@@ -108,7 +105,7 @@ export default function CohortsPage() {
             )}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Manage user groups for percentage-based feature rollouts
+            Create reusable rule groups for targeting specific user segments
           </Typography>
         </Box>
         <Button
@@ -123,7 +120,7 @@ export default function CohortsPage() {
       </Box>
 
       {/* Search */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+      <Box sx={{ mb: 3 }}>
         <TextField
           placeholder="Search cohorts..."
           value={searchTerm}
@@ -135,29 +132,25 @@ export default function CohortsPage() {
               </InputAdornment>
             ),
           }}
-          sx={{ flexGrow: 1 }}
+          fullWidth
           size="small"
         />
-
-        <Button variant="outlined" startIcon={<FilterList />}>
-          Filter
-        </Button>
       </Box>
 
       {/* Cohorts List */}
       {filteredCohorts.length === 0 ? (
         <Card>
           <CardContent sx={{ textAlign: "center", py: 8 }}>
-            <BarChart sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
+            <Group sx={{ fontSize: 64, color: "text.disabled", mb: 2 }} />
             <Typography variant="h6" sx={{ mb: 1 }}>
               {searchTerm
                 ? "No cohorts match your search"
-                : "No cohorts defined"}
+                : "No cohorts created"}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
               {searchTerm
                 ? "Try adjusting your search terms"
-                : "Create your first cohort to enable percentage-based rollouts"}
+                : "Create your first cohort to define reusable targeting rules"}
             </Typography>
             {!searchTerm && selectedApp && (
               <Button
@@ -191,7 +184,7 @@ export default function CohortsPage() {
                       flexGrow: 1,
                     }}
                   >
-                    <BarChart sx={{ color: "primary.main", mt: 0.5 }} />
+                    <Group sx={{ color: "primary.main", mt: 0.5 }} />
 
                     <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                       <Box
@@ -233,35 +226,35 @@ export default function CohortsPage() {
                           {cohort.key}
                         </Typography>
                         <Chip
-                          label={`${cohort.percentage}%`}
+                          label="Rule Group"
                           size="small"
                           color="primary"
                           variant="outlined"
                         />
                       </Box>
 
-                      {/* Percentage Visualization */}
+                      {/* Conditions Display */}
                       <Box sx={{ mb: 2 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            mb: 1,
-                          }}
-                        >
-                          <Typography variant="body2" color="text.secondary">
-                            Rollout Percentage
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Targeting Rules
+                        </Typography>
+                        {cohort.conditions && Array.isArray(cohort.conditions) && cohort.conditions.length > 0 ? (
+                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                            {cohort.conditions.map((condition: any, index: number) => (
+                              <Chip
+                                key={index}
+                                label={`${condition.field} ${condition.operator} ${condition.value}`}
+                                size="small"
+                                variant="outlined"
+                                color="default"
+                              />
+                            ))}
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                            No conditions defined
                           </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {cohort.percentage}%
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={cohort.percentage}
-                          sx={{ height: 6, borderRadius: 3 }}
-                        />
+                        )}
                       </Box>
 
                       {cohort.description && (
@@ -274,24 +267,6 @@ export default function CohortsPage() {
                         </Typography>
                       )}
 
-                      <Box sx={{ mt: 2, mb: 1 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Salt:
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            fontFamily: "monospace",
-                            ml: 1,
-                            bgcolor: "grey.50",
-                            px: 0.5,
-                            py: 0.25,
-                            borderRadius: 0.5,
-                          }}
-                        >
-                          {cohort.salt}
-                        </Typography>
-                      </Box>
 
                       <Typography variant="caption" color="text.secondary">
                         Updated {formatTimestamp(cohort.updatedAt)}

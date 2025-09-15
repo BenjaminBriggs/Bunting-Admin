@@ -23,9 +23,11 @@ import {
   IconButton,
   Paper,
   CircularProgress,
+  Tabs,
+  Tab,
+  Divider,
 } from "@mui/material";
 import {
-  ArrowBack,
   Save,
   Archive,
   Delete,
@@ -34,10 +36,9 @@ import {
   CheckCircle,
   Error as ErrorIcon,
 } from "@mui/icons-material";
-import Link from "next/link";
 import { normalizeKey, validateKey } from "@/lib/utils";
 import { TargetingRule } from "@/types/rules";
-import { RulesContainer } from "@/components/rule-builder/rules-container";
+import { RulesContainer } from "@/components";
 import {
   fetchFlag,
   updateFlag,
@@ -45,6 +46,8 @@ import {
   type Flag as FlagType,
 } from "@/lib/api";
 import { useChanges } from "@/lib/changes-context";
+import { PageHeader } from "@/components";
+import FlagValueInput, { getDefaultValueForType, processValueForType, validateValue } from "@/components/features/flags/flag-value-input";
 
 const flagTypes = [
   { value: "bool", label: "Boolean" },
@@ -70,12 +73,15 @@ export default function EditFlagPage() {
   const [originalKey, setOriginalKey] = useState("");
   const [normalizedKey, setNormalizedKey] = useState("");
   const [type, setType] = useState("bool");
-  const [defaultValue, setDefaultValue] = useState("false");
+  const [defaultValues, setDefaultValues] = useState({
+    development: false,
+    staging: false,
+    production: false
+  });
+  const [activeTab, setActiveTab] = useState(0);
   const [description, setDescription] = useState("");
   const [archived, setArchived] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [jsonExpanded, setJsonExpanded] = useState(false);
-  const [jsonError, setJsonError] = useState<string | null>(null);
   const [rules, setRules] = useState<TargetingRule[]>([]);
 
   useEffect(() => {
@@ -89,7 +95,21 @@ export default function EditFlagPage() {
         setOriginalKey(flagData.key);
         setNormalizedKey(flagData.key);
         setType(flagData.type.toLowerCase());
-        setDefaultValue(String(flagData.defaultValue));
+        // Handle both old single defaultValue and new defaultValues
+        if (flagData.defaultValues) {
+          setDefaultValues({
+            development: flagData.defaultValues.development || flagData.defaultValue || getDefaultValueForType(flagData.type.toLowerCase() as any),
+            staging: flagData.defaultValues.staging || flagData.defaultValue || getDefaultValueForType(flagData.type.toLowerCase() as any),
+            production: flagData.defaultValues.production || flagData.defaultValue || getDefaultValueForType(flagData.type.toLowerCase() as any)
+          });
+        } else {
+          // Legacy support - use single defaultValue for all environments
+          setDefaultValues({
+            development: flagData.defaultValue,
+            staging: flagData.defaultValue,
+            production: flagData.defaultValue
+          });
+        }
         setDescription(flagData.description || "");
         setArchived(flagData.archived);
         setRules(flagData.rules || []);
@@ -115,31 +135,15 @@ export default function EditFlagPage() {
     );
   };
 
-  const getDefaultValueForType = (flagType: string) => {
-    switch (flagType) {
-      case "bool":
-        return "false";
-      case "string":
-        return "";
-      case "int":
-        return "0";
-      case "double":
-        return "0.0";
-      case "date":
-        return new Date().toISOString().split("T")[0];
-      case "json":
-        return "{}";
-      default:
-        return "";
-    }
-  };
 
   const handleTypeChange = (newType: string) => {
     setType(newType);
-    const newDefaultValue = getDefaultValueForType(newType);
-    setDefaultValue(newDefaultValue);
-    setJsonError(null);
-    setJsonExpanded(false);
+    const newDefaultValue = getDefaultValueForType(newType as any);
+    setDefaultValues({
+      development: newDefaultValue,
+      staging: newDefaultValue,
+      production: newDefaultValue
+    });
 
     // Update existing rule values to match new type
     const updatedRules = rules.map((rule) => ({
@@ -149,38 +153,22 @@ export default function EditFlagPage() {
     setRules(updatedRules);
   };
 
-  const validateJSON = (jsonString: string): string | null => {
-    try {
-      JSON.parse(jsonString);
-      return null;
-    } catch (error) {
-      return error instanceof Error ? error.message : "Invalid JSON";
-    }
+  const handleEnvironmentValueChange = (environment: string, value: any) => {
+    setDefaultValues(prev => ({ ...prev, [environment]: value }));
   };
 
-  const getJSONSummary = (jsonString: string): string => {
-    try {
-      const parsed = JSON.parse(jsonString);
-      if (typeof parsed === "object" && parsed !== null) {
-        const keys = Object.keys(parsed);
-        if (keys.length === 0) return "{}";
-        if (keys.length === 1) return `{ ${keys[0]}: ... }`;
-        return `{ ${keys[0]}, ${keys[1]}${keys.length > 2 ? ", ..." : ""} }`;
-      }
-      return jsonString.length > 30
-        ? jsonString.substring(0, 30) + "..."
-        : jsonString;
-    } catch {
-      return jsonString.length > 30
-        ? jsonString.substring(0, 30) + "..."
-        : jsonString;
-    }
+  const getCurrentEnvironment = () => {
+    const environments = ['development', 'staging', 'production'];
+    return environments[activeTab];
   };
 
-  const handleJSONChange = (value: string) => {
-    setDefaultValue(value);
-    const error = validateJSON(value);
-    setJsonError(error);
+  const getEnvironmentColor = (env: string) => {
+    switch (env) {
+      case 'development': return 'info';
+      case 'staging': return 'warning';
+      case 'production': return 'success';
+      default: return 'default';
+    }
   };
 
   const handleSave = async () => {
@@ -190,22 +178,31 @@ export default function EditFlagPage() {
     setError(null);
 
     try {
-      const processedDefaultValue =
-        type === "bool"
-          ? defaultValue === "true"
-          : type === "int"
-            ? parseInt(defaultValue)
-            : type === "double"
-              ? parseFloat(defaultValue)
-              : type === "json"
-                ? JSON.parse(defaultValue)
-                : defaultValue;
+      // Validate all environment values
+      const hasValidationErrors = ['development', 'staging', 'production'].some(env => {
+        const value = defaultValues[env as keyof typeof defaultValues];
+        return !validateValue(value, type as any).isValid;
+      });
+      if (hasValidationErrors) {
+        setError('Please fix validation errors before saving');
+        return;
+      }
+
+      const processDefaultValues = () => {
+        const processed: any = {};
+        ['development', 'staging', 'production'].forEach(env => {
+          const value = defaultValues[env as keyof typeof defaultValues];
+          processed[env] = processValueForType(value, type as any);
+        });
+        return processed;
+      };
 
       await updateFlag(flagId, {
         key: normalizedKey,
         displayName,
         type,
-        defaultValue: processedDefaultValue,
+        defaultValues: processDefaultValues(),
+        variants: flag.variants || {},
         description,
         archived,
         rules,
@@ -290,65 +287,69 @@ export default function EditFlagPage() {
   }
 
   const isValid =
-    !validationError && !jsonError && displayName && defaultValue !== "";
-  const hasChanges =
-    displayName !== flag.displayName ||
-    normalizedKey !== originalKey ||
-    type !== flag.type ||
-    defaultValue !== String(flag.defaultValue) ||
-    description !== (flag.description || "") ||
-    archived !== flag.archived ||
-    JSON.stringify(rules) !== JSON.stringify(flag.rules || []);
+    !validationError && 
+    displayName && 
+    ['development', 'staging', 'production'].every(env => {
+      const value = defaultValues[env as keyof typeof defaultValues];
+      return validateValue(value, type as any).isValid;
+    });
+  const hasChanges = (() => {
+    if (!flag) return false;
+    
+    // Check basic fields
+    if (displayName !== flag.displayName ||
+        normalizedKey !== originalKey ||
+        type !== flag.type ||
+        description !== (flag.description || "") ||
+        archived !== flag.archived ||
+        JSON.stringify(rules) !== JSON.stringify(flag.rules || [])) {
+      return true;
+    }
+    
+    // Check default values - compare with both old and new format
+    if (flag.defaultValues) {
+      return JSON.stringify(defaultValues) !== JSON.stringify({
+        development: flag.defaultValues.development || '',
+        staging: flag.defaultValues.staging || '',
+        production: flag.defaultValues.production || ''
+      });
+    } else {
+      // Legacy comparison
+      const legacyValue = flag.defaultValue || '';
+      return !(JSON.stringify(defaultValues.development) === JSON.stringify(legacyValue) && 
+               JSON.stringify(defaultValues.staging) === JSON.stringify(legacyValue) && 
+               JSON.stringify(defaultValues.production) === JSON.stringify(legacyValue));
+    }
+  })();
 
   return (
     <Box>
-      {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mb: 3,
-        }}
-      >
-        <Box sx={{ display: "flex", alignItems: "center" }}>
-          <Button
-            startIcon={<ArrowBack />}
-            component={Link}
-            href="/dashboard/flags"
-            sx={{ mr: 2 }}
-          >
-            Back to Flags
-          </Button>
-          <Box>
-            <Typography variant="h4" component="h2" sx={{ mb: 1 }}>
-              Edit Feature Flag
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Modify the configuration for {flag.displayName}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Button
-            variant="outlined"
-            startIcon={<Archive />}
-            onClick={handleArchive}
-            color={archived ? "primary" : "warning"}
-          >
-            {archived ? "Unarchive" : "Archive"}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Delete />}
-            onClick={handleDelete}
-            color="error"
-          >
-            Delete
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Edit Feature Flag"
+        subtitle={`Modify the environment-specific configuration for ${flag.displayName}`}
+        backHref="/dashboard/flags"
+        backLabel="Back to Flags"
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              startIcon={<Archive />}
+              onClick={handleArchive}
+              color={archived ? "primary" : "warning"}
+            >
+              {archived ? "Unarchive" : "Archive"}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<Delete />}
+              onClick={handleDelete}
+              color="error"
+            >
+              Delete
+            </Button>
+          </>
+        }
+      />
 
       {archived && (
         <Alert severity="warning" sx={{ mb: 3 }}>
@@ -429,135 +430,63 @@ export default function EditFlagPage() {
                     )}
                   </Box>
 
-                  {/* Type and Default Value */}
-                  <Box sx={{ display: "flex", gap: 2 }}>
-                    <FormControl sx={{ minWidth: 200 }}>
-                      <InputLabel>Type</InputLabel>
-                      <Select
-                        value={type}
-                        label="Type"
-                        onChange={(e) => handleTypeChange(e.target.value)}
-                      >
-                        {flagTypes.map((flagType) => (
-                          <MenuItem key={flagType.value} value={flagType.value}>
-                            {flagType.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                  {/* Type Selection */}
+                  <FormControl sx={{ maxWidth: 200 }}>
+                    <InputLabel>Type</InputLabel>
+                    <Select
+                      value={type}
+                      label="Type"
+                      onChange={(e) => handleTypeChange(e.target.value)}
+                    >
+                      {flagTypes.map((flagType) => (
+                        <MenuItem key={flagType.value} value={flagType.value}>
+                          {flagType.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                    {type === "bool" ? (
-                      <FormControl sx={{ flexGrow: 1 }}>
-                        <InputLabel>Default Value</InputLabel>
-                        <Select
-                          value={defaultValue}
+                  <Divider />
+
+                  {/* Environment-Specific Default Values */}
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                      Environment Default Values
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Set different default values for each environment
+                    </Typography>
+                    
+                    <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
+                      <Tab label="Development" />
+                      <Tab label="Staging" />
+                      <Tab label="Production" />
+                    </Tabs>
+
+                    {['development', 'staging', 'production'].map((env, index) => (
+                      <Box key={env} sx={{ display: index === activeTab ? 'block' : 'none' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                          <Chip 
+                            label={env.charAt(0).toUpperCase() + env.slice(1)} 
+                            size="small" 
+                            color={getEnvironmentColor(env)}
+                          />
+                          <Typography variant="body2" color="text.secondary">
+                            Default value for {env} environment
+                          </Typography>
+                        </Box>
+                        
+                        <FlagValueInput
+                          flagType={type as any}
+                          value={defaultValues[env as keyof typeof defaultValues]}
+                          onChange={(value) => handleEnvironmentValueChange(env, value)}
                           label="Default Value"
-                          onChange={(e) => setDefaultValue(e.target.value)}
-                        >
-                          <MenuItem value="false">false</MenuItem>
-                          <MenuItem value="true">true</MenuItem>
-                        </Select>
-                      </FormControl>
-                    ) : type === "json" ? (
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Paper
-                          variant="outlined"
-                          sx={{
-                            p: 1,
-                            cursor: "pointer",
-                            "&:hover": { bgcolor: "grey.50" },
-                          }}
-                          onClick={() => setJsonExpanded(!jsonExpanded)}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                                flexGrow: 1,
-                              }}
-                            >
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                JSON Value:
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontFamily: "monospace",
-                                  flexGrow: 1,
-                                  color: jsonError
-                                    ? "error.main"
-                                    : "text.primary",
-                                }}
-                              >
-                                {getJSONSummary(defaultValue)}
-                              </Typography>
-                              {jsonError ? (
-                                <ErrorIcon
-                                  color="error"
-                                  sx={{ fontSize: 16 }}
-                                />
-                              ) : (
-                                <CheckCircle
-                                  color="success"
-                                  sx={{ fontSize: 16 }}
-                                />
-                              )}
-                            </Box>
-                            <IconButton size="small">
-                              {jsonExpanded ? <ExpandLess /> : <ExpandMore />}
-                            </IconButton>
-                          </Box>
-                        </Paper>
-
-                        <Collapse in={jsonExpanded}>
-                          <Box sx={{ mt: 1 }}>
-                            <TextField
-                              multiline
-                              rows={6}
-                              value={defaultValue}
-                              onChange={(e) => handleJSONChange(e.target.value)}
-                              placeholder='{\n  "enabled": true,\n  "limit": 100\n}'
-                              fullWidth
-                              error={Boolean(jsonError)}
-                              helperText={jsonError || "Enter valid JSON"}
-                              InputProps={{
-                                sx: {
-                                  fontFamily: "monospace",
-                                  fontSize: "0.875rem",
-                                },
-                              }}
-                            />
-                          </Box>
-                        </Collapse>
+                          helperText="Value returned when no targeting rules match"
+                          fullWidth
+                          required
+                        />
                       </Box>
-                    ) : (
-                      <TextField
-                        label="Default Value"
-                        value={defaultValue}
-                        onChange={(e) => setDefaultValue(e.target.value)}
-                        sx={{ flexGrow: 1 }}
-                        required
-                        helperText="Value returned when no targeting rules match"
-                        type={
-                          type === "int" || type === "double"
-                            ? "number"
-                            : type === "date"
-                              ? "date"
-                              : "text"
-                        }
-                      />
-                    )}
+                    ))}
                   </Box>
 
                   {/* Description */}
@@ -575,25 +504,34 @@ export default function EditFlagPage() {
             </Card>
 
             {/* Targeting Rules */}
-            <RulesContainer
-              rules={rules}
-              onChange={setRules}
-              flagType={type as any}
-              defaultValue={
-                type === "bool"
-                  ? defaultValue === "true"
-                  : type === "int"
-                    ? parseInt(defaultValue)
-                    : type === "double"
-                      ? parseFloat(defaultValue)
-                      : type === "json"
-                        ? jsonError
-                          ? defaultValue
-                          : JSON.parse(defaultValue)
-                        : defaultValue
-              }
-              appId={flag?.appId}
-            />
+            <Card>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Conditional Variants (Optional)
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Define targeting rules that override the environment defaults based on user conditions
+                </Typography>
+                <RulesContainer
+                  rules={rules}
+                  onChange={setRules}
+                  flagType={type as any}
+                  defaultValue={(() => {
+                    const currentEnv = getCurrentEnvironment();
+                    const value = defaultValues[currentEnv as keyof typeof defaultValues];
+                    if (type === 'bool') return value === 'true';
+                    if (type === 'int') return parseInt(value) || 0;
+                    if (type === 'double') return parseFloat(value) || 0.0;
+                    if (type === 'json') {
+                      const error = jsonErrors[currentEnv as keyof typeof jsonErrors];
+                      return error ? value : JSON.parse(value);
+                    }
+                    return value;
+                  })()}
+                  appId={flag?.appId}
+                />
+              </CardContent>
+            </Card>
           </Stack>
         </Grid>
 
@@ -610,7 +548,7 @@ export default function EditFlagPage() {
                   color="text.secondary"
                   sx={{ mb: 3 }}
                 >
-                  How this flag will appear in your configuration
+                  How this environment-first flag will appear in your configuration
                 </Typography>
 
                 <Stack spacing={2}>
@@ -662,11 +600,26 @@ export default function EditFlagPage() {
                         {
                           [normalizedKey]: {
                             type,
-                            default:
-                              type === "bool"
-                                ? defaultValue === "true"
-                                : defaultValue,
-                            rules: [],
+                            defaultValues: (() => {
+                              const processed: any = {};
+                              ['development', 'staging', 'production'].forEach(env => {
+                                const value = defaultValues[env as keyof typeof defaultValues];
+                                processed[env] = processValueForType(value, type as any);
+                              });
+                              return processed;
+                            })(),
+                            variants: rules.length > 0 ? {
+                              development: rules.map(rule => ({
+                                conditions: rule.conditions.map(condition => ({
+                                  field: condition.type,
+                                  operator: condition.operator,
+                                  value: condition.values
+                                })),
+                                value: rule.value
+                              })),
+                              staging: [],
+                              production: []
+                            } : {},
                             ...(description && { description }),
                           },
                         },
@@ -704,17 +657,28 @@ export default function EditFlagPage() {
                         • Type: <code>{flag.type}</code> → <code>{type}</code>
                       </Typography>
                     )}
-                    {defaultValue !== String(flag.defaultValue) && (
-                      <Typography variant="body2">
-                        • Default value:{" "}
-                        <code>{JSON.stringify(flag.defaultValue)}</code> →{" "}
-                        <code>
-                          {type === "bool"
-                            ? defaultValue
-                            : JSON.stringify(defaultValue)}
-                        </code>
-                      </Typography>
-                    )}
+                    {(() => {
+                      // Check if default values changed
+                      let defaultValuesChanged = false;
+                      if (flag.defaultValues) {
+                        defaultValuesChanged = JSON.stringify(defaultValues) !== JSON.stringify({
+                          development: flag.defaultValues.development || '',
+                          staging: flag.defaultValues.staging || '',
+                          production: flag.defaultValues.production || ''
+                        });
+                      } else {
+                        const legacyValue = flag.defaultValue || '';
+                        defaultValuesChanged = !(JSON.stringify(defaultValues.development) === JSON.stringify(legacyValue) && 
+                                                JSON.stringify(defaultValues.staging) === JSON.stringify(legacyValue) && 
+                                                JSON.stringify(defaultValues.production) === JSON.stringify(legacyValue));
+                      }
+                      
+                      return defaultValuesChanged ? (
+                        <Typography variant="body2">
+                          • Environment default values updated
+                        </Typography>
+                      ) : null;
+                    })()}
                     {description !== (flag.description || "") && (
                       <Typography variant="body2">
                         • Description updated

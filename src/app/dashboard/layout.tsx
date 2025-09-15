@@ -23,6 +23,8 @@ import {
   Add,
   Apps,
   History,
+  Science,
+  Rocket,
 } from "@mui/icons-material";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -44,6 +46,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       path: "/dashboard/flags",
       label: "Feature Flags",
       icon: <Flag />,
+    },
+    {
+      path: "/dashboard/tests",
+      label: "Tests",
+      icon: <Science />,
+    },
+    {
+      path: "/dashboard/rollouts",
+      label: "Rollouts",
+      icon: <Rocket />,
     },
     {
       path: "/dashboard/cohorts",
@@ -153,7 +165,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           {menuItems.map((item, index) => (
             <React.Fragment key={item.path}>
               {/* Add divider before releases (index 2) */}
-              {index === 2 && <Divider sx={{ my: 1 }} />}
+              {index === 4 && <Divider sx={{ my: 1 }} />}
               <ListItem disablePadding>
                 <ListItemButton
                   component={Link}

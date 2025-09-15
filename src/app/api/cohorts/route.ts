@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { z } from 'zod';
-import { randomBytes } from 'crypto';
-
-const createCohortSchema = z.object({
-  appId: z.string(),
-  key: z.string(),
-  name: z.string(),
-  percentage: z.number().min(0).max(100),
-  rules: z.array(z.any()).optional(),
-  description: z.string().optional(),
-});
+import { CreateCohortRequest } from '@/types';
 
 // GET /api/cohorts - List all cohorts for an app
 export async function GET(request: NextRequest) {
@@ -39,18 +29,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/cohorts - Create a new cohort
+// POST /api/cohorts - Create a new cohort (condition group)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const validatedData = createCohortSchema.parse(body);
+    const body: CreateCohortRequest = await request.json();
+    const { key, name, description, conditions, appId } = body;
 
     // Check if cohort key already exists for this app
     const existingCohort = await prisma.cohort.findUnique({
       where: {
         appId_key: {
-          appId: validatedData.appId,
-          key: validatedData.key
+          appId,
+          key
         }
       }
     });
@@ -62,14 +52,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a random salt for this cohort
-    const salt = randomBytes(16).toString('hex');
+    // Validate conditions don't contain cohort references (prevent circular dependencies)
+    const hasCircularReference = conditions.some(condition => condition.type === 'cohort');
+    if (hasCircularReference) {
+      return NextResponse.json(
+        { error: 'Cohorts cannot reference other cohorts' },
+        { status: 400 }
+      );
+    }
 
     const cohort = await prisma.cohort.create({
       data: {
-        ...validatedData,
-        rules: validatedData.rules || [],
-        salt
+        key,
+        name,
+        description,
+        conditions,
+        appId
       },
       include: {
         app: {
@@ -80,10 +78,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(cohort, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
-    }
-    
     console.error('Error creating cohort:', error);
     return NextResponse.json({ error: 'Failed to create cohort' }, { status: 500 });
   }

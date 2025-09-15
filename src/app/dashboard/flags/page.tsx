@@ -15,20 +15,26 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
+  Grid,
+  Paper,
+  Divider,
+  Stack,
 } from "@mui/material";
 import {
   Add,
   Search,
-  FilterList,
   Flag,
   MoreVert,
-  Archive,
   Edit,
+  DragIndicator,
+  Science,
+  Rocket,
 } from "@mui/icons-material";
 import Link from "next/link";
 import { fetchFlags, type Flag as FlagType } from "@/lib/api";
 import { formatTimestamp } from "@/lib/utils";
 import { useApp } from "@/lib/app-context";
+import { FlagRow } from "@/components";
 
 export default function FlagsPage() {
   const { selectedApp } = useApp();
@@ -36,7 +42,6 @@ export default function FlagsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     const loadFlags = async () => {
@@ -56,12 +61,18 @@ export default function FlagsPage() {
     loadFlags();
   }, [selectedApp]);
 
-  const filteredFlags = flags.filter((flag) => {
+  const activeFlags = flags.filter((flag) => {
     const matchesSearch =
       flag.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       flag.key.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesArchived = showArchived || !flag.archived;
-    return matchesSearch && matchesArchived;
+    return matchesSearch && !flag.archived;
+  });
+
+  const archivedFlags = flags.filter((flag) => {
+    const matchesSearch =
+      flag.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      flag.key.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch && flag.archived;
   });
 
   const getTypeChipColor = (type: string) => {
@@ -144,8 +155,8 @@ export default function FlagsPage() {
         </Button>
       </Box>
 
-      {/* Filters */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+      {/* Search */}
+      <Box sx={{ mb: 3 }}>
         <TextField
           placeholder="Search flags..."
           value={searchTerm}
@@ -157,22 +168,13 @@ export default function FlagsPage() {
               </InputAdornment>
             ),
           }}
-          sx={{ flexGrow: 1 }}
+          fullWidth
           size="small"
         />
-
-        <Button
-          variant={showArchived ? "contained" : "outlined"}
-          startIcon={<Archive />}
-          onClick={() => setShowArchived(!showArchived)}
-          size="small"
-        >
-          {showArchived ? "Hide Archived" : "Show Archived"}
-        </Button>
       </Box>
 
-      {/* Flags List */}
-      {filteredFlags.length === 0 ? (
+      {/* Flags Display */}
+      {activeFlags.length === 0 && archivedFlags.length === 0 ? (
         <Card>
           <CardContent sx={{ textAlign: "center", py: 8 }}>
             <Flag sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
@@ -197,75 +199,34 @@ export default function FlagsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {filteredFlags.map((flag) => (
-            <Card key={flag.id} variant="outlined">
-              <CardContent>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 2,
-                        mb: 1,
-                      }}
-                    >
-                      <Typography variant="h6" component="h3">
-                        {flag.displayName}
-                      </Typography>
-                      {flag.archived && (
-                        <Chip label="Archived" size="small" color="default" />
-                      )}
-                    </Box>
+        <Box>
+          {/* Active Flags */}
+          {activeFlags.length > 0 && (
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Active Flags ({activeFlags.length})
+              </Typography>
+              <Stack spacing={1}>
+                {activeFlags.map((flag) => (
+                  <FlagRow key={flag.id} flag={flag} />
+                ))}
+              </Stack>
+            </Box>
+          )}
 
-                    {flag.description && (
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mb: 1 }}
-                      >
-                        {flag.description}
-                      </Typography>
-                    )}
-
-                    <Typography variant="caption" color="text.secondary">
-                      Updated {formatTimestamp(flag.updatedAt)}
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontFamily: "monospace",
-                        bgcolor: "grey.100",
-                        px: 1,
-                        py: 0.5,
-                        borderRadius: 1,
-                      }}
-                    >
-                      {JSON.stringify(flag.defaultValue)}
-                    </Typography>
-
-                    <IconButton
-                      component={Link}
-                      href={`/dashboard/flags/${flag.id}/edit`}
-                      size="small"
-                    >
-                      <Edit />
-                    </IconButton>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+          {/* Archived Flags */}
+          {archivedFlags.length > 0 && (
+            <Box>
+              <Typography variant="h6" sx={{ mb: 2, color: "text.secondary" }}>
+                Archived Flags ({archivedFlags.length})
+              </Typography>
+              <Stack spacing={1}>
+                {archivedFlags.map((flag) => (
+                  <FlagRow key={flag.id} flag={flag} archived />
+                ))}
+              </Stack>
+            </Box>
+          )}
         </Box>
       )}
     </Box>

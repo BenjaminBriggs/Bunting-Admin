@@ -22,6 +22,10 @@ async function main() {
       fetchPolicy: {
         min_interval_seconds: 300,
         hard_ttl_days: 7
+      },
+      storageConfig: {
+        bucket: 'example-bucket',
+        region: 'us-east-1'
       }
     }
   });

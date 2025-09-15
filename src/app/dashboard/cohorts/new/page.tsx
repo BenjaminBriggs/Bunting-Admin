@@ -8,7 +8,6 @@ import {
   Button,
   Typography,
   TextField,
-  Slider,
   Stack,
   Grid,
   Alert,
@@ -17,19 +16,14 @@ import {
   CircularProgress,
   MenuItem
 } from '@mui/material';
-import { ArrowBack, Save, Shuffle } from '@mui/icons-material';
-import Link from 'next/link';
+import { Save } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createCohort } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
 import { TargetingRule } from '@/types/rules';
-import { RulesContainer } from '@/components/rule-builder/rules-container';
-
-// Generate a random salt for cohort calculations
-function generateSalt(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-}
+import { PageHeader, RulesContainer } from '@/components';
 
 // Normalize cohort identifier
 function normalizeCohortId(name: string): string {
@@ -48,8 +42,6 @@ export default function NewCohortPage() {
   const [name, setName] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [description, setDescription] = useState('');
-  const [percentage, setPercentage] = useState(10);
-  const [salt, setSalt] = useState(generateSalt());
   const [rules, setRules] = useState<TargetingRule[]>([]);
 
   // Redirect if no app is selected
@@ -64,14 +56,6 @@ export default function NewCohortPage() {
     setIdentifier(normalizeCohortId(value));
   };
 
-  const handlePercentageChange = (_: Event, newValue: number | number[]) => {
-    const newPercentage = Array.isArray(newValue) ? newValue[0] : newValue;
-    setPercentage(newPercentage);
-  };
-
-  const handleGenerateNewSalt = () => {
-    setSalt(generateSalt());
-  };
 
   const handleSave = async () => {
     if (!selectedApp) {
@@ -86,8 +70,7 @@ export default function NewCohortPage() {
         key: identifier,
         name,
         description,
-        percentage,
-        rules: rules,
+        conditions: rules.length > 0 ? rules.flatMap(rule => rule.conditions) : [],
       };
 
       const newCohort = await createCohort(cohortData);
@@ -102,29 +85,16 @@ export default function NewCohortPage() {
     }
   };
 
-  const isValid = name && selectedApp && percentage > 0 && percentage <= 100;
+  const isValid = name && selectedApp;
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          component={Link}
-          href="/dashboard/cohorts"
-          sx={{ mr: 2 }}
-        >
-          Back to Cohorts
-        </Button>
-        <Box>
-          <Typography variant="h4" component="h2" sx={{ mb: 1 }}>
-            Create Cohort
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Define a user group for percentage-based feature rollouts
-          </Typography>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Create Cohort"
+        subtitle="Create a reusable rule group for targeting specific user segments"
+        backHref="/dashboard/cohorts"
+        backLabel="Back to Cohorts"
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
@@ -164,56 +134,6 @@ export default function NewCohortPage() {
                   fullWidth
                 />
 
-                {/* Percentage Slider */}
-                <Box>
-                  <Typography variant="body1" sx={{ mb: 2 }}>
-                    Rollout Percentage: {percentage}%
-                  </Typography>
-                  <Slider
-                    value={percentage}
-                    onChange={handlePercentageChange}
-                    step={1}
-                    min={1}
-                    max={100}
-                    valueLabelDisplay="auto"
-                    marks={[
-                      { value: 1, label: '1%' },
-                      { value: 25, label: '25%' },
-                      { value: 50, label: '50%' },
-                      { value: 75, label: '75%' },
-                      { value: 100, label: '100%' }
-                    ]}
-                  />
-                </Box>
-
-                {/* Salt Configuration */}
-                <Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                    <Typography variant="body1">
-                      Salt Value
-                    </Typography>
-                    <Button
-                      size="small"
-                      startIcon={<Shuffle />}
-                      onClick={handleGenerateNewSalt}
-                    >
-                      Generate New
-                    </Button>
-                  </Box>
-                  <TextField
-                    value={salt}
-                    onChange={(e) => setSalt(e.target.value)}
-                    fullWidth
-                    InputProps={{
-                      sx: { fontFamily: 'monospace' }
-                    }}
-                    helperText="Random string used for consistent user assignment to cohorts"
-                  />
-                  <Alert severity="info" sx={{ mt: 2 }}>
-                    The salt ensures users are consistently assigned to the same cohort across sessions. 
-                    Changing the salt will reassign users to different cohorts.
-                  </Alert>
-                </Box>
               </Stack>
             </CardContent>
           </Card>
@@ -271,18 +191,11 @@ export default function NewCohortPage() {
 
                     <Box>
                       <Typography variant="caption" color="text.secondary">
-                        Coverage
+                        Rules
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                        <Chip 
-                          label={`${percentage}%`}
-                          size="small"
-                          color="primary"
-                        />
-                        <Typography variant="body2" color="text.secondary">
-                          of users
-                        </Typography>
-                      </Box>
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        {rules.length === 0 ? 'No targeting rules defined' : `${rules.length} targeting rule${rules.length === 1 ? '' : 's'}`}
+                      </Typography>
                     </Box>
                     
                     <Box>
@@ -304,19 +217,11 @@ export default function NewCohortPage() {
                       >
                         {JSON.stringify({
                           [identifier]: {
-                            percentage,
-                            salt,
-                            rules: rules.map(rule => ({
-                              enabled: rule.enabled,
-                              conditions: rule.conditions.map(condition => ({
-                                type: condition.type,
-                                operator: condition.operator,
-                                values: condition.values
-                              })),
-                              conditionLogic: rule.conditionLogic,
-                              value: rule.value,
-                              priority: rule.priority
-                            })),
+                            conditions: rules.flatMap(rule => rule.conditions.map(condition => ({
+                              field: condition.type,
+                              operator: condition.operator,
+                              value: condition.values
+                            }))),
                             ...(description && { description })
                           }
                         }, null, 2)}

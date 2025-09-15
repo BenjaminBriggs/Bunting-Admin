@@ -72,3 +72,8 @@ export function formatTimestamp(timestamp: string): string {
     timeZoneName: 'short',
   }).format(new Date(timestamp));
 }
+
+// Generate a simple unique ID
+export function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}

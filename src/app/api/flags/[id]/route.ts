@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { z } from 'zod';
-
-const updateFlagSchema = z.object({
-  key: z.string().optional(),
-  displayName: z.string().optional(),
-  type: z.enum(['bool', 'string', 'int', 'double', 'date', 'json']).optional(),
-  defaultValue: z.any().optional(),
-  rules: z.array(z.any()).optional(),
-  description: z.string().optional(),
-  archived: z.boolean().optional(),
-});
 
 // GET /api/flags/[id] - Get a specific flag
 export async function GET(
@@ -45,11 +34,19 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const validatedData = updateFlagSchema.parse(body);
+    
+    // Remove fields that shouldn't be updated directly
+    const { id, createdAt, updatedAt, appId, ...updateData } = body;
+
+    // Handle archiving
+    if (updateData.archived !== undefined && updateData.archived) {
+      updateData.archivedAt = new Date();
+    } else if (updateData.archived === false) {
+      updateData.archivedAt = null;
+    }
 
     // Map string type to enum if provided
-    let typeEnum;
-    if (validatedData.type) {
+    if (updateData.type) {
       const typeMap: Record<string, any> = {
         'bool': 'BOOL',
         'string': 'STRING',
@@ -58,24 +55,7 @@ export async function PUT(
         'date': 'DATE',
         'json': 'JSON'
       };
-      typeEnum = typeMap[validatedData.type];
-    }
-
-    const updateData: any = {
-      ...validatedData,
-      ...(typeEnum && { type: typeEnum }),
-      ...(validatedData.archived !== undefined && validatedData.archived && {
-        archivedAt: new Date()
-      }),
-      ...(validatedData.archived === false && {
-        archivedAt: null
-      })
-    };
-
-    // Remove the string type field if we converted it
-    if (typeEnum) {
-      delete updateData.type;
-      updateData.type = typeEnum;
+      updateData.type = typeMap[updateData.type] || updateData.type;
     }
 
     const flag = await prisma.flag.update({
@@ -90,11 +70,10 @@ export async function PUT(
 
     return NextResponse.json(flag);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
-    }
-    
     console.error('Error updating flag:', error);
+    if (error.code === 'P2025') {
+      return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
+    }
     return NextResponse.json({ error: 'Failed to update flag' }, { status: 500 });
   }
 }
@@ -112,6 +91,9 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting flag:', error);
+    if (error.code === 'P2025') {
+      return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
+    }
     return NextResponse.json({ error: 'Failed to delete flag' }, { status: 500 });
   }
 }

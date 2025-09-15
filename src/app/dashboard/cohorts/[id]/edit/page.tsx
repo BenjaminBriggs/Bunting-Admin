@@ -9,11 +9,9 @@ import {
   Button,
   Typography,
   TextField,
-  Slider,
   Stack,
   Grid,
   Chip,
-  LinearProgress,
   Alert,
   Paper
 } from '@mui/material';
@@ -21,8 +19,8 @@ import { ArrowBack, Save, Delete } from '@mui/icons-material';
 import Link from 'next/link';
 import { fetchCohort, updateCohort, deleteCohort, type Cohort } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
-import { CohortTargetingRule } from '@/types/rules';
-import { CohortRulesContainer } from '@/components/rule-builder/cohort-rules-container';
+import { TargetingRule } from '@/types/rules';
+import { RulesContainer } from '@/components';
 
 
 export default function EditCohortPage() {
@@ -41,9 +39,7 @@ export default function EditCohortPage() {
   const [identifier, setIdentifier] = useState('');
   const [originalIdentifier, setOriginalIdentifier] = useState('');
   const [description, setDescription] = useState('');
-  const [percentage, setPercentage] = useState(10);
-  const [salt, setSalt] = useState('');
-  const [rules, setRules] = useState<CohortTargetingRule[]>([]);
+  const [rules, setRules] = useState<TargetingRule[]>([]);
 
   useEffect(() => {
     const loadCohort = async () => {
@@ -56,8 +52,6 @@ export default function EditCohortPage() {
         setIdentifier(cohortData.key);
         setOriginalIdentifier(cohortData.key);
         setDescription(cohortData.description || '');
-        setPercentage(cohortData.percentage);
-        setSalt(cohortData.salt);
         setRules(cohortData.rules || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load cohort');
@@ -69,10 +63,6 @@ export default function EditCohortPage() {
     loadCohort();
   }, [cohortId]);
 
-  const handlePercentageChange = (_: Event, newValue: number | number[]) => {
-    const newPercentage = Array.isArray(newValue) ? newValue[0] : newValue;
-    setPercentage(newPercentage);
-  };
 
   const handleSave = async () => {
     if (!cohort) return;
@@ -81,8 +71,7 @@ export default function EditCohortPage() {
       setSaving(true);
       const updateData = {
         description,
-        percentage,
-        rules,
+        conditions: rules.length > 0 ? rules.flatMap(rule => rule.conditions) : [],
       };
 
       const updatedCohort = await updateCohort(cohort.id, updateData);
@@ -150,9 +139,8 @@ export default function EditCohortPage() {
     );
   }
 
-  const isValid = name && percentage > 0 && percentage <= 100;
+  const isValid = name;
   const hasChanges = description !== (cohort?.description || '') ||
-                    percentage !== cohort?.percentage ||
                     JSON.stringify(rules) !== JSON.stringify(cohort?.rules || []);
 
   return (
@@ -173,7 +161,7 @@ export default function EditCohortPage() {
               Edit Cohort
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Modify the configuration for {cohort.name}
+              Modify the rule group configuration for {cohort.name}
             </Typography>
           </Box>
         </Box>
@@ -261,61 +249,28 @@ export default function EditCohortPage() {
                     fullWidth
                   />
 
-                  {/* Percentage Slider */}
-                  <Box>
-                    <Typography variant="body1" sx={{ mb: 2 }}>
-                      Rollout Percentage: {percentage}%
-                    </Typography>
-                    <Slider
-                      value={percentage}
-                      onChange={handlePercentageChange}
-                      step={1}
-                      min={1}
-                      max={100}
-                      valueLabelDisplay="auto"
-                      marks={[
-                        { value: 1, label: '1%' },
-                        { value: 25, label: '25%' },
-                        { value: 50, label: '50%' },
-                        { value: 75, label: '75%' },
-                        { value: 100, label: '100%' }
-                      ]}
-                    />
-                  </Box>
-
-                  {/* Salt Configuration - Read Only */}
-                  <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Salt Value
-                    </Typography>
-                    <Box
-                      sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
-                        bgcolor: 'grey.50',
-                        p: 1.5,
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        wordBreak: 'break-all'
-                      }}
-                    >
-                      {salt}
-                    </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                      Salt is fixed after creation to ensure consistent user assignment to cohorts
-                    </Typography>
-                  </Box>
                 </Stack>
               </CardContent>
             </Card>
 
             {/* Targeting Rules */}
-            <CohortRulesContainer
-              rules={rules}
-              onChange={setRules}
-              appId={cohort?.appId}
-            />
+            <Card>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Targeting Rules
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Define the conditions that determine which users belong to this cohort
+                </Typography>
+                <RulesContainer
+                  rules={rules}
+                  onChange={setRules}
+                  flagType="bool"
+                  defaultValue={true}
+                  appId={cohort?.appId || ''}
+                />
+              </CardContent>
+            </Card>
           </Stack>
         </Grid>
 
@@ -328,7 +283,7 @@ export default function EditCohortPage() {
                   Preview
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  How this cohort will appear in your configuration
+                  How this rule group will appear in your configuration
                 </Typography>
                 
                 <Stack spacing={2}>
@@ -361,18 +316,11 @@ export default function EditCohortPage() {
 
                   <Box>
                     <Typography variant="caption" color="text.secondary">
-                      Coverage
+                      Rules
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                      <Chip 
-                        label={`${percentage}%`}
-                        size="small"
-                        color="primary"
-                      />
-                      <Typography variant="body2" color="text.secondary">
-                        of users
-                      </Typography>
-                    </Box>
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      {rules.length === 0 ? 'No targeting rules defined' : `${rules.length} targeting rule${rules.length === 1 ? '' : 's'}`}
+                    </Typography>
                   </Box>
                   
                   <Box>
@@ -394,8 +342,11 @@ export default function EditCohortPage() {
                     >
                       {JSON.stringify({
                         [identifier]: {
-                          percentage,
-                          salt,
+                          conditions: rules.flatMap(rule => rule.conditions.map(condition => ({
+                            field: condition.type,
+                            operator: condition.operator,
+                            value: condition.values
+                          }))),
                           ...(description && { description })
                         }
                       }, null, 2)}
@@ -428,19 +379,9 @@ export default function EditCohortPage() {
                         • Description updated
                       </Typography>
                     )}
-                    {percentage !== cohort.percentage && (
-                      <Typography variant="body2">
-                        • Percentage: <code>{cohort.percentage}%</code> → <code>{percentage}%</code>
-                      </Typography>
-                    )}
                     {JSON.stringify(rules) !== JSON.stringify(cohort?.rules || []) && (
                       <Typography variant="body2">
                         • Targeting rules updated
-                      </Typography>
-                    )}
-                    {salt !== cohort.salt && (
-                      <Typography variant="body2">
-                        • Salt regenerated
                       </Typography>
                     )}
                   </Stack>

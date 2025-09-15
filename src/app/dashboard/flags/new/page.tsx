@@ -18,19 +18,18 @@ import {
   Stack,
   Divider,
   Grid,
-  Collapse,
-  IconButton,
-  Paper,
-  CircularProgress
+  CircularProgress,
+  Tabs,
+  Tab
 } from '@mui/material';
-import { ArrowBack, Save, ExpandMore, ExpandLess, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
-import Link from 'next/link';
+import { Save } from '@mui/icons-material';
 import { normalizeKey, validateKey } from '@/lib/utils';
-import { TargetingRule } from '@/types/rules';
-import { RulesContainer } from '@/components/rule-builder/rules-container';
 import { createFlag } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
+import { PageHeader } from '@/components';
+import FlagValueInput, { getDefaultValueForType, processValueForType, validateValue } from '@/components/features/flags/flag-value-input';
+import Link from 'next/link';
 
 const flagTypes = [
   { value: 'bool', label: 'Boolean' },
@@ -49,12 +48,14 @@ export default function NewFlagPage() {
   const [key, setKey] = useState('');
   const [normalizedKey, setNormalizedKey] = useState('');
   const [type, setType] = useState('bool');
-  const [defaultValue, setDefaultValue] = useState('false');
+  const [defaultValues, setDefaultValues] = useState({
+    development: false,
+    staging: false, 
+    production: false
+  });
+  const [activeTab, setActiveTab] = useState(0);
   const [description, setDescription] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [jsonExpanded, setJsonExpanded] = useState(false);
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const [rules, setRules] = useState<TargetingRule[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -75,83 +76,67 @@ export default function NewFlagPage() {
     setValidationError(validation.valid ? null : validation.error || 'Invalid key');
   };
 
-  const getDefaultValueForType = (flagType: string) => {
-    switch (flagType) {
-      case 'bool': return 'false';
-      case 'string': return '';
-      case 'int': return '0';
-      case 'double': return '0.0';
-      case 'date': return new Date().toISOString().split('T')[0];
-      case 'json': return '{}';
-      default: return '';
-    }
-  };
 
   const handleTypeChange = (newType: string) => {
     setType(newType);
-    const newDefaultValue = getDefaultValueForType(newType);
-    setDefaultValue(newDefaultValue);
-    setJsonError(null);
-    setJsonExpanded(false);
-    
-    // Update existing rule values to match new type
-    const updatedRules = rules.map(rule => ({
-      ...rule,
-      value: newDefaultValue
-    }));
-    setRules(updatedRules);
+    const newDefaultValue = getDefaultValueForType(newType as any);
+    setDefaultValues({
+      development: newDefaultValue,
+      staging: newDefaultValue,
+      production: newDefaultValue
+    });
   };
 
-  const validateJSON = (jsonString: string): string | null => {
-    try {
-      JSON.parse(jsonString);
-      return null;
-    } catch (error) {
-      return error instanceof Error ? error.message : 'Invalid JSON';
+  const handleEnvironmentValueChange = (environment: string, value: any) => {
+    setDefaultValues(prev => ({ ...prev, [environment]: value }));
+  };
+
+  const getCurrentEnvironment = () => {
+    const environments = ['development', 'staging', 'production'];
+    return environments[activeTab];
+  };
+
+  const getEnvironmentColor = (env: string) => {
+    switch (env) {
+      case 'development': return 'info';
+      case 'staging': return 'warning'; 
+      case 'production': return 'success';
+      default: return 'default';
     }
   };
 
-  const getJSONSummary = (jsonString: string): string => {
-    try {
-      const parsed = JSON.parse(jsonString);
-      if (typeof parsed === 'object' && parsed !== null) {
-        const keys = Object.keys(parsed);
-        if (keys.length === 0) return '{}';
-        if (keys.length === 1) return `{ ${keys[0]}: ... }`;
-        return `{ ${keys[0]}, ${keys[1]}${keys.length > 2 ? ', ...' : ''} }`;
-      }
-      return jsonString.length > 30 ? jsonString.substring(0, 30) + '...' : jsonString;
-    } catch {
-      return jsonString.length > 30 ? jsonString.substring(0, 30) + '...' : jsonString;
-    }
-  };
 
-  const handleJSONChange = (value: string) => {
-    setDefaultValue(value);
-    const error = validateJSON(value);
-    setJsonError(error);
-  };
 
   const handleSave = async () => {
     if (validationError || !selectedApp) return;
+    
+    // Validate all environment values
+    const hasValidationErrors = ['development', 'staging', 'production'].some(env => {
+      const value = defaultValues[env as keyof typeof defaultValues];
+      return !validateValue(value, type as any).isValid;
+    });
+    if (hasValidationErrors) return;
     
     setSaving(true);
     setSaveError(null);
     
     try {
-      const processedDefaultValue = type === 'bool' ? defaultValue === 'true' : 
-                                   type === 'int' ? parseInt(defaultValue) :
-                                   type === 'double' ? parseFloat(defaultValue) :
-                                   type === 'json' ? JSON.parse(defaultValue) : defaultValue;
+      const processDefaultValues = () => {
+        const processed: any = {};
+        ['development', 'staging', 'production'].forEach(env => {
+          const value = defaultValues[env as keyof typeof defaultValues];
+          processed[env] = processValueForType(value, type as any);
+        });
+        return processed;
+      };
 
       await createFlag({
         appId: selectedApp.id,
         key: normalizedKey,
         displayName,
         type,
-        defaultValue: processedDefaultValue,
-        description,
-        rules: rules
+        defaultValues: processDefaultValues(),
+        description
       });
 
       // Trigger change detection
@@ -164,29 +149,22 @@ export default function NewFlagPage() {
     }
   };
 
-  const isValid = !validationError && !jsonError && displayName && defaultValue !== '' && selectedApp;
+  const isValid = !validationError && 
+                 displayName && 
+                 ['development', 'staging', 'production'].every(env => {
+                   const value = defaultValues[env as keyof typeof defaultValues];
+                   return validateValue(value, type as any).isValid;
+                 }) && 
+                 selectedApp;
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          component={Link}
-          href="/dashboard/flags"
-          sx={{ mr: 2 }}
-        >
-          Back to Flags
-        </Button>
-        <Box>
-          <Typography variant="h4" component="h2" sx={{ mb: 1 }}>
-            Create Feature Flag
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Define a new feature flag with its default configuration
-          </Typography>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Create Feature Flag"
+        subtitle="Define a new feature flag with environment-specific default values"
+        backHref="/dashboard/flags"
+        backLabel="Back to Flags"
+      />
 
       {/* Error Alert */}
       {saveError && (
@@ -218,103 +196,63 @@ export default function NewFlagPage() {
                   />
 
 
-                  {/* Type and Default Value */}
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <FormControl sx={{ minWidth: 200 }}>
-                      <InputLabel>Type</InputLabel>
-                      <Select
-                        value={type}
-                        label="Type"
-                        onChange={(e) => handleTypeChange(e.target.value)}
-                      >
-                        {flagTypes.map((flagType) => (
-                          <MenuItem key={flagType.value} value={flagType.value}>
-                            {flagType.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                  {/* Type Selection */}
+                  <FormControl sx={{ maxWidth: 200 }}>
+                    <InputLabel>Type</InputLabel>
+                    <Select
+                      value={type}
+                      label="Type"
+                      onChange={(e) => handleTypeChange(e.target.value)}
+                    >
+                      {flagTypes.map((flagType) => (
+                        <MenuItem key={flagType.value} value={flagType.value}>
+                          {flagType.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                    {type === 'bool' ? (
-                      <FormControl sx={{ flexGrow: 1 }}>
-                        <InputLabel>Default Value</InputLabel>
-                        <Select
-                          value={defaultValue}
-                          label="Default Value"
-                          onChange={(e) => setDefaultValue(e.target.value)}
-                        >
-                          <MenuItem value="false">false</MenuItem>
-                          <MenuItem value="true">true</MenuItem>
-                        </Select>
-                      </FormControl>
-                    ) : type === 'json' ? (
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Paper 
-                          variant="outlined" 
-                          sx={{ 
-                            p: 1, 
-                            cursor: 'pointer',
-                            '&:hover': { bgcolor: 'grey.50' }
-                          }}
-                          onClick={() => setJsonExpanded(!jsonExpanded)}
-                        >
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-                              <Typography variant="body2" color="text.secondary">
-                                JSON Value:
-                              </Typography>
-                              <Typography 
-                                variant="body2" 
-                                sx={{ 
-                                  fontFamily: 'monospace',
-                                  flexGrow: 1,
-                                  color: jsonError ? 'error.main' : 'text.primary'
-                                }}
-                              >
-                                {getJSONSummary(defaultValue)}
-                              </Typography>
-                              {jsonError ? (
-                                <ErrorIcon color="error" sx={{ fontSize: 16 }} />
-                              ) : (
-                                <CheckCircle color="success" sx={{ fontSize: 16 }} />
-                              )}
-                            </Box>
-                            <IconButton size="small">
-                              {jsonExpanded ? <ExpandLess /> : <ExpandMore />}
-                            </IconButton>
-                          </Box>
-                        </Paper>
+                  <Divider />
+
+                  {/* Environment-Specific Default Values */}
+                  <Box>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                      Environment Default Values
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Set different default values for each environment
+                    </Typography>
+                    
+                    <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
+                      <Tab label="Development" />
+                      <Tab label="Staging" />
+                      <Tab label="Production" />
+                    </Tabs>
+
+                    {['development', 'staging', 'production'].map((env, index) => (
+                      <Box key={env} sx={{ display: index === activeTab ? 'block' : 'none' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                          <Chip 
+                            label={env.charAt(0).toUpperCase() + env.slice(1)} 
+                            size="small" 
+                            color={getEnvironmentColor(env)}
+                          />
+                          <Typography variant="body2" color="text.secondary">
+                            Default value for {env} environment
+                          </Typography>
+                        </Box>
                         
-                        <Collapse in={jsonExpanded}>
-                          <Box sx={{ mt: 1 }}>
-                            <TextField
-                              multiline
-                              rows={6}
-                              value={defaultValue}
-                              onChange={(e) => handleJSONChange(e.target.value)}
-                              placeholder='{\n  "enabled": true,\n  "limit": 100\n}'
-                              fullWidth
-                              error={Boolean(jsonError)}
-                              helperText={jsonError || "Enter valid JSON"}
-                              InputProps={{
-                                sx: { fontFamily: 'monospace', fontSize: '0.875rem' }
-                              }}
-                            />
-                          </Box>
-                        </Collapse>
+                        <FlagValueInput
+                          flagType={type as any}
+                          value={defaultValues[env as keyof typeof defaultValues]}
+                          onChange={(value) => handleEnvironmentValueChange(env, value)}
+                          label="Default Value"
+                          helperText="Value returned when no targeting rules match"
+                          fullWidth
+                          required
+                        />
                       </Box>
-                    ) : (
-                      <TextField
-                        label="Default Value"
-                        value={defaultValue}
-                        onChange={(e) => setDefaultValue(e.target.value)}
-                        sx={{ flexGrow: 1 }}
-                        required
-                        helperText="Value returned when no targeting rules match"
-                        type={type === 'int' || type === 'double' ? 'number' : 
-                             type === 'date' ? 'date' : 'text'}
-                      />
-                    )}
+                    ))}
                   </Box>
 
 
@@ -333,17 +271,6 @@ export default function NewFlagPage() {
               </CardContent>
             </Card>
 
-            {/* Targeting Rules */}
-            <RulesContainer
-              rules={rules}
-              onChange={setRules}
-              flagType={type as any}
-              defaultValue={type === 'bool' ? defaultValue === 'true' : 
-                           type === 'int' ? parseInt(defaultValue) :
-                           type === 'double' ? parseFloat(defaultValue) :
-                           type === 'json' ? (jsonError ? defaultValue : JSON.parse(defaultValue)) : defaultValue}
-              appId={selectedApp?.id || ''}
-            />
           </Stack>
         </Grid>
 
@@ -391,7 +318,7 @@ export default function NewFlagPage() {
                     
                     <Box>
                       <Typography variant="caption" color="text.secondary">
-                        JSON Configuration
+                        JSON Configuration (Environment-First)
                       </Typography>
                       <Box
                         component="pre"
@@ -409,21 +336,19 @@ export default function NewFlagPage() {
                         {JSON.stringify({
                           [normalizedKey]: {
                             type,
-                            default: type === 'bool' ? defaultValue === 'true' : 
-                                     type === 'int' ? parseInt(defaultValue) :
-                                     type === 'double' ? parseFloat(defaultValue) :
-                                     type === 'json' ? (jsonError ? defaultValue : JSON.parse(defaultValue)) : defaultValue,
-                            rules: rules.map(rule => ({
-                              enabled: rule.enabled,
-                              conditions: rule.conditions.map(condition => ({
-                                type: condition.type,
-                                operator: condition.operator,
-                                values: condition.values
-                              })),
-                              conditionLogic: rule.conditionLogic,
-                              value: rule.value,
-                              priority: rule.priority
-                            })),
+                            defaultValues: (() => {
+                              const processed: any = {};
+                              ['development', 'staging', 'production'].forEach(env => {
+                                const value = defaultValues[env as keyof typeof defaultValues];
+                                processed[env] = processValueForType(value, type as any);
+                              });
+                              return processed;
+                            })(),
+                            variants: {
+                              development: [],
+                              staging: [],
+                              production: []
+                            },
                             ...(description && { description })
                           }
                         }, null, 2)}

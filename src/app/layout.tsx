@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Belanosima, Nunito } from 'next/font/google';
-import CustomThemeProvider from '@/components/theme-provider';
+import { ThemeProvider } from '@/components';
 
 const belanosima = Belanosima({ 
   subsets: ['latin'],
@@ -24,9 +24,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={nunito.className}>
-        <CustomThemeProvider belanosima={belanosima.style.fontFamily} inter={nunito.style.fontFamily}>
+        <ThemeProvider belanosima={belanosima.style.fontFamily} inter={nunito.style.fontFamily}>
           {children}
-        </CustomThemeProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1,6 +1,15 @@
 // API utility functions for making requests to our backend
 
-import { ConfigArtifact } from '@/lib/config-generator';
+import { 
+  ConfigArtifact, 
+  DBFlag, 
+  DBCohort, 
+  DBTestRollout,
+  CreateFlagRequest,
+  CreateTestRequest,
+  CreateRolloutRequest,
+  CreateCohortRequest
+} from '@/types';
 
 export interface StorageConfig {
   bucket: string;
@@ -23,43 +32,14 @@ export interface App {
   _count?: {
     flags: number;
     cohorts: number;
+    test_rollouts: number;
   };
 }
 
-export interface Flag {
-  id: string;
-  key: string;
-  displayName: string;
-  type: 'BOOL' | 'STRING' | 'INT' | 'DOUBLE' | 'DATE' | 'JSON';
-  defaultValue: any;
-  rules: any[];
-  description?: string;
-  archived: boolean;
-  archivedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-  appId: string;
-  app?: {
-    name: string;
-    identifier: string;
-  };
-}
-
-export interface Cohort {
-  id: string;
-  key: string;
-  name: string;
-  salt: string;
-  percentage: number;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-  appId: string;
-  app?: {
-    name: string;
-    identifier: string;
-  };
-}
+// Re-export types for backward compatibility
+export type Flag = DBFlag;
+export type Cohort = DBCohort;
+export type TestRollout = DBTestRollout;
 
 // Apps API
 export async function fetchApps(): Promise<App[]> {
@@ -128,7 +108,11 @@ export async function createFlag(data: {
   key: string;
   displayName: string;
   type: string;
-  defaultValue: any;
+  defaultValues: {
+    development: any;
+    staging: any;
+    production: any;
+  };
   rules?: any[];
   description?: string;
 }): Promise<Flag> {
@@ -153,6 +137,19 @@ export async function updateFlag(id: string, data: Partial<Flag>): Promise<Flag>
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to update flag');
+  }
+  return response.json();
+}
+
+export async function archiveFlag(id: string, archived: boolean): Promise<Flag> {
+  const response = await fetch(`/api/flags/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ archived }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to archive flag');
   }
   return response.json();
 }
@@ -356,4 +353,190 @@ export async function downloadConfig(appIdentifier: string): Promise<void> {
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
+}
+
+// Tests API
+export async function fetchTests(appId: string): Promise<TestRollout[]> {
+  const response = await fetch(`/api/tests?appId=${appId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch tests');
+  }
+  return response.json();
+}
+
+export async function fetchTest(id: string): Promise<TestRollout> {
+  const response = await fetch(`/api/tests/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch test');
+  }
+  return response.json();
+}
+
+export async function createTest(data: CreateTestRequest): Promise<TestRollout> {
+  const response = await fetch('/api/tests', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create test');
+  }
+  return response.json();
+}
+
+export async function updateTest(id: string, data: Partial<TestRollout>): Promise<TestRollout> {
+  const response = await fetch(`/api/tests/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update test');
+  }
+  return response.json();
+}
+
+export async function deleteTest(id: string): Promise<void> {
+  const response = await fetch(`/api/tests/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete test');
+  }
+}
+
+// Rollouts API
+export async function fetchRollouts(appId: string): Promise<TestRollout[]> {
+  const response = await fetch(`/api/rollouts?appId=${appId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch rollouts');
+  }
+  return response.json();
+}
+
+export async function fetchRollout(id: string): Promise<TestRollout> {
+  const response = await fetch(`/api/rollouts/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch rollout');
+  }
+  return response.json();
+}
+
+export async function createRollout(data: CreateRolloutRequest): Promise<TestRollout> {
+  const response = await fetch('/api/rollouts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create rollout');
+  }
+  return response.json();
+}
+
+export async function updateRollout(id: string, data: Partial<TestRollout>): Promise<TestRollout> {
+  const response = await fetch(`/api/rollouts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update rollout');
+  }
+  return response.json();
+}
+
+export async function deleteRollout(id: string): Promise<void> {
+  const response = await fetch(`/api/rollouts/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete rollout');
+  }
+}
+
+export async function fetchTestsAndRolloutsForFlag(appId: string, flagId: string): Promise<{tests: TestRollout[], rollouts: TestRollout[]}> {
+  const response = await fetch(`/api/test-rollouts?appId=${appId}&flagId=${flagId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch tests and rollouts for flag');
+  }
+  const data = await response.json();
+  return {
+    tests: data.filter((item: TestRollout) => item.type === 'TEST'),
+    rollouts: data.filter((item: TestRollout) => item.type === 'ROLLOUT')
+  };
+}
+
+export async function updateRolloutPercentage(id: string, percentage: number): Promise<TestRollout> {
+  const response = await fetch(`/api/rollouts/${id}/percentage`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ percentage }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update rollout percentage');
+  }
+  return response.json();
+}
+
+export async function archiveTestRollout(id: string, type: 'cancel' | 'complete'): Promise<TestRollout> {
+  const response = await fetch(`/api/test-rollouts/${id}/archive`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to archive test/rollout');
+  }
+  return response.json();
+}
+
+// Unified test/rollout creation function
+export async function createTestRollout(data: {
+  appId: string;
+  name: string;
+  description?: string;
+  type: 'TEST' | 'ROLLOUT';
+  variants?: Record<string, { percentage: number; value: any }>;
+  percentage?: number;
+  conditions?: any[];
+  flagIds?: string[];
+}): Promise<TestRollout> {
+  const response = await fetch('/api/test-rollouts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create test/rollout');
+  }
+  return response.json();
+}
+
+export async function fetchTestRollout(id: string): Promise<TestRollout> {
+  const response = await fetch(`/api/test-rollouts/${id}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch test/rollout');
+  }
+  return response.json();
+}
+
+export async function updateTestRollout(id: string, data: Partial<TestRollout>): Promise<TestRollout> {
+  const response = await fetch(`/api/test-rollouts/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update test/rollout');
+  }
+  return response.json();
 }

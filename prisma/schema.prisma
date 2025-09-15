@@ -23,9 +23,10 @@ model App {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
-  flags      Flag[]
-  cohorts    Cohort[]
-  auditLogs  AuditLog[]
+  flags        Flag[]
+  cohorts      Cohort[]
+  testRollouts TestRollout[]
+  auditLogs    AuditLog[]
 
   @@map("apps")
 }
@@ -35,13 +36,17 @@ model Flag {
   key         String   // Normalized snake_case key
   displayName String   @map("display_name") // Generated from key
   type        FlagType
-  defaultValue Json    @map("default_value") // Stored as JSON for all types
-  rules       Json?    @default("[]") // Array of rule objects
   description String?
   archived    Boolean  @default(false)
   archivedAt  DateTime? @map("archived_at")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Default values for each environment (set at creation)
+  defaultValues Json @map("default_values") // {development: any, staging: any, production: any}
+  
+  // Conditional variants per environment
+  variants Json @default("{}") @map("variants") // {development: ConditionalVariant[], staging: ConditionalVariant[], production: ConditionalVariant[]}
 
   // Relations
   appId String @map("app_id")
@@ -55,10 +60,8 @@ model Cohort {
   id         String   @id @default(cuid())
   key        String   // Cohort identifier key
   name       String   // Display name
-  salt       String   // Auto-generated salt for hashing
-  percentage Int      // 0-100
-  rules      Json?    @default("[]") // Array of rule objects
   description String?
+  conditions Json     @default("[]") // Array of condition objects (no cohort conditions allowed)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
@@ -68,6 +71,38 @@ model Cohort {
 
   @@unique([appId, key]) // Unique cohort keys per app
   @@map("cohorts")
+}
+
+model TestRollout {
+  id          String   @id @default(cuid())
+  key         String   // Identifier key
+  name        String   // Display name
+  description String?
+  type        TestRolloutType
+  salt        String   // For consistent user bucketing
+  conditions  Json     @default("[]") // Array of condition objects for entry requirements
+  
+  // For tests: multiple variants with traffic split
+  variants    Json?    // {variantName: {percentage: number, values: {dev: any, staging: any, prod: any}}}
+  
+  // For rollouts: single percentage and values
+  percentage  Int?     // 0-100 for rollouts
+  rolloutValues Json?  // {development: any, staging: any, production: any}
+  
+  // Flags affected by this test/rollout
+  flagIds     Json     @default("[]") // Array of flag IDs
+  
+  archived    Boolean  @default(false)
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, key]) // Unique test/rollout keys per app
+  @@map("test_rollouts")
 }
 
 model AuditLog {
@@ -94,4 +129,9 @@ enum FlagType {
   DOUBLE @map("double")
   DATE   @map("date")
   JSON   @map("json")
+}
+
+enum TestRolloutType {
+  TEST    @map("test")
+  ROLLOUT @map("rollout")
 }

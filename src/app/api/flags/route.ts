@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { z } from 'zod';
-
-// Validation schema for creating/updating flags
-const createFlagSchema = z.object({
-  appId: z.string(),
-  key: z.string(),
-  displayName: z.string(),
-  type: z.enum(['bool', 'string', 'int', 'double', 'date', 'json']),
-  defaultValue: z.any(),
-  rules: z.array(z.any()).optional(),
-  description: z.string().optional(),
-});
+import { CreateFlagRequest } from '@/types';
 
 // GET /api/flags - List all flags for an app
 export async function GET(request: NextRequest) {
@@ -40,18 +29,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/flags - Create a new flag
+// POST /api/flags - Create a new flag with environment defaults
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const validatedData = createFlagSchema.parse(body);
+    const body: CreateFlagRequest = await request.json();
+    const { key, displayName, type, description, defaultValues, appId } = body;
 
     // Check if flag key already exists for this app
     const existingFlag = await prisma.flag.findUnique({
       where: {
         appId_key: {
-          appId: validatedData.appId,
-          key: validatedData.key
+          appId,
+          key
         }
       }
     });
@@ -73,15 +62,24 @@ export async function POST(request: NextRequest) {
       'json': 'JSON'
     };
 
+    // Use the provided environment-specific default values
+
+    // Initialize empty variants for all environments
+    const variants = {
+      development: [],
+      staging: [],
+      production: []
+    };
+
     const flag = await prisma.flag.create({
       data: {
-        appId: validatedData.appId,
-        key: validatedData.key,
-        displayName: validatedData.displayName,
-        type: typeMap[validatedData.type],
-        defaultValue: validatedData.defaultValue,
-        rules: validatedData.rules || [],
-        description: validatedData.description,
+        appId,
+        key,
+        displayName,
+        type: typeMap[type],
+        description,
+        defaultValues,
+        variants
       },
       include: {
         app: {
@@ -92,10 +90,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(flag, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.errors }, { status: 400 });
-    }
-    
     console.error('Error creating flag:', error);
     return NextResponse.json({ error: 'Failed to create flag' }, { status: 500 });
   }

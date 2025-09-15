@@ -18,7 +18,9 @@ import {
   Flag, 
   BarChart, 
   Apps, 
-  TrendingUp 
+  TrendingUp,
+  Science,
+  Rocket
 } from "@mui/icons-material";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -59,8 +61,9 @@ export default function DashboardPage() {
       (acc, app) => ({
         flags: acc.flags + (app._count?.flags || 0),
         cohorts: acc.cohorts + (app._count?.cohorts || 0),
+        testRollouts: acc.testRollouts + (app._count?.test_rollouts || 0),
       }),
-      { flags: 0, cohorts: 0 }
+      { flags: 0, cohorts: 0, testRollouts: 0 }
     );
   };
 
@@ -98,7 +101,7 @@ export default function DashboardPage() {
             Dashboard
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Overview of all your applications and feature flags
+            Overview of all your applications, feature flags, A/B tests, and rollouts
           </Typography>
         </Box>
         <Button
@@ -168,14 +171,14 @@ export default function DashboardPage() {
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <TrendingUp sx={{ mr: 2, color: "primary.main" }} />
-                <Typography variant="h6">Total Rules</Typography>
+                <Science sx={{ mr: 2, color: "primary.main" }} />
+                <Typography variant="h6">Tests & Rollouts</Typography>
               </Box>
               <Typography variant="h3" component="div">
-                {apps.reduce((acc, app) => acc + (app._count?.flags || 0) + (app._count?.cohorts || 0), 0)}
+                {totalStats.testRollouts}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Combined flags & cohorts
+                Active experiments
               </Typography>
             </CardContent>
           </Card>
@@ -188,7 +191,7 @@ export default function DashboardPage() {
           Applications
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-          Click on an application to manage its feature flags and cohorts
+          Click on an application to manage its feature flags, tests, rollouts, and cohorts
         </Typography>
 
         {apps.length === 0 ? (
@@ -267,6 +270,14 @@ export default function DashboardPage() {
                           Cohorts
                         </Typography>
                       </Box>
+                      <Box sx={{ textAlign: "center" }}>
+                        <Typography variant="h4" color="primary.main">
+                          {app._count?.test_rollouts || 0}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Tests
+                        </Typography>
+                      </Box>
                     </Box>
 
                     <Typography variant="caption" color="text.secondary">
@@ -275,10 +286,13 @@ export default function DashboardPage() {
                   </CardContent>
                   <CardActions>
                     <Button size="small" startIcon={<Flag />}>
-                      Manage Flags
+                      Flags
                     </Button>
-                    <Button size="small" startIcon={<BarChart />}>
-                      View Cohorts
+                    <Button size="small" startIcon={<Science />}>
+                      Tests
+                    </Button>
+                    <Button size="small" startIcon={<Rocket />}>
+                      Rollouts
                     </Button>
                   </CardActions>
                 </Card>

@@ -5,8 +5,65 @@ export interface ConfigArtifact {
   config_version: string | null;
   published_at: string | null;
   app_identifier: string;
-  cohorts: Record<string, any>;
-  flags: Record<string, any>;
+  development?: {
+    flags: Record<string, any>;
+    cohorts: Record<string, any>;
+    test_rollouts?: Record<string, any>;
+  };
+  staging?: {
+    flags: Record<string, any>;
+    cohorts: Record<string, any>;
+    test_rollouts?: Record<string, any>;
+  };
+  production?: {
+    flags: Record<string, any>;
+    cohorts: Record<string, any>;
+    test_rollouts?: Record<string, any>;
+  };
+  // Legacy schema v1 support
+  cohorts?: Record<string, any>;
+  flags?: Record<string, any>;
+}
+
+// Helper functions to extract data from both schema versions
+function extractFlags(config: ConfigArtifact): Record<string, any> {
+  if (config.development) {
+    // Schema v2: environment-first
+    const allFlags: Record<string, any> = {};
+    ['development', 'staging', 'production'].forEach(env => {
+      const envData = config[env as keyof ConfigArtifact] as any;
+      if (envData?.flags) {
+        Object.keys(envData.flags).forEach(flagKey => {
+          if (!allFlags[flagKey]) allFlags[flagKey] = {};
+          allFlags[flagKey][env] = envData.flags[flagKey];
+        });
+      }
+    });
+    return allFlags;
+  } else {
+    // Schema v1: legacy format
+    return config.flags || {};
+  }
+}
+
+function extractCohorts(config: ConfigArtifact): Record<string, any> {
+  if (config.development) {
+    // Schema v2: cohorts are the same across environments, just take from development
+    return config.development.cohorts || {};
+  } else {
+    // Schema v1: legacy format
+    return config.cohorts || {};
+  }
+}
+
+function extractTestRollouts(config: ConfigArtifact): Record<string, any> {
+  if (config.development) {
+    // Schema v2: test_rollouts from development (they're the same across envs)
+    return config.development.test_rollouts || {};
+  } else {
+    // Schema v1: no test_rollouts
+    return {};
+  }
 }
 
 // Compare two configs and return whether they are different
@@ -16,19 +73,27 @@ export function hasConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
     return true;
   }
 
-  // Compare flags (exclude metadata fields)
-  const currentFlags = currentConfig.flags;
-  const publishedFlags = publishedConfig.flags;
+  // Compare flags (environment-aware)
+  const currentFlags = extractFlags(currentConfig);
+  const publishedFlags = extractFlags(publishedConfig);
 
   if (JSON.stringify(sortObject(currentFlags)) !== JSON.stringify(sortObject(publishedFlags))) {
     return true;
   }
 
-  // Compare cohorts (exclude metadata fields)
-  const currentCohorts = currentConfig.cohorts;
-  const publishedCohorts = publishedConfig.cohorts;
+  // Compare cohorts
+  const currentCohorts = extractCohorts(currentConfig);
+  const publishedCohorts = extractCohorts(publishedConfig);
 
   if (JSON.stringify(sortObject(currentCohorts)) !== JSON.stringify(sortObject(publishedCohorts))) {
+    return true;
+  }
+
+  // Compare test rollouts
+  const currentTestRollouts = extractTestRollouts(currentConfig);
+  const publishedTestRollouts = extractTestRollouts(publishedConfig);
+
+  if (JSON.stringify(sortObject(currentTestRollouts)) !== JSON.stringify(sortObject(publishedTestRollouts))) {
     return true;
   }
 
@@ -54,7 +119,11 @@ export function getConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
 
   if (!publishedConfig) {
     // All current items are "added"
-    Object.keys(currentConfig.flags).forEach(key => {
+    const currentFlags = extractFlags(currentConfig);
+    const currentCohorts = extractCohorts(currentConfig);
+    const currentTestRollouts = extractTestRollouts(currentConfig);
+
+    Object.keys(currentFlags).forEach(key => {
       changes.push({
         type: 'flag',
         action: 'added',
@@ -63,12 +132,12 @@ export function getConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
       });
     });
 
-    Object.keys(currentConfig.cohorts).forEach(key => {
+    Object.keys(currentCohorts).forEach(key => {
       changes.push({
         type: 'cohort',
         action: 'added',
         key,
-        name: `Cohort: ${currentConfig.cohorts[key].name || key}`
+        name: `Cohort: ${currentCohorts[key].name || key}`
       });
     });
 
@@ -76,8 +145,8 @@ export function getConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
   }
 
   // Compare flags
-  const currentFlags = currentConfig.flags;
-  const publishedFlags = publishedConfig.flags;
+  const currentFlags = extractFlags(currentConfig);
+  const publishedFlags = extractFlags(publishedConfig);
 
   // Check for added/modified flags
   Object.keys(currentFlags).forEach(key => {
@@ -113,8 +182,8 @@ export function getConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
   });
 
   // Compare cohorts
-  const currentCohorts = currentConfig.cohorts;
-  const publishedCohorts = publishedConfig.cohorts;
+  const currentCohorts = extractCohorts(currentConfig);
+  const publishedCohorts = extractCohorts(publishedConfig);
 
   // Check for added/modified cohorts
   Object.keys(currentCohorts).forEach(key => {
