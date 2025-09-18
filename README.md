@@ -1,8 +1,69 @@
 # Bunting Admin
 
-Feature flag management interface for Bunting - a self-hosted feature flag system.
+A self-hosted feature flag dashboard for iOS and macOS apps. Deploy in one click and manage feature flags, A/B tests, and gradual rollouts with a beautiful web interface.
 
-## Quick Start (Local Development)
+## 🚀 One-Click Deployment
+
+Deploy Bunting Admin to your preferred platform with a single click:
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/BenjaminBriggs/Bunting-Admin)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BenjaminBriggs/Bunting-Admin)
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/new?template=https://github.com/BenjaminBriggs/Bunting-Admin)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/BenjaminBriggs/Bunting-Admin)
+
+After deployment, visit your app URL and complete the authentication setup wizard to get started.
+
+## 🛠 Post-Deployment Setup
+
+After deploying with one of the buttons above:
+
+### 1. Complete Authentication Setup
+1. Visit your deployed app URL (e.g., `https://your-app.herokuapp.com`)
+2. You'll be redirected to the setup wizard at `/setup`
+3. Follow the 5-step process:
+   - **Welcome**: Introduction to the setup process
+   - **Choose Authentication**: Select OAuth providers (Google, GitHub, Microsoft) and/or email magic links
+   - **Configure Providers**: Enter your OAuth credentials or email settings
+   - **Platform Integration** (Optional): Connect platform API for secure credential storage
+   - **Complete Setup**: Review configuration and finish
+
+### 2. Get OAuth Credentials
+
+#### Google OAuth
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select existing
+3. Navigate to **APIs & Services** → **Credentials**
+4. Create **OAuth 2.0 Client ID** for web application
+5. Add your deployed URL to authorized origins and redirect URIs
+6. Note the Client ID and Client Secret
+
+#### GitHub OAuth
+1. Go to GitHub **Settings** → **Developer settings** → **OAuth Apps**
+2. Create a new OAuth App
+3. Set Authorization callback URL to `https://your-app.com/api/auth/callback/github`
+4. Note the Client ID and Client Secret
+
+#### Microsoft OAuth
+1. Go to [Azure Portal](https://portal.azure.com)
+2. Navigate to **App registrations**
+3. Create a new registration
+4. Configure redirect URI for your app
+5. Note the Client ID, Client Secret, and Tenant ID
+
+#### Email Magic Links (Resend)
+1. Sign up at [Resend](https://resend.com)
+2. Go to **API Keys** and create a new key
+3. Configure your sending domain (or use their shared domain for testing)
+
+### 3. First Admin Account
+- The first user to sign in through your configured providers will automatically become an admin
+- Additional users will have developer permissions by default
+- Admins can manage access control in the dashboard
+
+## 💻 Local Development
 
 ### Prerequisites
 - Node.js 18+
@@ -107,20 +168,71 @@ bunting-admin/
 └── docker-compose.yml
 ```
 
-## Key Features
+## ✨ Key Features
 
+### 🎯 Feature Flag Management
+- **Environment-First Flags**: Separate values for development, staging, and production
+- **Type-Safe**: Support for bool, string, int, double, date, and JSON values
+- **Conditional Variants**: Rule-based value overrides per environment
+- **Auto-normalization**: Convert "Store: New Paywall" → "store/new_paywall"
+
+### 🧪 A/B Testing & Rollouts
+- **Multi-Variant Tests**: Traffic splitting with statistical analysis
+- **Gradual Rollouts**: Percentage-based feature rollouts with real-time controls
+- **Test Management**: Create, run, pause, and complete tests with result tracking
+- **Archive Functionality**: Cancel (0%) or complete (100%) tests and rollouts
+
+### 👥 User Targeting
+- **Rule-Based Cohorts**: Reusable condition groups for user targeting
+- **Visual Rule Builder**: Define complex targeting with AND/OR logic
+- **Environment Awareness**: Target users based on app version, platform, and environment
+
+### 🚀 Publishing Pipeline
+- **Change Detection**: Real-time tracking of modified flags and cohorts
+- **Config Generation**: Transform database data to SDK-compatible format
+- **Validation Engine**: Blocking errors vs warnings with environment-specific feedback
+- **S3 Integration**: Versioned configs with YYYY-MM-DD.N format
+
+### 🏢 Multi-App Support
+- **App Isolation**: Flags and cohorts scoped to applications
+- **Shared Interface**: Single admin UI managing multiple apps
+- **Context Switching**: Seamless app selection with state preservation
+
+### 🔒 Security & Authentication
+- **OAuth Providers**: Google, GitHub, Microsoft authentication
+- **Magic Links**: Email-based passwordless authentication
+- **Access Control**: Role-based permissions (Admin/Developer)
+- **Secure Credentials**: Optional platform API integration for environment variables
+
+### 🛠 Developer Experience
 - **Type-Safe**: Full TypeScript with Prisma ORM
 - **Local Development**: Docker Compose for PostgreSQL + MinIO
-- **Developer-Friendly**: Prisma Studio, hot reload, proper error handling
-- **Production Ready**: Environment-based configuration, proper key management
+- **One-Click Deploy**: Support for Heroku, Render, Railway, and Vercel
+- **Setup Wizard**: Post-deployment authentication configuration
 
-## Next Steps
+## 📖 Getting Started
 
-1. Build the dashboard UI (`/dashboard`)
-2. Implement flag editor interface
-3. Add publishing workflow with JWS signing
-4. Set up multi-app support
-5. Add validation and testing
+### For iOS/macOS Developers
+
+1. **Deploy**: Click one of the deployment buttons above
+2. **Setup Authentication**: Complete the setup wizard
+3. **Create Your First App**: Add your iOS/macOS app in Settings
+4. **Add Feature Flags**: Create environment-specific flags for your features
+5. **Integrate SDK**: Download the generated configuration and integrate with your app
+6. **Start Testing**: Create A/B tests and gradual rollouts
+
+### Dashboard Overview
+
+- **Feature Flags**: Environment-first flag management with conditional variants
+- **A/B Tests**: Multi-variant testing with traffic splitting
+- **Rollouts**: Gradual feature rollouts with percentage controls
+- **Cohorts**: Reusable user targeting rules
+- **Releases**: Publishing interface with change tracking
+- **Settings**: App management and SDK integration
+
+## 🤝 Contributing
+
+This project is part of the Bunting ecosystem - a self-hosted feature flag system for Apple platforms. Contributions are welcome!
 
 ## Troubleshooting
 

@@ -279,7 +279,7 @@ export default function SettingsPage() {
           <Button 
             variant="contained" 
             startIcon={<Add />}
-            onClick={() => router.push('/setup')}
+            onClick={() => router.push('/dashboard/setup')}
           >
             Set Up Your First Application
           </Button>
@@ -326,7 +326,7 @@ export default function SettingsPage() {
                     variant="contained"
                     startIcon={<Add />}
                     fullWidth
-                    onClick={() => router.push('/setup')}
+                    onClick={() => router.push('/dashboard/setup')}
                   >
                     Add Application
                   </Button>

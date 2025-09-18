@@ -1,0 +1,7 @@
+export { WelcomeStep } from './WelcomeStep'
+export { ProviderSelectionStep } from './ProviderSelectionStep'
+export { ProviderConfigurationStep } from './ProviderConfigurationStep'
+export { PlatformIntegrationStep } from './PlatformIntegrationStep'
+export { CompletionStep } from './CompletionStep'
+export { authProviders } from './auth-providers'
+export type { AuthProvider, SetupState, StepProps } from './types'

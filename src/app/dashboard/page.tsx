@@ -108,7 +108,7 @@ export default function DashboardPage() {
           variant="contained"
           startIcon={<Add />}
           component={Link}
-          href="/setup"
+          href="/dashboard/setup"
         >
           New Application
         </Button>
@@ -208,7 +208,7 @@ export default function DashboardPage() {
                 variant="contained"
                 startIcon={<Add />}
                 component={Link}
-                href="/setup"
+                href="/dashboard/setup"
               >
                 Create Application
               </Button>

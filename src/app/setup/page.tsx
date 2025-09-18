@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Card,
@@ -20,739 +20,465 @@ import {
   CircularProgress,
   Chip,
   Container,
-} from "@mui/material";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { createApp, type App } from "@/lib/api";
-import { Apps, Storage, Check, Flag } from "@mui/icons-material";
+  FormControlLabel,
+  Checkbox,
+  Link,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon
+} from '@mui/material'
+import { useRouter } from 'next/navigation'
+import {
+  Security,
+  Google,
+  GitHub,
+  Microsoft,
+  Email,
+  Check,
+  Warning,
+  Info,
+  API
+} from '@mui/icons-material'
 
-interface SetupData {
-  appName: string;
-  appIdentifier: string;
-  artifactUrl: string;
-  storageType: "minio" | "aws" | "r2" | "b2" | "custom";
-  storageConfig: {
-    bucket: string;
-    region: string;
-    endpoint?: string;
-    accessKeyId?: string;
-    secretAccessKey?: string;
-  };
-  fetchPolicy: {
-    minIntervalHours: number;
-    hardTtlDays: number;
-  };
+interface AuthProvider {
+  id: string
+  name: string
+  icon: React.ReactNode
+  description: string
+  required_fields: string[]
 }
 
+interface SetupState {
+  step: number
+  selectedProviders: string[]
+  providerConfigs: Record<string, any>
+  platformIntegration: {
+    enabled: boolean
+    platform: string
+    apiCredentials: Record<string, string>
+  }
+}
+
+const authProviders: AuthProvider[] = [
+  {
+    id: 'google',
+    name: 'Google',
+    icon: <Google />,
+    description: 'Perfect for teams using Google Workspace',
+    required_fields: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']
+  },
+  {
+    id: 'github',
+    name: 'GitHub',
+    icon: <GitHub />,
+    description: 'Ideal for developer teams already on GitHub',
+    required_fields: ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET']
+  },
+  {
+    id: 'microsoft',
+    name: 'Microsoft',
+    icon: <Microsoft />,
+    description: 'Great for organizations using Microsoft 365/Azure AD',
+    required_fields: ['MICROSOFT_CLIENT_ID', 'MICROSOFT_CLIENT_SECRET', 'MICROSOFT_TENANT_ID']
+  },
+  {
+    id: 'email',
+    name: 'Magic Link Email',
+    icon: <Email />,
+    description: 'Passwordless email-based authentication',
+    required_fields: ['RESEND_API_KEY', 'EMAIL_FROM']
+  }
+]
+
 const steps = [
-  "Application Details",
-  "Storage Configuration",
-  "Review & Create",
-];
+  'Welcome',
+  'Choose Authentication',
+  'Configure Providers',
+  'Platform Integration',
+  'Complete Setup'
+]
 
-export default function SetupPage() {
-  const router = useRouter();
-  const { data: session, status } = useSession();
-  const [activeStep, setActiveStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [setupData, setSetupData] = useState<SetupData>({
-    appName: "",
-    appIdentifier: "",
-    artifactUrl: "",
-    storageType: process.env.NODE_ENV === "development" ? "minio" : "aws",
-    storageConfig: {
-      bucket: "",
-      region: "us-east-1",
-      endpoint: "",
-      accessKeyId: "",
-      secretAccessKey: "",
-    },
-    fetchPolicy: {
-      minIntervalHours: 6,
-      hardTtlDays: 7,
-    },
-  });
-
-  // Check authentication
-  useEffect(() => {
-    if (status === 'loading') return; // Still loading
-
-    if (status === 'unauthenticated') {
-      router.replace('/auth/signin');
-      return;
+export default function InitialSetupPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [setupState, setSetupState] = useState<SetupState>({
+    step: 0,
+    selectedProviders: [],
+    providerConfigs: {},
+    platformIntegration: {
+      enabled: false,
+      platform: '',
+      apiCredentials: {}
     }
-  }, [status, router]);
-
-  // Auto-generate app identifier from name
-  const handleNameChange = (name: string) => {
-    const identifier = name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    setSetupData((prev) => {
-      const newArtifactUrl = generateArtifactUrl(
-        prev.storageType,
-        prev.storageConfig,
-        identifier,
-      );
-      return {
-        ...prev,
-        appName: name,
-        appIdentifier: identifier,
-        artifactUrl: newArtifactUrl,
-      };
-    });
-  };
-
-  const generateArtifactUrl = (
-    type: "minio" | "aws" | "r2" | "b2" | "custom",
-    config: any,
-    appIdentifier: string,
-  ) => {
-    if (!appIdentifier) return "";
-
-    switch (type) {
-      case "minio":
-        // MinIO endpoint with bucket
-        const endpoint = config.endpoint || "http://localhost:9000";
-        return `${endpoint}/${config.bucket}/configs/${appIdentifier}/`;
-
-      case "aws":
-        // Standard AWS S3 URL format
-        return `https://${config.bucket}.s3.${config.region}.amazonaws.com/configs/${appIdentifier}/`;
-
-      case "r2":
-        // Cloudflare R2 URL format
-        if (config.bucket && config.region) {
-          return `https://${config.bucket}.${config.region}.r2.cloudflarestorage.com/configs/${appIdentifier}/`;
-        }
-        return "";
-
-      case "b2":
-        // Backblaze B2 URL format
-        if (config.endpoint && config.bucket) {
-          return `${config.endpoint}/file/${config.bucket}/configs/${appIdentifier}/`;
-        }
-        return "";
-
-      case "custom":
-        // Custom S3-compatible endpoint
-        if (config.endpoint && config.bucket) {
-          return `${config.endpoint}/${config.bucket}/configs/${appIdentifier}/`;
-        }
-        return "";
-
-      default:
-        return "";
-    }
-  };
-
-  const handleStorageTypeChange = (
-    type: "minio" | "aws" | "r2" | "b2" | "custom",
-  ) => {
-    let defaultConfig = {
-      bucket: "",
-      region: "us-east-1",
-      endpoint: "",
-      accessKeyId: "",
-      secretAccessKey: "",
-    };
-
-    switch (type) {
-      case "minio":
-        defaultConfig = {
-          bucket: "bunting-configs",
-          region: "us-east-1",
-          endpoint: "http://localhost:9000",
-          accessKeyId: "admin",
-          secretAccessKey: "admin123",
-        };
-        break;
-
-      case "aws":
-        defaultConfig = {
-          bucket: "",
-          region: "us-east-1",
-          endpoint: "",
-          accessKeyId: "",
-          secretAccessKey: "",
-        };
-        break;
-
-      case "r2":
-        defaultConfig = {
-          bucket: "",
-          region: "", // R2 uses account ID as region
-          endpoint: "",
-          accessKeyId: "",
-          secretAccessKey: "",
-        };
-        break;
-
-      case "b2":
-        defaultConfig = {
-          bucket: "",
-          region: "us-west-002", // Default B2 region
-          endpoint: "", // Will be set based on bucket
-          accessKeyId: "",
-          secretAccessKey: "",
-        };
-        break;
-
-      case "custom":
-        defaultConfig = {
-          bucket: "",
-          region: "us-east-1",
-          endpoint: "",
-          accessKeyId: "",
-          secretAccessKey: "",
-        };
-        break;
-    }
-
-    const newArtifactUrl = generateArtifactUrl(
-      type,
-      defaultConfig,
-      setupData.appIdentifier,
-    );
-
-    setSetupData((prev) => ({
-      ...prev,
-      storageType: type,
-      storageConfig: defaultConfig,
-      artifactUrl: newArtifactUrl,
-    }));
-  };
+  })
 
   const handleNext = () => {
-    if (activeStep === 0) {
-      // Validate app details
-      if (!setupData.appName.trim()) {
-        setError("Application name is required");
-        return;
-      }
-      if (!setupData.appIdentifier.trim()) {
-        setError("Application identifier is required");
-        return;
-      }
-    }
-
-    if (activeStep === 1) {
-      // Validate storage config
-      if (!setupData.storageConfig.bucket.trim()) {
-        setError("Bucket name is required");
-        return;
-      }
-      if (!setupData.storageConfig.region.trim()) {
-        setError("Region is required");
-        return;
-      }
-    }
-
-    setError(null);
-    setActiveStep((prev) => prev + 1);
-  };
+    setSetupState(prev => ({ ...prev, step: prev.step + 1 }))
+  }
 
   const handleBack = () => {
-    setActiveStep((prev) => prev - 1);
-    setError(null);
-  };
+    setSetupState(prev => ({ ...prev, step: prev.step - 1 }))
+  }
 
-  const handleCreate = async () => {
+  const handleProviderToggle = (providerId: string) => {
+    setSetupState(prev => ({
+      ...prev,
+      selectedProviders: prev.selectedProviders.includes(providerId)
+        ? prev.selectedProviders.filter(id => id !== providerId)
+        : [...prev.selectedProviders, providerId]
+    }))
+  }
+
+  const handleProviderConfig = (providerId: string, config: any) => {
+    setSetupState(prev => ({
+      ...prev,
+      providerConfigs: {
+        ...prev.providerConfigs,
+        [providerId]: config
+      }
+    }))
+  }
+
+  const handleCompleteSetup = async () => {
+    setLoading(true)
+    setError(null)
+
     try {
-      setLoading(true);
-      setError(null);
+      // Save auth provider configuration
+      const response = await fetch('/api/setup/auth-providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          providers: setupState.selectedProviders,
+          configs: setupState.providerConfigs,
+          platformIntegration: setupState.platformIntegration
+        })
+      })
 
-      const appData = {
-        name: setupData.appName,
-        identifier: setupData.appIdentifier,
-        artifactUrl:
-          setupData.artifactUrl ||
-          `https://cdn.example.com/configs/${setupData.appIdentifier}/`,
-        publicKeys: [
-          {
-            kid: "default",
-            pem: "-----BEGIN PUBLIC KEY-----\n[Your public key here]\n-----END PUBLIC KEY-----",
-          },
-        ],
-        fetchPolicy: {
-          min_interval_seconds: setupData.fetchPolicy.minIntervalHours * 3600,
-          hard_ttl_days: setupData.fetchPolicy.hardTtlDays,
-        },
-        storageConfig: {
-          bucket: setupData.storageConfig.bucket,
-          region: setupData.storageConfig.region,
-          endpoint: setupData.storageConfig.endpoint || undefined,
-          accessKeyId: setupData.storageConfig.accessKeyId || undefined,
-          secretAccessKey: setupData.storageConfig.secretAccessKey || undefined,
-        },
-      };
+      if (!response.ok) {
+        throw new Error('Failed to save configuration')
+      }
 
-      await createApp(appData);
-
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Redirect to sign in with configured providers
+      router.push('/auth/signin?setup=complete')
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to create application",
-      );
+      setError(err instanceof Error ? err.message : 'Setup failed')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const renderStepContent = (step: number) => {
-    switch (step) {
+  const renderStepContent = () => {
+    switch (setupState.step) {
       case 0:
         return (
-          <Stack spacing={3}>
-            <TextField
-              label="Application Name"
-              value={setupData.appName}
-              onChange={(e) => handleNameChange(e.target.value)}
-              fullWidth
-              required
-              helperText="A friendly name for your application"
-            />
-
-            <TextField
-              label="Application Identifier"
-              value={setupData.appIdentifier}
-              onChange={(e) =>
-                setSetupData((prev) => ({
-                  ...prev,
-                  appIdentifier: e.target.value,
-                }))
-              }
-              fullWidth
-              required
-              helperText="Unique identifier used by the SDK (auto-generated from name)"
-            />
-
-            <TextField
-              label="Artifact URL"
-              value={setupData.artifactUrl}
-              onChange={(e) =>
-                setSetupData((prev) => ({
-                  ...prev,
-                  artifactUrl: e.target.value,
-                }))
-              }
-              fullWidth
-              helperText="Auto-generated from storage config - this is where your SDK will fetch configs"
-              InputProps={{
-                readOnly: true,
-              }}
-              sx={{
-                "& .MuiInputBase-input": {
-                  backgroundColor: "action.hover",
-                },
-              }}
-            />
+          <Stack spacing={3} alignItems="center">
+            <Security sx={{ fontSize: 64, color: 'primary.main' }} />
+            <Typography variant="h4" align="center" gutterBottom>
+              Welcome to Bunting!
+            </Typography>
+            <Typography variant="body1" align="center" color="text.secondary" sx={{ maxWidth: 600 }}>
+              Let's set up authentication for your feature flag dashboard.
+              You'll configure how team members can sign in to manage your iOS/macOS app flags.
+            </Typography>
+            <Alert severity="info" sx={{ maxWidth: 600 }}>
+              <Typography variant="body2">
+                This is a one-time setup process. You can always modify these settings later
+                through the admin interface.
+              </Typography>
+            </Alert>
           </Stack>
-        );
+        )
 
       case 1:
         return (
           <Stack spacing={3}>
-            <Typography variant="h6">Choose Storage Backend</Typography>
+            <Typography variant="h5" align="center" gutterBottom>
+              Choose Authentication Methods
+            </Typography>
+            <Typography variant="body1" align="center" color="text.secondary">
+              Select one or more authentication providers for your team
+            </Typography>
 
-            <Stack
-              direction="row"
-              spacing={2}
-              sx={{ flexWrap: "wrap", gap: 1 }}
-            >
-              {process.env.NODE_ENV === "development" && (
-                <Button
-                  variant={
-                    setupData.storageType === "minio" ? "contained" : "outlined"
-                  }
-                  onClick={() => handleStorageTypeChange("minio")}
-                  startIcon={<Storage />}
+            <Stack spacing={2}>
+              {authProviders.map(provider => (
+                <Card
+                  key={provider.id}
+                  variant={setupState.selectedProviders.includes(provider.id) ? 'elevation' : 'outlined'}
+                  sx={{
+                    cursor: 'pointer',
+                    borderColor: setupState.selectedProviders.includes(provider.id) ? 'primary.main' : undefined
+                  }}
+                  onClick={() => handleProviderToggle(provider.id)}
                 >
-                  MinIO (Local Dev)
-                </Button>
-              )}
-              <Button
-                variant={
-                  setupData.storageType === "aws" ? "contained" : "outlined"
-                }
-                onClick={() => handleStorageTypeChange("aws")}
-                startIcon={<Storage />}
-              >
-                AWS S3
-              </Button>
-              <Button
-                variant={
-                  setupData.storageType === "r2" ? "contained" : "outlined"
-                }
-                onClick={() => handleStorageTypeChange("r2")}
-                startIcon={<Storage />}
-              >
-                Cloudflare R2
-              </Button>
-              <Button
-                variant={
-                  setupData.storageType === "b2" ? "contained" : "outlined"
-                }
-                onClick={() => handleStorageTypeChange("b2")}
-                startIcon={<Storage />}
-              >
-                Backblaze B2
-              </Button>
-              <Button
-                variant={
-                  setupData.storageType === "custom" ? "contained" : "outlined"
-                }
-                onClick={() => handleStorageTypeChange("custom")}
-                startIcon={<Storage />}
-              >
-                Custom S3-Compatible
-              </Button>
+                  <CardContent>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={setupState.selectedProviders.includes(provider.id)}
+                            onChange={() => handleProviderToggle(provider.id)}
+                          />
+                        }
+                        label=""
+                        sx={{ m: 0 }}
+                      />
+                      {provider.icon}
+                      <Box flex={1}>
+                        <Typography variant="h6">{provider.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {provider.description}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ))}
             </Stack>
 
-            {setupData.storageType === "minio" && (
-              <Alert severity="info">
-                <strong>Local Development Setup</strong>
-                <br />
-                Using MinIO running on localhost:9000 with default admin
-                credentials. Perfect for development and testing.
+            {setupState.selectedProviders.length === 0 && (
+              <Alert severity="warning">
+                Please select at least one authentication provider to continue.
               </Alert>
-            )}
-
-            {setupData.storageType === "r2" && (
-              <Alert severity="info">
-                <strong>Cloudflare R2 Configuration</strong>
-                <br />
-                Use your Cloudflare account ID as the region. Get API tokens
-                from the Cloudflare dashboard.
-              </Alert>
-            )}
-
-            {setupData.storageType === "b2" && (
-              <Alert severity="info">
-                <strong>Backblaze B2 Configuration</strong>
-                <br />
-                Create an application key in your Backblaze B2 console. Use your
-                application key ID and key.
-              </Alert>
-            )}
-
-            {setupData.storageType === "custom" && (
-              <Alert severity="info">
-                <strong>Custom S3-Compatible Storage</strong>
-                <br />
-                For any S3-compatible storage provider. Enter the full endpoint
-                URL and credentials.
-              </Alert>
-            )}
-
-            <TextField
-              label="Bucket Name"
-              value={setupData.storageConfig.bucket}
-              onChange={(e) =>
-                setSetupData((prev) => {
-                  const newConfig = {
-                    ...prev.storageConfig,
-                    bucket: e.target.value,
-                  };
-                  const newArtifactUrl = generateArtifactUrl(
-                    prev.storageType,
-                    newConfig,
-                    prev.appIdentifier,
-                  );
-                  return {
-                    ...prev,
-                    storageConfig: newConfig,
-                    artifactUrl: newArtifactUrl,
-                  };
-                })
-              }
-              fullWidth
-              required
-            />
-
-            <TextField
-              label="Region"
-              value={setupData.storageConfig.region}
-              onChange={(e) =>
-                setSetupData((prev) => {
-                  const newConfig = {
-                    ...prev.storageConfig,
-                    region: e.target.value,
-                  };
-                  const newArtifactUrl = generateArtifactUrl(
-                    prev.storageType,
-                    newConfig,
-                    prev.appIdentifier,
-                  );
-                  return {
-                    ...prev,
-                    storageConfig: newConfig,
-                    artifactUrl: newArtifactUrl,
-                  };
-                })
-              }
-              fullWidth
-              required
-            />
-
-            {(setupData.storageType === "minio" ||
-              setupData.storageType === "b2" ||
-              setupData.storageType === "custom") && (
-              <TextField
-                label="Endpoint"
-                value={setupData.storageConfig.endpoint}
-                onChange={(e) =>
-                  setSetupData((prev) => {
-                    const newConfig = {
-                      ...prev.storageConfig,
-                      endpoint: e.target.value,
-                    };
-                    const newArtifactUrl = generateArtifactUrl(
-                      prev.storageType,
-                      newConfig,
-                      prev.appIdentifier,
-                    );
-                    return {
-                      ...prev,
-                      storageConfig: newConfig,
-                      artifactUrl: newArtifactUrl,
-                    };
-                  })
-                }
-                fullWidth
-                required={setupData.storageType !== "aws"}
-                helperText="Full endpoint URL (e.g., http://localhost:9000)"
-              />
-            )}
-
-            {setupData.storageType !== "minio" && (
-              <>
-                <TextField
-                  label="Access Key ID (Optional)"
-                  value={setupData.storageConfig.accessKeyId}
-                  onChange={(e) =>
-                    setSetupData((prev) => ({
-                      ...prev,
-                      storageConfig: {
-                        ...prev.storageConfig,
-                        accessKeyId: e.target.value,
-                      },
-                    }))
-                  }
-                  fullWidth
-                  helperText="Leave empty to use environment variables or IAM roles"
-                />
-
-                <TextField
-                  label="Secret Access Key (Optional)"
-                  type="password"
-                  value={setupData.storageConfig.secretAccessKey}
-                  onChange={(e) =>
-                    setSetupData((prev) => ({
-                      ...prev,
-                      storageConfig: {
-                        ...prev.storageConfig,
-                        secretAccessKey: e.target.value,
-                      },
-                    }))
-                  }
-                  fullWidth
-                  helperText="Leave empty to use environment variables or IAM roles"
-                />
-              </>
             )}
           </Stack>
-        );
+        )
 
       case 2:
         return (
           <Stack spacing={3}>
-            <Typography variant="h6">Review Configuration</Typography>
+            <Typography variant="h5" align="center" gutterBottom>
+              Configure Selected Providers
+            </Typography>
+            <Typography variant="body1" align="center" color="text.secondary">
+              Enter the credentials for your chosen authentication providers
+            </Typography>
 
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Application
-                </Typography>
-                <Typography variant="body1">{setupData.appName}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  ID: {setupData.appIdentifier}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
-                  Config URL: {setupData.artifactUrl}
-                </Typography>
-              </CardContent>
-            </Card>
+            {setupState.selectedProviders.map(providerId => {
+              const provider = authProviders.find(p => p.id === providerId)!
+              return (
+                <Card key={providerId}>
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Stack direction="row" spacing={2} alignItems="center">
+                        {provider.icon}
+                        <Typography variant="h6">{provider.name}</Typography>
+                      </Stack>
 
-            <Card variant="outlined">
+                      {provider.required_fields.map(field => (
+                        <TextField
+                          key={field}
+                          label={field.replace(/_/g, ' ')}
+                          type={field.toLowerCase().includes('secret') ? 'password' : 'text'}
+                          value={setupState.providerConfigs[providerId]?.[field] || ''}
+                          onChange={(e) => handleProviderConfig(providerId, {
+                            ...setupState.providerConfigs[providerId],
+                            [field]: e.target.value
+                          })}
+                          fullWidth
+                          required
+                        />
+                      ))}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </Stack>
+        )
+
+      case 3:
+        return (
+          <Stack spacing={3}>
+            <Typography variant="h5" align="center" gutterBottom>
+              Platform Integration (Optional)
+            </Typography>
+            <Typography variant="body1" align="center" color="text.secondary">
+              For enhanced security, we can store your credentials as environment variables using your platform's API
+            </Typography>
+
+            <Card>
               <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Storage
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                  <Chip
-                    label={setupData.storageType.toUpperCase()}
-                    size="small"
-                    color={
-                      setupData.storageType === "minio"
-                        ? "secondary"
-                        : "primary"
-                    }
-                  />
-                </Stack>
-                <Typography variant="body2">
-                  Bucket: {setupData.storageConfig.bucket}
-                </Typography>
-                <Typography variant="body2">
-                  Region: {setupData.storageConfig.region}
-                </Typography>
-                {setupData.storageConfig.endpoint && (
-                  <Typography variant="body2">
-                    Endpoint: {setupData.storageConfig.endpoint}
-                  </Typography>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={setupState.platformIntegration.enabled}
+                      onChange={(e) => setSetupState(prev => ({
+                        ...prev,
+                        platformIntegration: {
+                          ...prev.platformIntegration,
+                          enabled: e.target.checked
+                        }
+                      }))}
+                    />
+                  }
+                  label="Use platform API for secure credential storage"
+                />
+
+                {setupState.platformIntegration.enabled && (
+                  <Stack spacing={2} sx={{ mt: 2 }}>
+                    <FormControl fullWidth>
+                      <InputLabel>Platform</InputLabel>
+                      <Select
+                        value={setupState.platformIntegration.platform}
+                        label="Platform"
+                        onChange={(e) => setSetupState(prev => ({
+                          ...prev,
+                          platformIntegration: {
+                            ...prev.platformIntegration,
+                            platform: e.target.value
+                          }
+                        }))}
+                      >
+                        <MenuItem value="heroku">Heroku</MenuItem>
+                        <MenuItem value="render">Render</MenuItem>
+                        <MenuItem value="railway">Railway</MenuItem>
+                        <MenuItem value="vercel">Vercel</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <TextField
+                      label="API Token"
+                      type="password"
+                      fullWidth
+                      helperText="Your platform API token for updating environment variables"
+                    />
+                  </Stack>
                 )}
               </CardContent>
             </Card>
 
-            <Card variant="outlined">
+            <Alert severity="info" icon={<Info />}>
+              <Typography variant="body2">
+                <strong>Don't want to provide API credentials?</strong> No problem!
+                We'll store credentials securely in the database and provide instructions
+                for manually adding them to your platform's environment variables later.
+              </Typography>
+            </Alert>
+          </Stack>
+        )
+
+      case 4:
+        return (
+          <Stack spacing={3} alignItems="center">
+            <Check sx={{ fontSize: 64, color: 'success.main' }} />
+            <Typography variant="h4" align="center" gutterBottom>
+              Setup Complete!
+            </Typography>
+            <Typography variant="body1" align="center" color="text.secondary">
+              Your authentication providers have been configured.
+            </Typography>
+
+            <Card sx={{ width: '100%', maxWidth: 600 }}>
               <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Fetch Policy
+                <Typography variant="h6" gutterBottom>
+                  What happens next?
                 </Typography>
-                <Typography variant="body2">
-                  Minimum interval: {setupData.fetchPolicy.minIntervalHours}{" "}
-                  hours
-                </Typography>
-                <Typography variant="body2">
-                  Hard TTL: {setupData.fetchPolicy.hardTtlDays} days
-                </Typography>
+                <List>
+                  <ListItem>
+                    <ListItemIcon><Check color="success" /></ListItemIcon>
+                    <ListItemText
+                      primary="Sign in with your chosen provider"
+                      secondary="You'll be redirected to create your first admin account"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemIcon><Check color="success" /></ListItemIcon>
+                    <ListItemText
+                      primary="Create your first application"
+                      secondary="Set up your iOS/macOS app for feature flag management"
+                    />
+                  </ListItem>
+                  <ListItem>
+                    <ListItemIcon><Check color="success" /></ListItemIcon>
+                    <ListItemText
+                      primary="Start managing flags"
+                      secondary="Create, test, and deploy feature flags to your apps"
+                    />
+                  </ListItem>
+                </List>
               </CardContent>
             </Card>
+
+            {!setupState.platformIntegration.enabled && (
+              <Alert severity="warning" sx={{ maxWidth: 600 }}>
+                <Typography variant="body2">
+                  <strong>Security Reminder:</strong> For better security, consider manually
+                  adding your authentication credentials to your platform's environment variables
+                  and removing them from the database after setup.
+                </Typography>
+              </Alert>
+            )}
           </Stack>
-        );
+        )
 
       default:
-        return null;
+        return null
     }
-  };
-
-  // Show loading while checking authentication
-  if (status === 'loading') {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  // Don't render if not authenticated (will redirect)
-  if (status !== 'authenticated') {
-    return null;
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "background.default",
-        display: "flex",
-        alignItems: "center",
-        py: 4,
-      }}
-    >
-      <Container maxWidth="md">
-        <Box sx={{ textAlign: "center", mb: 4 }}>
-          <img
-            src="/images/Icon.png"
-            alt="Bunting"
-            style={{
-              height: "200px",
-              width: "auto",
-              objectFit: "contain",
-              cursor: "pointer",
-            }}
-          />
-          <Typography
-            variant="h2"
-            component="h1"
-            sx={{ mb: 1, fontWeight: 600 }}
-          >
-            Welcome to Bunting
-          </Typography>
-          <Typography variant="h5" color="text.secondary" sx={{ mb: 1 }}>
-            Self-hosted feature flags for Apps
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Let's set up your first application for feature flag management
-          </Typography>
-        </Box>
+    <Container maxWidth="md" sx={{ py: 4 }}>
+      <Box sx={{ mb: 4 }}>
+        <Stepper activeStep={setupState.step} alternativeLabel>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      </Box>
 
-        <Card elevation={8}>
-          <CardContent sx={{ p: 4 }}>
-            <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
+      <Card>
+        <CardContent sx={{ p: 4 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {error}
-              </Alert>
-            )}
+          {renderStepContent()}
 
-            {renderStepContent(activeStep)}
-
-            <Box
-              sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+            <Button
+              onClick={handleBack}
+              disabled={setupState.step === 0}
             >
-              <Button
-                disabled={activeStep === 0}
-                onClick={handleBack}
-                size="large"
-              >
-                Back
-              </Button>
+              Back
+            </Button>
 
-              {activeStep === steps.length - 1 ? (
-                <Button
-                  variant="contained"
-                  onClick={handleCreate}
-                  disabled={loading}
-                  startIcon={
-                    loading ? <CircularProgress size={20} /> : <Check />
-                  }
-                  size="large"
-                >
-                  {loading ? "Creating Application..." : "Create Application"}
-                </Button>
-              ) : (
-                <Button variant="contained" onClick={handleNext} size="large">
-                  Next
-                </Button>
-              )}
-            </Box>
-          </CardContent>
-        </Card>
-      </Container>
-    </Box>
-  );
+            {setupState.step === steps.length - 1 ? (
+              <Button
+                variant="contained"
+                onClick={handleCompleteSetup}
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={20} /> : undefined}
+              >
+                {loading ? 'Finishing Setup...' : 'Complete Setup'}
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                onClick={handleNext}
+                disabled={
+                  (setupState.step === 1 && setupState.selectedProviders.length === 0) ||
+                  (setupState.step === 2 && !setupState.selectedProviders.every(id => {
+                    const provider = authProviders.find(p => p.id === id)!
+                    return provider.required_fields.every(field =>
+                      setupState.providerConfigs[id]?.[field]?.trim()
+                    )
+                  }))
+                }
+              >
+                Next
+              </Button>
+            )}
+          </Box>
+        </CardContent>
+      </Card>
+    </Container>
+  )
 }
