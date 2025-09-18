@@ -1,6 +1,13 @@
+<div align="center">
+  <img src="https://raw.githubusercontent.com/BenjaminBriggs/Bunting-Admin/main/public/images/Logotype.png" alt="Bunting" width="400" />
+</div>
+
 # Bunting Admin
 
 A self-hosted feature flag dashboard for iOS and macOS apps. Deploy in one click and manage feature flags, A/B tests, and gradual rollouts with a beautiful web interface.
+
+> [!WARNING]
+> **Work in Progress**: Bunting Admin is currently under active development and is not yet ready for production use. Features may be incomplete, unstable, or subject to breaking changes. Use for testing and development purposes only.
 
 ## 🚀 One-Click Deployment
 
@@ -9,8 +16,6 @@ Deploy Bunting Admin to your preferred platform with a single click:
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/BenjaminBriggs/Bunting-Admin)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BenjaminBriggs/Bunting-Admin)
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/new?template=https://github.com/BenjaminBriggs/Bunting-Admin)
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/BenjaminBriggs/Bunting-Admin)
 
