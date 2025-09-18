@@ -135,3 +135,43 @@ enum TestRolloutType {
   TEST    @map("test")
   ROLLOUT @map("rollout")
 }
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  image       String?  // Profile image from OAuth provider
+  role        UserRole @default(DEVELOPER)
+  createdAt   DateTime @default(now()) @map("created_at")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+
+  // Relations
+  createdAccessEntries AccessList[] @relation("CreatedBy")
+
+  @@map("users")
+}
+
+model AccessList {
+  id        String     @id @default(cuid())
+  type      AccessType // EMAIL or DOMAIN
+  value     String     // email address or @domain.com
+  role      UserRole   // Role to assign when user joins
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("CreatedBy", fields: [createdById], references: [id])
+
+  @@unique([type, value]) // Prevent duplicate entries
+  @@map("access_list")
+}
+
+enum UserRole {
+  ADMIN     @map("admin")
+  DEVELOPER @map("developer")
+}
+
+enum AccessType {
+  EMAIL  @map("email")
+  DOMAIN @map("domain")
+}

@@ -2,35 +2,36 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Box, CircularProgress } from '@mui/material';
-import { fetchApps } from '@/lib/api';
 
 export default function HomePage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkApps = async () => {
-      try {
-        const apps = await fetchApps();
-        if (apps.length === 0) {
-          // No apps exist, go to setup
-          router.replace('/setup');
-        } else {
-          // Apps exist, go to dashboard
-          router.replace('/dashboard');
-        }
-      } catch (error) {
-        console.error('Failed to check apps:', error);
-        // On error, default to setup
-        router.replace('/setup');
-      } finally {
+    const handleRouting = () => {
+      // Wait for session to load
+      if (status === 'loading') {
+        return;
+      }
+
+      // Not authenticated, redirect to sign in
+      if (status === 'unauthenticated') {
+        router.replace('/auth/signin');
+        return;
+      }
+
+      // Authenticated, go to dashboard (dashboard will handle app checks)
+      if (status === 'authenticated') {
+        router.replace('/dashboard');
         setLoading(false);
       }
     };
 
-    checkApps();
-  }, [router]);
+    handleRouting();
+  }, [router, status]);
 
   // Show loading spinner while checking
   if (loading) {

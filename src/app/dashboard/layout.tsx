@@ -14,6 +14,8 @@ import {
   MenuItem,
   Divider,
   Badge,
+  Avatar,
+  IconButton,
 } from "@mui/material";
 import {
   Flag,
@@ -25,9 +27,12 @@ import {
   History,
   Science,
   Rocket,
+  Logout,
+  AccountCircle,
 } from "@mui/icons-material";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { ChangesProvider, useChanges } from "@/lib/changes-context";
 import { AppProvider, useApp } from "@/lib/app-context";
 
@@ -36,10 +41,12 @@ const drawerWidth = 256;
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
   const { hasChanges, getChangeCount } = useChanges();
   const { apps, selectedApp, setSelectedApp } = useApp();
 
   const [appMenuAnchor, setAppMenuAnchor] = useState<null | HTMLElement>(null);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
 
   const menuItems = [
     {
@@ -99,8 +106,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     router.push("/setup");
   };
 
+  const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleSignOut = async () => {
+    handleUserMenuClose();
+    await signOut({ callbackUrl: '/auth/signin' });
+  };
+
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box sx={{ display: "flex", bgcolor: "background.default" }}>
       {/* Sidebar */}
       <Drawer
         sx={{
@@ -109,8 +129,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           "& .MuiDrawer-paper": {
             width: drawerWidth,
             boxSizing: "border-box",
-            borderRight: 1,
-            borderColor: "divider",
+            border: "none",
+            borderRadius: 1,
+            boxShadow: 1,
+            m: 2,
+            height: "calc(100vh - 32px)",
+            backgroundColor: "background.paper",
           },
         }}
         variant="permanent"
@@ -132,7 +156,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               src="/images/Logotype.png"
               alt="Bunting"
               style={{
-                height: "32px",
+                height: "50px",
                 width: "auto",
                 objectFit: "contain",
                 cursor: "pointer",
@@ -187,7 +211,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </React.Fragment>
           ))}
         </List>
-        {/* Settings at Bottom */}
+        {/* Settings and User Menu at Bottom */}
         <List>
           <Divider />
           <ListItem disablePadding>
@@ -200,6 +224,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               <ListItemText primary={settingsItem.label} />
             </ListItemButton>
           </ListItem>
+          {session?.user && (
+            <ListItem disablePadding>
+              <ListItemButton onClick={handleUserMenuClick}>
+                <ListItemIcon>
+                  <Avatar
+                    src={session.user.image || undefined}
+                    sx={{ width: 24, height: 24 }}
+                  >
+                    {session.user.name?.[0] || session.user.email[0].toUpperCase()}
+                  </Avatar>
+                </ListItemIcon>
+                <ListItemText
+                  primary={session.user.name || session.user.email}
+                  secondary={session.user.role}
+                />
+                <KeyboardArrowDown />
+              </ListItemButton>
+            </ListItem>
+          )}
         </List>
         {/* App Menu Dropdown */}
         <Menu
@@ -230,6 +273,30 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             <ListItemText primary="Add Application" />
           </MenuItem>
         </Menu>
+
+        {/* User Menu Dropdown */}
+        <Menu
+          anchorEl={userMenuAnchor}
+          open={Boolean(userMenuAnchor)}
+          onClose={handleUserMenuClose}
+          PaperProps={{
+            sx: { minWidth: 200 },
+          }}
+        >
+          <MenuItem disabled>
+            <ListItemText
+              primary={session?.user?.name || session?.user?.email}
+              secondary={`Role: ${session?.user?.role}`}
+            />
+          </MenuItem>
+          <Divider />
+          <MenuItem onClick={handleSignOut}>
+            <ListItemIcon>
+              <Logout />
+            </ListItemIcon>
+            <ListItemText primary="Sign Out" />
+          </MenuItem>
+        </Menu>
       </Drawer>
 
       {/* Main content */}
@@ -239,6 +306,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           flexGrow: 1,
           bgcolor: "background.default",
           p: 3,
+          ml: "32px", // Just account for sidebar margins
           minHeight: "100vh",
         }}
       >

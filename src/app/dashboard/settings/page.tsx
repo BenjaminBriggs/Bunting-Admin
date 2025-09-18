@@ -31,12 +31,14 @@ import {
   TextField,
   Stack
 } from '@mui/material';
-import { Add, Apps, MoreVert, Edit, Delete, Download, Settings, Code, Warning } from '@mui/icons-material';
+import { Add, Apps, MoreVert, Edit, Delete, Download, Settings, Code, Warning, People } from '@mui/icons-material';
 import { fetchApps, updateApp, type App } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -286,55 +288,90 @@ export default function SettingsPage() {
         <Grid container spacing={3}>
           {/* Left Panel - Application List */}
           <Grid item xs={12} md={4}>
-            <Paper sx={{ height: 'fit-content' }}>
-              <List>
-                {apps.map((app) => (
-                  <ListItem key={app.id} disablePadding>
-                    <ListItemButton
-                      selected={selectedApp?.id === app.id}
-                      onClick={() => setSelectedApp(app)}
+            <Stack spacing={3}>
+              <Paper sx={{ height: 'fit-content' }}>
+                <List>
+                  {apps.map((app) => (
+                    <ListItem key={app.id} disablePadding>
+                      <ListItemButton
+                        selected={selectedApp?.id === app.id}
+                        onClick={() => setSelectedApp(app)}
+                      >
+                        <ListItemIcon>
+                          <Apps />
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={app.name}
+                          secondary={`${app._count?.flags || 0} flags, ${app._count?.cohorts || 0} cohorts`}
+                        />
+                        {apps.length > 1 && (
+                          <IconButton
+                            edge="end"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteApp(app);
+                            }}
+                            color="error"
+                          >
+                            <Delete />
+                          </IconButton>
+                        )}
+                      </ListItemButton>
+                    </ListItem>
+                  ))}
+                </List>
+                <Divider />
+                <Box sx={{ p: 2 }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    fullWidth
+                    onClick={() => router.push('/setup')}
+                  >
+                    Add Application
+                  </Button>
+                </Box>
+              </Paper>
+
+              {/* User Management Card - Only for Admins */}
+              {session?.user?.role === 'ADMIN' && (
+                <Paper sx={{ height: 'fit-content' }}>
+                  <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                      <People sx={{ mr: 1 }} />
+                      User Management
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Manage access to all applications
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 3 }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<People />}
+                      fullWidth
+                      onClick={() => router.push('/dashboard/users')}
                     >
-                      <ListItemIcon>
-                        <Apps />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={app.name}
-                        secondary={`${app._count?.flags || 0} flags, ${app._count?.cohorts || 0} cohorts`}
-                      />
-                      {apps.length > 1 && (
-                        <IconButton
-                          edge="end"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteApp(app);
-                          }}
-                          color="error"
-                        >
-                          <Delete />
-                        </IconButton>
-                      )}
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-              <Divider />
-              <Box sx={{ p: 2 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  fullWidth
-                  onClick={() => router.push('/setup')}
-                >
-                  Add Application
-                </Button>
-              </Box>
-            </Paper>
+                      Manage Users
+                    </Button>
+                  </Box>
+                </Paper>
+              )}
+            </Stack>
           </Grid>
 
           {/* Right Panel - Selected App Details */}
           <Grid item xs={12} md={8}>
             {selectedApp ? (
               <Paper>
+                <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                  <Typography variant="h6">
+                    {selectedApp.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Application configuration and settings
+                  </Typography>
+                </Box>
                 <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)}>
                   <Tab label="Settings" icon={<Settings />} />
                   <Tab label="SDK Integration" icon={<Code />} />

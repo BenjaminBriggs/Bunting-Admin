@@ -20,6 +20,8 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 - ✅ **Multi-App Support**: App selector with per-app isolation
 - ✅ **Real-time Change Tracking**: Changes context with publish button visibility
 - ✅ **SDK Integration**: Downloadable plist files for iOS/macOS apps
+- ✅ **Unified Value Input System**: Type-aware flag value inputs with consistent UI/UX
+- ✅ **Environment-Specific Assignments**: Tests/rollouts properly isolated per environment
 
 ### Architecture Implemented
 
@@ -74,9 +76,13 @@ bunting-admin/
 │   │   ├── layout.tsx          # Root layout
 │   │   └── page.tsx            # Landing page
 │   ├── components/             # React components
-│   │   ├── flag-editor/       # Environment-aware flag editing
-│   │   ├── rule-builder/      # Visual rule builder
-│   │   └── theme-provider.tsx # MUI theme setup
+│   │   ├── features/          # Feature-specific components
+│   │   │   ├── flags/        # Flag management components (FlagValueInput, etc)
+│   │   │   └── rules/        # Rule builder and targeting components
+│   │   ├── forms/            # Reusable form components
+│   │   ├── ui/               # Generic UI components
+│   │   ├── providers/        # Context providers (theme, etc)
+│   │   └── index.ts          # Component exports
 │   ├── lib/                   # Shared utilities
 │   │   ├── api.ts            # Client-side API functions
 │   │   ├── config-generator.ts # Environment-first config generation
@@ -166,6 +172,14 @@ npm run type-check         # TypeScript checking
 - **Shared Interface**: Single admin UI managing multiple apps
 - **Context Switching**: Seamless app selection with state preservation
 
+### Unified Flag Value Input System
+- **FlagValueInput Component**: Single component handles all flag types with consistent UI
+- **Type-Aware Inputs**: Boolean dropdowns, number inputs, date pickers, JSON editors
+- **Collapsible JSON Editor**: Rich JSON editing with validation and summary display
+- **Case-Insensitive Types**: Handles both Prisma enum values (BOOL) and lowercase (bool)
+- **Real-time Validation**: Immediate feedback for JSON syntax, number formats, etc.
+- **Environment-Specific Values**: All value assignments properly scoped to selected environment
+
 ## Technical Implementation
 
 ### Flag Key Processing
@@ -187,21 +201,21 @@ interface ConfigArtifact {
   published_at: string;          // ISO8601
   app_identifier: string;        // user-defined
   
-  // Environment-first structure
-  development: EnvironmentConfig;
-  staging: EnvironmentConfig;
-  production: EnvironmentConfig;
-}
-
-interface EnvironmentConfig {
-  cohorts: Record<string, ConditionGroup>;
+  // Top-level structure with environment-specific flags
+  cohorts: Record<string, Cohort>;
   flags: Record<string, EnvironmentFlag>;
-  tests: Record<string, EnvironmentTest>;
-  rollouts: Record<string, EnvironmentRollout>;
+  tests: Record<string, TestRollout>;
+  rollouts: Record<string, TestRollout>;
 }
 
 interface EnvironmentFlag {
   type: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
+  development: EnvironmentFlagConfig;
+  staging: EnvironmentFlagConfig;
+  production: EnvironmentFlagConfig;
+}
+
+interface EnvironmentFlagConfig {
   default: any;
   variants?: ConditionalVariant[];
 }
@@ -335,3 +349,152 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
    - Test the environment-aware publishing pipeline
 
 The application is now fully functional for environment-first feature flag management, A/B testing, gradual rollouts, and rule-based user targeting with real S3 integration and database persistence.
+
+## Appendix: Database Schema
+
+Current Prisma schema with all models and relationships:
+
+```prisma
+// Prisma schema for Bunting Admin
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model App {
+  id            String   @id @default(cuid())
+  name          String
+  identifier    String   @unique // User-defined app identifier
+  artifactUrl   String   @map("artifact_url")
+  publicKeys    Json     @map("public_keys") // Array of {kid, pem}
+  fetchPolicy   Json     @map("fetch_policy") // {min_interval_seconds, hard_ttl_days}
+  storageConfig Json     @map("storage_config") // {bucket, region, endpoint?, accessKeyId?, secretAccessKey?}
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  flags        Flag[]
+  cohorts      Cohort[]
+  testRollouts TestRollout[]
+  auditLogs    AuditLog[]
+
+  @@map("apps")
+}
+
+model Flag {
+  id          String   @id @default(cuid())
+  key         String   // Normalized snake_case key
+  displayName String   @map("display_name") // Generated from key
+  type        FlagType
+  description String?
+  archived    Boolean  @default(false)
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Default values for each environment (set at creation)
+  defaultValues Json @map("default_values") // {development: any, staging: any, production: any}
+  
+  // Conditional variants per environment
+  variants Json @default("{}") @map("variants") // {development: ConditionalVariant[], staging: ConditionalVariant[], production: ConditionalVariant[]}
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, key]) // Unique flag keys per app
+  @@map("flags")
+}
+
+model Cohort {
+  id          String   @id @default(cuid())
+  key         String   // Cohort identifier key
+  name        String   // Display name
+  description String?
+  conditions  Json     @default("[]") // Array of condition objects (no cohort conditions allowed)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, key]) // Unique cohort keys per app
+  @@map("cohorts")
+}
+
+model TestRollout {
+  id          String   @id @default(cuid())
+  key         String   // Identifier key
+  name        String   // Display name
+  description String?
+  type        TestRolloutType
+  salt        String   // For consistent user bucketing
+  conditions  Json     @default("[]") // Array of condition objects for entry requirements
+  
+  // For tests: multiple variants with traffic split
+  variants    Json?    // {variantName: {percentage: number, values: {dev: any, staging: any, prod: any}}}
+  
+  // For rollouts: single percentage and values
+  percentage     Int?     // 0-100 for rollouts
+  rolloutValues Json?  // {development: any, staging: any, production: any}
+  
+  // Flags affected by this test/rollout
+  flagIds     Json     @default("[]") // Array of flag IDs
+  
+  archived    Boolean  @default(false)
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, key]) // Unique test/rollout keys per app
+  @@map("test_rollouts")
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  configVersion String   @map("config_version") // YYYY-MM-DD.N format
+  publishedAt   DateTime @map("published_at")
+  publishedBy   String?  @map("published_by") // User identifier
+  changelog     String?
+  configDiff    Json     @map("config_diff") // Diff object
+  artifactSize  Int?     @map("artifact_size") // Config JSON size in bytes
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+enum FlagType {
+  BOOL   @map("bool")
+  STRING @map("string")
+  INT    @map("int")
+  DOUBLE @map("double")
+  DATE   @map("date")
+  JSON   @map("json")
+}
+
+enum TestRolloutType {
+  TEST    @map("test")
+  ROLLOUT @map("rollout")
+}
+```
+
+### Key Schema Features
+
+- **Environment-First Design**: Flags store `defaultValues` as `{development, staging, production}`
+- **Unified TestRollouts**: Single model handles both A/B tests (with `variants`) and rollouts (with `percentage`)
+- **JSON Storage**: Flexible storage for variants, conditions, and configurations
+- **App Isolation**: All entities scoped to applications via `appId`
+- **Enum Mapping**: Database stores lowercase (`bool`) while Prisma returns uppercase (`BOOL`)
