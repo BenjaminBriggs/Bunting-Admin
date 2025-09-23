@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db';
-import { ConfigArtifact, Environment } from '@/types';
+import { ConfigArtifact, Environment, Test, Rollout } from '@/types';
+import { validateIdentifierKey } from '@/lib/validation';
+const { normalizeFlagType } = require('@/lib/config-validation');
 
 export async function generateConfigFromDb(appId: string): Promise<ConfigArtifact> {
   // Get app info with all related data
@@ -57,70 +59,83 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
       }
     }
 
+    // Validate flag key per JSON Spec
+    const keyValidation = validateIdentifierKey(flag.key);
+    if (!keyValidation.valid) {
+      throw new Error(`Invalid flag key "${flag.key}": ${keyValidation.error}`);
+    }
+
+    // Normalize Prisma enum to lowercase (Prisma returns 'BOOL', we want 'bool')
+    const jsonSpecType = normalizeFlagType(flag.type);
+
     flags[flag.key] = {
-      type: flag.type.toLowerCase(),
+      type: jsonSpecType,
       description: flag.description || '',
       development: {
         default: flag.defaultValues.development,
         variants: (flag.variants.development || []).map((variant: any) => ({
-          id: variant.id,
-          name: variant.name,
           type: variant.type || 'conditional',
+          order: variant.order || 0,
           value: variant.value,
-          conditions: variant.conditions || [],
-          order: variant.order || 0
+          ...(variant.type === 'conditional' && { conditions: variant.conditions || [] }),
+          ...(variant.type === 'test' && { test: variant.test }),
+          ...(variant.type === 'rollout' && { rollout: variant.rollout })
         })).sort((a: any, b: any) => a.order - b.order)
       },
       staging: {
         default: flag.defaultValues.staging,
         variants: (flag.variants.staging || []).map((variant: any) => ({
-          id: variant.id,
-          name: variant.name,
           type: variant.type || 'conditional',
+          order: variant.order || 0,
           value: variant.value,
-          conditions: variant.conditions || [],
-          order: variant.order || 0
+          ...(variant.type === 'conditional' && { conditions: variant.conditions || [] }),
+          ...(variant.type === 'test' && { test: variant.test }),
+          ...(variant.type === 'rollout' && { rollout: variant.rollout })
         })).sort((a: any, b: any) => a.order - b.order)
       },
       production: {
         default: flag.defaultValues.production,
         variants: (flag.variants.production || []).map((variant: any) => ({
-          id: variant.id,
-          name: variant.name,
           type: variant.type || 'conditional',
+          order: variant.order || 0,
           value: variant.value,
-          conditions: variant.conditions || [],
-          order: variant.order || 0
+          ...(variant.type === 'conditional' && { conditions: variant.conditions || [] }),
+          ...(variant.type === 'test' && { test: variant.test }),
+          ...(variant.type === 'rollout' && { rollout: variant.rollout })
         })).sort((a: any, b: any) => a.order - b.order)
       }
     };
   });
 
-  // Transform tests and rollouts (top-level)
-  const tests: Record<string, any> = {};
-  const rollouts: Record<string, any> = {};
-  
-  app.testRollouts.forEach((testRollout: any) => {
-    const baseConfig = {
-      name: testRollout.name,
-      description: testRollout.description || '',
-      type: testRollout.type.toLowerCase(),
-      salt: testRollout.salt,
-      conditions: testRollout.conditions || []
-    };
+  // Transform tests and rollouts per JSON Spec
+  const tests: Record<string, Test> = {};
+  const rollouts: Record<string, Rollout> = {};
 
-    if (testRollout.type === 'TEST' && testRollout.variants) {
-      // Test with variants
+  app.testRollouts.forEach((testRollout: any) => {
+    // Validate test/rollout key per JSON Spec
+    const keyValidation = validateIdentifierKey(testRollout.key);
+    if (!keyValidation.valid) {
+      throw new Error(`Invalid test/rollout key "${testRollout.key}": ${keyValidation.error}`);
+    }
+
+    if (testRollout.type === 'TEST') {
+      // JSON Spec compliant test
       tests[testRollout.key] = {
-        ...baseConfig,
-        variants: testRollout.variants
+        name: testRollout.name,
+        description: testRollout.description,
+        type: 'test',
+        salt: testRollout.salt,
+        conditions: testRollout.conditions || []
       };
     } else if (testRollout.type === 'ROLLOUT') {
-      // Simple rollout
+      // JSON Spec compliant rollout
       rollouts[testRollout.key] = {
-        ...baseConfig,
-        percentage: testRollout.percentage,
-        values: testRollout.rolloutValues
+        name: testRollout.name,
+        description: testRollout.description,
+        type: 'rollout',
+        salt: testRollout.salt,
+        conditions: testRollout.conditions || [],
+        percentage: testRollout.percentage || 0
       };
     }
   });
@@ -128,8 +143,8 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
   // Generate the corrected config artifact
   const config: ConfigArtifact = {
     schema_version: 2,
-    config_version: null, // Will be set during publishing
-    published_at: null, // Will be set during publishing
+    config_version: '', // Will be set during publishing
+    published_at: '', // Will be set during publishing
     app_identifier: app.identifier,
     cohorts,
     flags,
