@@ -1,21 +1,32 @@
 // Core Bunting types for new simplified architecture
 
-// Environment-first config structure
+// Top-level config structure with environment-specific flags
 export interface ConfigArtifact {
   schema_version: 2;
   config_version: string;
   published_at: string;
   app_identifier: string;
-  development: EnvironmentConfig;
-  staging: EnvironmentConfig;
-  production: EnvironmentConfig;
+  cohorts: Record<string, Cohort>;
+  flags: Record<string, EnvironmentFlag>;
+  tests: Record<string, TestRollout>;
+  rollouts: Record<string, TestRollout>;
   metadata?: Record<string, any>;
 }
 
-export interface EnvironmentConfig {
-  flags: Record<string, Flag>;
-  cohorts: Record<string, Cohort>;
-  test_rollouts?: Record<string, TestRollout>;
+// Flag with environment-specific configurations
+export interface EnvironmentFlag {
+  type: FlagType;
+  development: EnvironmentFlagConfig;
+  staging: EnvironmentFlagConfig;
+  production: EnvironmentFlagConfig;
+  description?: string;
+  archived?: boolean;
+  archived_at?: string;
+}
+
+export interface EnvironmentFlagConfig {
+  default: FlagValue;
+  variants?: FlagVariant[];
 }
 
 // Cohorts are now pure condition groups
@@ -23,16 +34,6 @@ export interface Cohort {
   name: string;
   description?: string;
   conditions: Condition[];
-}
-
-// Flags have default values and variants per environment
-export interface Flag {
-  type: FlagType;
-  default: FlagValue;
-  variants?: FlagVariant[];
-  description?: string;
-  archived?: boolean;
-  archived_at?: string;
 }
 
 export interface FlagVariant {
@@ -59,14 +60,49 @@ export type Environment = 'development' | 'staging' | 'production';
 
 export type Platform = 'iOS' | 'iPadOS' | 'macOS' | 'watchOS' | 'tvOS';
 
-// Unified condition system
+// Unified condition system with type-specific operators
+export type ConditionType = 'app_version' | 'os_version' | 'platform' | 'country' | 'cohort';
+
+export type VersionOperator = 'equals' | 'not_equals' | 'greater_than' | 'greater_than_or_equal' | 'less_than' | 'less_than_or_equal' | 'between';
+export type ListOperator = 'in' | 'not_in';
+export type ConditionOperator = VersionOperator | ListOperator;
+
 export interface Condition {
   id: string;
-  type: 'environment' | 'app_version' | 'os_version' | 'platform' | 'country' | 'cohort';
-  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'greater_than_or_equal' | 'less_than_or_equal' | 'in' | 'not_in';
-  values: string[];
+  type: ConditionType;
+  operator: ConditionOperator;
+  values: string[]; // For 'between': [minVersion, maxVersion], for 'in': [item1, item2, ...]
   attribute?: string; // For custom attributes
 }
+
+// Type-specific operator mapping for UI
+export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
+  app_version: ['equals', 'not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
+  os_version: ['equals', 'not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
+  platform: ['in', 'not_in'],
+  country: ['in', 'not_in'], 
+  cohort: ['in', 'not_in']
+};
+
+// Predefined options for list-based conditions
+export const PLATFORM_OPTIONS = [
+  { value: 'iOS', label: 'iOS' },
+  { value: 'iPadOS', label: 'iPadOS' },
+  { value: 'macOS', label: 'macOS' },
+  { value: 'watchOS', label: 'watchOS' },
+  { value: 'tvOS', label: 'tvOS' }
+];
+
+export const COUNTRY_OPTIONS = [
+  { value: 'US', label: 'United States' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'FR', label: 'France' },
+  { value: 'JP', label: 'Japan' },
+  { value: 'AU', label: 'Australia' },
+  // Add more countries as needed
+];
 
 // Tests and Rollouts
 export interface TestRollout {
@@ -281,6 +317,7 @@ export interface CreateTestRequest {
   conditions: Condition[];
   variantCount: number; // 2 for A/B, 3 for A/B/C, etc.
   trafficSplit: number[]; // [50, 50] or [33, 33, 34]
+  variantNames: string[]; // ["Control", "New Design", "Alternative"]
   appId: string;
 }
 

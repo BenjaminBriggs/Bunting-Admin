@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   Box,
   Card,
@@ -17,13 +17,25 @@ import {
   Autocomplete,
   Slider,
   Paper,
-} from '@mui/material';
-import { ArrowBack, Save, Pause, PlayArrow, CheckCircle, Cancel } from '@mui/icons-material';
-import Link from 'next/link';
-import { fetchTestRollout, updateTestRollout, archiveTestRollout, fetchFlags } from '@/lib/api';
-import { useChanges } from '@/lib/changes-context';
-import { TargetingRule } from '@/types/rules';
-import { RulesContainer } from '@/components';
+} from "@mui/material";
+import {
+  ArrowBack,
+  Save,
+  Pause,
+  PlayArrow,
+  CheckCircle,
+  Cancel,
+} from "@mui/icons-material";
+import Link from "next/link";
+import {
+  fetchTestRollout,
+  updateTestRollout,
+  archiveTestRollout,
+  fetchFlags,
+} from "@/lib/api";
+import { useChanges } from "@/lib/changes-context";
+import { Condition } from "@/types";
+import { ConditionsContainer } from "@/components/features/conditions";
 
 export default function EditRolloutPage() {
   const params = useParams();
@@ -35,14 +47,14 @@ export default function EditRolloutPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rollout, setRollout] = useState<any>(null);
-  
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [percentage, setPercentage] = useState(0);
   const [targetFlags, setTargetFlags] = useState<string[]>([]);
-  const [conditions, setConditions] = useState<TargetingRule[]>([]);
+  const [conditions, setConditions] = useState<Condition[]>([]);
   const [archived, setArchived] = useState(false);
-  
+
   const [flags, setFlags] = useState<any[]>([]);
 
   useEffect(() => {
@@ -50,26 +62,19 @@ export default function EditRolloutPage() {
       try {
         setLoading(true);
         const rolloutData = await fetchTestRollout(rolloutId);
-        const flagsData = await fetchFlags(rolloutData?.appId || '');
-        
+        const flagsData = await fetchFlags(rolloutData?.appId || "");
+
         setRollout(rolloutData);
         setFlags(flagsData);
         setName(rolloutData.name);
-        setDescription(rolloutData.description || '');
+        setDescription(rolloutData.description || "");
         setPercentage(rolloutData.percentage || 0);
         setTargetFlags(rolloutData.flagIds || []);
         setArchived(rolloutData.archived);
-        
-        setConditions(rolloutData.conditions ? [{
-          enabled: true,
-          conditions: rolloutData.conditions,
-          conditionLogic: 'AND',
-          value: true,
-          priority: 1
-        }] : []);
-        
+
+        setConditions(rolloutData.conditions || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load rollout');
+        setError(err instanceof Error ? err.message : "Failed to load rollout");
       } finally {
         setLoading(false);
       }
@@ -94,48 +99,50 @@ export default function EditRolloutPage() {
         name,
         description,
         percentage,
-        conditions: conditions.length > 0 ? conditions.flatMap(rule => rule.conditions) : [],
-        flagIds: targetFlags,
+        conditions: conditions,
         archived,
       });
 
       markChangesDetected();
-      router.push('/dashboard/rollouts');
+      router.push("/dashboard/rollouts");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update rollout');
+      setError(err instanceof Error ? err.message : "Failed to update rollout");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleArchive = async (type: 'cancel' | 'complete') => {
+  const handleArchive = async (type: "cancel" | "complete") => {
     if (!rollout) return;
 
     try {
       await archiveTestRollout(rolloutId, type);
       markChangesDetected();
-      router.push('/dashboard/rollouts');
+      router.push("/dashboard/rollouts");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to archive rollout');
+      setError(
+        err instanceof Error ? err.message : "Failed to archive rollout",
+      );
     }
   };
 
   const getPercentageColor = () => {
-    if (percentage === 0) return 'warning';
-    if (percentage === 100) return 'success';
-    return 'primary';
+    if (percentage === 0) return "warning";
+    if (percentage === 100) return "success";
+    return "primary";
   };
 
   const getStatusChip = () => {
-    if (archived) return { label: 'Archived', color: 'default' as const };
-    if (percentage === 0) return { label: 'Paused', color: 'warning' as const };
-    if (percentage === 100) return { label: 'Complete', color: 'success' as const };
-    return { label: 'Active', color: 'success' as const };
+    if (archived) return { label: "Archived", color: "default" as const };
+    if (percentage === 0) return { label: "Paused", color: "warning" as const };
+    if (percentage === 100)
+      return { label: "Complete", color: "success" as const };
+    return { label: "Active", color: "success" as const };
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
         <CircularProgress sx={{ mr: 2 }} />
         <Typography>Loading rollout...</Typography>
       </Box>
@@ -144,8 +151,8 @@ export default function EditRolloutPage() {
 
   if (error && !rollout) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
-        <Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: "auto" }}>
           {error}
         </Alert>
         <Button component={Link} href="/dashboard/rollouts">
@@ -157,7 +164,7 @@ export default function EditRolloutPage() {
 
   if (!rollout) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
+      <Box sx={{ textAlign: "center", py: 8 }}>
         <Typography variant="h5" sx={{ mb: 2 }}>
           Rollout Not Found
         </Typography>
@@ -169,18 +176,25 @@ export default function EditRolloutPage() {
   }
 
   const isValid = name && percentage >= 0 && percentage <= 100;
-  const hasChanges = name !== rollout.name || 
-                    description !== (rollout.description || '') ||
-                    percentage !== (rollout.percentage || 0) ||
-                    JSON.stringify(targetFlags.sort()) !== JSON.stringify((rollout.flagIds || []).sort());
+  const hasChanges =
+    name !== rollout.name ||
+    description !== (rollout.description || "") ||
+    percentage !== (rollout.percentage || 0);
 
   const statusChip = getStatusChip();
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
           <Button
             startIcon={<ArrowBack />}
             component={Link}
@@ -200,10 +214,10 @@ export default function EditRolloutPage() {
         </Box>
 
         {!archived && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
             <Button
               variant="outlined"
-              onClick={() => handleArchive('cancel')}
+              onClick={() => handleArchive("cancel")}
               startIcon={<Cancel />}
               color="error"
               size="small"
@@ -212,7 +226,7 @@ export default function EditRolloutPage() {
             </Button>
             <Button
               variant="outlined"
-              onClick={() => handleArchive('complete')}
+              onClick={() => handleArchive("complete")}
               startIcon={<CheckCircle />}
               color="success"
               size="small"
@@ -245,7 +259,7 @@ export default function EditRolloutPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Basic Configuration
                 </Typography>
-                
+
                 <Stack spacing={3}>
                   <TextField
                     label="Rollout Name"
@@ -266,33 +280,48 @@ export default function EditRolloutPage() {
                     disabled={archived}
                   />
 
-                  <Autocomplete
-                    multiple
-                    options={flags}
-                    getOptionLabel={(flag) => `${flag.displayName} (${flag.key})`}
-                    value={flags.filter(flag => targetFlags.includes(flag.id))}
-                    onChange={(_, newValue) => {
-                      setTargetFlags(newValue.map(flag => flag.id));
-                    }}
-                    disabled={archived}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Target Flags"
-                        helperText="Flags affected by this rollout"
-                      />
+                  {/* Target Flags - Read Only */}
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Target Flags
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 2 }}
+                    >
+                      Flags affected by this rollout. Managed from the flags
+                      screen.
+                    </Typography>
+                    {targetFlags.length > 0 ? (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        gap={1}
+                      >
+                        {flags
+                          .filter((flag) => targetFlags.includes(flag.id))
+                          .map((flag) => (
+                            <Chip
+                              key={flag.id}
+                              label={flag.displayName}
+                              size="small"
+                              variant="outlined"
+                              color="primary"
+                            />
+                          ))}
+                      </Stack>
+                    ) : (
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontStyle: "italic" }}
+                      >
+                        No flags assigned to this rollout
+                      </Typography>
                     )}
-                    renderTags={(value, getTagProps) =>
-                      value.map((flag, index) => (
-                        <Chip
-                          key={flag.id}
-                          label={flag.displayName}
-                          size="small"
-                          {...getTagProps({ index })}
-                        />
-                      ))
-                    }
-                  />
+                  </Box>
                 </Stack>
               </CardContent>
             </Card>
@@ -303,20 +332,33 @@ export default function EditRolloutPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Rollout Percentage
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Control what percentage of eligible users receive the new features
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
+                  Control what percentage of eligible users receive the new
+                  features
                 </Typography>
 
                 <Box sx={{ px: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="subtitle1">
-                      Current Rollout
-                    </Typography>
-                    <Typography variant="h4" color={`${getPercentageColor()}.main`}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      mb: 2,
+                    }}
+                  >
+                    <Typography variant="subtitle1">Current Rollout</Typography>
+                    <Typography
+                      variant="h4"
+                      color={`${getPercentageColor()}.main`}
+                    >
                       {percentage}%
                     </Typography>
                   </Box>
-                  
+
                   <Slider
                     value={percentage}
                     onChange={handlePercentageChange}
@@ -325,33 +367,47 @@ export default function EditRolloutPage() {
                     step={5}
                     disabled={archived}
                     marks={[
-                      { value: 0, label: '0%' },
-                      { value: 25, label: '25%' },
-                      { value: 50, label: '50%' },
-                      { value: 75, label: '75%' },
-                      { value: 100, label: '100%' },
+                      { value: 0, label: "0%" },
+                      { value: 25, label: "25%" },
+                      { value: 50, label: "50%" },
+                      { value: 75, label: "75%" },
+                      { value: 100, label: "100%" },
                     ]}
                     sx={{
-                      color: percentage === 0 ? 'warning.main' : 
-                             percentage === 100 ? 'success.main' : 'primary.main',
-                      '& .MuiSlider-thumb': {
+                      color:
+                        percentage === 0
+                          ? "warning.main"
+                          : percentage === 100
+                            ? "success.main"
+                            : "primary.main",
+                      "& .MuiSlider-thumb": {
                         width: 20,
                         height: 20,
                       },
-                      '& .MuiSlider-track': {
+                      "& .MuiSlider-track": {
                         height: 6,
                       },
-                      '& .MuiSlider-rail': {
+                      "& .MuiSlider-rail": {
                         height: 6,
-                      }
+                      },
                     }}
                   />
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      mt: 2,
+                    }}
+                  >
                     <Typography variant="body2" color="text.secondary">
-                      {percentage === 0 && 'Rollout paused - no users will see new features'}
-                      {percentage > 0 && percentage < 100 && `${percentage}% of eligible users will see new features`}
-                      {percentage === 100 && 'Full rollout - all eligible users will see new features'}
+                      {percentage === 0 &&
+                        "Rollout paused - no users will see new features"}
+                      {percentage > 0 &&
+                        percentage < 100 &&
+                        `${percentage}% of eligible users will see new features`}
+                      {percentage === 100 &&
+                        "Full rollout - all eligible users will see new features"}
                     </Typography>
                   </Box>
                 </Box>
@@ -361,19 +417,14 @@ export default function EditRolloutPage() {
             {/* Entry Conditions */}
             <Card>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Entry Conditions
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Users must meet these conditions to be eligible for the rollout
-                </Typography>
-                <RulesContainer
-                  rules={conditions}
+                <ConditionsContainer
+                  conditions={conditions}
                   onChange={setConditions}
-                  flagType="bool"
-                  defaultValue={true}
-                  appId={rollout?.appId || ''}
+                  appId={rollout?.appId || ""}
                   disabled={archived}
+                  title="Entry Conditions"
+                  description="Define which users are eligible for this rollout"
+                  emptyMessage="No conditions defined. All users are eligible for this rollout."
                 />
               </CardContent>
             </Card>
@@ -388,7 +439,7 @@ export default function EditRolloutPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Rollout Status
                 </Typography>
-                
+
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
@@ -408,27 +459,38 @@ export default function EditRolloutPage() {
                       Progress
                     </Typography>
                     <Box sx={{ mt: 1 }}>
-                      <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                      <Paper
+                        variant="outlined"
+                        sx={{ p: 2, bgcolor: "grey.50" }}
+                      >
                         <Box
                           sx={{
-                            width: '100%',
+                            width: "100%",
                             height: 8,
-                            bgcolor: 'grey.200',
+                            bgcolor: "grey.200",
                             borderRadius: 1,
-                            overflow: 'hidden',
+                            overflow: "hidden",
                           }}
                         >
                           <Box
                             sx={{
                               width: `${percentage}%`,
-                              height: '100%',
-                              bgcolor: percentage === 0 ? 'warning.main' : 
-                                      percentage === 100 ? 'success.main' : 'primary.main',
-                              transition: 'width 0.3s ease',
+                              height: "100%",
+                              bgcolor:
+                                percentage === 0
+                                  ? "warning.main"
+                                  : percentage === 100
+                                    ? "success.main"
+                                    : "primary.main",
+                              transition: "width 0.3s ease",
                             }}
                           />
                         </Box>
-                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ mt: 1, display: "block", textAlign: "center" }}
+                        >
                           {percentage}% of eligible users
                         </Typography>
                       </Paper>
@@ -440,7 +502,8 @@ export default function EditRolloutPage() {
                       Target Flags
                     </Typography>
                     <Typography variant="body2">
-                      {targetFlags.length} flag{targetFlags.length === 1 ? '' : 's'} affected
+                      {targetFlags.length} flag
+                      {targetFlags.length === 1 ? "" : "s"} affected
                     </Typography>
                   </Box>
 
@@ -449,7 +512,9 @@ export default function EditRolloutPage() {
                       Entry Conditions
                     </Typography>
                     <Typography variant="body2">
-                      {conditions.length === 0 ? 'All users eligible' : `${conditions.length} targeting rule${conditions.length === 1 ? '' : 's'}`}
+                      {conditions.length === 0
+                        ? "All users eligible"
+                        : `${conditions.length} targeting rule${conditions.length === 1 ? "" : "s"}`}
                     </Typography>
                   </Box>
                 </Stack>
@@ -466,7 +531,11 @@ export default function EditRolloutPage() {
                 fullWidth
                 size="large"
               >
-                {saving ? 'Saving...' : !hasChanges ? 'No Changes to Save' : 'Save Changes'}
+                {saving
+                  ? "Saving..."
+                  : !hasChanges
+                    ? "No Changes to Save"
+                    : "Save Changes"}
               </Button>
               <Button
                 variant="outlined"

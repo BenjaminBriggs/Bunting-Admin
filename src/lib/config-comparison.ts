@@ -23,12 +23,25 @@ export interface ConfigArtifact {
   // Legacy schema v1 support
   cohorts?: Record<string, any>;
   flags?: Record<string, any>;
+  // Current schema v2 support
+  tests?: Record<string, any>;
+  rollouts?: Record<string, any>;
 }
 
 // Helper functions to extract data from both schema versions
 function extractFlags(config: ConfigArtifact): Record<string, any> {
+  // Check if this is the current schema v2 format (flags with environment sub-objects)
+  if (config.flags && typeof config.flags === 'object') {
+    const firstFlag = Object.values(config.flags)[0] as any;
+    if (firstFlag && typeof firstFlag === 'object' &&
+        ('development' in firstFlag || 'staging' in firstFlag || 'production' in firstFlag)) {
+      // Current schema v2: flags with environment sub-objects
+      return config.flags;
+    }
+  }
+
   if (config.development) {
-    // Schema v2: environment-first
+    // Old schema v2: environment-first
     const allFlags: Record<string, any> = {};
     ['development', 'staging', 'production'].forEach(env => {
       const envData = config[env as keyof ConfigArtifact] as any;
@@ -66,6 +79,16 @@ function extractTestRollouts(config: ConfigArtifact): Record<string, any> {
   }
 }
 
+function extractTests(config: ConfigArtifact): Record<string, any> {
+  // Current schema v2: tests are at top level
+  return config.tests || {};
+}
+
+function extractRollouts(config: ConfigArtifact): Record<string, any> {
+  // Current schema v2: rollouts are at top level
+  return config.rollouts || {};
+}
+
 // Compare two configs and return whether they are different
 export function hasConfigChanges(currentConfig: ConfigArtifact, publishedConfig: ConfigArtifact | null): boolean {
   // If there's no published config, we definitely have changes
@@ -89,11 +112,19 @@ export function hasConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
     return true;
   }
 
-  // Compare test rollouts
-  const currentTestRollouts = extractTestRollouts(currentConfig);
-  const publishedTestRollouts = extractTestRollouts(publishedConfig);
+  // Compare tests
+  const currentTests = extractTests(currentConfig);
+  const publishedTests = extractTests(publishedConfig);
 
-  if (JSON.stringify(sortObject(currentTestRollouts)) !== JSON.stringify(sortObject(publishedTestRollouts))) {
+  if (JSON.stringify(sortObject(currentTests)) !== JSON.stringify(sortObject(publishedTests))) {
+    return true;
+  }
+
+  // Compare rollouts
+  const currentRollouts = extractRollouts(currentConfig);
+  const publishedRollouts = extractRollouts(publishedConfig);
+
+  if (JSON.stringify(sortObject(currentRollouts)) !== JSON.stringify(sortObject(publishedRollouts))) {
     return true;
   }
 
@@ -107,7 +138,7 @@ export function hasConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
 
 // Get detailed changes between configs
 export interface ConfigChange {
-  type: 'flag' | 'cohort';
+  type: 'flag' | 'cohort' | 'test' | 'rollout';
   action: 'added' | 'modified' | 'removed';
   key: string;
   name: string;
@@ -214,6 +245,80 @@ export function getConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
         action: 'removed',
         key,
         name: `Cohort: ${publishedCohorts[key].name || key}`
+      });
+    }
+  });
+
+  // Compare tests
+  const currentTests = extractTests(currentConfig);
+  const publishedTests = extractTests(publishedConfig);
+
+  // Check for added/modified tests
+  Object.keys(currentTests).forEach(key => {
+    if (!publishedTests[key]) {
+      changes.push({
+        type: 'test',
+        action: 'added',
+        key,
+        name: `Test: ${currentTests[key].name || key}`
+      });
+    } else if (JSON.stringify(currentTests[key]) !== JSON.stringify(publishedTests[key])) {
+      const details = getObjectDifferences(currentTests[key], publishedTests[key]);
+      changes.push({
+        type: 'test',
+        action: 'modified',
+        key,
+        name: `Test: ${currentTests[key].name || key}`,
+        details
+      });
+    }
+  });
+
+  // Check for removed tests
+  Object.keys(publishedTests).forEach(key => {
+    if (!currentTests[key]) {
+      changes.push({
+        type: 'test',
+        action: 'removed',
+        key,
+        name: `Test: ${publishedTests[key].name || key}`
+      });
+    }
+  });
+
+  // Compare rollouts
+  const currentRollouts = extractRollouts(currentConfig);
+  const publishedRollouts = extractRollouts(publishedConfig);
+
+  // Check for added/modified rollouts
+  Object.keys(currentRollouts).forEach(key => {
+    if (!publishedRollouts[key]) {
+      changes.push({
+        type: 'rollout',
+        action: 'added',
+        key,
+        name: `Rollout: ${currentRollouts[key].name || key}`
+      });
+    } else if (JSON.stringify(currentRollouts[key]) !== JSON.stringify(publishedRollouts[key])) {
+      const details = getObjectDifferences(currentRollouts[key], publishedRollouts[key]);
+      changes.push({
+        type: 'rollout',
+        action: 'modified',
+        key,
+        name: `Rollout: ${currentRollouts[key].name || key}`,
+        details
+      });
+    }
+  });
+
+  // Check for removed rollouts
+  Object.keys(publishedRollouts).forEach(key => {
+    if (!currentRollouts[key]) {
+      changes.push({
+        type: 'rollout',
+        action: 'removed',
+        key,
+        name: `Rollout: ${publishedRollouts[key].name || key}`
       });
     }
   });

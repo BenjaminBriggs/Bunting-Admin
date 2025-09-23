@@ -54,14 +54,17 @@ function validateConfig(config: any): ValidationResult {
 
   // Validate flags
   Object.entries(config.flags || {}).forEach(([key, flag]: [string, any]) => {
-    // Check for valid default values
-    if (flag.default === undefined || flag.default === null) {
-      errors.push({
-        type: 'missing_default',
-        message: `Flag "${key}" is missing a default value`,
-        flagKey: key
-      });
-    }
+    // Check for environment-specific default values (schema v2)
+    const environments = ['development', 'staging', 'production'];
+    environments.forEach(env => {
+      if (!flag[env] || flag[env].default === undefined || flag[env].default === null) {
+        errors.push({
+          type: 'missing_default',
+          message: `Flag "${key}" is missing a default value for environment "${env}"`,
+          flagKey: key
+        });
+      }
+    });
 
     // Check for valid type
     if (!['bool', 'string', 'int', 'double', 'date', 'json'].includes(flag.type)) {
@@ -72,78 +75,85 @@ function validateConfig(config: any): ValidationResult {
       });
     }
 
-    // Validate JSON flags
-    if (flag.type === 'json' && typeof flag.default === 'string') {
-      try {
-        JSON.parse(flag.default);
-      } catch {
-        errors.push({
-          type: 'invalid_json',
-          message: `Flag "${key}" has invalid JSON default value`,
-          flagKey: key
-        });
-      }
-    }
-
-    // Check rules
-    if (flag.rules && Array.isArray(flag.rules)) {
-      flag.rules.forEach((rule: any, ruleIndex: number) => {
-        // Check for valid conditions
-        if (!rule.conditions || !Array.isArray(rule.conditions) || rule.conditions.length === 0) {
-          warnings.push({
-            type: 'empty_rule',
-            message: `Rule ${ruleIndex + 1} in flag "${key}" has no conditions`,
-            flagKey: key
-          });
-        }
-
-        // Check for cohort references
-        rule.conditions?.forEach((condition: any) => {
-          if (condition.type === 'cohort' && condition.values && Array.isArray(condition.values)) {
-            condition.values.forEach((cohortKey: string) => {
-              if (!config.cohorts[cohortKey]) {
-                errors.push({
-                  type: 'missing_cohort_reference',
-                  message: `Flag "${key}" references missing cohort "${cohortKey}"`,
-                  flagKey: key
-                });
-              }
+    // Validate JSON flags for all environments
+    if (flag.type === 'json') {
+      environments.forEach(env => {
+        if (flag[env] && typeof flag[env].default === 'string') {
+          try {
+            JSON.parse(flag[env].default);
+          } catch {
+            errors.push({
+              type: 'invalid_json',
+              message: `Flag "${key}" has invalid JSON default value for environment "${env}"`,
+              flagKey: key
             });
           }
-        });
-
-        // Check for unreachable rules (warning)
-        if (ruleIndex > 0 && flag.rules.some((prevRule: any, prevIndex: number) => 
-          prevIndex < ruleIndex && hasConflictingConditions(rule, prevRule))) {
-          warnings.push({
-            type: 'unreachable_rule',
-            message: `Rule ${ruleIndex + 1} in flag "${key}" may be unreachable due to conflicting conditions`,
-            flagKey: key
-          });
         }
       });
     }
+
+    // Check variants and their conditions for each environment
+    environments.forEach(env => {
+      if (flag[env] && flag[env].variants && Array.isArray(flag[env].variants)) {
+        flag[env].variants.forEach((variant: any, variantIndex: number) => {
+          // Check for valid conditions
+          if (!variant.conditions || !Array.isArray(variant.conditions) || variant.conditions.length === 0) {
+            warnings.push({
+              type: 'empty_variant',
+              message: `Variant ${variantIndex + 1} in flag "${key}" (${env}) has no conditions`,
+              flagKey: key
+            });
+          }
+
+          // Check for cohort references
+          variant.conditions?.forEach((condition: any) => {
+            if (condition.type === 'cohort' && condition.values && Array.isArray(condition.values)) {
+              condition.values.forEach((cohortKey: string) => {
+                if (!config.cohorts[cohortKey]) {
+                  errors.push({
+                    type: 'missing_cohort_reference',
+                    message: `Flag "${key}" (${env}) references missing cohort "${cohortKey}"`,
+                    flagKey: key
+                  });
+                }
+              });
+            }
+          });
+        });
+      }
+    });
   });
 
-  // Validate cohorts
+  // Validate cohorts (schema v2 - rule-based)
   Object.entries(config.cohorts || {}).forEach(([key, cohort]: [string, any]) => {
-    // Check percentage
-    if (typeof cohort.percentage !== 'number' || cohort.percentage < 0 || cohort.percentage > 100) {
-      errors.push({
-        type: 'invalid_percentage',
-        message: `Cohort "${key}" has invalid percentage: ${cohort.percentage}`,
+    // Check that cohort has conditions
+    if (!cohort.conditions || !Array.isArray(cohort.conditions) || cohort.conditions.length === 0) {
+      warnings.push({
+        type: 'empty_cohort',
+        message: `Cohort "${key}" has no conditions`,
         cohortKey: key
       });
     }
 
-    // Check salt
-    if (!cohort.salt || typeof cohort.salt !== 'string') {
-      errors.push({
-        type: 'missing_salt',
-        message: `Cohort "${key}" is missing a salt value`,
-        cohortKey: key
-      });
-    }
+    // Validate cohort conditions
+    cohort.conditions?.forEach((condition: any, conditionIndex: number) => {
+      if (!condition.type) {
+        errors.push({
+          type: 'invalid_condition',
+          message: `Condition ${conditionIndex + 1} in cohort "${key}" is missing a type`,
+          cohortKey: key
+        });
+      }
+
+      // Prevent circular references - cohorts should not reference other cohorts
+      if (condition.type === 'cohort') {
+        errors.push({
+          type: 'circular_cohort_reference',
+          message: `Cohort "${key}" cannot reference other cohorts (condition ${conditionIndex + 1})`,
+          cohortKey: key
+        });
+      }
+    });
   });
 
   return { errors, warnings };

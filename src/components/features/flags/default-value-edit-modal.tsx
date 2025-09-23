@@ -34,6 +34,7 @@ interface DefaultValueEditModalProps {
   flagType: string;
   currentValue: any;
   flagName: string;
+  allDefaultValues: Record<string, any>; // Full defaultValues object for all environments
 }
 
 const getEnvironmentColor = (env: Environment) => {
@@ -55,6 +56,7 @@ export default function DefaultValueEditModal({
   flagType,
   currentValue,
   flagName,
+  allDefaultValues,
 }: DefaultValueEditModalProps) {
   const [value, setValue] = useState<any>(null);
   const [saving, setSaving] = useState(false);
@@ -70,18 +72,22 @@ export default function DefaultValueEditModal({
 
   const handleSave = async () => {
     if (flagType === 'json' && jsonError) return;
-    
+
     setSaving(true);
     setSaveError(null);
-    
+
     try {
       const processedValue = processValueForType(value, flagType as any);
-      
+
+      // Preserve all environment values, only update the current one
+      const updatedDefaultValues = {
+        ...allDefaultValues,
+        [environment]: processedValue
+      };
+
       // Update the flag with the new default value for this environment
       await updateFlag(flagId, {
-        defaultValues: {
-          [environment]: processedValue
-        }
+        defaultValues: updatedDefaultValues
       });
 
       onSave(processedValue);

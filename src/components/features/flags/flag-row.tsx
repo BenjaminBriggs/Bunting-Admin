@@ -18,7 +18,7 @@ import { updateFlag, fetchTestsAndRolloutsForFlag, archiveFlag, deleteFlag } fro
 import { useChanges } from "@/lib/changes-context";
 import { useApp } from "@/lib/app-context";
 import EnvironmentColumn from "./environment-column";
-import ConditionCreatorModal from "./condition-creator-modal";
+import { VariantCreatorModal } from "../conditions";
 import TestRolloutAssignmentModal from "./test-rollout-assignment-modal";
 import DefaultValueEditModal from "./default-value-edit-modal";
 import FlagAssignmentEditModal from "./flag-assignment-edit-modal";
@@ -372,14 +372,15 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
         </MenuItem>
       </Menu>
 
-      {/* Condition Creator Modal */}
-      <ConditionCreatorModal
+      {/* Variant Creator Modal */}
+      <VariantCreatorModal
         open={variantModalOpen}
         onClose={() => setVariantModalOpen(false)}
         onSave={handleVariantSave}
         environment={selectedEnvironment}
         flagType={flagData.type}
         flagId={flagData.id}
+        appId={selectedApp?.id}
         existingVariant={editingVariant}
       />
 
@@ -404,6 +405,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
         flagType={flagData.type}
         currentValue={flagData.defaultValues[selectedEnvironment]}
         flagName={flagData.displayName}
+        allDefaultValues={flagData.defaultValues}
       />
 
       {/* Flag Assignment Edit Modal */}

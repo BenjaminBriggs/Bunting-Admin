@@ -71,7 +71,7 @@ async function main() {
 
   console.log('Created cohorts:', betaCohort.name, premiumCohort.name);
 
-  // Create a sample flag
+  // Create a sample flag (schema v2 format)
   const sampleFlag = await prisma.flag.upsert({
     where: {
       appId_key: {
@@ -85,25 +85,17 @@ async function main() {
       key: 'store/use_new_paywall_design',
       displayName: 'Store / Use New Paywall Design',
       type: 'BOOL',
-      defaultValue: false,
-      description: 'Enable the new paywall UI design',
-      rules: [
-        {
-          id: 'rule_1',
-          enabled: true,
-          conditions: [
-            {
-              id: 'condition_1',
-              type: 'environment',
-              operator: 'in',
-              values: ['beta']
-            }
-          ],
-          conditionLogic: 'AND',
-          value: true,
-          priority: 0
-        }
-      ]
+      defaultValues: {
+        development: false,
+        staging: false,
+        production: false
+      },
+      variants: {
+        development: [],
+        staging: [],
+        production: []
+      },
+      description: 'Enable the new paywall UI design'
     }
   });
 

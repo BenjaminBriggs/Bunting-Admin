@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -39,7 +39,7 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
 
     const firstCondition = {
       id: generateConditionId(),
-      type: 'environment' as const,
+      type: 'app_version' as const,
       operator: 'in' as const,
       values: []
     };
@@ -106,7 +106,7 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
     return errors;
   };
 
-  const validationErrors = validateRules();
+  const validationErrors = useMemo(() => validateRules(), [rules]);
   const hasErrors = validationErrors.some(error => error.type === 'error');
   const hasWarnings = validationErrors.some(error => error.type === 'warning');
 

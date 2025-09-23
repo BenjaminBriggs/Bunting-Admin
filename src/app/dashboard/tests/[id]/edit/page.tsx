@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   Box,
   Card,
@@ -18,19 +18,23 @@ import {
   Autocomplete,
   Slider,
   Paper,
-} from '@mui/material';
-import { ArrowBack, Save, Add, Delete, Archive } from '@mui/icons-material';
-import Link from 'next/link';
-import { fetchTestRollout, updateTestRollout, archiveTestRollout, fetchFlags } from '@/lib/api';
-import { useChanges } from '@/lib/changes-context';
-import { TargetingRule } from '@/types/rules';
-import { RulesContainer } from '@/components';
-import FlagValueInput from '@/components/features/flags/flag-value-input';
+} from "@mui/material";
+import { Save, Archive } from "@mui/icons-material";
+import Link from "next/link";
+import {
+  fetchTestRollout,
+  updateTestRollout,
+  archiveTestRollout,
+  fetchFlags,
+} from "@/lib/api";
+import { useChanges } from "@/lib/changes-context";
+import { Condition, TestVariant } from "@/types";
+import { ConditionsContainer } from "@/components/features/conditions";
+import PageHeader from "@/components/ui/page-header";
 
 interface Variant {
   name: string;
   percentage: number;
-  value: any;
 }
 
 export default function EditTestPage() {
@@ -43,52 +47,48 @@ export default function EditTestPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [test, setTest] = useState<any>(null);
-  
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [targetFlags, setTargetFlags] = useState<string[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
-  const [conditions, setConditions] = useState<TargetingRule[]>([]);
+  const [conditions, setConditions] = useState<Condition[]>([]);
   const [archived, setArchived] = useState(false);
-  
+
   const [flags, setFlags] = useState<any[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [testData, flagsData] = await Promise.all([
-          fetchTestRollout(testId),
-          fetchFlags(testData?.appId || '')
-        ]);
-        
+
+        // First fetch the test data to get the appId
+        const testData = await fetchTestRollout(testId);
+
+        // Then fetch flags using the appId from test data
+        const flagsData = await fetchFlags(testData.appId);
+
         setTest(testData);
         setFlags(flagsData);
         setName(testData.name);
-        setDescription(testData.description || '');
+        setDescription(testData.description || "");
         setTargetFlags(testData.flagIds || []);
         setArchived(testData.archived);
-        
+
         // Convert variants object to array
-        if (testData.variants && typeof testData.variants === 'object') {
-          const variantArray = Object.entries(testData.variants).map(([name, data]: [string, any]) => ({
-            name,
-            percentage: data.percentage || 0,
-            value: data.value
-          }));
+        if (testData.variants && typeof testData.variants === "object") {
+          const variantArray = Object.entries(testData.variants).map(
+            ([name, data]: [string, any]) => ({
+              name,
+              percentage: data.percentage || 0,
+            }),
+          );
           setVariants(variantArray);
         }
-        
-        setConditions(testData.conditions ? [{
-          enabled: true,
-          conditions: testData.conditions,
-          conditionLogic: 'AND',
-          value: true,
-          priority: 1
-        }] : []);
-        
+
+        setConditions(testData.conditions || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load test');
+        setError(err instanceof Error ? err.message : "Failed to load test");
       } finally {
         setLoading(false);
       }
@@ -96,47 +96,6 @@ export default function EditTestPage() {
 
     loadData();
   }, [testId]);
-
-  const addVariant = () => {
-    const newVariant: Variant = {
-      name: `Variant ${variants.length + 1}`,
-      percentage: 0,
-      value: false
-    };
-    setVariants([...variants, newVariant]);
-    redistributePercentages([...variants, newVariant]);
-  };
-
-  const removeVariant = (index: number) => {
-    if (variants.length <= 2) return;
-    const newVariants = variants.filter((_, i) => i !== index);
-    setVariants(newVariants);
-    redistributePercentages(newVariants);
-  };
-
-  const redistributePercentages = (variantList: Variant[]) => {
-    const equalPercentage = Math.floor(100 / variantList.length);
-    const remainder = 100 % variantList.length;
-    
-    const updatedVariants = variantList.map((variant, index) => ({
-      ...variant,
-      percentage: equalPercentage + (index < remainder ? 1 : 0)
-    }));
-    
-    setVariants(updatedVariants);
-  };
-
-  const updateVariantPercentage = (index: number, percentage: number) => {
-    const newVariants = [...variants];
-    newVariants[index].percentage = percentage;
-    setVariants(newVariants);
-  };
-
-  const updateVariantValue = (index: number, value: any) => {
-    const newVariants = [...variants];
-    newVariants[index].value = value;
-    setVariants(newVariants);
-  };
 
   const updateVariantName = (index: number, name: string) => {
     const newVariants = [...variants];
@@ -151,12 +110,6 @@ export default function EditTestPage() {
   const handleSave = async () => {
     if (!test) return;
 
-    const totalPercentage = getTotalPercentage();
-    if (totalPercentage !== 100) {
-      setError(`Traffic allocation must total 100% (currently ${totalPercentage}%)`);
-      return;
-    }
-
     try {
       setSaving(true);
       setError(null);
@@ -164,42 +117,49 @@ export default function EditTestPage() {
       await updateTestRollout(testId, {
         name,
         description,
-        variants: variants.reduce((acc, variant) => {
-          acc[variant.name] = {
-            percentage: variant.percentage,
-            value: variant.value
-          };
-          return acc;
-        }, {} as Record<string, { percentage: number; value: any }>),
-        conditions: conditions.length > 0 ? conditions.flatMap(rule => rule.conditions) : [],
+        variants: variants.reduce(
+          (acc, variant) => {
+            acc[variant.name] = {
+              percentage: variant.percentage,
+              values: {
+                development: null,
+                staging: null,
+                production: null,
+              },
+            };
+            return acc;
+          },
+          {} as Record<string, TestVariant>,
+        ),
+        conditions: conditions,
         flagIds: targetFlags,
         archived,
       });
 
       markChangesDetected();
-      router.push('/dashboard/tests');
+      router.push("/dashboard/tests");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update test');
+      setError(err instanceof Error ? err.message : "Failed to update test");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleArchive = async (type: 'cancel' | 'complete') => {
+  const handleArchive = async (type: "cancel" | "complete") => {
     if (!test) return;
 
     try {
       await archiveTestRollout(testId, type);
       markChangesDetected();
-      router.push('/dashboard/tests');
+      router.push("/dashboard/tests");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to archive test');
+      setError(err instanceof Error ? err.message : "Failed to archive test");
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
         <CircularProgress sx={{ mr: 2 }} />
         <Typography>Loading test...</Typography>
       </Box>
@@ -208,8 +168,8 @@ export default function EditTestPage() {
 
   if (error && !test) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
-        <Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: "auto" }}>
           {error}
         </Alert>
         <Button component={Link} href="/dashboard/tests">
@@ -221,7 +181,7 @@ export default function EditTestPage() {
 
   if (!test) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
+      <Box sx={{ textAlign: "center", py: 8 }}>
         <Typography variant="h5" sx={{ mb: 2 }}>
           Test Not Found
         </Typography>
@@ -232,60 +192,31 @@ export default function EditTestPage() {
     );
   }
 
-  const isValid = name && getTotalPercentage() === 100;
-  const hasChanges = name !== test.name || 
-                    description !== (test.description || '') ||
-                    JSON.stringify(targetFlags.sort()) !== JSON.stringify((test.flagIds || []).sort()) ||
-                    JSON.stringify(variants) !== JSON.stringify(Object.entries(test.variants || {}).map(([name, data]: [string, any]) => ({
-                      name,
-                      percentage: data.percentage || 0,
-                      value: data.value
-                    })));
+  const isValid = name;
+  const hasChanges = test
+    ? name !== test.name ||
+      description !== (test.description || "") ||
+      JSON.stringify(targetFlags.sort()) !==
+        JSON.stringify((test.flagIds || []).sort()) ||
+      JSON.stringify(variants) !==
+        JSON.stringify(
+          Object.entries(test.variants || {}).map(
+            ([name, data]: [string, any]) => ({
+              name,
+              percentage: data.percentage || 0,
+            }),
+          ),
+        )
+    : false;
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Button
-            startIcon={<ArrowBack />}
-            component={Link}
-            href="/dashboard/tests"
-            sx={{ mr: 2 }}
-          >
-            Back to Tests
-          </Button>
-          <Box>
-            <Typography variant="h4" component="h2" sx={{ mb: 1 }}>
-              Edit A/B Test
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Modify the configuration for {test.name}
-            </Typography>
-          </Box>
-        </Box>
-
-        {!archived && (
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              onClick={() => handleArchive('cancel')}
-              color="error"
-              size="small"
-            >
-              Cancel Test (0%)
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => handleArchive('complete')}
-              color="success"
-              size="small"
-            >
-              Complete Test (100%)
-            </Button>
-          </Box>
-        )}
-      </Box>
+      <PageHeader
+        title="Edit A/B Test"
+        subtitle="Modify the configuration and settings for this test"
+        backHref="/dashboard/tests"
+        backLabel="Back to Tests"
+      />
 
       {archived && (
         <Alert severity="info" sx={{ mb: 3 }}>
@@ -309,164 +240,87 @@ export default function EditTestPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Basic Configuration
                 </Typography>
-                
+
                 <Stack spacing={3}>
                   <TextField
                     label="Test Name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Homepage Layout Test"
+                    helperText="Test name cannot be changed after creation"
                     fullWidth
-                    required
-                    disabled={archived}
+                    disabled
+                    InputProps={{
+                      readOnly: true,
+                    }}
                   />
 
                   <TextField
                     label="Description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe what this test is measuring"
                     multiline
                     rows={3}
                     fullWidth
                     disabled={archived}
                   />
-
-                  <Autocomplete
-                    multiple
-                    options={flags}
-                    getOptionLabel={(flag) => `${flag.displayName} (${flag.key})`}
-                    value={flags.filter(flag => targetFlags.includes(flag.id))}
-                    onChange={(_, newValue) => {
-                      setTargetFlags(newValue.map(flag => flag.id));
-                    }}
-                    disabled={archived}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Target Flags"
-                        helperText="Flags affected by this test"
-                      />
-                    )}
-                    renderTags={(value, getTagProps) =>
-                      value.map((flag, index) => (
-                        <Chip
-                          key={flag.id}
-                          label={flag.displayName}
-                          size="small"
-                          {...getTagProps({ index })}
-                        />
-                      ))
-                    }
-                  />
                 </Stack>
               </CardContent>
             </Card>
 
-            {/* Variants Configuration */}
+            {/* Test Groups */}
             <Card>
               <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">
-                    Test Variants
-                  </Typography>
-                  {!archived && (
-                    <Button
-                      startIcon={<Add />}
-                      onClick={addVariant}
-                      size="small"
-                      variant="outlined"
-                    >
-                      Add Variant
-                    </Button>
-                  )}
-                </Box>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Test Groups
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
+                  You can customize group names, but traffic allocation is fixed
+                  from test creation.
+                </Typography>
 
                 <Stack spacing={2}>
                   {variants.map((variant, index) => (
-                    <Paper key={index} variant="outlined" sx={{ p: 3 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                        <TextField
-                          label="Variant Name"
-                          value={variant.name}
-                          onChange={(e) => updateVariantName(index, e.target.value)}
-                          size="small"
-                          sx={{ minWidth: 200 }}
-                          disabled={archived}
-                        />
-                        {!archived && (
-                          <IconButton
-                            onClick={() => removeVariant(index)}
-                            disabled={variants.length <= 2}
-                            color="error"
-                            size="small"
-                          >
-                            <Delete />
-                          </IconButton>
-                        )}
-                      </Box>
-
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="body2" sx={{ mb: 1 }}>
-                          Traffic Allocation: {variant.percentage}%
-                        </Typography>
-                        <Slider
-                          value={variant.percentage}
-                          onChange={(_, value) => updateVariantPercentage(index, value as number)}
-                          min={0}
-                          max={100}
-                          step={1}
-                          disabled={archived}
-                          marks={[
-                            { value: 0, label: '0%' },
-                            { value: 25, label: '25%' },
-                            { value: 50, label: '50%' },
-                            { value: 75, label: '75%' },
-                            { value: 100, label: '100%' }
-                          ]}
-                          sx={{ mb: 1 }}
-                        />
-                      </Box>
-
-                      <FlagValueInput
-                        flagType="json"
-                        value={variant.value}
-                        onChange={(value) => updateVariantValue(index, value)}
-                        label="Variant Value"
-                        helperText="Value for this test variant - use JSON for complex values"
-                        fullWidth
+                    <Box
+                      key={index}
+                      sx={{ display: "flex", alignItems: "center", gap: 2 }}
+                    >
+                      <TextField
+                        label={`Group ${index + 1}`}
+                        value={variant.name}
+                        onChange={(e) =>
+                          updateVariantName(index, e.target.value)
+                        }
                         size="small"
+                        sx={{ minWidth: 200 }}
                         disabled={archived}
                       />
-                    </Paper>
+                      <Chip
+                        label={`${variant.percentage}%`}
+                        color={index === 0 ? "primary" : "secondary"}
+                        variant="outlined"
+                      />
+                    </Box>
                   ))}
                 </Stack>
-
-                <Box sx={{ mt: 2, p: 2, bgcolor: getTotalPercentage() === 100 ? 'success.light' : 'warning.light', borderRadius: 1 }}>
-                  <Typography variant="body2" sx={{ textAlign: 'center' }}>
-                    Total Traffic: {getTotalPercentage()}% 
-                    {getTotalPercentage() !== 100 && (
-                      <span style={{ color: 'red' }}> (Must equal 100%)</span>
-                    )}
-                  </Typography>
-                </Box>
               </CardContent>
             </Card>
 
             {/* Entry Conditions */}
             <Card>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Entry Conditions
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Users must meet these conditions to enter the test
-                </Typography>
-                <RulesContainer
-                  rules={conditions}
+                <ConditionsContainer
+                  conditions={conditions}
                   onChange={setConditions}
-                  flagType="bool"
-                  defaultValue={true}
-                  appId={test?.appId || ''}
+                  appId={test?.appId || ""}
                   disabled={archived}
+                  title="Entry Conditions"
+                  description="Define which users are eligible for this test"
+                  emptyMessage="No conditions defined. All users are eligible for this test."
                 />
               </CardContent>
             </Card>
@@ -475,82 +329,139 @@ export default function EditTestPage() {
 
         {/* Preview & Actions */}
         <Grid item xs={12} md={4}>
-          <Stack spacing={3}>
-            <Card>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Test Status
-                </Typography>
-                
-                <Stack spacing={2}>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Current Status
-                    </Typography>
-                    <Box sx={{ mt: 0.5 }}>
-                      <Chip
-                        label={archived ? 'Archived' : 'Active'}
-                        color={archived ? 'default' : 'success'}
-                        size="small"
-                      />
-                    </Box>
-                  </Box>
+          <Box sx={{ position: "sticky", top: 24 }}>
+            <Stack spacing={3}>
+              <Card>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="h6" sx={{ mb: 2 }}>
+                    Test Preview
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mb: 3 }}
+                  >
+                    Summary of your A/B test configuration
+                  </Typography>
 
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Variants
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 0.5 }}>
-                      {variants.map((variant, index) => (
-                        <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2">
-                            {variant.name}
-                          </Typography>
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Test Name
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {name}
+                      </Typography>
+                    </Box>
+
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Test Groups
+                      </Typography>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        sx={{ mt: 0.5, flexWrap: "wrap", gap: 0.5 }}
+                      >
+                        {variants.map((variant, index) => (
                           <Chip
-                            label={`${variant.percentage}%`}
+                            key={variant.name}
+                            label={`${variant.name} ${variant.percentage}%`}
                             size="small"
-                            color="primary"
-                            variant="outlined"
+                            color={index === 0 ? "primary" : "secondary"}
                           />
-                        </Box>
-                      ))}
+                        ))}
+                      </Stack>
                     </Box>
-                  </Box>
 
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Target Flags
-                    </Typography>
-                    <Typography variant="body2">
-                      {targetFlags.length} flag{targetFlags.length === 1 ? '' : 's'} affected
-                    </Typography>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Status
+                      </Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        <Chip
+                          label={archived ? "Archived" : "Active"}
+                          color={archived ? "default" : "success"}
+                          size="small"
+                        />
+                      </Box>
+                    </Box>
 
-            {/* Actions */}
-            <Stack spacing={2}>
-              <Button
-                variant="contained"
-                startIcon={saving ? <CircularProgress size={20} /> : <Save />}
-                onClick={handleSave}
-                disabled={!isValid || !hasChanges || saving || archived}
-                fullWidth
-                size="large"
-              >
-                {saving ? 'Saving...' : !hasChanges ? 'No Changes to Save' : 'Save Changes'}
-              </Button>
-              <Button
-                variant="outlined"
-                component={Link}
-                href="/dashboard/tests"
-                fullWidth
-              >
-                Back to Tests
-              </Button>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Target Flags
+                      </Typography>
+                      <Typography variant="body2">
+                        {targetFlags.length} flag
+                        {targetFlags.length === 1 ? "" : "s"} affected
+                      </Typography>
+                    </Box>
+
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Entry Conditions
+                      </Typography>
+                      <Typography variant="body2">
+                        {conditions.length === 0
+                          ? "All users eligible"
+                          : `${conditions.length} targeting rule${conditions.length === 1 ? "" : "s"}`}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {/* Actions */}
+              <Stack spacing={2}>
+                <Button
+                  variant="contained"
+                  startIcon={saving ? <CircularProgress size={20} /> : <Save />}
+                  onClick={handleSave}
+                  disabled={!isValid || !hasChanges || saving || archived}
+                  fullWidth
+                  size="large"
+                >
+                  {saving
+                    ? "Saving..."
+                    : !hasChanges
+                      ? "No Changes to Save"
+                      : "Save Changes"}
+                </Button>
+
+                {!archived && (
+                  <>
+                    <Button
+                      variant="outlined"
+                      onClick={() => handleArchive("cancel")}
+                      color="error"
+                      fullWidth
+                      startIcon={<Archive />}
+                    >
+                      Cancel Test (0%)
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => handleArchive("complete")}
+                      color="success"
+                      fullWidth
+                      startIcon={<Archive />}
+                    >
+                      Complete Test (100%)
+                    </Button>
+                  </>
+                )}
+
+                <Button
+                  variant="outlined"
+                  component={Link}
+                  href="/dashboard/tests"
+                  fullWidth
+                >
+                  Back to Tests
+                </Button>
+              </Stack>
             </Stack>
-          </Stack>
+          </Box>
         </Grid>
       </Grid>
     </Box>

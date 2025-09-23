@@ -41,7 +41,7 @@ export function RulesContainer({ rules, onChange, flagType, defaultValue, appId 
 
     const firstCondition = {
       id: generateConditionId(),
-      type: 'environment' as const,
+      type: 'app_version' as const,
       operator: 'in' as const,
       values: []
     };

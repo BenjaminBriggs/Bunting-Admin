@@ -1,7 +1,6 @@
 // Targeting Rules Types for Bunting Feature Flags
 
 export type RuleConditionType = 
-  | 'environment'
   | 'app_version'
   | 'os_version'
   | 'platform'

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body: CreateTestRequest = await request.json();
-    const { key, name, description, conditions, variantCount, trafficSplit, appId } = body;
+    const { key, name, description, conditions, variantCount, trafficSplit, variantNames, appId } = body;
 
     // Validate traffic split adds up to 100
     const totalTraffic = trafficSplit.reduce((sum, percent) => sum + percent, 0);
@@ -43,23 +43,27 @@ export async function POST(request: NextRequest) {
 
     // Validate variant count matches traffic split
     if (variantCount !== trafficSplit.length) {
-      return NextResponse.json({ 
-        error: 'Variant count must match traffic split array length' 
+      return NextResponse.json({
+        error: 'Variant count must match traffic split array length'
+      }, { status: 400 });
+    }
+
+    // Validate variant names array length
+    if (!variantNames || variantNames.length !== variantCount) {
+      return NextResponse.json({
+        error: 'Variant names array must match variant count'
+      }, { status: 400 });
+    }
+
+    // Validate variant names are not empty
+    if (variantNames.some(name => !name || name.trim().length === 0)) {
+      return NextResponse.json({
+        error: 'All variant names must be non-empty'
       }, { status: 400 });
     }
 
     // Generate salt for consistent user bucketing
     const salt = Math.random().toString(36).substring(2, 15);
-
-    // Generate variant names (Control, Treatment, Treatment B, etc.)
-    const variantNames = ['Control'];
-    for (let i = 1; i < variantCount; i++) {
-      if (i === 1) {
-        variantNames.push('Treatment');
-      } else {
-        variantNames.push(`Treatment ${String.fromCharCode(64 + i)}`); // B, C, D, etc.
-      }
-    }
 
     // Create variants object with default null values for each environment
     const variants: Record<string, any> = {};

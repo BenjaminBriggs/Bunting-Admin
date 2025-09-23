@@ -60,7 +60,7 @@ export function TargetingRuleBuilder({
   const handleAddCondition = () => {
     const newCondition: RuleCondition = {
       id: generateConditionId(),
-      type: 'environment',
+      type: 'app_version',
       operator: 'equals',
       values: []
     };

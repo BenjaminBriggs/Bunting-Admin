@@ -27,8 +27,9 @@ import Link from "next/link";
 import { createTestRollout, fetchFlags, fetchCohorts } from "@/lib/api";
 import { useApp } from "@/lib/app-context";
 import { useChanges } from "@/lib/changes-context";
-import { PageHeader, RulesContainer } from "@/components";
-import { TargetingRule } from "@/types/rules";
+import { PageHeader } from "@/components";
+import { Condition } from "@/types";
+import { ConditionsContainer } from "@/components/features/conditions";
 
 interface TestGroup {
   name: string;
@@ -49,7 +50,7 @@ export default function NewTestPage() {
     { name: "Control", percentage: 50 },
     { name: "Treatment", percentage: 50 },
   ]);
-  const [conditions, setConditions] = useState<TargetingRule[]>([]);
+  const [conditions, setConditions] = useState<Condition[]>([]);
 
   // Data loading
   const [flags, setFlags] = useState<any[]>([]);
@@ -163,12 +164,10 @@ export default function NewTestPage() {
         key,
         name,
         description,
-        conditions:
-          conditions.length > 0
-            ? conditions.flatMap((rule) => rule.conditions)
-            : [],
+        conditions: conditions,
         variantCount: testGroups.length,
         trafficSplit: testGroups.map((group) => group.percentage),
+        variantNames: testGroups.map((group) => group.name),
         appId: selectedApp.id,
       };
 
@@ -326,23 +325,13 @@ export default function NewTestPage() {
             {/* Entry Conditions */}
             <Card>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Entry Conditions (Optional)
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 3 }}
-                >
-                  Define which users are eligible for this test. If no
-                  conditions are set, all users are eligible.
-                </Typography>
-                <RulesContainer
-                  rules={conditions}
+                <ConditionsContainer
+                  conditions={conditions}
                   onChange={setConditions}
-                  flagType="bool"
-                  defaultValue={true}
                   appId={selectedApp?.id || ""}
+                  title="Entry Conditions"
+                  description="Define which users are eligible for this test"
+                  emptyMessage="No conditions defined. All users are eligible for this test."
                 />
               </CardContent>
             </Card>

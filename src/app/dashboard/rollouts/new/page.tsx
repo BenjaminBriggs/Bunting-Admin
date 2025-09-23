@@ -23,8 +23,9 @@ import Link from "next/link";
 import { createRollout, fetchCohorts } from "@/lib/api";
 import { useApp } from "@/lib/app-context";
 import { useChanges } from "@/lib/changes-context";
-import { TargetingRule } from "@/types/rules";
-import { PageHeader, RulesContainer } from "@/components";
+import { Condition } from "@/types";
+import { PageHeader } from "@/components";
+import { ConditionsContainer } from "@/components/features/conditions";
 
 export default function NewRolloutPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function NewRolloutPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [percentage, setPercentage] = useState(10);
-  const [conditions, setConditions] = useState<TargetingRule[]>([]);
+  const [conditions, setConditions] = useState<Condition[]>([]);
 
   // Data loading
   const [cohorts, setCohorts] = useState<any[]>([]);
@@ -76,10 +77,10 @@ export default function NewRolloutPage() {
   const generateRolloutKey = (name: string): string => {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Remove special chars except spaces
+      .replace(/[^a-z0-9\s]/g, "") // Remove special chars except spaces
       .trim()
-      .replace(/\s+/g, '_') // Replace spaces with underscores
-      .replace(/^[^a-z]/g, 'rollout_') // Ensure starts with letter
+      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .replace(/^[^a-z]/g, "rollout_") // Ensure starts with letter
       .substring(0, 50); // Limit length
   };
 
@@ -101,10 +102,7 @@ export default function NewRolloutPage() {
         name,
         description,
         percentage,
-        conditions:
-          conditions.length > 0
-            ? conditions.flatMap((rule) => rule.conditions)
-            : [],
+        conditions: conditions,
       });
 
       markChangesDetected();
@@ -273,23 +271,13 @@ export default function NewRolloutPage() {
             {/* Entry Conditions */}
             <Card>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Entry Conditions (Optional)
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 3 }}
-                >
-                  Define which users are eligible for this rollout. If no
-                  conditions are set, all users are eligible.
-                </Typography>
-                <RulesContainer
-                  rules={conditions}
+                <ConditionsContainer
+                  conditions={conditions}
                   onChange={setConditions}
-                  flagType="bool"
-                  defaultValue={true}
                   appId={selectedApp?.id || ""}
+                  title="Entry Conditions"
+                  description="Define which users are eligible for this rollout"
+                  emptyMessage="No conditions defined. All users are eligible for this rollout."
                 />
               </CardContent>
             </Card>
@@ -323,7 +311,6 @@ export default function NewRolloutPage() {
                           {name}
                         </Typography>
                       </Box>
-
 
                       <Box>
                         <Typography variant="caption" color="text.secondary">
@@ -359,6 +346,42 @@ export default function NewRolloutPage() {
                             ? "All users eligible"
                             : `${conditions.length} targeting rule${conditions.length === 1 ? "" : "s"}`}
                         </Typography>
+                      </Box>
+
+                      {/* JSON Configuration */}
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          JSON Configuration
+                        </Typography>
+                        <Box
+                          component="pre"
+                          sx={{
+                            fontFamily: "monospace",
+                            fontSize: "0.75rem",
+                            bgcolor: "grey.100",
+                            p: 1.5,
+                            borderRadius: 1,
+                            mt: 0.5,
+                            overflow: "auto",
+                            whiteSpace: "pre-wrap",
+                          }}
+                        >
+                          {JSON.stringify(
+                            {
+                              [generateRolloutKey(name)]: {
+                                percentage: percentage,
+                                conditions: conditions.map((condition) => ({
+                                  field: condition.type,
+                                  operator: condition.operator,
+                                  values: condition.values,
+                                })),
+                                ...(description && { description }),
+                              },
+                            },
+                            null,
+                            2,
+                          )}
+                        </Box>
                       </Box>
 
                       {/* Visual Progress Bar */}

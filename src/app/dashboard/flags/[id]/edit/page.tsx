@@ -47,7 +47,11 @@ import {
 } from "@/lib/api";
 import { useChanges } from "@/lib/changes-context";
 import { PageHeader } from "@/components";
-import FlagValueInput, { getDefaultValueForType, processValueForType, validateValue } from "@/components/features/flags/flag-value-input";
+import FlagValueInput, {
+  getDefaultValueForType,
+  processValueForType,
+  validateValue,
+} from "@/components/features/flags/flag-value-input";
 
 const flagTypes = [
   { value: "bool", label: "Boolean" },
@@ -76,7 +80,7 @@ export default function EditFlagPage() {
   const [defaultValues, setDefaultValues] = useState({
     development: false,
     staging: false,
-    production: false
+    production: false,
   });
   const [activeTab, setActiveTab] = useState(0);
   const [description, setDescription] = useState("");
@@ -98,16 +102,25 @@ export default function EditFlagPage() {
         // Handle both old single defaultValue and new defaultValues
         if (flagData.defaultValues) {
           setDefaultValues({
-            development: flagData.defaultValues.development || flagData.defaultValue || getDefaultValueForType(flagData.type.toLowerCase() as any),
-            staging: flagData.defaultValues.staging || flagData.defaultValue || getDefaultValueForType(flagData.type.toLowerCase() as any),
-            production: flagData.defaultValues.production || flagData.defaultValue || getDefaultValueForType(flagData.type.toLowerCase() as any)
+            development:
+              flagData.defaultValues.development ||
+              flagData.defaultValue ||
+              getDefaultValueForType(flagData.type.toLowerCase() as any),
+            staging:
+              flagData.defaultValues.staging ||
+              flagData.defaultValue ||
+              getDefaultValueForType(flagData.type.toLowerCase() as any),
+            production:
+              flagData.defaultValues.production ||
+              flagData.defaultValue ||
+              getDefaultValueForType(flagData.type.toLowerCase() as any),
           });
         } else {
           // Legacy support - use single defaultValue for all environments
           setDefaultValues({
             development: flagData.defaultValue,
             staging: flagData.defaultValue,
-            production: flagData.defaultValue
+            production: flagData.defaultValue,
           });
         }
         setDescription(flagData.description || "");
@@ -135,14 +148,13 @@ export default function EditFlagPage() {
     );
   };
 
-
   const handleTypeChange = (newType: string) => {
     setType(newType);
     const newDefaultValue = getDefaultValueForType(newType as any);
     setDefaultValues({
       development: newDefaultValue,
       staging: newDefaultValue,
-      production: newDefaultValue
+      production: newDefaultValue,
     });
 
     // Update existing rule values to match new type
@@ -154,20 +166,24 @@ export default function EditFlagPage() {
   };
 
   const handleEnvironmentValueChange = (environment: string, value: any) => {
-    setDefaultValues(prev => ({ ...prev, [environment]: value }));
+    setDefaultValues((prev) => ({ ...prev, [environment]: value }));
   };
 
   const getCurrentEnvironment = () => {
-    const environments = ['development', 'staging', 'production'];
+    const environments = ["development", "staging", "production"];
     return environments[activeTab];
   };
 
   const getEnvironmentColor = (env: string) => {
     switch (env) {
-      case 'development': return 'info';
-      case 'staging': return 'warning';
-      case 'production': return 'success';
-      default: return 'default';
+      case "development":
+        return "info";
+      case "staging":
+        return "warning";
+      case "production":
+        return "success";
+      default:
+        return "default";
     }
   };
 
@@ -179,18 +195,20 @@ export default function EditFlagPage() {
 
     try {
       // Validate all environment values
-      const hasValidationErrors = ['development', 'staging', 'production'].some(env => {
-        const value = defaultValues[env as keyof typeof defaultValues];
-        return !validateValue(value, type as any).isValid;
-      });
+      const hasValidationErrors = ["development", "staging", "production"].some(
+        (env) => {
+          const value = defaultValues[env as keyof typeof defaultValues];
+          return !validateValue(value, type as any).isValid;
+        },
+      );
       if (hasValidationErrors) {
-        setError('Please fix validation errors before saving');
+        setError("Please fix validation errors before saving");
         return;
       }
 
       const processDefaultValues = () => {
         const processed: any = {};
-        ['development', 'staging', 'production'].forEach(env => {
+        ["development", "staging", "production"].forEach((env) => {
           const value = defaultValues[env as keyof typeof defaultValues];
           processed[env] = processValueForType(value, type as any);
         });
@@ -287,38 +305,46 @@ export default function EditFlagPage() {
   }
 
   const isValid =
-    !validationError && 
-    displayName && 
-    ['development', 'staging', 'production'].every(env => {
+    !validationError &&
+    displayName &&
+    ["development", "staging", "production"].every((env) => {
       const value = defaultValues[env as keyof typeof defaultValues];
       return validateValue(value, type as any).isValid;
     });
   const hasChanges = (() => {
     if (!flag) return false;
-    
+
     // Check basic fields
-    if (displayName !== flag.displayName ||
-        normalizedKey !== originalKey ||
-        type !== flag.type ||
-        description !== (flag.description || "") ||
-        archived !== flag.archived ||
-        JSON.stringify(rules) !== JSON.stringify(flag.rules || [])) {
+    if (
+      displayName !== flag.displayName ||
+      normalizedKey !== originalKey ||
+      type !== flag.type ||
+      description !== (flag.description || "") ||
+      archived !== flag.archived ||
+      JSON.stringify(rules) !== JSON.stringify(flag.rules || [])
+    ) {
       return true;
     }
-    
+
     // Check default values - compare with both old and new format
     if (flag.defaultValues) {
-      return JSON.stringify(defaultValues) !== JSON.stringify({
-        development: flag.defaultValues.development || '',
-        staging: flag.defaultValues.staging || '',
-        production: flag.defaultValues.production || ''
-      });
+      return (
+        JSON.stringify(defaultValues) !==
+        JSON.stringify({
+          development: flag.defaultValues.development || "",
+          staging: flag.defaultValues.staging || "",
+          production: flag.defaultValues.production || "",
+        })
+      );
     } else {
       // Legacy comparison
-      const legacyValue = flag.defaultValue || '';
-      return !(JSON.stringify(defaultValues.development) === JSON.stringify(legacyValue) && 
-               JSON.stringify(defaultValues.staging) === JSON.stringify(legacyValue) && 
-               JSON.stringify(defaultValues.production) === JSON.stringify(legacyValue));
+      const legacyValue = flag.defaultValue || "";
+      return !(
+        JSON.stringify(defaultValues.development) ===
+          JSON.stringify(legacyValue) &&
+        JSON.stringify(defaultValues.staging) === JSON.stringify(legacyValue) &&
+        JSON.stringify(defaultValues.production) === JSON.stringify(legacyValue)
+      );
     }
   })();
 
@@ -448,47 +474,6 @@ export default function EditFlagPage() {
 
                   <Divider />
 
-                  {/* Environment-Specific Default Values */}
-                  <Box>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                      Environment Default Values
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      Set different default values for each environment
-                    </Typography>
-                    
-                    <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} sx={{ mb: 3 }}>
-                      <Tab label="Development" />
-                      <Tab label="Staging" />
-                      <Tab label="Production" />
-                    </Tabs>
-
-                    {['development', 'staging', 'production'].map((env, index) => (
-                      <Box key={env} sx={{ display: index === activeTab ? 'block' : 'none' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                          <Chip 
-                            label={env.charAt(0).toUpperCase() + env.slice(1)} 
-                            size="small" 
-                            color={getEnvironmentColor(env)}
-                          />
-                          <Typography variant="body2" color="text.secondary">
-                            Default value for {env} environment
-                          </Typography>
-                        </Box>
-                        
-                        <FlagValueInput
-                          flagType={type as any}
-                          value={defaultValues[env as keyof typeof defaultValues]}
-                          onChange={(value) => handleEnvironmentValueChange(env, value)}
-                          label="Default Value"
-                          helperText="Value returned when no targeting rules match"
-                          fullWidth
-                          required
-                        />
-                      </Box>
-                    ))}
-                  </Box>
-
                   {/* Description */}
                   <TextField
                     label="Description"
@@ -509,8 +494,13 @@ export default function EditFlagPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Conditional Variants (Optional)
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Define targeting rules that override the environment defaults based on user conditions
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
+                  Define targeting rules that override the environment defaults
+                  based on user conditions
                 </Typography>
                 <RulesContainer
                   rules={rules}
@@ -518,12 +508,14 @@ export default function EditFlagPage() {
                   flagType={type as any}
                   defaultValue={(() => {
                     const currentEnv = getCurrentEnvironment();
-                    const value = defaultValues[currentEnv as keyof typeof defaultValues];
-                    if (type === 'bool') return value === 'true';
-                    if (type === 'int') return parseInt(value) || 0;
-                    if (type === 'double') return parseFloat(value) || 0.0;
-                    if (type === 'json') {
-                      const error = jsonErrors[currentEnv as keyof typeof jsonErrors];
+                    const value =
+                      defaultValues[currentEnv as keyof typeof defaultValues];
+                    if (type === "bool") return value === "true";
+                    if (type === "int") return parseInt(value) || 0;
+                    if (type === "double") return parseFloat(value) || 0.0;
+                    if (type === "json") {
+                      const error =
+                        jsonErrors[currentEnv as keyof typeof jsonErrors];
                       return error ? value : JSON.parse(value);
                     }
                     return value;
@@ -548,7 +540,8 @@ export default function EditFlagPage() {
                   color="text.secondary"
                   sx={{ mb: 3 }}
                 >
-                  How this environment-first flag will appear in your configuration
+                  How this environment-first flag will appear in your
+                  configuration
                 </Typography>
 
                 <Stack spacing={2}>
@@ -602,24 +595,37 @@ export default function EditFlagPage() {
                             type,
                             defaultValues: (() => {
                               const processed: any = {};
-                              ['development', 'staging', 'production'].forEach(env => {
-                                const value = defaultValues[env as keyof typeof defaultValues];
-                                processed[env] = processValueForType(value, type as any);
-                              });
+                              ["development", "staging", "production"].forEach(
+                                (env) => {
+                                  const value =
+                                    defaultValues[
+                                      env as keyof typeof defaultValues
+                                    ];
+                                  processed[env] = processValueForType(
+                                    value,
+                                    type as any,
+                                  );
+                                },
+                              );
                               return processed;
                             })(),
-                            variants: rules.length > 0 ? {
-                              development: rules.map(rule => ({
-                                conditions: rule.conditions.map(condition => ({
-                                  field: condition.type,
-                                  operator: condition.operator,
-                                  value: condition.values
-                                })),
-                                value: rule.value
-                              })),
-                              staging: [],
-                              production: []
-                            } : {},
+                            variants:
+                              rules.length > 0
+                                ? {
+                                    development: rules.map((rule) => ({
+                                      conditions: rule.conditions.map(
+                                        (condition) => ({
+                                          field: condition.type,
+                                          operator: condition.operator,
+                                          value: condition.values,
+                                        }),
+                                      ),
+                                      value: rule.value,
+                                    })),
+                                    staging: [],
+                                    production: [],
+                                  }
+                                : {},
                             ...(description && { description }),
                           },
                         },
@@ -661,18 +667,25 @@ export default function EditFlagPage() {
                       // Check if default values changed
                       let defaultValuesChanged = false;
                       if (flag.defaultValues) {
-                        defaultValuesChanged = JSON.stringify(defaultValues) !== JSON.stringify({
-                          development: flag.defaultValues.development || '',
-                          staging: flag.defaultValues.staging || '',
-                          production: flag.defaultValues.production || ''
-                        });
+                        defaultValuesChanged =
+                          JSON.stringify(defaultValues) !==
+                          JSON.stringify({
+                            development: flag.defaultValues.development || "",
+                            staging: flag.defaultValues.staging || "",
+                            production: flag.defaultValues.production || "",
+                          });
                       } else {
-                        const legacyValue = flag.defaultValue || '';
-                        defaultValuesChanged = !(JSON.stringify(defaultValues.development) === JSON.stringify(legacyValue) && 
-                                                JSON.stringify(defaultValues.staging) === JSON.stringify(legacyValue) && 
-                                                JSON.stringify(defaultValues.production) === JSON.stringify(legacyValue));
+                        const legacyValue = flag.defaultValue || "";
+                        defaultValuesChanged = !(
+                          JSON.stringify(defaultValues.development) ===
+                            JSON.stringify(legacyValue) &&
+                          JSON.stringify(defaultValues.staging) ===
+                            JSON.stringify(legacyValue) &&
+                          JSON.stringify(defaultValues.production) ===
+                            JSON.stringify(legacyValue)
+                        );
                       }
-                      
+
                       return defaultValuesChanged ? (
                         <Typography variant="body2">
                           • Environment default values updated

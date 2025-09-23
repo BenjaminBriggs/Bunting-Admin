@@ -26,7 +26,7 @@ import { ConditionBuilder } from "../rules/condition-builder";
 import { RuleCondition, RuleConditionType } from "@/types/rules";
 import { Environment, ConditionalVariant, FlagValue, FlagType } from "@/types";
 import { generateId } from "@/lib/utils";
-import FlagValueInput from "./flag-value-input";
+import ValueInput from "../../ui/value-input";
 
 interface ConditionCreatorModalProps {
   open: boolean;
@@ -207,8 +207,8 @@ export default function ConditionCreatorModal({
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
               Value ({flagType})
             </Typography>
-            <FlagValueInput
-              flagType={flagType}
+            <ValueInput
+              type={flagType}
               value={variantValue}
               onChange={setVariantValue}
               label={`${flagType.charAt(0).toUpperCase()}${flagType.slice(1)} Value`}

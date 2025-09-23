@@ -26,10 +26,11 @@ import {
   ExpandMore, 
   ExpandLess, 
   DragIndicator,
-  Warning
+  Warning,
+  Edit
 } from '@mui/icons-material';
 import { CohortTargetingRule, RuleCondition } from '@/types/rules';
-import { ConditionBuilder } from './condition-builder';
+import { ConditionBuilderModal, ConditionsProvider } from '../conditions';
 
 interface CohortRuleBuilderProps {
   rule: CohortTargetingRule;
@@ -49,6 +50,8 @@ export function CohortRuleBuilder({
   appId
 }: CohortRuleBuilderProps) {
   const [expanded, setExpanded] = useState(true);
+  const [conditionModalOpen, setConditionModalOpen] = useState(false);
+  const [editingConditionIndex, setEditingConditionIndex] = useState<number | null>(null);
 
   const handleToggle = (checked: boolean) => {
     onChange({ ...rule, enabled: checked });
@@ -71,35 +74,45 @@ export function CohortRuleBuilder({
   };
 
   const handleAddCondition = () => {
-    const generateConditionId = () => {
-      return `condition_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    };
+    setEditingConditionIndex(null);
+    setConditionModalOpen(true);
+  };
 
-    const newCondition: RuleCondition = {
-      id: generateConditionId(),
-      type: 'environment',
-      operator: 'in',
-      values: []
-    };
+  const handleEditCondition = (index: number) => {
+    setEditingConditionIndex(index);
+    setConditionModalOpen(true);
+  };
 
-    onChange({ 
-      ...rule, 
-      conditions: [...rule.conditions, newCondition] 
-    });
+  const handleConditionSave = (condition: RuleCondition) => {
+    if (editingConditionIndex !== null) {
+      // Update existing condition
+      const newConditions = [...rule.conditions];
+      newConditions[editingConditionIndex] = condition;
+      onChange({ ...rule, conditions: newConditions });
+    } else {
+      // Add new condition
+      onChange({ 
+        ...rule, 
+        conditions: [...rule.conditions, condition] 
+      });
+    }
+    setConditionModalOpen(false);
+    setEditingConditionIndex(null);
   };
 
   const hasIncompleteConditions = rule.conditions.some(condition => condition.values.length === 0);
   const hasMultipleConditions = rule.conditions.length > 1;
 
   return (
-    <Card 
-      variant="outlined" 
-      sx={{ 
-        opacity: rule.enabled ? 1 : 0.6,
-        border: hasIncompleteConditions ? '2px solid' : '1px solid',
-        borderColor: hasIncompleteConditions ? 'warning.main' : 'divider'
-      }}
-    >
+    <ConditionsProvider appId={appId}>
+      <Card 
+        variant="outlined" 
+        sx={{ 
+          opacity: rule.enabled ? 1 : 0.6,
+          border: hasIncompleteConditions ? '2px solid' : '1px solid',
+          borderColor: hasIncompleteConditions ? 'warning.main' : 'divider'
+        }}
+      >
       <CardContent sx={{ p: 2 }}>
         {/* Rule Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -201,14 +214,36 @@ export function CohortRuleBuilder({
                     </Box>
                   )}
                   
-                  <ConditionBuilder
-                    condition={condition}
-                    onChange={(updatedCondition) => handleConditionChange(condition.id, updatedCondition)}
-                    onDelete={() => handleDeleteCondition(condition.id)}
-                    canDelete={rule.conditions.length > 1}
-                    appId={appId}
-                    showCohortConditions={false} // Cohorts can't reference other cohorts
-                  />
+                  <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                        {condition.type === 'app_version' ? 'App Version' :
+                         condition.type === 'os_version' ? 'OS Version' :
+                         condition.type === 'platform' ? 'Platform' :
+                         condition.type === 'country' ? 'Country' : condition.type}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton size="small" onClick={() => handleEditCondition(conditionIndex)}>
+                          <Edit />
+                        </IconButton>
+                        {rule.conditions.length > 1 && (
+                          <IconButton size="small" onClick={() => handleDeleteCondition(condition.id)} color="error">
+                            <Delete />
+                          </IconButton>
+                        )}
+                      </Box>
+                    </Box>
+                    
+                    <Typography variant="body2" color="text.secondary">
+                      {condition.operator} {condition.values.length > 0 ? condition.values.join(', ') : '(no values set)'}
+                    </Typography>
+                    
+                    {condition.values.length === 0 && (
+                      <Alert severity="warning" size="small" sx={{ mt: 1 }}>
+                        This condition needs values to be configured.
+                      </Alert>
+                    )}
+                  </Box>
                 </Box>
               ))}
             </Stack>
@@ -227,5 +262,18 @@ export function CohortRuleBuilder({
         </Collapse>
       </CardContent>
     </Card>
+
+    {/* Condition Builder Modal */}
+    <ConditionBuilderModal
+      open={conditionModalOpen}
+      onClose={() => {
+        setConditionModalOpen(false);
+        setEditingConditionIndex(null);
+      }}
+      onSave={handleConditionSave}
+      existingCondition={editingConditionIndex !== null ? rule.conditions[editingConditionIndex] : undefined}
+      contextType="cohort"
+    />
+  </ConditionsProvider>
   );
 }

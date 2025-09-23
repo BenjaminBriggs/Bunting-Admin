@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { ConfigArtifact, EnvironmentConfig, Environment } from '@/types';
+import { ConfigArtifact, Environment } from '@/types';
 
 export async function generateConfigFromDb(appId: string): Promise<ConfigArtifact> {
   // Get app info with all related data
@@ -24,56 +24,7 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
     throw new Error('App not found');
   }
 
-  const environments: Environment[] = ['development', 'staging', 'production'];
-  
-  // Generate environment configs
-  const envConfigs: Record<Environment, EnvironmentConfig> = {
-    development: generateEnvironmentConfig(app, 'development'),
-    staging: generateEnvironmentConfig(app, 'staging'), 
-    production: generateEnvironmentConfig(app, 'production')
-  };
-
-  // Generate the new environment-first config artifact
-  const config: ConfigArtifact = {
-    schema_version: 2,
-    config_version: null, // Will be set during publishing
-    published_at: null, // Will be set during publishing
-    app_identifier: app.identifier,
-    development: envConfigs.development,
-    staging: envConfigs.staging,
-    production: envConfigs.production
-  };
-
-  return config;
-}
-
-function generateEnvironmentConfig(app: any, environment: Environment): EnvironmentConfig {
-  // Transform flags for this environment
-  const flags: Record<string, any> = {};
-  app.flags.forEach((flag: any) => {
-    const flagConfig = {
-      type: flag.type.toLowerCase(),
-      default: flag.defaultValues[environment],
-      description: flag.description || ''
-    };
-
-    // Add conditional variants for this environment
-    const envVariants = flag.variants[environment] || [];
-    if (envVariants.length > 0) {
-      flagConfig.variants = envVariants.map((variant: any) => ({
-        id: variant.id,
-        name: variant.name,
-        type: variant.type || 'conditional',
-        value: variant.value,
-        conditions: variant.conditions || [],
-        order: variant.order || 0
-      })).sort((a: any, b: any) => a.order - b.order);
-    }
-
-    flags[flag.key] = flagConfig;
-  });
-
-  // Transform cohorts (same for all environments, just condition groups)
+  // Transform cohorts (top-level, no environment differences)
   const cohorts: Record<string, any> = {};
   app.cohorts.forEach((cohort: any) => {
     cohorts[cohort.key] = {
@@ -83,10 +34,74 @@ function generateEnvironmentConfig(app: any, environment: Environment): Environm
     };
   });
 
-  // Transform test/rollouts for this environment
-  const testRollouts: Record<string, any> = {};
+  // Transform flags with environment-specific values
+  const flags: Record<string, any> = {};
+  app.flags.forEach((flag: any) => {
+    // Validate flag structure
+    if (!flag.defaultValues || typeof flag.defaultValues !== 'object') {
+      throw new Error(
+        `Flag "${flag.key}" has invalid defaultValues structure. Expected object with development/staging/production keys. ` +
+        `Current value: ${JSON.stringify(flag.defaultValues)}. ` +
+        `This flag may need migration to schema v2.`
+      );
+    }
+
+    const environments = ['development', 'staging', 'production'];
+    for (const env of environments) {
+      if (!(env in flag.defaultValues)) {
+        throw new Error(
+          `Flag "${flag.key}" is missing default value for environment "${env}". ` +
+          `Current defaultValues: ${JSON.stringify(flag.defaultValues)}. ` +
+          `This flag may need migration to schema v2.`
+        );
+      }
+    }
+
+    flags[flag.key] = {
+      type: flag.type.toLowerCase(),
+      description: flag.description || '',
+      development: {
+        default: flag.defaultValues.development,
+        variants: (flag.variants.development || []).map((variant: any) => ({
+          id: variant.id,
+          name: variant.name,
+          type: variant.type || 'conditional',
+          value: variant.value,
+          conditions: variant.conditions || [],
+          order: variant.order || 0
+        })).sort((a: any, b: any) => a.order - b.order)
+      },
+      staging: {
+        default: flag.defaultValues.staging,
+        variants: (flag.variants.staging || []).map((variant: any) => ({
+          id: variant.id,
+          name: variant.name,
+          type: variant.type || 'conditional',
+          value: variant.value,
+          conditions: variant.conditions || [],
+          order: variant.order || 0
+        })).sort((a: any, b: any) => a.order - b.order)
+      },
+      production: {
+        default: flag.defaultValues.production,
+        variants: (flag.variants.production || []).map((variant: any) => ({
+          id: variant.id,
+          name: variant.name,
+          type: variant.type || 'conditional',
+          value: variant.value,
+          conditions: variant.conditions || [],
+          order: variant.order || 0
+        })).sort((a: any, b: any) => a.order - b.order)
+      }
+    };
+  });
+
+  // Transform tests and rollouts (top-level)
+  const tests: Record<string, any> = {};
+  const rollouts: Record<string, any> = {};
+  
   app.testRollouts.forEach((testRollout: any) => {
-    const trConfig = {
+    const baseConfig = {
       name: testRollout.name,
       description: testRollout.description || '',
       type: testRollout.type.toLowerCase(),
@@ -96,25 +111,32 @@ function generateEnvironmentConfig(app: any, environment: Environment): Environm
 
     if (testRollout.type === 'TEST' && testRollout.variants) {
       // Test with variants
-      trConfig.variants = {};
-      Object.entries(testRollout.variants).forEach(([variantName, variant]: [string, any]) => {
-        trConfig.variants[variantName] = {
-          percentage: variant.percentage,
-          value: variant.values[environment]
-        };
-      });
+      tests[testRollout.key] = {
+        ...baseConfig,
+        variants: testRollout.variants
+      };
     } else if (testRollout.type === 'ROLLOUT') {
       // Simple rollout
-      trConfig.percentage = testRollout.percentage;
-      trConfig.value = testRollout.rolloutValues?.[environment];
+      rollouts[testRollout.key] = {
+        ...baseConfig,
+        percentage: testRollout.percentage,
+        values: testRollout.rolloutValues
+      };
     }
-
-    testRollouts[testRollout.key] = trConfig;
   });
 
-  return {
-    flags,
+  // Generate the corrected config artifact
+  const config: ConfigArtifact = {
+    schema_version: 2,
+    config_version: null, // Will be set during publishing
+    published_at: null, // Will be set during publishing
+    app_identifier: app.identifier,
     cohorts,
-    test_rollouts: testRollouts
+    flags,
+    tests,
+    rollouts
   };
+
+  return config;
 }
+

@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -14,23 +14,24 @@ import {
   Chip,
   LinearProgress,
   CircularProgress,
-  MenuItem
-} from '@mui/material';
-import { Save } from '@mui/icons-material';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { createCohort } from '@/lib/api';
-import { useApp } from '@/lib/app-context';
-import { useChanges } from '@/lib/changes-context';
-import { TargetingRule } from '@/types/rules';
-import { PageHeader, RulesContainer } from '@/components';
+  MenuItem,
+} from "@mui/material";
+import { Save } from "@mui/icons-material";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { createCohort } from "@/lib/api";
+import { useApp } from "@/lib/app-context";
+import { useChanges } from "@/lib/changes-context";
+import { Condition } from "@/types";
+import { PageHeader } from "@/components";
+import { ConditionsContainer } from "@/components/features/conditions";
 
 // Normalize cohort identifier
 function normalizeCohortId(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 export default function NewCohortPage() {
@@ -39,15 +40,15 @@ export default function NewCohortPage() {
   const { markChangesDetected } = useChanges();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [identifier, setIdentifier] = useState('');
-  const [description, setDescription] = useState('');
-  const [rules, setRules] = useState<TargetingRule[]>([]);
+  const [name, setName] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [description, setDescription] = useState("");
+  const [conditions, setConditions] = useState<Condition[]>([]);
 
   // Redirect if no app is selected
   useEffect(() => {
     if (!selectedApp) {
-      router.push('/dashboard');
+      router.push("/dashboard");
     }
   }, [selectedApp, router]);
 
@@ -56,10 +57,9 @@ export default function NewCohortPage() {
     setIdentifier(normalizeCohortId(value));
   };
 
-
   const handleSave = async () => {
     if (!selectedApp) {
-      setError('No application selected');
+      setError("No application selected");
       return;
     }
 
@@ -70,16 +70,16 @@ export default function NewCohortPage() {
         key: identifier,
         name,
         description,
-        conditions: rules.length > 0 ? rules.flatMap(rule => rule.conditions) : [],
+        conditions: conditions,
       };
 
       const newCohort = await createCohort(cohortData);
-      
+
       // Trigger change detection
       markChangesDetected();
       router.push(`/dashboard/cohorts/${newCohort.id}/edit`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create cohort');
+      setError(err instanceof Error ? err.message : "Failed to create cohort");
     } finally {
       setSaving(false);
     }
@@ -101,7 +101,7 @@ export default function NewCohortPage() {
           {error}
         </Alert>
       )}
-        <Grid container spacing={3}>
+      <Grid container spacing={3}>
         {/* Main Configuration */}
         <Grid item xs={12} md={8}>
           <Card>
@@ -109,7 +109,7 @@ export default function NewCohortPage() {
               <Typography variant="h6" sx={{ mb: 2 }}>
                 Basic Configuration
               </Typography>
-              
+
               <Stack spacing={3}>
                 {/* Name */}
                 <TextField
@@ -122,7 +122,6 @@ export default function NewCohortPage() {
                   required
                 />
 
-
                 {/* Description */}
                 <TextField
                   label="Description"
@@ -133,19 +132,23 @@ export default function NewCohortPage() {
                   rows={3}
                   fullWidth
                 />
-
               </Stack>
             </CardContent>
           </Card>
 
-          {/* Targeting Rules */}
-          <RulesContainer
-            rules={rules}
-            onChange={setRules}
-            flagType="bool"
-            defaultValue={true}
-            appId={selectedApp?.id || ''}
-          />
+          <Card>
+            <CardContent sx={{ p: 3 }}>
+              {/* Targeting Conditions */}
+              <ConditionsContainer
+                conditions={conditions}
+                onChange={setConditions}
+                appId={selectedApp?.id || ""}
+                title="Targeting Conditions"
+                description="Define the criteria that determine which users belong to this cohort"
+                emptyMessage="No conditions defined. All users will be included in this cohort."
+              />
+            </CardContent>
+          </Card>
         </Grid>
 
         {/* Preview & Actions */}
@@ -156,11 +159,15 @@ export default function NewCohortPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Preview
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
                   How this cohort will appear in your configuration
                 </Typography>
-                
-{name ? (
+
+                {name ? (
                   <Stack spacing={2}>
                     <Box>
                       <Typography variant="caption" color="text.secondary">
@@ -170,19 +177,19 @@ export default function NewCohortPage() {
                         {name}
                       </Typography>
                     </Box>
-                    
+
                     <Box>
                       <Typography variant="caption" color="text.secondary">
                         Auto-generated Identifier
                       </Typography>
                       <Box
                         sx={{
-                          fontFamily: 'monospace',
-                          fontSize: '0.875rem',
-                          bgcolor: 'grey.100',
+                          fontFamily: "monospace",
+                          fontSize: "0.875rem",
+                          bgcolor: "grey.100",
                           p: 1,
                           borderRadius: 1,
-                          mt: 0.5
+                          mt: 0.5,
                         }}
                       >
                         {identifier}
@@ -191,13 +198,15 @@ export default function NewCohortPage() {
 
                     <Box>
                       <Typography variant="caption" color="text.secondary">
-                        Rules
+                        Conditions
                       </Typography>
                       <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {rules.length === 0 ? 'No targeting rules defined' : `${rules.length} targeting rule${rules.length === 1 ? '' : 's'}`}
+                        {conditions.length === 0
+                          ? "No targeting conditions defined"
+                          : `${conditions.length} targeting condition${conditions.length === 1 ? "" : "s"}`}
                       </Typography>
                     </Box>
-                    
+
                     <Box>
                       <Typography variant="caption" color="text.secondary">
                         JSON Configuration
@@ -205,31 +214,35 @@ export default function NewCohortPage() {
                       <Box
                         component="pre"
                         sx={{
-                          fontFamily: 'monospace',
-                          fontSize: '0.75rem',
-                          bgcolor: 'grey.100',
+                          fontFamily: "monospace",
+                          fontSize: "0.75rem",
+                          bgcolor: "grey.100",
                           p: 1.5,
                           borderRadius: 1,
                           mt: 0.5,
-                          overflow: 'auto',
-                          whiteSpace: 'pre-wrap'
+                          overflow: "auto",
+                          whiteSpace: "pre-wrap",
                         }}
                       >
-                        {JSON.stringify({
-                          [identifier]: {
-                            conditions: rules.flatMap(rule => rule.conditions.map(condition => ({
-                              field: condition.type,
-                              operator: condition.operator,
-                              value: condition.values
-                            }))),
-                            ...(description && { description })
-                          }
-                        }, null, 2)}
+                        {JSON.stringify(
+                          {
+                            [identifier]: {
+                              conditions: conditions.map((condition) => ({
+                                field: condition.type,
+                                operator: condition.operator,
+                                values: condition.values,
+                              })),
+                              ...(description && { description }),
+                            },
+                          },
+                          null,
+                          2,
+                        )}
                       </Box>
                     </Box>
                   </Stack>
-) : (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                ) : (
+                  <Box sx={{ textAlign: "center", py: 4 }}>
                     <Typography variant="body2" color="text.secondary">
                       Enter a cohort name to see preview
                     </Typography>
@@ -247,7 +260,7 @@ export default function NewCohortPage() {
                 disabled={!isValid || saving}
                 fullWidth
               >
-                {saving ? 'Creating...' : 'Create Cohort'}
+                {saving ? "Creating..." : "Create Cohort"}
               </Button>
               <Button
                 variant="outlined"
@@ -260,7 +273,7 @@ export default function NewCohortPage() {
             </Stack>
           </Stack>
         </Grid>
-        </Grid>
+      </Grid>
     </Box>
   );
 }

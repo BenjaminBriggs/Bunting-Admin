@@ -125,23 +125,21 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
         </FormControl>
 
 
-{/* Operator - hide for environment since it's always "applies to" */}
-        {condition.type !== 'environment' && (
-          <FormControl sx={{ minWidth: 150 }}>
-            <InputLabel>Operator</InputLabel>
-            <Select
-              value={condition.operator}
-              label="Operator"
-              onChange={(e) => handleOperatorChange(e.target.value as RuleOperator)}
-            >
-              {template.operators.map((op) => (
-                <MenuItem key={op} value={op}>
-                  {operatorLabels[op]}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
+{/* Operator */}
+        <FormControl sx={{ minWidth: 150 }}>
+          <InputLabel>Operator</InputLabel>
+          <Select
+            value={condition.operator}
+            label="Operator"
+            onChange={(e) => handleOperatorChange(e.target.value as RuleOperator)}
+          >
+            {template.operators.map((op) => (
+              <MenuItem key={op} value={op}>
+                {operatorLabels[op]}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         {/* Delete Button */}
         {canDelete && (
@@ -152,9 +150,7 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
       </Box>
 
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {condition.type === 'environment' 
-          ? 'Select which environments this rule applies to'
-          : template.description}
+        {template.description}
       </Typography>
 
       {/* Value Input */}

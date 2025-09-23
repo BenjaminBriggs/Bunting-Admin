@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { fetchApps, type App } from './api';
 
 interface AppContextType {
@@ -15,6 +17,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [apps, setApps] = useState<App[]>([]);
   const [selectedApp, setSelectedAppState] = useState<App | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,11 +30,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setError(null);
       const appsData = await fetchApps();
       setApps(appsData);
+
+      // If no apps exist and user is authenticated, redirect to setup
+      if (appsData.length === 0 && status === 'authenticated') {
+        router.replace('/setup');
+        return;
+      }
     } catch (err) {
       console.error('Error loading apps:', err);
       setError(err instanceof Error ? err.message : 'Failed to load applications');
       setApps([]);
       setSelectedAppState(null);
+
+      // On error and authenticated, also redirect to setup
+      if (status === 'authenticated') {
+        router.replace('/setup');
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -40,10 +56,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedAppState(app);
   };
 
-  // Initial load
+  // Initial load - only when authenticated
   useEffect(() => {
-    refreshApps();
-  }, []);
+    if (status === 'authenticated') {
+      refreshApps();
+    }
+  }, [status]);
 
   // Auto-select first app when apps change and no app is selected
   useEffect(() => {

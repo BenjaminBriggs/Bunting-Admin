@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import {
   Box,
   Card,
@@ -13,33 +13,37 @@ import {
   Grid,
   Chip,
   Alert,
-  Paper
-} from '@mui/material';
-import { ArrowBack, Save, Delete } from '@mui/icons-material';
-import Link from 'next/link';
-import { fetchCohort, updateCohort, deleteCohort, type Cohort } from '@/lib/api';
-import { useChanges } from '@/lib/changes-context';
-import { TargetingRule } from '@/types/rules';
-import { RulesContainer } from '@/components';
-
+  Paper,
+} from "@mui/material";
+import { ArrowBack, Save, Delete } from "@mui/icons-material";
+import Link from "next/link";
+import {
+  fetchCohort,
+  updateCohort,
+  deleteCohort,
+  type Cohort,
+} from "@/lib/api";
+import { useChanges } from "@/lib/changes-context";
+import { Condition } from "@/types";
+import { ConditionsContainer } from "@/components/features/conditions";
 
 export default function EditCohortPage() {
   const params = useParams();
   const router = useRouter();
   const { markChangesDetected } = useChanges();
   const cohortId = params?.id as string;
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [cohort, setCohort] = useState<Cohort | null>(null);
-  const [name, setName] = useState('');
-  const [originalName, setOriginalName] = useState('');
-  const [identifier, setIdentifier] = useState('');
-  const [originalIdentifier, setOriginalIdentifier] = useState('');
-  const [description, setDescription] = useState('');
-  const [rules, setRules] = useState<TargetingRule[]>([]);
+  const [name, setName] = useState("");
+  const [originalName, setOriginalName] = useState("");
+  const [identifier, setIdentifier] = useState("");
+  const [originalIdentifier, setOriginalIdentifier] = useState("");
+  const [description, setDescription] = useState("");
+  const [conditions, setConditions] = useState<Condition[]>([]);
 
   useEffect(() => {
     const loadCohort = async () => {
@@ -51,10 +55,10 @@ export default function EditCohortPage() {
         setOriginalName(cohortData.name);
         setIdentifier(cohortData.key);
         setOriginalIdentifier(cohortData.key);
-        setDescription(cohortData.description || '');
-        setRules(cohortData.rules || []);
+        setDescription(cohortData.description || "");
+        setConditions(cohortData.conditions || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load cohort');
+        setError(err instanceof Error ? err.message : "Failed to load cohort");
       } finally {
         setLoading(false);
       }
@@ -63,29 +67,28 @@ export default function EditCohortPage() {
     loadCohort();
   }, [cohortId]);
 
-
   const handleSave = async () => {
     if (!cohort) return;
-    
+
     try {
       setSaving(true);
       const updateData = {
         description,
-        conditions: rules.length > 0 ? rules.flatMap(rule => rule.conditions) : [],
+        conditions: conditions,
       };
 
       const updatedCohort = await updateCohort(cohort.id, updateData);
       setCohort(updatedCohort);
-      setDescription(updatedCohort.description || '');
-      setSuccessMessage('Cohort updated successfully!');
-      
+      setDescription(updatedCohort.description || "");
+      setSuccessMessage("Cohort updated successfully!");
+
       // Trigger change detection
       markChangesDetected();
-      
+
       // Auto-hide success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save cohort');
+      setError(err instanceof Error ? err.message : "Failed to save cohort");
     } finally {
       setSaving(false);
     }
@@ -93,23 +96,29 @@ export default function EditCohortPage() {
 
   const handleDelete = async () => {
     if (!cohort) return;
-    
-    if (confirm('Are you sure you want to delete this cohort? This action cannot be undone.')) {
+
+    if (
+      confirm(
+        "Are you sure you want to delete this cohort? This action cannot be undone.",
+      )
+    ) {
       try {
         await deleteCohort(cohortId);
-        
+
         // Trigger change detection
         markChangesDetected();
-        router.push('/dashboard/cohorts');
+        router.push("/dashboard/cohorts");
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete cohort');
+        setError(
+          err instanceof Error ? err.message : "Failed to delete cohort",
+        );
       }
     }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
         <Typography>Loading cohort...</Typography>
       </Box>
     );
@@ -117,7 +126,7 @@ export default function EditCohortPage() {
 
   if (error) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
+      <Box sx={{ textAlign: "center", py: 8 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
@@ -130,8 +139,10 @@ export default function EditCohortPage() {
 
   if (!cohort) {
     return (
-      <Box sx={{ textAlign: 'center', py: 8 }}>
-        <Typography variant="h5" sx={{ mb: 2 }}>Cohort Not Found</Typography>
+      <Box sx={{ textAlign: "center", py: 8 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Cohort Not Found
+        </Typography>
         <Button component={Link} href="/dashboard/cohorts">
           Back to Cohorts
         </Button>
@@ -140,14 +151,22 @@ export default function EditCohortPage() {
   }
 
   const isValid = name;
-  const hasChanges = description !== (cohort?.description || '') ||
-                    JSON.stringify(rules) !== JSON.stringify(cohort?.rules || []);
+  const hasChanges =
+    description !== (cohort?.description || "") ||
+    JSON.stringify(conditions) !== JSON.stringify(cohort?.conditions || []);
 
   return (
     <Box>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
           <Button
             startIcon={<ArrowBack />}
             component={Link}
@@ -191,49 +210,66 @@ export default function EditCohortPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Basic Configuration
                 </Typography>
-                
+
                 <Stack spacing={3}>
                   {/* Name - Read Only */}
                   <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
                       Cohort Name
                     </Typography>
                     <Box
                       sx={{
-                        fontSize: '1rem',
-                        bgcolor: 'grey.50',
+                        fontSize: "1rem",
+                        bgcolor: "grey.50",
                         p: 1.5,
                         borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider'
+                        border: "1px solid",
+                        borderColor: "divider",
                       }}
                     >
                       {name}
                     </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                      Cohort name cannot be changed after creation to maintain consistency
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, display: "block" }}
+                    >
+                      Cohort name cannot be changed after creation to maintain
+                      consistency
                     </Typography>
                   </Box>
 
                   {/* Identifier Display */}
                   <Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
                       Cohort Identifier
                     </Typography>
                     <Box
                       sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
-                        bgcolor: 'grey.50',
+                        fontFamily: "monospace",
+                        fontSize: "0.875rem",
+                        bgcolor: "grey.50",
                         p: 1.5,
                         borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'divider'
+                        border: "1px solid",
+                        borderColor: "divider",
                       }}
                     >
                       {identifier}
                     </Box>
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, display: "block" }}
+                    >
                       Used in code to reference this cohort
                     </Typography>
                   </Box>
@@ -248,7 +284,6 @@ export default function EditCohortPage() {
                     rows={3}
                     fullWidth
                   />
-
                 </Stack>
               </CardContent>
             </Card>
@@ -256,18 +291,13 @@ export default function EditCohortPage() {
             {/* Targeting Rules */}
             <Card>
               <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2 }}>
-                  Targeting Rules
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Define the conditions that determine which users belong to this cohort
-                </Typography>
-                <RulesContainer
-                  rules={rules}
-                  onChange={setRules}
-                  flagType="bool"
-                  defaultValue={true}
-                  appId={cohort?.appId || ''}
+                <ConditionsContainer
+                  conditions={conditions}
+                  onChange={setConditions}
+                  appId={cohort?.appId || ""}
+                  title="Targeting Conditions"
+                  description="Define the criteria that determine which users belong to this cohort"
+                  emptyMessage="No conditions defined. All users will be included in this cohort."
                 />
               </CardContent>
             </Card>
@@ -282,10 +312,14 @@ export default function EditCohortPage() {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Preview
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 3 }}
+                >
                   How this rule group will appear in your configuration
                 </Typography>
-                
+
                 <Stack spacing={2}>
                   <Box>
                     <Typography variant="caption" color="text.secondary">
@@ -295,19 +329,19 @@ export default function EditCohortPage() {
                       {name}
                     </Typography>
                   </Box>
-                  
+
                   <Box>
                     <Typography variant="caption" color="text.secondary">
                       Identifier
                     </Typography>
                     <Box
                       sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.875rem',
-                        bgcolor: 'grey.100',
+                        fontFamily: "monospace",
+                        fontSize: "0.875rem",
+                        bgcolor: "grey.100",
                         p: 1,
                         borderRadius: 1,
-                        mt: 0.5
+                        mt: 0.5,
                       }}
                     >
                       {identifier}
@@ -316,13 +350,15 @@ export default function EditCohortPage() {
 
                   <Box>
                     <Typography variant="caption" color="text.secondary">
-                      Rules
+                      Conditions
                     </Typography>
                     <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      {rules.length === 0 ? 'No targeting rules defined' : `${rules.length} targeting rule${rules.length === 1 ? '' : 's'}`}
+                      {conditions.length === 0
+                        ? "No targeting conditions defined"
+                        : `${conditions.length} targeting condition${conditions.length === 1 ? "" : "s"}`}
                     </Typography>
                   </Box>
-                  
+
                   <Box>
                     <Typography variant="caption" color="text.secondary">
                       JSON Configuration
@@ -330,26 +366,30 @@ export default function EditCohortPage() {
                     <Box
                       component="pre"
                       sx={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.75rem',
-                        bgcolor: 'grey.100',
+                        fontFamily: "monospace",
+                        fontSize: "0.75rem",
+                        bgcolor: "grey.100",
                         p: 1.5,
                         borderRadius: 1,
                         mt: 0.5,
-                        overflow: 'auto',
-                        whiteSpace: 'pre-wrap'
+                        overflow: "auto",
+                        whiteSpace: "pre-wrap",
                       }}
                     >
-                      {JSON.stringify({
-                        [identifier]: {
-                          conditions: rules.flatMap(rule => rule.conditions.map(condition => ({
-                            field: condition.type,
-                            operator: condition.operator,
-                            value: condition.values
-                          }))),
-                          ...(description && { description })
-                        }
-                      }, null, 2)}
+                      {JSON.stringify(
+                        {
+                          [identifier]: {
+                            conditions: conditions.map((condition) => ({
+                              field: condition.type,
+                              operator: condition.operator,
+                              values: condition.values,
+                            })),
+                            ...(description && { description }),
+                          },
+                        },
+                        null,
+                        2,
+                      )}
                     </Box>
                   </Box>
                 </Stack>
@@ -366,22 +406,25 @@ export default function EditCohortPage() {
                   <Stack spacing={1}>
                     {name !== originalName && (
                       <Typography variant="body2">
-                        • Name: <code>{originalName}</code> → <code>{name}</code>
+                        • Name: <code>{originalName}</code> →{" "}
+                        <code>{name}</code>
                       </Typography>
                     )}
                     {identifier !== originalIdentifier && (
                       <Typography variant="body2">
-                        • Identifier: <code>{originalIdentifier}</code> → <code>{identifier}</code>
+                        • Identifier: <code>{originalIdentifier}</code> →{" "}
+                        <code>{identifier}</code>
                       </Typography>
                     )}
-                    {description !== (cohort.description || '') && (
+                    {description !== (cohort.description || "") && (
                       <Typography variant="body2">
                         • Description updated
                       </Typography>
                     )}
-                    {JSON.stringify(rules) !== JSON.stringify(cohort?.rules || []) && (
+                    {JSON.stringify(conditions) !==
+                      JSON.stringify(cohort?.conditions || []) && (
                       <Typography variant="body2">
-                        • Targeting rules updated
+                        • Targeting conditions updated
                       </Typography>
                     )}
                   </Stack>
@@ -399,7 +442,11 @@ export default function EditCohortPage() {
                 fullWidth
                 size="large"
               >
-                {saving ? 'Saving...' : (!hasChanges ? 'No Changes to Save' : 'Save Changes')}
+                {saving
+                  ? "Saving..."
+                  : !hasChanges
+                    ? "No Changes to Save"
+                    : "Save Changes"}
               </Button>
               <Button
                 variant="outlined"

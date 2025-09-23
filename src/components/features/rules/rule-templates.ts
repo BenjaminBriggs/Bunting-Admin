@@ -2,18 +2,6 @@ import { ConditionTemplate } from '@/types/rules';
 
 export const conditionTemplates: ConditionTemplate[] = [
   {
-    type: 'environment',
-    label: 'Environment',
-    description: 'Select which environments this rule applies to',
-    operators: ['in'], // Only one operator needed - "applies to"
-    valueType: 'select',
-    options: [
-      { value: 'live', label: 'Live' },
-      { value: 'beta', label: 'Beta' },
-      { value: 'debug', label: 'Debug' }
-    ]
-  },
-  {
     type: 'app_version',
     label: 'App Version',
     description: 'Target users based on their app version',
