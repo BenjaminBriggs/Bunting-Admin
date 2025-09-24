@@ -60,6 +60,7 @@ export function VariantCreatorModal({
   // State for condition builder modal
   const [conditionModalOpen, setConditionModalOpen] = useState(false);
   const [editingConditionIndex, setEditingConditionIndex] = useState<number | null>(null);
+  const [editingCondition, setEditingCondition] = useState<RuleCondition | undefined>(undefined);
 
   useEffect(() => {
     if (existingVariant) {
@@ -118,11 +119,13 @@ export function VariantCreatorModal({
 
   const handleAddCondition = () => {
     setEditingConditionIndex(null);
+    setEditingCondition(undefined);
     setConditionModalOpen(true);
   };
 
   const handleEditCondition = (index: number) => {
     setEditingConditionIndex(index);
+    setEditingCondition(conditions[index]);
     setConditionModalOpen(true);
   };
 
@@ -161,6 +164,10 @@ export function VariantCreatorModal({
       }
     }
 
+    if (conditions.length === 0) {
+      newErrors.push('At least one condition is required for conditional variants');
+    }
+
     if (conditions.some(c => c.values.length === 0)) {
       newErrors.push('All conditions must have at least one value');
     }
@@ -175,6 +182,7 @@ export function VariantCreatorModal({
     const variant: ConditionalVariant = {
       id: existingVariant?.id || generateId(),
       name: generateVariantName(conditions),
+      type: 'conditional', // Explicit type for consistency
       conditions,
       value: variantValue,
       order,
@@ -278,7 +286,7 @@ export function VariantCreatorModal({
                           {condition.type === 'app_version' ? 'App Version' :
                            condition.type === 'os_version' ? 'OS Version' :
                            condition.type === 'platform' ? 'Platform' :
-                           condition.type === 'country' ? 'Country' :
+                           condition.type === 'region' ? 'Country' :
                            condition.type === 'cohort' ? 'Cohort' : condition.type}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -334,9 +342,10 @@ export function VariantCreatorModal({
           onClose={() => {
             setConditionModalOpen(false);
             setEditingConditionIndex(null);
+            setEditingCondition(undefined);
           }}
           onSave={handleConditionSave}
-          existingCondition={editingConditionIndex !== null ? conditions[editingConditionIndex] : undefined}
+          existingCondition={editingCondition}
           contextType="flag_variant"
         />
       </Dialog>

@@ -24,7 +24,7 @@ export interface ValidationWarning {
   cohortKey?: string;
 }
 
-const VALID_FLAG_TYPES = ['bool', 'string', 'int', 'double', 'date', 'json'] as const;
+const VALID_FLAG_TYPES = ['boolean', 'string', 'integer', 'double', 'date', 'json'] as const;
 const ENVIRONMENTS = ['development', 'staging', 'production'] as const;
 
 export type ValidFlagType = typeof VALID_FLAG_TYPES[number];
@@ -174,11 +174,11 @@ export function validateFlag(flag: any): ValidationResult {
  */
 export function validateFlagValue(type: ValidFlagType, value: any): boolean {
   switch (type) {
-    case 'bool':
+    case 'boolean':
       return typeof value === 'boolean';
     case 'string':
       return typeof value === 'string';
-    case 'int':
+    case 'integer':
       return Number.isInteger(value);
     case 'double':
       return typeof value === 'number' && !Number.isNaN(value);
@@ -198,11 +198,20 @@ export function validateFlagValue(type: ValidFlagType, value: any): boolean {
 }
 
 /**
- * Normalizes Prisma enum values to lowercase for consistency.
- * Prisma returns "BOOL" but our validation expects "bool".
+ * Normalizes Prisma enum values to JSON spec compliant types.
+ * Prisma returns "BOOL" but JSON spec expects "boolean".
  */
 export function normalizeFlagType(type: string): string {
-  return type.toLowerCase();
+  const typeMap: Record<string, string> = {
+    'BOOL': 'boolean',
+    'STRING': 'string',
+    'INT': 'integer',
+    'DOUBLE': 'double',
+    'DATE': 'date',
+    'JSON': 'json'
+  };
+
+  return typeMap[type.toUpperCase()] || type.toLowerCase();
 }
 
 /**
@@ -210,11 +219,11 @@ export function normalizeFlagType(type: string): string {
  */
 export function getDefaultValueForType(type: ValidFlagType): any {
   switch (type) {
-    case 'bool':
+    case 'boolean':
       return false;
     case 'string':
       return '';
-    case 'int':
+    case 'integer':
       return 0;
     case 'double':
       return 0.0;

@@ -74,34 +74,28 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
       development: {
         default: flag.defaultValues.development,
         variants: (flag.variants.development || []).map((variant: any) => ({
-          type: variant.type || 'conditional',
+          type: 'conditional', // All flag variants are conditional
           order: variant.order || 0,
           value: variant.value,
-          ...(variant.type === 'conditional' && { conditions: variant.conditions || [] }),
-          ...(variant.type === 'test' && { test: variant.test }),
-          ...(variant.type === 'rollout' && { rollout: variant.rollout })
+          conditions: variant.conditions || [] // Always include conditions for flag variants
         })).sort((a: any, b: any) => a.order - b.order)
       },
       staging: {
         default: flag.defaultValues.staging,
         variants: (flag.variants.staging || []).map((variant: any) => ({
-          type: variant.type || 'conditional',
+          type: 'conditional', // All flag variants are conditional
           order: variant.order || 0,
           value: variant.value,
-          ...(variant.type === 'conditional' && { conditions: variant.conditions || [] }),
-          ...(variant.type === 'test' && { test: variant.test }),
-          ...(variant.type === 'rollout' && { rollout: variant.rollout })
+          conditions: variant.conditions || [] // Always include conditions for flag variants
         })).sort((a: any, b: any) => a.order - b.order)
       },
       production: {
         default: flag.defaultValues.production,
         variants: (flag.variants.production || []).map((variant: any) => ({
-          type: variant.type || 'conditional',
+          type: 'conditional', // All flag variants are conditional
           order: variant.order || 0,
           value: variant.value,
-          ...(variant.type === 'conditional' && { conditions: variant.conditions || [] }),
-          ...(variant.type === 'test' && { test: variant.test }),
-          ...(variant.type === 'rollout' && { rollout: variant.rollout })
+          conditions: variant.conditions || [] // Always include conditions for flag variants
         })).sort((a: any, b: any) => a.order - b.order)
       }
     };
