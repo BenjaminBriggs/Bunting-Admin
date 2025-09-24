@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -52,36 +52,41 @@ export function ConditionBuilderModal({
   const [valueInput, setValueInput] = useState('');
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
+  // Handle modal open/close and condition loading
   useEffect(() => {
-    if (existingCondition) {
-      setCondition(existingCondition);
-    } else {
-      // Reset to default condition when opening for new condition
-      const defaultType = config.allowedTypes[0] || 'app_version';
-      const defaultTemplate = conditionTemplates.find(t => t.type === defaultType);
-      const defaultOperator = defaultTemplate?.operators[0] || 'in';
-      
-      setCondition({
-        id: generateId(),
-        type: defaultType,
-        operator: defaultOperator,
-        values: []
-      });
+    if (open) {
+      if (existingCondition) {
+        // Editing existing condition
+        setCondition(existingCondition);
+      } else {
+        // Creating new condition - use static default
+        setCondition({
+          id: generateId(),
+          type: 'app_version',
+          operator: 'in',
+          values: []
+        });
+      }
+      setValueInput('');
+      setValidationErrors([]);
     }
-    setValueInput('');
-    setValidationErrors([]);
-  }, [existingCondition, open, config.allowedTypes]);
+  }, [open, existingCondition]);
 
   const handleTypeChange = (newType: RuleConditionType) => {
     const newTemplate = conditionTemplates.find(t => t.type === newType);
     const defaultOperator = newTemplate?.operators[0] || 'equals';
-    
+
     setCondition({
       ...condition,
       type: newType,
       operator: defaultOperator,
       values: []
     });
+
+    // Clear validation errors when user makes changes
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
   };
 
   const handleOperatorChange = (operator: RuleOperator) => {
@@ -90,6 +95,11 @@ export function ConditionBuilderModal({
       operator,
       values: []
     });
+
+    // Clear validation errors when user makes changes
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
   };
 
   const handleAddValue = () => {
@@ -100,6 +110,11 @@ export function ConditionBuilderModal({
         values: newValues
       });
       setValueInput('');
+
+      // Clear validation errors when user adds values
+      if (validationErrors.length > 0) {
+        setValidationErrors([]);
+      }
     }
   };
 
@@ -109,6 +124,11 @@ export function ConditionBuilderModal({
       ...condition,
       values: newValues
     });
+
+    // Clear validation errors when user makes changes
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
   };
 
   const handleValuesChange = (values: string[]) => {
@@ -116,6 +136,11 @@ export function ConditionBuilderModal({
       ...condition,
       values
     });
+
+    // Clear validation errors when user makes changes
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
   };
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
@@ -155,7 +180,11 @@ export function ConditionBuilderModal({
   };
 
   const handleSave = () => {
-    if (!validateCondition()) return;
+    if (!validateCondition()) {
+      // Validation errors are now set and displayed to the user
+      // But the button is not disabled, so they can fix issues and try again
+      return;
+    }
 
     onSave(condition);
     onClose();
@@ -333,10 +362,10 @@ export function ConditionBuilderModal({
 
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained" 
-          disabled={validationErrors.length > 0 || loading}
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={loading}
         >
           {existingCondition ? 'Update' : 'Create'} Condition
         </Button>

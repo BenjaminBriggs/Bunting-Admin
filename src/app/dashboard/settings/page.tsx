@@ -29,12 +29,18 @@ import {
   DialogActions,
   DialogContentText,
   TextField,
-  Stack
+  Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  Chip,
+  Alert
 } from '@mui/material';
 import { Add, Apps, MoreVert, Edit, Delete, Download, Settings, Code, Warning, People } from '@mui/icons-material';
 import { fetchApps, updateApp, type App } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { StorageConfigForm, generateArtifactUrl, detectStorageType, type StorageConfigData } from '@/components/forms/StorageConfigForm';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -48,16 +54,24 @@ export default function SettingsPage() {
   const [appToDelete, setAppToDelete] = useState<App | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    minIntervalHours: number;
+    hardTtlDays: number;
+    storage: StorageConfigData;
+  }>({
     name: '',
     minIntervalHours: 6,
     hardTtlDays: 7,
-    storageConfig: {
-      bucket: '',
-      region: 'us-east-1',
-      endpoint: '',
-      accessKeyId: '',
-      secretAccessKey: ''
+    storage: {
+      storageType: process.env.NODE_ENV === "development" ? "minio" : "aws",
+      storageConfig: {
+        bucket: '',
+        region: 'us-east-1',
+        endpoint: '',
+        accessKeyId: '',
+        secretAccessKey: ''
+      }
     }
   });
 
@@ -82,16 +96,20 @@ export default function SettingsPage() {
   // Update form data when selected app changes
   useEffect(() => {
     if (selectedApp && !editMode) {
+      const storageType = detectStorageType(selectedApp.storageConfig.endpoint);
       setFormData({
         name: selectedApp.name,
         minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
         hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
-        storageConfig: {
-          bucket: selectedApp.storageConfig.bucket,
-          region: selectedApp.storageConfig.region,
-          endpoint: selectedApp.storageConfig.endpoint || '',
-          accessKeyId: selectedApp.storageConfig.accessKeyId || '',
-          secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
+        storage: {
+          storageType,
+          storageConfig: {
+            bucket: selectedApp.storageConfig.bucket,
+            region: selectedApp.storageConfig.region,
+            endpoint: selectedApp.storageConfig.endpoint || '',
+            accessKeyId: selectedApp.storageConfig.accessKeyId || '',
+            secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
+          }
         }
       });
     }
@@ -99,16 +117,20 @@ export default function SettingsPage() {
 
   const handleEditStart = () => {
     if (selectedApp) {
+      const storageType = detectStorageType(selectedApp.storageConfig.endpoint);
       setFormData({
         name: selectedApp.name,
         minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
         hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
-        storageConfig: {
-          bucket: selectedApp.storageConfig.bucket,
-          region: selectedApp.storageConfig.region,
-          endpoint: selectedApp.storageConfig.endpoint || '',
-          accessKeyId: selectedApp.storageConfig.accessKeyId || '',
-          secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
+        storage: {
+          storageType,
+          storageConfig: {
+            bucket: selectedApp.storageConfig.bucket,
+            region: selectedApp.storageConfig.region,
+            endpoint: selectedApp.storageConfig.endpoint || '',
+            accessKeyId: selectedApp.storageConfig.accessKeyId || '',
+            secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
+          }
         }
       });
       setEditMode(true);
@@ -139,12 +161,12 @@ export default function SettingsPage() {
       return;
     }
 
-    if (!formData.storageConfig.bucket.trim()) {
+    if (!formData.storage.storageConfig.bucket.trim()) {
       setError('S3 bucket is required');
       return;
     }
 
-    if (!formData.storageConfig.region.trim()) {
+    if (!formData.storage.storageConfig.region.trim()) {
       setError('AWS region is required');
       return;
     }
@@ -153,18 +175,22 @@ export default function SettingsPage() {
       setSaving(true);
       setError(null);
 
+      // Generate new artifact URL based on updated storage config
+      const newArtifactUrl = generateArtifactUrl(formData.storage.storageType, formData.storage.storageConfig, selectedApp.identifier);
+
       const updatedApp = await updateApp(selectedApp.id, {
         name: formData.name,
+        artifactUrl: newArtifactUrl,
         fetchPolicy: {
           min_interval_seconds: formData.minIntervalHours * 3600,
           hard_ttl_days: formData.hardTtlDays
         },
         storageConfig: {
-          bucket: formData.storageConfig.bucket,
-          region: formData.storageConfig.region,
-          endpoint: formData.storageConfig.endpoint || undefined,
-          accessKeyId: formData.storageConfig.accessKeyId || undefined,
-          secretAccessKey: formData.storageConfig.secretAccessKey || undefined
+          bucket: formData.storage.storageConfig.bucket,
+          region: formData.storage.storageConfig.region,
+          endpoint: formData.storage.storageConfig.endpoint || undefined,
+          accessKeyId: formData.storage.storageConfig.accessKeyId || undefined,
+          secretAccessKey: formData.storage.storageConfig.secretAccessKey || undefined
         }
       });
 
@@ -279,7 +305,7 @@ export default function SettingsPage() {
           <Button 
             variant="contained" 
             startIcon={<Add />}
-            onClick={() => router.push('/dashboard/setup')}
+            onClick={() => router.push('/setup/app')}
           >
             Set Up Your First Application
           </Button>
@@ -326,7 +352,7 @@ export default function SettingsPage() {
                     variant="contained"
                     startIcon={<Add />}
                     fullWidth
-                    onClick={() => router.push('/dashboard/setup')}
+                    onClick={() => router.push('/setup/app')}
                   >
                     Add Application
                   </Button>
@@ -447,66 +473,11 @@ export default function SettingsPage() {
                             helperText="Maximum age before config is considered stale (1-365 days)"
                           />
 
-                          <Typography variant="subtitle1" sx={{ mt: 2 }}>
-                            Storage Configuration
-                          </Typography>
-
-                          <TextField
-                            label="S3 Bucket"
-                            value={formData.storageConfig.bucket}
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              storageConfig: { ...formData.storageConfig, bucket: e.target.value }
-                            })}
-                            fullWidth
-                            required
-                            helperText="AWS S3 bucket name for storing config artifacts"
-                          />
-
-                          <TextField
-                            label="AWS Region"
-                            value={formData.storageConfig.region}
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              storageConfig: { ...formData.storageConfig, region: e.target.value }
-                            })}
-                            fullWidth
-                            required
-                            helperText="AWS region where the bucket is located (e.g., us-east-1)"
-                          />
-
-                          <TextField
-                            label="Custom Endpoint (Optional)"
-                            value={formData.storageConfig.endpoint}
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              storageConfig: { ...formData.storageConfig, endpoint: e.target.value }
-                            })}
-                            fullWidth
-                            helperText="Custom S3-compatible endpoint (leave empty for AWS S3)"
-                          />
-
-                          <TextField
-                            label="Access Key ID (Optional)"
-                            value={formData.storageConfig.accessKeyId}
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              storageConfig: { ...formData.storageConfig, accessKeyId: e.target.value }
-                            })}
-                            fullWidth
-                            helperText="Leave empty to use environment variables or IAM roles"
-                          />
-
-                          <TextField
-                            label="Secret Access Key (Optional)"
-                            type="password"
-                            value={formData.storageConfig.secretAccessKey}
-                            onChange={(e) => setFormData({ 
-                              ...formData, 
-                              storageConfig: { ...formData.storageConfig, secretAccessKey: e.target.value }
-                            })}
-                            fullWidth
-                            helperText="Leave empty to use environment variables or IAM roles"
+                          <StorageConfigForm
+                            value={formData.storage}
+                            onChange={(storage) => setFormData({ ...formData, storage })}
+                            disabled={saving}
+                            showTypeSelector={true}
                           />
                         </Stack>
                       ) : (

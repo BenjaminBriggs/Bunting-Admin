@@ -122,11 +122,19 @@ export default function ConditionCreatorModal({
 
   const handleAddCondition = () => {
     setConditions([...conditions, createDefaultCondition()]);
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
   };
 
   const handleRemoveCondition = (index: number) => {
     if (conditions.length > 1) {
       setConditions(conditions.filter((_, i) => i !== index));
+      // Clear validation errors when user makes changes
+      if (errors.length > 0) {
+        setErrors([]);
+      }
     }
   };
 
@@ -134,6 +142,34 @@ export default function ConditionCreatorModal({
     const newConditions = [...conditions];
     newConditions[index] = condition;
     setConditions(newConditions);
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
+  const handleVariantValueChange = (value: FlagValue) => {
+    setVariantValue(value);
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
+  const handleConditionLogicChange = (logic: "AND" | "OR") => {
+    setConditionLogic(logic);
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
+  const handleOrderChange = (order: number) => {
+    setOrder(order);
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -210,7 +246,7 @@ export default function ConditionCreatorModal({
             <ValueInput
               type={flagType}
               value={variantValue}
-              onChange={setVariantValue}
+              onChange={handleVariantValueChange}
               label={`${flagType.charAt(0).toUpperCase()}${flagType.slice(1)} Value`}
               fullWidth
               helperText="The value to return when this variant's conditions are met"
@@ -224,7 +260,7 @@ export default function ConditionCreatorModal({
             <TextField
               type="number"
               value={order}
-              onChange={(e) => setOrder(parseInt(e.target.value, 10) || 1)}
+              onChange={(e) => handleOrderChange(parseInt(e.target.value, 10) || 1)}
               inputProps={{ min: 1 }}
               helperText="Lower numbers = higher priority (1 = highest)"
             />
@@ -241,7 +277,7 @@ export default function ConditionCreatorModal({
                   <Select
                     value={conditionLogic}
                     label="Logic"
-                    onChange={(e) => setConditionLogic(e.target.value as "AND" | "OR")}
+                    onChange={(e) => handleConditionLogicChange(e.target.value as "AND" | "OR")}
                   >
                     <MenuItem value="AND">AND (all must match)</MenuItem>
                     <MenuItem value="OR">OR (any must match)</MenuItem>
@@ -294,7 +330,7 @@ export default function ConditionCreatorModal({
 
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>
-        <Button onClick={handleSave} variant="contained" disabled={errors.length > 0}>
+        <Button onClick={handleSave} variant="contained">
           {existingVariant ? "Update" : "Create"} Variant
         </Button>
       </DialogActions>

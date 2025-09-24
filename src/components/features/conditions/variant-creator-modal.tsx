@@ -132,6 +132,10 @@ export function VariantCreatorModal({
   const handleRemoveCondition = (index: number) => {
     if (conditions.length > 1) {
       setConditions(conditions.filter((_, i) => i !== index));
+      // Clear validation errors when user makes changes
+      if (errors.length > 0) {
+        setErrors([]);
+      }
     }
   };
 
@@ -147,6 +151,27 @@ export function VariantCreatorModal({
     }
     setConditionModalOpen(false);
     setEditingConditionIndex(null);
+
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
+  const handleVariantValueChange = (value: FlagValue) => {
+    setVariantValue(value);
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
+  };
+
+  const handleConditionLogicChange = (logic: 'AND' | 'OR') => {
+    setConditionLogic(logic);
+    // Clear validation errors when user makes changes
+    if (errors.length > 0) {
+      setErrors([]);
+    }
   };
 
   const validateForm = (): boolean => {
@@ -229,7 +254,7 @@ export function VariantCreatorModal({
               <FlagValueInput
                 flagType={flagType}
                 value={variantValue}
-                onChange={setVariantValue}
+                onChange={handleVariantValueChange}
                 label={`${flagType.charAt(0).toUpperCase()}${flagType.slice(1)} Value`}
                 fullWidth
                 helperText="The value to return when this variant's conditions are met"
@@ -260,7 +285,7 @@ export function VariantCreatorModal({
                     <Select
                       value={conditionLogic}
                       label="Logic"
-                      onChange={(e) => setConditionLogic(e.target.value as 'AND' | 'OR')}
+                      onChange={(e) => handleConditionLogicChange(e.target.value as 'AND' | 'OR')}
                     >
                       <MenuItem value="AND">AND (all must match)</MenuItem>
                       <MenuItem value="OR">OR (any must match)</MenuItem>
@@ -331,7 +356,7 @@ export function VariantCreatorModal({
 
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" disabled={errors.length > 0}>
+          <Button onClick={handleSave} variant="contained">
             {existingVariant ? 'Update' : 'Create'} Variant
           </Button>
         </DialogActions>
