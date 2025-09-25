@@ -81,13 +81,15 @@ export function validateConfig(config: any): ValidationResult {
     ENVIRONMENTS.forEach(env => {
       if (flag[env] && flag[env].variants && Array.isArray(flag[env].variants)) {
         flag[env].variants.forEach((variant: any, variantIndex: number) => {
-          // Check for valid conditions
-          if (!variant.conditions || !Array.isArray(variant.conditions) || variant.conditions.length === 0) {
-            warnings.push({
-              type: 'empty_variant',
-              message: `Variant ${variantIndex + 1} in flag "${key}" (${env}) has no conditions`,
-              flagKey: key
-            });
+          // Check for valid conditions - only for conditional variants
+          if (variant.type === 'conditional') {
+            if (!variant.conditions || !Array.isArray(variant.conditions) || variant.conditions.length === 0) {
+              warnings.push({
+                type: 'empty_variant',
+                message: `Variant ${variantIndex + 1} in flag "${key}" (${env}) has no conditions`,
+                flagKey: key
+              });
+            }
           }
 
           // Check for cohort references

@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
       ContentType: 'application/json',
       CacheControl: 'max-age=300, stale-while-revalidate=86400',
       Metadata: {
-        'x-bunting-signature': signingResult.signature,
         'x-bunting-key-id': signingResult.keyId,
         'x-bunting-algorithm': signingResult.algorithm,
+        'x-bunting-version': version,
       },
     });
 

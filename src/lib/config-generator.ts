@@ -68,35 +68,42 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
     // Normalize Prisma enum to lowercase (Prisma returns 'BOOL', we want 'bool')
     const jsonSpecType = normalizeFlagType(flag.type);
 
+    // Start with conditional variants from the flag itself
+    const developmentVariants = (flag.variants.development || []).map((variant: any) => ({
+      type: 'conditional', // All flag variants are conditional
+      order: variant.order || 0,
+      value: variant.value,
+      conditions: variant.conditions || [] // Always include conditions for flag variants
+    }));
+
+    const stagingVariants = (flag.variants.staging || []).map((variant: any) => ({
+      type: 'conditional', // All flag variants are conditional
+      order: variant.order || 0,
+      value: variant.value,
+      conditions: variant.conditions || [] // Always include conditions for flag variants
+    }));
+
+    const productionVariants = (flag.variants.production || []).map((variant: any) => ({
+      type: 'conditional', // All flag variants are conditional
+      order: variant.order || 0,
+      value: variant.value,
+      conditions: variant.conditions || [] // Always include conditions for flag variants
+    }));
+
     flags[flag.key] = {
       type: jsonSpecType,
       description: flag.description || '',
       development: {
         default: flag.defaultValues.development,
-        variants: (flag.variants.development || []).map((variant: any) => ({
-          type: 'conditional', // All flag variants are conditional
-          order: variant.order || 0,
-          value: variant.value,
-          conditions: variant.conditions || [] // Always include conditions for flag variants
-        })).sort((a: any, b: any) => a.order - b.order)
+        variants: developmentVariants
       },
       staging: {
         default: flag.defaultValues.staging,
-        variants: (flag.variants.staging || []).map((variant: any) => ({
-          type: 'conditional', // All flag variants are conditional
-          order: variant.order || 0,
-          value: variant.value,
-          conditions: variant.conditions || [] // Always include conditions for flag variants
-        })).sort((a: any, b: any) => a.order - b.order)
+        variants: stagingVariants
       },
       production: {
         default: flag.defaultValues.production,
-        variants: (flag.variants.production || []).map((variant: any) => ({
-          type: 'conditional', // All flag variants are conditional
-          order: variant.order || 0,
-          value: variant.value,
-          conditions: variant.conditions || [] // Always include conditions for flag variants
-        })).sort((a: any, b: any) => a.order - b.order)
+        variants: productionVariants
       }
     };
   });
@@ -121,6 +128,59 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
         salt: testRollout.salt,
         conditions: testRollout.conditions || []
       };
+
+      // Add test variants to assigned flags
+      const assignedFlagIds = testRollout.flagIds || [];
+      assignedFlagIds.forEach((flagId: string) => {
+        // Find the flag by ID
+        const flag = app.flags.find((f: any) => f.id === flagId);
+        if (flag && flags[flag.key]) {
+          const variants = testRollout.variants || {};
+
+          // Add test variant to each environment that has variant values
+          ['development', 'staging', 'production'].forEach(env => {
+            if (variants) {
+              // Calculate the highest current order to append test variants after conditional ones
+              const currentVariants = flags[flag.key][env].variants;
+              const highestOrder = currentVariants.length > 0
+                ? Math.max(...currentVariants.map((v: any) => v.order || 0))
+                : 0;
+
+              // For tests, we need to create variants based on the test variant definitions
+              // Note: Test values are stored per variant but we need flag-specific values
+              const testVariantValues: Record<string, any> = {};
+              Object.keys(variants).forEach((variantName: string) => {
+                const variantData = variants[variantName];
+                // The values structure is: { variantName: { percentage, values: { dev: ..., staging: ..., prod: ... } } }
+                // But we need to get the flag-specific value for this environment
+                if (variantData.values && variantData.values[env] !== null) {
+                  // Check if this is the correct flag-specific value structure
+                  const flagValue = variantData.values[env];
+                  if (typeof flagValue === 'object' && flagValue[flag.id] !== undefined) {
+                    // Flag-specific value exists
+                    testVariantValues[variantName] = flagValue[flag.id];
+                  } else if (typeof flagValue !== 'object') {
+                    // Direct value (not flag-specific)
+                    testVariantValues[variantName] = flagValue;
+                  }
+                  // If neither case matches, the test doesn't have values for this flag yet
+                }
+              });
+
+              // Only add test variant if we have actual values (not null)
+              if (Object.keys(testVariantValues).length > 0) {
+                flags[flag.key][env].variants.push({
+                  type: 'test',
+                  order: highestOrder + 10, // Ensure test variants come after conditionals
+                  test: testRollout.key,
+                  values: testVariantValues
+                });
+              }
+            }
+          });
+        }
+      });
+
     } else if (testRollout.type === 'ROLLOUT') {
       // JSON Spec compliant rollout
       rollouts[testRollout.key] = {
@@ -131,7 +191,55 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
         conditions: testRollout.conditions || [],
         percentage: testRollout.percentage || 0
       };
+
+      // Add rollout variants to assigned flags
+      const assignedFlagIds = testRollout.flagIds || [];
+      assignedFlagIds.forEach((flagId: string) => {
+        // Find the flag by ID
+        const flag = app.flags.find((f: any) => f.id === flagId);
+        if (flag && flags[flag.key] && testRollout.rolloutValues) {
+          // Add rollout variant to each environment
+          ['development', 'staging', 'production'].forEach(env => {
+            if (testRollout.rolloutValues && testRollout.rolloutValues[env] !== null && testRollout.rolloutValues[env] !== undefined) {
+              // Calculate the highest current order to append rollout variants after others
+              const currentVariants = flags[flag.key][env].variants;
+              const highestOrder = currentVariants.length > 0
+                ? Math.max(...currentVariants.map((v: any) => v.order || 0))
+                : 0;
+
+              // Extract the flag-specific rollout value
+              const rolloutValue = testRollout.rolloutValues[env];
+              let flagSpecificValue;
+
+              if (typeof rolloutValue === 'object' && rolloutValue[flag.id] !== undefined) {
+                // Flag-specific value exists
+                flagSpecificValue = rolloutValue[flag.id];
+              } else if (typeof rolloutValue !== 'object') {
+                // Direct value (not flag-specific)
+                flagSpecificValue = rolloutValue;
+              } else {
+                // No value for this flag, skip
+                return;
+              }
+
+              flags[flag.key][env].variants.push({
+                type: 'rollout',
+                order: highestOrder + 10, // Ensure rollout variants come after conditionals/tests
+                rollout: testRollout.key,
+                value: flagSpecificValue
+              });
+            }
+          });
+        }
+      });
     }
+  });
+
+  // Sort all variants by order
+  Object.keys(flags).forEach(flagKey => {
+    ['development', 'staging', 'production'].forEach(env => {
+      flags[flagKey][env].variants.sort((a: any, b: any) => a.order - b.order);
+    });
   });
 
   // Generate the corrected config artifact
