@@ -32,6 +32,17 @@ const steps = [
   'Complete Setup'
 ]
 
+const getFieldDefaultValue = (field: string): string => {
+  switch (field) {
+    case 'DEV_ADMIN_EMAIL':
+      return 'admin@example.com'
+    case 'DEV_ADMIN_PASSWORD':
+      return 'admin'
+    default:
+      return ''
+  }
+}
+
 export default function InitialSetupPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -64,13 +75,31 @@ export default function InitialSetupPage() {
     setError(null)
 
     try {
+      // Merge configs with default values for fields that weren't explicitly set
+      const enrichedConfigs = { ...setupState.providerConfigs }
+
+      setupState.selectedProviders.forEach(providerId => {
+        const provider = authProviders.find(p => p.id === providerId)!
+        provider.required_fields.forEach(field => {
+          if (!enrichedConfigs[providerId]) {
+            enrichedConfigs[providerId] = {}
+          }
+          if (enrichedConfigs[providerId][field] === undefined) {
+            const defaultValue = getFieldDefaultValue(field)
+            if (defaultValue) {
+              enrichedConfigs[providerId][field] = defaultValue
+            }
+          }
+        })
+      })
+
       // Save auth provider configuration
       const response = await fetch('/api/setup/auth-providers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           providers: setupState.selectedProviders,
-          configs: setupState.providerConfigs,
+          configs: enrichedConfigs,
           platformIntegration: setupState.platformIntegration
         })
       })
@@ -161,9 +190,12 @@ export default function InitialSetupPage() {
                   (setupState.step === 1 && setupState.selectedProviders.length === 0) ||
                   (setupState.step === 2 && !setupState.selectedProviders.every(id => {
                     const provider = authProviders.find(p => p.id === id)!
-                    return provider.required_fields.every(field =>
-                      setupState.providerConfigs[id]?.[field]?.trim()
-                    )
+                    return provider.required_fields.every(field => {
+                      const configValue = setupState.providerConfigs[id]?.[field]
+                      const defaultValue = getFieldDefaultValue(field)
+                      const effectiveValue = configValue !== undefined ? configValue : defaultValue
+                      return effectiveValue?.trim()
+                    })
                   }))
                 }
               >

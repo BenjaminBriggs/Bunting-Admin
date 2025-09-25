@@ -46,29 +46,41 @@ if (process.env.RESEND_API_KEY) {
   )
 }
 
-// Add development credentials in development mode only
-if (process.env.NODE_ENV === 'development') {
+// Add email/password credentials for development
+if (process.env.NODE_ENV === 'development' && process.env.DISABLE_DEV_AUTH !== 'true') {
   providers.push(
     Credentials({
-      id: "dev-credentials",
-      name: "Development",
+      id: "credentials",
+      name: "Email & Password",
       credentials: {
-        username: { label: "Username", type: "text" },
+        email: { label: "Email", type: "email", placeholder: "admin@example.com" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Predefined development credentials
-        if (
-          credentials?.username === process.env.DEV_USERNAME &&
-          credentials?.password === process.env.DEV_PASSWORD
-        ) {
+        // Use environment variables with sensible defaults
+        const adminEmail = process.env.DEV_ADMIN_EMAIL || 'admin@example.com';
+        const adminPassword = process.env.DEV_ADMIN_PASSWORD || 'admin';
+
+        // Check against configured credentials
+        if (credentials?.email === adminEmail && credentials?.password === adminPassword) {
           return {
-            id: "dev-user",
-            email: "dev@bunting.local",
-            name: "Development User",
+            id: credentials.email,
+            email: credentials.email,
+            name: credentials.email.split('@')[0],
             role: "ADMIN"
           }
         }
+
+        // Fallback: allow any email with the configured admin password for flexibility
+        if (credentials?.password === adminPassword && credentials?.email) {
+          return {
+            id: credentials.email,
+            email: credentials.email,
+            name: credentials.email.split('@')[0],
+            role: "ADMIN"
+          }
+        }
+
         return null
       }
     })
@@ -80,7 +92,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       // Skip access list check for development credentials
-      if (account?.provider === "dev-credentials") {
+      if (account?.provider === "credentials") {
         return true
       }
 
@@ -102,15 +114,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return true
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       // Handle user creation/updates
-      if (user) {
-        // For development user, set role directly
-        if (user.email === "dev@bunting.local") {
-          token.role = "ADMIN"
+      if (user && user.email) {
+        // For dev credentials, use the role from the provider directly
+        if (account?.provider === "credentials" && process.env.NODE_ENV === 'development') {
+          token.role = user.role || "ADMIN"
           token.id = user.id
-        } else if (user.email) {
-          // Create or update user in database
+        } else {
+          // For production OAuth providers, use database role
           const dbUser = await createOrUpdateUser({
             email: user.email,
             name: user.name,

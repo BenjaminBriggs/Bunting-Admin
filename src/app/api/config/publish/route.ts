@@ -4,6 +4,8 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 import { getConfigChanges } from '@/lib/config-comparison';
+import { signConfig, createDetachedSignature } from '@/lib/jws-signer';
+import { generateRSAKeyPair } from '@/lib/crypto';
 
 const publishConfigSchema = z.object({
   appId: z.string(),
@@ -49,26 +51,48 @@ export async function POST(request: NextRequest) {
     const publishedConfig = {
       ...baseConfig,
       config_version: version,
-      published_at: new Date().toISOString(),
-      metadata: {
-        changelog,
-        published_by: 'admin@example.com', // TODO: Get from auth session
-      }
+      published_at: new Date().toISOString()
     };
 
-    // Upload to S3
-    const configKey = `${appIdentifier}/config.json`;
+    // Ensure app has a signing key (create one if none exists)
+    await ensureSigningKey(appId);
+
+    // Sign the configuration with JWS
     const configContent = JSON.stringify(publishedConfig, null, 2);
-    
-    const command = new PutObjectCommand({
+    const signingResult = await signConfig(appId, publishedConfig);
+
+    // Upload config to S3 with signature
+    const configKey = `${appIdentifier}/config.json`;
+    const signatureKey = `${appIdentifier}/config.json.sig`;
+
+    // Upload the config file
+    const configCommand = new PutObjectCommand({
       Bucket: bucketName,
       Key: configKey,
       Body: configContent,
       ContentType: 'application/json',
       CacheControl: 'max-age=300, stale-while-revalidate=86400',
+      Metadata: {
+        'x-bunting-signature': signingResult.signature,
+        'x-bunting-key-id': signingResult.keyId,
+        'x-bunting-algorithm': signingResult.algorithm,
+      },
     });
 
-    await s3Client.send(command);
+    // Upload the signature as a separate file (for detached signature support)
+    const signatureCommand = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: signatureKey,
+      Body: signingResult.signature,
+      ContentType: 'text/plain',
+      CacheControl: 'max-age=300, stale-while-revalidate=86400',
+    });
+
+    // Upload both files
+    await Promise.all([
+      s3Client.send(configCommand),
+      s3Client.send(signatureCommand),
+    ]);
 
     // Store publish history in database
     await storePublishHistory({
@@ -77,13 +101,17 @@ export async function POST(request: NextRequest) {
       changelog,
       publishedBy: 'admin@example.com',
       configContent: publishedConfig,
-      changes: configChanges
+      changes: configChanges,
+      signature: signingResult.signature,
+      keyId: signingResult.keyId,
     });
 
     return NextResponse.json({
       version,
       publishedAt: publishedConfig.published_at,
-      message: 'Configuration published successfully'
+      keyId: signingResult.keyId,
+      signed: true,
+      message: 'Configuration published and signed successfully'
     });
 
   } catch (error) {
@@ -140,6 +168,8 @@ async function storePublishHistory(data: {
   publishedBy: string;
   configContent: any;
   changes: any[];
+  signature: string;
+  keyId: string;
 }) {
   // Count flags and cohorts in config
   const flagCount = Object.keys(data.configContent.flags || {}).length;
@@ -191,5 +221,51 @@ async function getPublishedConfigFromS3(appIdentifier: string): Promise<{ config
   } catch (error) {
     // Config doesn't exist yet or other error
     return { config: null };
+  }
+}
+
+// Ensure an app has at least one active signing key
+async function ensureSigningKey(appId: string): Promise<void> {
+  try {
+    // Check if app has any active signing keys
+    const existingActiveKey = await prisma.signingKey.findFirst({
+      where: { appId, isActive: true },
+    });
+
+    if (existingActiveKey) {
+      return; // Already has an active key
+    }
+
+    // Check if app has any inactive keys we can activate
+    const existingInactiveKey = await prisma.signingKey.findFirst({
+      where: { appId, isActive: false },
+    });
+
+    if (existingInactiveKey) {
+      // Activate an existing inactive key
+      await prisma.signingKey.update({
+        where: { id: existingInactiveKey.id },
+        data: { isActive: true },
+      });
+      console.log(`Activated existing signing key ${existingInactiveKey.kid} for app ${appId}`);
+      return;
+    }
+
+    // No keys exist, generate a new one
+    const keyPair = await generateRSAKeyPair();
+    await prisma.signingKey.create({
+      data: {
+        appId,
+        kid: keyPair.kid,
+        privateKey: keyPair.privateKey,
+        publicKey: keyPair.publicKey,
+        algorithm: keyPair.algorithm,
+        isActive: true,
+      },
+    });
+    console.log(`Generated new signing key ${keyPair.kid} for app ${appId}`);
+  } catch (error) {
+    console.error('Failed to ensure signing key:', error);
+    throw new Error('Failed to ensure signing key exists');
   }
 }

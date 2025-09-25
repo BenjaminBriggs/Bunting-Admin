@@ -220,7 +220,7 @@ export function CohortRuleBuilder({
                         {condition.type === 'app_version' ? 'App Version' :
                          condition.type === 'os_version' ? 'OS Version' :
                          condition.type === 'platform' ? 'Platform' :
-                         condition.type === 'country' ? 'Country' : condition.type}
+                         condition.type === 'region' ? 'Country' : condition.type}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1 }}>
                         <IconButton size="small" onClick={() => handleEditCondition(conditionIndex)}>

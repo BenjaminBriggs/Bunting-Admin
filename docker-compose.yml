@@ -12,7 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bunting -d bunting_admin"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d bunting_admin"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -46,7 +46,7 @@ services:
       /bin/sh -c "
       mc alias set minio http://minio:9000 admin admin123;
       mc mb minio/bunting-configs --ignore-existing;
-      mc policy set public minio/bunting-configs;
+      mc anonymous set public minio/bunting-configs;
       echo 'MinIO setup complete';
       "
 

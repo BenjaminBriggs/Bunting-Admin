@@ -27,6 +27,9 @@ model App {
   cohorts      Cohort[]
   testRollouts TestRollout[]
   auditLogs    AuditLog[]
+  rules        Rule[]
+  publications Publication[]
+  signingKeys  SigningKey[]
 
   @@map("apps")
 }
@@ -174,4 +177,66 @@ enum UserRole {
 enum AccessType {
   EMAIL  @map("email")
   DOMAIN @map("domain")
+}
+
+// Additional models for test suite
+model Rule {
+  id          String   @id @default(cuid())
+  key         String   // Rule identifier key
+  name        String   // Display name
+  description String?
+  conditions  Json     @default("[]") // Array of condition objects
+  flagOverrides Json   @default("{}") // Flag overrides object
+  priority    Int      @default(0)
+  environment String   @default("development")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, key]) // Unique rule keys per app
+  @@map("rules")
+}
+
+model Publication {
+  id                String   @id @default(cuid())
+  version           String   // YYYY-MM-DD.N format
+  environment       String   // development, staging, production
+  config            Json     // Generated configuration
+  configSize        Int      // Size in bytes
+  signature         String   // JWS signature
+  detachedSignature String   @map("detached_signature") // Detached signature
+  keyId             String   @map("key_id") // Signing key ID
+  algorithm         String   // Signing algorithm
+  publishedAt       DateTime @map("published_at")
+  publishedBy       String?  @map("published_by") // User identifier
+  status            String   @default("published")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, environment, version]) // Unique version per app/environment
+  @@map("publications")
+}
+
+model SigningKey {
+  id         String   @id @default(cuid())
+  kid        String   @unique // Key ID for JWS header
+  privateKey String   @map("private_key") // RSA private key in PEM format
+  publicKey  String   @map("public_key")  // RSA public key in PEM format
+  algorithm  String   @default("RS256")   // Signing algorithm
+  isActive   Boolean  @default(true) @map("is_active") // Whether this key is currently used for signing
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  appId String @map("app_id")
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, kid]) // Unique key ID per app
+  @@map("signing_keys")
 }

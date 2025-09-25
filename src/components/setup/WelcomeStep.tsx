@@ -6,7 +6,16 @@ import { StepProps } from './types'
 export function WelcomeStep({ onNext }: StepProps) {
   return (
     <Stack spacing={3} alignItems="center">
-      <Security sx={{ fontSize: 64, color: 'primary.main' }} />
+                 <img
+              src="/images/Icon.png"
+              alt="Bunting"
+              style={{
+                height: "50px",
+                width: "auto",
+                objectFit: "contain",
+                cursor: "pointer",
+              }}
+            />
       <Typography variant="h4" align="center" gutterBottom>
         Welcome to Bunting!
       </Typography>

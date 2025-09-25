@@ -19,7 +19,6 @@ import { StepProps } from './types'
 const platforms = [
   { value: 'heroku', label: 'Heroku' },
   { value: 'render', label: 'Render' },
-  { value: 'railway', label: 'Railway' },
   { value: 'vercel', label: 'Vercel' }
 ]
 
@@ -135,8 +134,6 @@ function getPlatformInstructions(platform: string): string {
       return 'Go to Account Settings → API Keys or use Heroku CLI: heroku auth:token'
     case 'render':
       return 'Go to Account Settings → API Keys to generate a new token'
-    case 'railway':
-      return 'Go to Account Settings → Tokens to create a new API token'
     case 'vercel':
       return 'Go to Account Settings → Tokens to create a new token with appropriate scope'
     default:

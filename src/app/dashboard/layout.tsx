@@ -103,7 +103,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const handleAddApplication = () => {
     handleAppMenuClose();
     // Always use the setup flow for new applications
-    router.push("/dashboard/setup");
+    router.push("/setup/app");
   };
 
   const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {

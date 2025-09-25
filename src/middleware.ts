@@ -11,7 +11,9 @@ export async function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/auth') ||
     pathname === '/' ||
+    pathname.startsWith('/setup') || // Setup flow
     pathname.startsWith('/api/auth') || // NextAuth.js API routes
+    pathname.startsWith('/api/setup') || // Setup API routes
     pathname.startsWith('/_next') || // Next.js static files
     pathname.startsWith('/favicon')
   ) {
@@ -28,7 +30,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Update user activity (fire and forget)
-    if (session.user.id && session.user.email !== 'dev@bunting.local') {
+    if (session.user.id) {
       updateUserActivity(session.user.id).catch(console.error)
     }
 

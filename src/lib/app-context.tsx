@@ -31,22 +31,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const appsData = await fetchApps();
       setApps(appsData);
 
-      // If no apps exist and user is authenticated, redirect to setup
-      if (appsData.length === 0 && status === 'authenticated') {
-        router.replace('/setup');
-        return;
-      }
     } catch (err) {
       console.error('Error loading apps:', err);
       setError(err instanceof Error ? err.message : 'Failed to load applications');
       setApps([]);
       setSelectedAppState(null);
 
-      // On error and authenticated, also redirect to setup
-      if (status === 'authenticated') {
-        router.replace('/setup');
-        return;
-      }
     } finally {
       setLoading(false);
     }

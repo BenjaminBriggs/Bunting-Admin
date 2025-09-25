@@ -1,7 +1,15 @@
-import { Google, GitHub, Microsoft, Email } from '@mui/icons-material'
+import { Google, GitHub, Microsoft, Email, Password } from '@mui/icons-material'
 import { AuthProvider } from './types'
 
 export const authProviders: AuthProvider[] = [
+  // Development-only simple auth option
+  ...(process.env.NODE_ENV === 'development' ? [{
+    id: 'credentials',
+    name: 'Email & Password',
+    icon: <Password />,
+    description: 'Simple email/password authentication (Development only)',
+    required_fields: ['DEV_ADMIN_EMAIL', 'DEV_ADMIN_PASSWORD']
+  }] : []),
   {
     id: 'google',
     name: 'Google',

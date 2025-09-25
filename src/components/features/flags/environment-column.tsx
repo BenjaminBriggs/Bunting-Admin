@@ -11,7 +11,7 @@ import {
   IconButton,
   Chip,
 } from "@mui/material";
-import { Add } from "@mui/icons-material";
+import { Add, Delete } from "@mui/icons-material";
 import { Environment, ConditionalVariant, FlagValue } from "@/types";
 import { EnvironmentChip } from "../../ui/environment-chips";
 import { formatValueForDisplay } from "./flag-value-input";
@@ -34,6 +34,7 @@ interface EnvironmentColumnProps {
   }>;
   onVariantAdd: () => void;
   onVariantEdit: (variant: ConditionalVariant) => void;
+  onVariantDelete: (variant: ConditionalVariant) => void;
   onTestRolloutAdd: () => void;
   onTestRolloutEdit: (type: "test" | "rollout", id: string) => void;
   onDefaultValueEdit: () => void;
@@ -49,6 +50,7 @@ export default function EnvironmentColumn({
   activeRollouts,
   onVariantAdd,
   onVariantEdit,
+  onVariantDelete,
   onTestRolloutAdd,
   onTestRolloutEdit,
   onDefaultValueEdit,
@@ -127,7 +129,7 @@ export default function EnvironmentColumn({
           ? values.join(", ")
           : `${formatOperator(operator)} ${values.join(", ")}`;
       
-      case 'country':
+      case 'region':
         return `${formatOperator(operator)} ${values.join(", ")}`;
       
       case 'cohort':
@@ -144,7 +146,7 @@ export default function EnvironmentColumn({
       'app_version': 'version',
       'os_version': 'OS',
       'platform': 'platform',
-      'country': 'country',
+      'region': 'region',
       'cohort': 'cohort'
     };
     return typeMap[type] || type;
@@ -280,19 +282,36 @@ export default function EnvironmentColumn({
         {variants.map((variant, index) => (
           <Stack spacing={1}>
             <Box key={variant.id}>
-              <Typography variant="caption" color="text.secondary">
-                {formatVariantSummary(variant)}
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  cursor: "pointer",
-                  "&:hover": { color: "primary.main" },
-                }}
-                onClick={() => onVariantEdit(variant)}
-              >
-                {formatValue(variant.value)}
-              </Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatVariantSummary(variant)}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      cursor: "pointer",
+                      "&:hover": { color: "primary.main" },
+                    }}
+                    onClick={() => onVariantEdit(variant)}
+                  >
+                    {formatValue(variant.value)}
+                  </Typography>
+                </Box>
+                <IconButton
+                  size="small"
+                  onClick={() => onVariantDelete(variant)}
+                  sx={{
+                    color: "error.main",
+                    opacity: 0.7,
+                    "&:hover": { opacity: 1, bgcolor: "error.main", color: "white" },
+                    ml: 1,
+                    flexShrink: 0,
+                  }}
+                >
+                  <Delete sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Box>
               {index < variants.length - 1 && <Divider sx={{ my: 0.5 }} />}
             </Box>
           </Stack>

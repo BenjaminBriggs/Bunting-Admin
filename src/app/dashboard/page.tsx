@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import {
   Box,
   Card,
@@ -24,32 +24,22 @@ import {
 } from "@mui/icons-material";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { fetchApps, type App } from "@/lib/api";
 import { useApp } from "@/lib/app-context";
 import { formatTimestamp } from "@/lib/utils";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { setSelectedApp } = useApp();
-  const [apps, setApps] = useState<App[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { apps, loading, error, setSelectedApp } = useApp();
 
+  // If no apps exist, redirect to setup after a short delay
   useEffect(() => {
-    const loadApps = async () => {
-      try {
-        setLoading(true);
-        const appsData = await fetchApps();
-        setApps(appsData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load apps");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadApps();
-  }, []);
+    if (!loading && apps.length === 0 && !error) {
+      const timer = setTimeout(() => {
+        router.push('/setup/app');
+      }, 1000); // Give user a second to see the "no apps" state
+      return () => clearTimeout(timer);
+    }
+  }, [apps, loading, error, router]);
 
   const handleAppClick = (app: App) => {
     setSelectedApp(app);
@@ -108,7 +98,7 @@ export default function DashboardPage() {
           variant="contained"
           startIcon={<Add />}
           component={Link}
-          href="/dashboard/setup"
+          href="/setup/app"
         >
           New Application
         </Button>
@@ -208,7 +198,7 @@ export default function DashboardPage() {
                 variant="contained"
                 startIcon={<Add />}
                 component={Link}
-                href="/dashboard/setup"
+                href="/setup/app"
               >
                 Create Application
               </Button>

@@ -125,10 +125,135 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
     setVariantModalOpen(true);
   };
 
+  const handleVariantDelete = async (variant: ConditionalVariant, environment: Environment) => {
+    const variantName = variant.name || formatVariantSummary(variant);
+
+    if (!window.confirm(`Are you sure you want to delete the variant "${variantName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    const currentVariants = getEnvironmentVariants(environment);
+    const updatedVariants = currentVariants.filter((v) => v.id !== variant.id);
+
+    const updatedFlagVariants = {
+      ...flagData.variants,
+      [environment]: updatedVariants,
+    };
+
+    try {
+      // Update database
+      await updateFlag(flagData.id, {
+        variants: updatedFlagVariants,
+      });
+
+      // Update local state
+      setFlagData((prev) => ({
+        ...prev,
+        variants: updatedFlagVariants,
+      }));
+
+      // Trigger change detection
+      markChangesDetected();
+    } catch (error) {
+      console.error("Failed to delete flag variant:", error);
+      alert('Failed to delete variant. Please try again.');
+    }
+  };
+
+  const formatVariantSummary = (variant: ConditionalVariant): string => {
+    const conditions = variant.conditions || [];
+    if (conditions.length === 0) {
+      return "No conditions";
+    }
+
+    // Generate intelligent summaries for common patterns
+    if (conditions.length === 1) {
+      return formatSingleCondition(conditions[0]);
+    }
+
+    // For multiple conditions, show abbreviated summary
+    if (conditions.length <= 3) {
+      return conditions.map(formatSingleCondition).join(", ");
+    }
+
+    // For many conditions, group by type
+    const grouped = conditions.reduce((acc, condition) => {
+      acc[condition.type] = (acc[condition.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const parts = Object.entries(grouped).map(([type, count]) => {
+      const typeName = formatConditionType(type);
+      return count === 1 ? typeName : `${count} ${typeName}`;
+    });
+
+    return parts.join(", ");
+  };
+
+  const formatSingleCondition = (condition: any): string => {
+    const { type, operator, values } = condition;
+
+    switch (type) {
+      case 'environment':
+        return `${formatOperator(operator)} ${values.join(", ")}`;
+
+      case 'app_version':
+        if (operator === 'greater_than_or_equal') {
+          return `v${values[0]}+`;
+        }
+        if (operator === 'less_than') {
+          return `< v${values[0]}`;
+        }
+        return `${formatOperator(operator)} v${values.join(", ")}`;
+
+      case 'platform':
+        return formatOperator(operator) === 'equals'
+          ? values.join(", ")
+          : `${formatOperator(operator)} ${values.join(", ")}`;
+
+      case 'region':
+        return `${formatOperator(operator)} ${values.join(", ")}`;
+
+      case 'cohort':
+        return `in ${values.join(", ")}`;
+
+      default:
+        return `${formatConditionType(type)} ${formatOperator(operator)} ${values.join(", ")}`;
+    }
+  };
+
+  const formatConditionType = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      'environment': 'env',
+      'app_version': 'version',
+      'os_version': 'OS',
+      'platform': 'platform',
+      'region': 'region',
+      'cohort': 'cohort'
+    };
+    return typeMap[type] || type;
+  };
+
+  const formatOperator = (operator: string): string => {
+    const operatorMap: Record<string, string> = {
+      'equals': 'is',
+      'not_equals': 'not',
+      'greater_than': '>',
+      'less_than': '<',
+      'greater_than_or_equal': '>=',
+      'less_than_or_equal': '<=',
+      'in': 'in',
+      'not_in': 'not in'
+    };
+    return operatorMap[operator] || operator;
+  };
+
   const handleVariantSave = async (variant: ConditionalVariant) => {
+    console.log('Received variant in handleVariantSave:', variant); // Debug log
+
     const currentVariants = getEnvironmentVariants(selectedEnvironment);
     let updatedVariants;
-    
+
     if (editingVariant) {
       // Update existing variant
       updatedVariants = currentVariants.map((v) =>
@@ -146,6 +271,8 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
       ...flagData.variants,
       [selectedEnvironment]: updatedVariants,
     };
+
+    console.log('About to save variants:', updatedFlagVariants); // Debug log
 
     try {
       // Update database
@@ -345,6 +472,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
                     activeRollouts={getActiveRollouts(env)}
                     onVariantAdd={() => handleVariantAdd(env)}
                     onVariantEdit={(variant) => handleVariantEdit(variant, env)}
+                    onVariantDelete={(variant) => handleVariantDelete(variant, env)}
                     onTestRolloutAdd={() => handleTestRolloutAdd(env)}
                     onTestRolloutEdit={(type, id) => handleTestRolloutEdit(type, id, env)}
                     onDefaultValueEdit={() => handleDefaultValueEdit(env)}

@@ -14,10 +14,11 @@ import {
   Box,
   Divider
 } from '@mui/material'
-import { Login, Google, GitHub, Microsoft, Email } from '@mui/icons-material'
+import { Login, Google, GitHub, Microsoft, Email, Settings } from '@mui/icons-material'
+import Link from 'next/link'
 
 export default function SignInForm() {
-  const [credentials, setCredentials] = useState({ username: '', password: '' })
+  const [emailPassword, setEmailPassword] = useState({ email: '', password: '' })
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -25,20 +26,20 @@ export default function SignInForm() {
   const providers = getAvailableProviders()
   const hasOAuth = hasAnyOAuthProvider()
 
-  const handleDevSubmit = async (e: React.FormEvent) => {
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
 
     try {
-      const result = await signIn('dev-credentials', {
-        username: credentials.username,
-        password: credentials.password,
+      const result = await signIn('credentials', {
+        email: emailPassword.email,
+        password: emailPassword.password,
         redirect: false
       })
 
       if (result?.error) {
-        setError('Invalid credentials')
+        setError('Invalid email or password')
       } else if (result?.ok) {
         window.location.href = '/dashboard'
       }
@@ -74,6 +75,22 @@ export default function SignInForm() {
 
   const handleOAuthSignIn = async (provider: string) => {
     setIsLoading(true)
+    setError('')
+
+    // Check if this is a dev-mode provider without real credentials
+    const isDevMode = process.env.NODE_ENV === 'development'
+    const hasRealCredentials = {
+      google: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      github: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+      microsoft: !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET)
+    }
+
+    if (isDevMode && !hasRealCredentials[provider as keyof typeof hasRealCredentials]) {
+      setError(`${provider.charAt(0).toUpperCase() + provider.slice(1)} OAuth is not configured with real credentials. Use Email & Password for development.`)
+      setIsLoading(false)
+      return
+    }
+
     try {
       await signIn(provider, { callbackUrl: '/dashboard' })
     } catch (err) {
@@ -86,48 +103,45 @@ export default function SignInForm() {
     <Card>
       <CardContent>
         <Stack spacing={3}>
-          {/* Development Mode */}
-          {providers.dev && (
-            <Box>
-              <Alert severity="warning" sx={{ mb: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  Development Mode
-                </Typography>
-                <Typography variant="body2">
-                  Use admin/admin to sign in during development
-                </Typography>
-              </Alert>
 
-              <form onSubmit={handleDevSubmit}>
+          {/* Email & Password Credentials */}
+          {providers.credentials && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Email & Password
+              </Typography>
+              <form onSubmit={handleCredentialsSubmit}>
                 <Stack spacing={2}>
                   <TextField
-                    label="Username"
-                    type="text"
-                    value={credentials.username}
-                    onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
+                    label="Email"
+                    type="email"
+                    value={emailPassword.email}
+                    onChange={(e) => setEmailPassword(prev => ({ ...prev, email: e.target.value }))}
                     required
                     fullWidth
                     size="small"
+                    placeholder="admin@example.com"
                   />
 
                   <TextField
                     label="Password"
                     type="password"
-                    value={credentials.password}
-                    onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                    value={emailPassword.password}
+                    onChange={(e) => setEmailPassword(prev => ({ ...prev, password: e.target.value }))}
                     required
                     fullWidth
                     size="small"
+                    placeholder="admin"
                   />
 
                   <Button
                     type="submit"
-                    variant="outlined"
+                    variant="contained"
                     disabled={isLoading}
                     startIcon={<Login />}
                     fullWidth
                   >
-                    {isLoading ? 'Signing in...' : 'Sign in (Dev)'}
+                    {isLoading ? 'Signing in...' : 'Sign in'}
                   </Button>
                 </Stack>
               </form>
@@ -135,7 +149,7 @@ export default function SignInForm() {
               {(hasOAuth || providers.email) && (
                 <Divider sx={{ my: 2 }}>
                   <Typography variant="body2" color="text.secondary">
-                    Or use production methods
+                    Or continue with
                   </Typography>
                 </Divider>
               )}
@@ -234,8 +248,29 @@ export default function SignInForm() {
             )
           )}
 
+          {/* Development mode notice for OAuth without credentials */}
+          {process.env.NODE_ENV === 'development' && hasOAuth && !providers.credentials && !providers.email && (
+            <Alert severity="info">
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                Development Mode
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2 }}>
+                OAuth providers are selected but require real credentials to work. Click the buttons below to see the error messages, or reconfigure authentication.
+              </Typography>
+              <Button
+                component={Link}
+                href="/setup"
+                variant="outlined"
+                startIcon={<Settings />}
+                size="small"
+              >
+                Reconfigure Authentication
+              </Button>
+            </Alert>
+          )}
+
           {/* No providers configured fallback */}
-          {!providers.dev && !hasOAuth && !providers.email && (
+          {!hasOAuth && !providers.email && !providers.credentials && (
             <Alert severity="warning">
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                 No authentication providers configured

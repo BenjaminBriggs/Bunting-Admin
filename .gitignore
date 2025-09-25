@@ -27,6 +27,10 @@ yarn-error.log*
 .env*.local
 .env
 
+# Dev setup files
+.dev-setup-complete
+.dev-selected-providers.json
+
 # Vercel
 .vercel
 

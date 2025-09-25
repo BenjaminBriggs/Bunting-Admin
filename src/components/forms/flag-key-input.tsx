@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-// import { Input } from '@/components/ui/input'; // TODO: Fix this import
-import { normalizeKey, validateKey, generateDisplayName } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { validateIdentifierKey, normalizeToIdentifierKey, generateDisplayName } from '@/lib/validation';
 import { AlertCircle, Check } from 'lucide-react';
 
 interface FlagKeyInputProps {
@@ -26,15 +26,15 @@ export function FlagKeyInput({
 
   useEffect(() => {
     if (inputValue) {
-      const normalized = normalizeKey(inputValue);
+      const normalized = normalizeToIdentifierKey(inputValue);
       const display = generateDisplayName(normalized);
-      const validationResult = validateKey(normalized);
-      
+      const validationResult = validateIdentifierKey(normalized);
+
       setNormalizedKey(normalized);
       setDisplayName(display);
       setValidation(validationResult);
       setShowPreview(true);
-      
+
       if (validationResult.valid) {
         onChange(inputValue, normalized, display);
       }
@@ -104,8 +104,8 @@ export function FlagKeyInput({
 
       {/* Help Text */}
       <p className="text-sm text-muted-foreground">
-        Enter a natural name - it will be automatically converted to a valid flag key.
-        Use "/" to create namespaces (e.g., "Store / Checkout Flow").
+        Enter a natural name - it will be converted to a JSON Spec compliant key.
+        Keys must contain only lowercase letters and underscores, max 64 characters.
       </p>
     </div>
   );

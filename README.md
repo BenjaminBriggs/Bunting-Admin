@@ -4,6 +4,11 @@
 
 # Bunting Admin
 
+[![Tests](https://github.com/BenjaminBriggs/Bunting-Admin/workflows/Tests/badge.svg)](https://github.com/BenjaminBriggs/Bunting-Admin/actions)
+[![codecov](https://codecov.io/gh/BenjaminBriggs/Bunting-Admin/branch/main/graph/badge.svg)](https://codecov.io/gh/BenjaminBriggs/Bunting-Admin)
+[![Build](https://github.com/BenjaminBriggs/Bunting-Admin/workflows/Build/badge.svg)](https://github.com/BenjaminBriggs/Bunting-Admin/actions)
+[![License](https://img.shields.io/github/license/BenjaminBriggs/Bunting-Admin)](https://github.com/BenjaminBriggs/Bunting-Admin/blob/main/LICENSE)
+
 A self-hosted feature flag dashboard for iOS and macOS apps. Deploy in one click and manage feature flags, A/B tests, and gradual rollouts with a beautiful web interface.
 
 > [!WARNING]
@@ -149,7 +154,10 @@ npm run docker:down  # Stop and remove containers
 npm run docker:logs  # View container logs
 
 # Testing
-npm run test         # Run unit tests
+npm run test         # Run all tests
+npm run test:unit    # Run unit tests only
+npm run test:coverage # Run tests with coverage report
+npm run test:coverage:open # Run coverage and open HTML report
 npm run test:e2e     # Run E2E tests
 npm run lint         # Lint code
 npm run type-check   # TypeScript checks
@@ -234,6 +242,29 @@ bunting-admin/
 - **Cohorts**: Reusable user targeting rules
 - **Releases**: Publishing interface with change tracking
 - **Settings**: App management and SDK integration
+
+## 🧪 Testing & Coverage
+
+Bunting Admin includes a comprehensive test suite with high coverage requirements:
+
+### Test Types
+- **Unit Tests**: Core business logic, validation, and service functions
+- **Performance Tests**: Flag evaluation speed and constitutional requirements
+- **Contract Tests**: API endpoint behavior and response formats
+- **End-to-End Tests**: Full user workflows (Playwright)
+
+### Coverage Requirements
+- **90% minimum** for lines, functions, branches, and statements
+- Coverage reports generated in multiple formats (text, HTML, LCOV)
+- Automatic coverage reporting via GitHub Actions and Codecov
+
+### Running Tests
+```bash
+npm run test:unit           # Unit tests only (fast)
+npm run test:coverage       # Full coverage report
+npm run test:coverage:open  # Coverage report + open in browser
+npm run test:e2e           # End-to-end tests
+```
 
 ## 🤝 Contributing
 

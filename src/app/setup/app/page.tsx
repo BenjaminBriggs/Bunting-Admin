@@ -118,30 +118,30 @@ export default function SetupPage() {
       case "minio":
         // MinIO endpoint with bucket
         const endpoint = config.endpoint || "http://localhost:9000";
-        return `${endpoint}/${config.bucket}/configs/${appIdentifier}/`;
+        return `${endpoint}/${config.bucket}/${appIdentifier}/`;
 
       case "aws":
         // Standard AWS S3 URL format
-        return `https://${config.bucket}.s3.${config.region}.amazonaws.com/configs/${appIdentifier}/`;
+        return `https://${config.bucket}.s3.${config.region}.amazonaws.com/${appIdentifier}/`;
 
       case "r2":
         // Cloudflare R2 URL format
         if (config.bucket && config.region) {
-          return `https://${config.bucket}.${config.region}.r2.cloudflarestorage.com/configs/${appIdentifier}/`;
+          return `https://${config.bucket}.${config.region}.r2.cloudflarestorage.com/${appIdentifier}/`;
         }
         return "";
 
       case "b2":
         // Backblaze B2 URL format
         if (config.endpoint && config.bucket) {
-          return `${config.endpoint}/file/${config.bucket}/configs/${appIdentifier}/`;
+          return `${config.endpoint}/file/${config.bucket}/${appIdentifier}/`;
         }
         return "";
 
       case "custom":
         // Custom S3-compatible endpoint
         if (config.endpoint && config.bucket) {
-          return `${config.endpoint}/${config.bucket}/configs/${appIdentifier}/`;
+          return `${config.endpoint}/${config.bucket}/${appIdentifier}/`;
         }
         return "";
 
