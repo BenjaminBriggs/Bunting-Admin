@@ -344,7 +344,6 @@ export function UnifiedConditionBuilder({
 
 // Legacy component exports for backward compatibility
 export { UnifiedConditionBuilder as ConditionEditor };
-export { UnifiedConditionBuilder as ConditionBuilder };
 
 // Utility function to create a new condition
 export function createNewCondition(

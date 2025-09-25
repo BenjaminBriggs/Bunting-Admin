@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { auth } from './lib/auth'
-import { updateUserActivity } from './lib/access-control'
 
 export async function middleware(request: NextRequest) {
   const session = await auth()
@@ -29,13 +28,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(signInUrl)
     }
 
-    // Update user activity (fire and forget)
-    if (session.user.id) {
-      updateUserActivity(session.user.id).catch(console.error)
-    }
-
     // TODO: Add role-based access control in Phase 5
     // For now, all authenticated users can access everything
+    // Note: User activity tracking removed from middleware due to Prisma edge runtime limitations
   }
 
   return NextResponse.next()

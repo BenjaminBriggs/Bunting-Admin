@@ -7,14 +7,10 @@ import { createBuntingTheme } from '@/theme/buntingTheme';
 
 export default function CustomThemeProvider({
   children,
-  belanosima,
-  inter,
 }: {
   children: React.ReactNode;
-  belanosima?: string;
-  inter?: string;
 }) {
-  const theme = createBuntingTheme({ belanosima, inter });
+  const theme = createBuntingTheme();
   
   return (
     <AppRouterCacheProvider>

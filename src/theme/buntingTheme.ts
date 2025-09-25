@@ -56,13 +56,7 @@ const customShadows = {
   lg: `0 0 24px ${alpha("#000", 0.01)}`,
 };
 
-export function createBuntingTheme({
-  belanosima = "Belanosima",
-  inter = "Nunito",
-}: {
-  belanosima?: string;
-  inter?: string;
-} = {}) {
+export function createBuntingTheme() {
   return createTheme({
     cssVariables: true,
     palette: {
@@ -115,7 +109,7 @@ export function createBuntingTheme({
     typography: {
       // Belanosima for headings, Nunito for body text
       fontFamily: [
-        inter,
+        "var(--font-nunito)",
         "Nunito",
         "ui-sans-serif",
         "system-ui",
@@ -125,40 +119,72 @@ export function createBuntingTheme({
         "sans-serif",
       ].join(","),
       h1: {
-        fontFamily: [belanosima, "Belanosima", "serif"].join(","),
+        fontFamily: [
+          "var(--font-belanosima)",
+          "Belanosima",
+          "serif"
+        ].join(","),
         fontWeight: 700,
         letterSpacing: -0.5,
       },
       h2: {
-        fontFamily: [belanosima, "Belanosima", "serif"].join(","),
+        fontFamily: [
+          "var(--font-belanosima)",
+          "Belanosima",
+          "serif"
+        ].join(","),
         fontWeight: 700,
         letterSpacing: -0.4,
       },
       h3: {
-        fontFamily: [belanosima, "Belanosima", "serif"].join(","),
+        fontFamily: [
+          "var(--font-belanosima)",
+          "Belanosima",
+          "serif"
+        ].join(","),
         fontWeight: 600,
         letterSpacing: -0.2,
       },
       h4: {
-        fontFamily: [belanosima, "Belanosima", "serif"].join(","),
+        fontFamily: [
+          "var(--font-belanosima)",
+          "Belanosima",
+          "serif"
+        ].join(","),
         fontWeight: 600,
       },
       h5: {
-        fontFamily: [belanosima, "Belanosima", "serif"].join(","),
+        fontFamily: [
+          "var(--font-belanosima)",
+          "Belanosima",
+          "serif"
+        ].join(","),
         fontWeight: 600,
       },
       h6: {
-        fontFamily: [belanosima, "Belanosima", "serif"].join(","),
+        fontFamily: [
+          "var(--font-belanosima)",
+          "Belanosima",
+          "serif"
+        ].join(","),
         fontWeight: 600,
       },
       subtitle1: { fontWeight: 600 },
       button: { fontWeight: 700, textTransform: "none", letterSpacing: 0.1 },
       caption: {
-        fontFamily: [inter, "Nunito", "sans-serif"].join(","),
+        fontFamily: [
+          "var(--font-nunito)",
+          "Nunito",
+          "sans-serif"
+        ].join(","),
         fontSize: "0.75rem",
       },
       body2: {
-        fontFamily: [inter, "Nunito", "sans-serif"].join(","),
+        fontFamily: [
+          "var(--font-nunito)",
+          "Nunito",
+          "sans-serif"
+        ].join(","),
         fontSize: "0.875rem",
       },
     },

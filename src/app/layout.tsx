@@ -3,13 +3,15 @@ import { Belanosima, Nunito } from 'next/font/google';
 import { ThemeProvider } from '@/components';
 import AuthSessionProvider from '@/components/providers/session-provider';
 
-const belanosima = Belanosima({ 
+const belanosima = Belanosima({
   subsets: ['latin'],
-  weight: ['400', '600', '700']
+  weight: ['400', '600', '700'],
+  variable: '--font-belanosima',
 });
-const nunito = Nunito({ 
+const nunito = Nunito({
   subsets: ['latin'],
-  weight: ['400', '600', '700']
+  weight: ['400', '600', '700'],
+  variable: '--font-nunito',
 });
 
 export const metadata: Metadata = {
@@ -24,9 +26,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={nunito.className}>
+      <body className={`${nunito.variable} ${belanosima.variable}`}>
         <AuthSessionProvider>
-          <ThemeProvider belanosima={belanosima.style.fontFamily} inter={nunito.style.fontFamily}>
+          <ThemeProvider>
             {children}
           </ThemeProvider>
         </AuthSessionProvider>
