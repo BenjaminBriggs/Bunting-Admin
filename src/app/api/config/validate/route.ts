@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateConfigFromDb } from '@/lib/config-generator';
-const { validateConfig } = require('@/lib/config-validation');
+import { validateConfig } from '@/lib/config-validation';
 
 const validateConfigSchema = z.object({
   appId: z.string(),

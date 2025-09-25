@@ -81,31 +81,26 @@ export function validateConfig(config: any): ValidationResult {
     ENVIRONMENTS.forEach(env => {
       if (flag[env] && flag[env].variants && Array.isArray(flag[env].variants)) {
         flag[env].variants.forEach((variant: any, variantIndex: number) => {
-          // Check for valid conditions - only for conditional variants
-          if (variant.type === 'conditional') {
-            if (!variant.conditions || !Array.isArray(variant.conditions) || variant.conditions.length === 0) {
-              warnings.push({
-                type: 'empty_variant',
-                message: `Variant ${variantIndex + 1} in flag "${key}" (${env}) has no conditions`,
-                flagKey: key
-              });
-            }
-          }
+          // Note: Removed empty variant condition warning
+          // Test and rollout variants don't need conditions, only conditional variants do
+          // and conditional variants are typically created with conditions from the UI
 
-          // Check for cohort references
-          variant.conditions?.forEach((condition: any) => {
-            if (condition.type === 'cohort' && condition.values && Array.isArray(condition.values)) {
-              condition.values.forEach((cohortKey: string) => {
-                if (!config.cohorts[cohortKey]) {
-                  errors.push({
-                    type: 'missing_cohort_reference',
-                    message: `Flag "${key}" (${env}) references missing cohort "${cohortKey}"`,
-                    flagKey: key
-                  });
-                }
-              });
-            }
-          });
+          // Check for cohort references - only for conditional variants that have conditions
+          if (variant.type === 'conditional' && variant.conditions) {
+            variant.conditions.forEach((condition: any) => {
+              if (condition.type === 'cohort' && condition.values && Array.isArray(condition.values)) {
+                condition.values.forEach((cohortKey: string) => {
+                  if (!config.cohorts[cohortKey]) {
+                    errors.push({
+                      type: 'missing_cohort_reference',
+                      message: `Flag "${key}" (${env}) references missing cohort "${cohortKey}"`,
+                      flagKey: key
+                    });
+                  }
+                });
+              }
+            });
+          }
         });
       }
     });
