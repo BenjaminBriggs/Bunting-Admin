@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>endpoint_url</key>
+	<string>https://your-cdn.example.com/configs/your-app-identifier/config.json</string>
+	<key>public_keys</key>
+	<array>
+		<dict>
+			<key>kid</key>
+			<string>key-id-1</string>
+			<key>pem</key>
+			<string>-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+-----END PUBLIC KEY-----</string>
+		</dict>
+		<dict>
+			<key>kid</key>
+			<string>key-id-2</string>
+			<key>pem</key>
+			<string>-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+-----END PUBLIC KEY-----</string>
+		</dict>
+	</array>
+	<key>fetch_policy</key>
+	<dict>
+		<key>min_interval_seconds</key>
+		<integer>21600</integer>
+		<key>hard_ttl_days</key>
+		<integer>7</integer>
+	</dict>
+	<!-- Optional: Certificate pinning for enhanced security -->
+	<key>cert_pins</key>
+	<array>
+		<string>sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</string>
+		<string>sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=</string>
+	</array>
+</dict>
+</plist>

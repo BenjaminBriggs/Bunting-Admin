@@ -42,6 +42,7 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 - **Rollouts API**: `/api/rollouts` - Gradual rollout management with archiving
 - **Cohorts API**: `/api/cohorts` - Rule-based cohort groups (no percentage/salt)
 - **Config API**: `/api/config/*` - Environment-first generation with schema v2
+- **Bootstrap API**: `/api/bootstrap/plist` - iOS/macOS SDK plist generation with signing keys
 - **Real S3 Integration**: Actual file uploads with versioning
 
 #### Database (PostgreSQL + Prisma)
@@ -156,9 +157,10 @@ npm run type-check         # TypeScript checking
 ### Rule-Based Cohorts
 - **Condition Groups**: Pure rule-based user targeting without percentages
 - **Reusable Rules**: Create cohorts once, use across multiple flags and tests
-- **Visual Rule Builder**: Define complex targeting conditions with AND/OR logic
+- **Enhanced Rule Builder**: Define complex targeting conditions with comprehensive SDK-aligned condition types
 - **No Salt Complexity**: Simplified model focused on rule definition only
 - **Validation**: Unique keys per application with circular reference prevention
+- **Custom Attributes**: Full support for app-defined custom attributes with validation
 
 ### Publishing Pipeline
 - **Change Detection**: Real-time tracking of modified flags/cohorts
@@ -166,6 +168,15 @@ npm run type-check         # TypeScript checking
 - **Validation Engine**: Blocking errors vs warnings
 - **S3 Upload**: Versioned configs with YYYY-MM-DD.N format
 - **Change Comparison**: Before/after diff visualization
+
+### Enhanced Conditions Support (NEW)
+- **SDK-Aligned Conditions**: All condition types from Bunting SDK specification supported
+- **Comprehensive Targeting**: `app_version`, `os_version`, `build_number`, `platform`, `device_model`, `region`, `locale`, `cohort`, `custom_attribute`
+- **Advanced Operators**: Range queries (`between`), SDK-compatible operators (`does_not_equal`), custom evaluation (`custom`)
+- **Apple Platform Support**: Full platform options (iOS, iPadOS, macOS, watchOS, tvOS)
+- **Custom Attributes**: App-defined attributes with real-time validation and contextual help
+- **Enhanced UX**: Visual validation feedback, improved layout, and specialized input types
+- **Bootstrap Integration**: Downloadable plist files for iOS/macOS SDK integration
 
 ### Multi-App Support
 - **App Isolation**: Flags and cohorts scoped to applications

@@ -61,11 +61,20 @@ export function processValueForType(value: any, flagType: FlagType): any {
       return parseInt(value) || 0;
     case 'double': 
       return parseFloat(value) || 0.0;
-    case 'json': 
+    case 'json':
+      // Store JSON as escaped strings for SDK compatibility
       try {
-        return typeof value === 'string' ? JSON.parse(value) : value;
+        if (typeof value === 'object' && value !== null) {
+          return JSON.stringify(value);
+        }
+        if (typeof value === 'string') {
+          // Validate it's proper JSON, then return as string
+          JSON.parse(value);
+          return value;
+        }
+        return '{}';
       } catch {
-        return {};
+        return '{}';
       }
     case 'string':
     case 'date':
@@ -84,7 +93,17 @@ export function formatValueForDisplay(value: any, flagType: FlagType): string {
     case 'bool':
       return String(Boolean(value));
     case 'json':
-      return typeof value === 'object' ? JSON.stringify(value) : String(value);
+      // Handle both object and string formats for display
+      try {
+        if (typeof value === 'string') {
+          // Validate and pretty-print if it's a JSON string
+          const parsed = JSON.parse(value);
+          return JSON.stringify(parsed);
+        }
+        return typeof value === 'object' ? JSON.stringify(value) : String(value);
+      } catch {
+        return String(value);
+      }
     case 'string':
     case 'date':
       return String(value);
@@ -211,8 +230,9 @@ export default function FlagValueInput({
       
       if (jsonErr.isValid) {
         try {
-          const parsed = JSON.parse(newValue);
-          onChange(parsed);
+          // Validate JSON is parseable, but store as string
+          JSON.parse(newValue);
+          onChange(newValue);
         } catch {
           // Ignore parsing errors during typing
         }

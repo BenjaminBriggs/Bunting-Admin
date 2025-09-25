@@ -130,7 +130,7 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Define the conditions that determine which users belong to this cohort.
-          Users matching any of these rules will be included in this cohort (regardless of percentage rollout).
+          Cohorts are reusable condition groups that can be referenced in tests and rollouts.
         </Typography>
 
         <Stack spacing={3}>
@@ -153,15 +153,15 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
             {/* Rules */}
             {rules.length === 0 ? (
               <Alert severity="info" icon={<Info />}>
-                No targeting rules defined. This cohort will only use percentage-based rollout.
+                No targeting rules defined. This cohort will be empty.
                 <br />
                 Add rules to include specific users based on their attributes (e.g., iOS 18 users, beta testers).
               </Alert>
             ) : (
               <Stack spacing={2}>
                 <Alert severity="info" size="small">
-                  Users matching ANY of these rules will be included in this cohort. 
-                  Rules work together with percentage rollout - if a user matches a rule OR falls within the rollout percentage, they're in the cohort.
+                  Users matching ANY of these rules will be included in this cohort.
+                  Cohorts can then be used in tests and rollouts for more complex targeting.
                 </Alert>
                 
                 {rules.map((rule, index) => (
@@ -178,14 +178,16 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
               </Stack>
             )}
 
-            {/* Percentage Rollout Notice */}
+            {/* Cohort Usage Notice */}
             <Alert severity="info" size="small">
               <Typography variant="body2">
-                <strong>Cohort Logic:</strong> Users are included in this cohort if they either:
+                <strong>Cohort Usage:</strong> This cohort can be used in:
                 <br />
-                • Match any of the targeting rules above, OR
+                • Tests - For A/B testing with specific user groups
                 <br />
-                • Fall within the percentage rollout (determined by hashing their device ID with the cohort salt)
+                • Rollouts - For percentage-based feature releases to targeted users
+                <br />
+                • Flag Rules - For conditional flag values based on user attributes
               </Typography>
             </Alert>
 

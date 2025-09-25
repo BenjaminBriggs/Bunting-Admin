@@ -207,46 +207,15 @@ export default function SettingsPage() {
     }
   };
 
-  function generatePlistContent(app: App): string {
-    const publicKeysXml = app.publicKeys.map(key => `
-      <dict>
-        <key>kid</key>
-        <string>${key.kid}</string>
-        <key>pem</key>
-        <string>${key.pem}</string>
-      </dict>`).join('');
-
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>artifact_url</key>
-  <string>${app.artifactUrl}</string>
-  <key>public_keys</key>
-  <array>${publicKeysXml}
-  </array>
-  <key>fetch_policy</key>
-  <dict>
-    <key>min_interval_seconds</key>
-    <integer>${app.fetchPolicy.min_interval_seconds}</integer>
-    <key>hard_ttl_days</key>
-    <integer>${app.fetchPolicy.hard_ttl_days}</integer>
-  </dict>
-</dict>
-</plist>`;
-  }
-
   function downloadPlist(app: App): void {
-    const content = generatePlistContent(app);
-    const blob = new Blob([content], { type: 'application/x-plist' });
-    const url = URL.createObjectURL(blob);
+    // Use the new API endpoint instead of client-side generation
+    const url = `/api/bootstrap/plist?appId=${app.id}`;
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${app.identifier}-bunting-config.plist`;
+    a.download = `BuntingConfig.plist`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   }
 
   if (loading) {
@@ -553,22 +522,68 @@ export default function SettingsPage() {
                   {selectedTab === 1 && (
                     <Box>
                       <Typography variant="h6" sx={{ mb: 2 }}>
-                        SDK Integration
+                        iOS/macOS SDK Integration
                       </Typography>
                       <Typography variant="body2" sx={{ mb: 3 }}>
-                        Download the configuration file needed for your iOS/macOS application to connect to this Bunting instance.
+                        Download the bootstrap configuration file needed for your iOS/macOS application to connect to this Bunting instance.
                       </Typography>
-                      <Button
-                        variant="contained"
-                        startIcon={<Download />}
-                        onClick={() => downloadPlist(selectedApp)}
-                        sx={{ mb: 2 }}
-                      >
-                        Download bunting-config.plist
-                      </Button>
-                      <Typography variant="body2" color="text.secondary">
-                        Add this file to your Xcode project and the Bunting SDK will automatically use these settings.
-                      </Typography>
+
+                      <Stack spacing={3}>
+                        <Alert severity="info">
+                          <Typography variant="body2">
+                            <strong>BuntingConfig.plist</strong> contains your app's endpoint URL, public keys for signature verification, and fetch policy settings.
+                            This file should be added to your Xcode project bundle.
+                          </Typography>
+                        </Alert>
+
+                        <Button
+                          variant="contained"
+                          startIcon={<Download />}
+                          onClick={() => downloadPlist(selectedApp)}
+                          sx={{ alignSelf: 'flex-start' }}
+                        >
+                          Download BuntingConfig.plist
+                        </Button>
+
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            Configuration Preview:
+                          </Typography>
+                          <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', fontFamily: 'monospace' }}>
+                            <Stack spacing={1}>
+                              <Typography variant="body2">
+                                <strong>endpoint_url:</strong> {selectedApp.artifactUrl}
+                              </Typography>
+                              <Typography variant="body2">
+                                <strong>public_keys:</strong> {selectedApp.publicKeys.length} signing key{selectedApp.publicKeys.length !== 1 ? 's' : ''}
+                              </Typography>
+                              <Typography variant="body2">
+                                <strong>fetch_policy:</strong> {selectedApp.fetchPolicy.min_interval_seconds / 3600}h interval, {selectedApp.fetchPolicy.hard_ttl_days}d TTL
+                              </Typography>
+                            </Stack>
+                          </Paper>
+                        </Box>
+
+                        <Box>
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            Integration Steps:
+                          </Typography>
+                          <Stack spacing={1}>
+                            <Typography variant="body2">
+                              1. Add the Bunting Swift SDK to your Xcode project via Swift Package Manager
+                            </Typography>
+                            <Typography variant="body2">
+                              2. Add the downloaded BuntingConfig.plist file to your app's main bundle
+                            </Typography>
+                            <Typography variant="body2">
+                              3. Configure Bunting in your app with: <code>Bunting.configure(environment: .production)</code>
+                            </Typography>
+                            <Typography variant="body2">
+                              4. Access feature flags: <code>await Bunting.shared.bool("my_flag", default: false)</code>
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </Stack>
                     </Box>
                   )}
                 </Box>

@@ -1,15 +1,20 @@
 // Targeting Rules Types for Bunting Feature Flags
 
-export type RuleConditionType = 
+export type RuleConditionType =
   | 'app_version'
   | 'os_version'
+  | 'build_number'
   | 'platform'
-  | 'country'
-  | 'cohort';
+  | 'device_model'
+  | 'region'
+  | 'locale'
+  | 'cohort'
+  | 'custom_attribute';
 
-export type RuleOperator = 
+export type RuleOperator =
   | 'equals'
   | 'not_equals'
+  | 'does_not_equal'  // SDK spec alias for not_equals
   | 'contains'
   | 'not_contains'
   | 'starts_with'
@@ -20,9 +25,11 @@ export type RuleOperator =
   | 'less_than'
   | 'greater_than_or_equal'
   | 'less_than_or_equal'
+  | 'between'
   | 'regex_match'
   | 'is_in_cohort'
-  | 'is_not_in_cohort';
+  | 'is_not_in_cohort'
+  | 'custom';  // For custom attributes
 
 export interface RuleCondition {
   id: string;
