@@ -74,7 +74,16 @@ export function useConditions() {
 export function useConditionContext(contextType: ConditionContextType) {
   const context = useConditions();
 
-  // Return the same data regardless of context type for now
-  // This can be extended later to provide different data based on context
-  return context;
+  // Provide context-specific configuration
+  const config = {
+    title: contextType === 'cohort' ? 'Add Rule Condition' : 'Add Targeting Condition',
+    allowedTypes: contextType === 'cohort'
+      ? ['app_version', 'os_version', 'build_number', 'platform', 'device_model', 'region', 'locale', 'custom_attribute'] // Exclude 'cohort' to prevent circular references
+      : ['app_version', 'os_version', 'build_number', 'platform', 'device_model', 'region', 'locale', 'cohort', 'custom_attribute'] // Include 'cohort' for flag variants
+  };
+
+  return {
+    ...context,
+    config
+  };
 }
