@@ -6,6 +6,12 @@
 
 # Testing
 /coverage
+/playwright-report
+/test-results
+*.tsbuildinfo
+
+# Turbo
+.turbo
 
 # Next.js
 /.next/
