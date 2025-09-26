@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import { generateRSAKeyPair, validatePublicKeyPEM, validatePrivateKeyPEM, validateKeyId, generateKeyId } from '../src/lib/crypto';
-import { JWSUtils } from '../src/lib/jws-signer';
-import { validateJWSFormat } from '../src/lib/crypto-test-utils';
+import { generateRSAKeyPair, validatePublicKeyPEM, validatePrivateKeyPEM, validateKeyId, generateKeyId } from '../../src/lib/crypto';
+import { JWSUtils } from '../../src/lib/jws-signer';
+import { validateJWSFormat } from '../../src/lib/crypto-test-utils';
 
 describe('Crypto Unit Tests (No Database)', () => {
   describe('Key Generation', () => {

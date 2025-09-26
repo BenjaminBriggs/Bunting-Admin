@@ -1,71 +1,26 @@
 const jose = require('node-jose');
+require('@testing-library/jest-dom');
+
+jest.mock('next/headers', () => ({
+  cookies: () => new Map(),
+  headers: () => new Map(),
+}));
+
+const { server } = require('./msw/server');
+const { truncateAll } = require('./db-utils.ts');
 
 // Increase timeout for tests
 jest.setTimeout(30000);
 
-// Mock Prisma client
-jest.mock('@prisma/client', () => {
-  const mockPrisma = {
-    app: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    },
-    flag: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    },
-    cohort: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    },
-    rule: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-    },
-    publication: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      count: jest.fn(),
-      aggregate: jest.fn(),
-      findFirst: jest.fn(),
-      deleteMany: jest.fn(),
-    },
-    testRollout: {
-      findMany: jest.fn(),
-      count: jest.fn(),
-    },
-    $disconnect: jest.fn(),
-    $transaction: jest.fn(),
-    $executeRaw: jest.fn(),
-  };
-
-  return {
-    PrismaClient: jest.fn(() => mockPrisma),
-  };
-});
+// Deterministic Date.now for time-sensitive assertions
+const realDateNow = Date.now;
 
 // Global test state
 global.testKeystore = null;
-global.mockPrisma = null;
+
+beforeAll(() => {
+  Date.now = () => 1_700_000_000_000;
+});
 
 beforeAll(async () => {
   console.log('🚀 Setting up test environment...');
@@ -83,7 +38,7 @@ beforeAll(async () => {
     // Set test environment variables
     process.env.NODE_ENV = 'test';
     process.env.TEST_MODE = 'true';
-    process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+    process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:5432/bunting_test';
 
     console.log('✅ Test environment setup complete');
   } catch (error) {
@@ -92,9 +47,18 @@ beforeAll(async () => {
   }
 });
 
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'error' });
+});
+
 beforeEach(() => {
   // Reset all mocks before each test
   jest.clearAllMocks();
+});
+
+afterEach(async () => {
+  server.resetHandlers();
+  await truncateAll();
 });
 
 afterAll(async () => {
@@ -103,12 +67,16 @@ afterAll(async () => {
   try {
     // Clear global test state
     global.testKeystore = null;
-    global.mockPrisma = null;
 
     console.log('✅ Test environment cleanup complete');
   } catch (error) {
     console.error('❌ Failed to cleanup test environment:', error);
   }
+});
+
+afterAll(() => {
+  server.close();
+  Date.now = realDateNow;
 });
 
 // Global test utilities
@@ -176,12 +144,12 @@ expect.extend({
         message: () => `expected ${received} not to be a valid UUID`,
         pass: true,
       };
-    } else {
-      return {
-        message: () => `expected ${received} to be a valid UUID`,
-        pass: false,
-      };
     }
+
+    return {
+      message: () => `expected ${received} to be a valid UUID`,
+      pass: false,
+    };
   },
 
   toBeValidISO8601Date(received) {
@@ -194,12 +162,12 @@ expect.extend({
         message: () => `expected ${received} not to be a valid ISO8601 date`,
         pass: true,
       };
-    } else {
-      return {
-        message: () => `expected ${received} to be a valid ISO8601 date`,
-        pass: false,
-      };
     }
+
+    return {
+      message: () => `expected ${received} to be a valid ISO8601 date`,
+      pass: false,
+    };
   },
 
   toMatchVersionPattern(received) {
@@ -211,12 +179,12 @@ expect.extend({
         message: () => `expected ${received} not to match version pattern YYYY-MM-DD.N`,
         pass: true,
       };
-    } else {
-      return {
-        message: () => `expected ${received} to match version pattern YYYY-MM-DD.N`,
-        pass: false,
-      };
     }
+
+    return {
+      message: () => `expected ${received} to match version pattern YYYY-MM-DD.N`,
+      pass: false,
+    };
   }
 });
 

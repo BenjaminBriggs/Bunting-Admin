@@ -1,32 +1,46 @@
 /** @type {import('jest').Config} */
-module.exports = {
+const sharedProjectConfig = {
   testEnvironment: 'node',
-  coverageProvider: 'v8',
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  testMatch: [
-    '<rootDir>/tests/**/*.test.js',
-    '<rootDir>/tests/**/*.test.ts'
-  ],
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
   transformIgnorePatterns: [
-    'node_modules/(?!(@faker-js/faker)/)'
+    'node_modules/(?!(@faker-js/faker|msw|@mswjs|until-async)/)'
   ],
-  collectCoverageFrom: [
-    'src/app/api/**/*.{js,ts}',
-    'src/lib/**/*.{js,ts}',
-    '!**/*.test.{js,ts}',
-    '!**/node_modules/**',
-    '!**/.next/**'
-  ],
+  transform: {
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }]
+  },
+  moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+};
+
+module.exports = {
+  verbose: true,
+  coverageProvider: 'v8',
+  collectCoverageFrom: ['src/lib/db.ts'],
+  coveragePathIgnorePatterns: ['<rootDir>/src/app/'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   coverageThreshold: {
     global: { branches: 90, functions: 90, lines: 90, statements: 90 }
   },
-  verbose: true,
-  transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }]
-  },
-  moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
-  testTimeout: 30000
+  projects: [
+    {
+      ...sharedProjectConfig,
+      displayName: 'unit',
+      testMatch: [
+        '<rootDir>/tests/unit/**/*.test.js',
+        '<rootDir>/tests/unit/**/*.test.ts'
+      ],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.unit.js'],
+      testTimeout: 10000,
+    },
+    {
+      ...sharedProjectConfig,
+      displayName: 'integration',
+      testMatch: [
+        '<rootDir>/tests/integration/**/*.test.js',
+        '<rootDir>/tests/integration/**/*.test.ts'
+      ],
+      setupFilesAfterEnv: ['<rootDir>/tests/setup.integration.js'],
+      testTimeout: 30000,
+    },
+  ],
 };

@@ -5,8 +5,8 @@
  * without complex database setup or mocking.
  */
 
-const { bucketFor } = require('../src/lib/bucketing');
-const { validateIdentifierKey, normalizeToIdentifierKey } = require('../src/lib/validation');
+const { bucketFor } = require('../../src/lib/bucketing');
+const { validateIdentifierKey, normalizeToIdentifierKey } = require('../../src/lib/validation');
 
 describe('JSON Spec Functions', () => {
   describe('Bucketing Algorithm', () => {
