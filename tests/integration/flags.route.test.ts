@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/flags/route';
 import { prisma } from '@/lib/db';
 
@@ -25,7 +26,7 @@ describe('flags route', () => {
       }
     });
 
-    const req = new Request('http://local/api/flags', {
+    const req = new NextRequest('http://local/api/flags', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
