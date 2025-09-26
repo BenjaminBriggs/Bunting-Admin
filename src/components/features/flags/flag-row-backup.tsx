@@ -131,13 +131,13 @@ function EnvironmentCell({
     let processedValue: FlagValue;
 
     try {
-      if (flag.type === "bool") {
+      if ((flag.type as any) === "bool" || (flag.type as any) === "BOOL") {
         processedValue = tempDefaultValue === "true";
-      } else if (flag.type === "int") {
+      } else if ((flag.type as any) === "int" || (flag.type as any) === "INT") {
         processedValue = parseInt(tempDefaultValue) || 0;
-      } else if (flag.type === "double") {
+      } else if ((flag.type as any) === "double" || (flag.type as any) === "DOUBLE") {
         processedValue = parseFloat(tempDefaultValue) || 0.0;
-      } else if (flag.type === "json") {
+      } else if ((flag.type as any) === "json" || (flag.type as any) === "JSON") {
         processedValue = JSON.parse(tempDefaultValue);
       } else {
         processedValue = tempDefaultValue;
@@ -217,7 +217,7 @@ function EnvironmentCell({
 
         {editingDefault ? (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {flag.type === "bool" ? (
+            {(flag.type as any) === "bool" || (flag.type as any) === "BOOL" ? (
               <FormControl size="small" sx={{ minWidth: 80 }}>
                 <Select
                   value={tempDefaultValue}
@@ -420,7 +420,7 @@ function EnvironmentCell({
         flagType={flag.type}
         flagId={flag.id}
         appId={selectedApp?.id}
-        existingVariant={editingVariant}
+        existingVariant={editingVariant || undefined}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -551,7 +551,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
       <Paper variant="outlined" sx={{ p: 2, opacity: archived ? 0.6 : 1 }}>
         <Grid container spacing={2}>
           {/* Flag Info Column */}
-          <Grid item xs={3}>
+          <Grid size={{ xs: 3 }}>
             <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2 }}>
               <DragIndicator sx={{ color: "text.disabled", mt: 0.5 }} />
               <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -627,7 +627,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
           </Grid>
 
           {/* Development Column */}
-          <Grid item xs={3}>
+          <Grid size={{ xs: 3 }}>
             <EnvironmentCell
               environment="development"
               flag={flagData}
@@ -638,7 +638,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
           </Grid>
 
           {/* Staging Column */}
-          <Grid item xs={3}>
+          <Grid size={{ xs: 3}}>
             <EnvironmentCell
               environment="staging"
               flag={flagData}
@@ -649,7 +649,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
           </Grid>
 
           {/* Production Column */}
-          <Grid item xs={3}>
+          <Grid size={{ xs: 3}}>
             <EnvironmentCell
               environment="production"
               flag={flagData}

@@ -56,7 +56,7 @@ export default function ValueInput({
 
   useEffect(() => {
     // Convert value to string representation for editing
-    if (type === "json") {
+    if ((type as any) === "json") {
       setStringValue(typeof value === "object" ? JSON.stringify(value, null, 2) : String(value));
     } else {
       setStringValue(String(value));
@@ -103,13 +103,13 @@ export default function ValueInput({
     try {
       let processedValue: FlagValue;
       
-      if (type === "bool") {
+      if ((type as any) === "bool") {
         processedValue = newStringValue === "true";
-      } else if (type === "int") {
+      } else if ((type as any) === "int") {
         processedValue = parseInt(newStringValue) || 0;
-      } else if (type === "double") {
+      } else if ((type as any) === "double") {
         processedValue = parseFloat(newStringValue) || 0.0;
-      } else if (type === "json") {
+      } else if ((type as any) === "json") {
         const jsonErr = validateJSON(newStringValue);
         setJsonError(jsonErr);
         if (!jsonErr) {
@@ -143,7 +143,7 @@ export default function ValueInput({
   };
 
   // Boolean input
-  if (type === "bool") {
+  if ((type as any) === "bool") {
     return (
       <FormControl size={size} fullWidth={fullWidth}>
         <InputLabel>{label}</InputLabel>
@@ -167,7 +167,7 @@ export default function ValueInput({
   }
 
   // JSON input with expandable editor
-  if (type === "json") {
+  if ((type as any) === "json") {
     return (
       <Box>
         <Paper 
@@ -245,11 +245,11 @@ export default function ValueInput({
       placeholder={placeholder}
       autoFocus={autoFocus}
       onKeyDown={onKeyDown}
-      type={type === 'int' || type === 'double' ? 'number' : 
-           type === 'date' ? 'date' : 'text'}
+      type={(type as any) === 'int' || (type as any) === 'double' ? 'number' :
+           (type as any) === 'date' ? 'date' : 'text'}
       InputProps={{
         sx: { 
-          fontFamily: type === 'date' ? 'inherit' : 'monospace',
+          fontFamily: (type as any) === 'date' ? 'inherit' : 'monospace',
           fontSize: '0.875rem'
         }
       }}

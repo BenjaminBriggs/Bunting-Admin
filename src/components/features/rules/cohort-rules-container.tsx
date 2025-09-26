@@ -106,7 +106,7 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
     return errors;
   };
 
-  const validationErrors = useMemo(() => validateRules(), [rules]);
+  const validationErrors = useMemo(() => validateRules(), [rules]); // eslint-disable-line react-hooks/exhaustive-deps
   const hasErrors = validationErrors.some(error => error.type === 'error');
   const hasWarnings = validationErrors.some(error => error.type === 'warning');
 
@@ -138,12 +138,12 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
             {validationErrors.length > 0 && (
               <Stack spacing={1}>
                 {validationErrors.filter(e => e.type === 'error').map((error, index) => (
-                  <Alert key={index} severity="error" size="small">
+                  <Alert key={index} severity="error">
                     {error.message}
                   </Alert>
                 ))}
                 {validationErrors.filter(e => e.type === 'warning').map((warning, index) => (
-                  <Alert key={index} severity="warning" size="small">
+                  <Alert key={index} severity="warning">
                     {warning.message}
                   </Alert>
                 ))}
@@ -159,7 +159,7 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
               </Alert>
             ) : (
               <Stack spacing={2}>
-                <Alert severity="info" size="small">
+                <Alert severity="info">
                   Users matching ANY of these rules will be included in this cohort.
                   Cohorts can then be used in tests and rollouts for more complex targeting.
                 </Alert>
@@ -179,7 +179,7 @@ export function CohortRulesContainer({ rules, onChange, appId }: CohortRulesCont
             )}
 
             {/* Cohort Usage Notice */}
-            <Alert severity="info" size="small">
+            <Alert severity="info">
               <Typography variant="body2">
                 <strong>Cohort Usage:</strong> This cohort can be used in:
                 <br />

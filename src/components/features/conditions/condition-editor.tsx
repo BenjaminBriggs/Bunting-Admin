@@ -44,7 +44,7 @@ export function ConditionEditor({
     onChange({
       ...condition,
       type: newType,
-      operator: defaultOperator,
+      operator: defaultOperator as any,
       values: []
     });
   };

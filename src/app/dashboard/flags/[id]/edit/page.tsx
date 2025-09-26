@@ -14,6 +14,7 @@ import {
   Select,
   MenuItem,
   Alert,
+  Link,
   Chip,
   Stack,
   Grid,
@@ -99,33 +100,23 @@ export default function EditFlagPage() {
         setOriginalKey(flagData.key);
         setNormalizedKey(flagData.key);
         setType(flagData.type.toLowerCase());
-        // Handle both old single defaultValue and new defaultValues
-        if (flagData.defaultValues) {
           setDefaultValues({
             development:
               flagData.defaultValues.development ||
-              flagData.defaultValue ||
+              null ||
               getDefaultValueForType(flagData.type.toLowerCase() as any),
             staging:
               flagData.defaultValues.staging ||
-              flagData.defaultValue ||
+              null ||
               getDefaultValueForType(flagData.type.toLowerCase() as any),
             production:
               flagData.defaultValues.production ||
-              flagData.defaultValue ||
+              null ||
               getDefaultValueForType(flagData.type.toLowerCase() as any),
           });
-        } else {
-          // Legacy support - use single defaultValue for all environments
-          setDefaultValues({
-            development: flagData.defaultValue,
-            staging: flagData.defaultValue,
-            production: flagData.defaultValue,
-          });
-        }
         setDescription(flagData.description || "");
         setArchived(flagData.archived);
-        setRules(flagData.rules || []);
+        setRules([]);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load flag");
       } finally {
@@ -218,12 +209,11 @@ export default function EditFlagPage() {
       await updateFlag(flagId, {
         key: normalizedKey,
         displayName,
-        type,
+        type: type as any,
         defaultValues: processDefaultValues(),
         variants: flag.variants || {},
         description,
         archived,
-        rules,
       });
 
       // Trigger change detection
@@ -321,13 +311,11 @@ export default function EditFlagPage() {
       type !== flag.type ||
       description !== (flag.description || "") ||
       archived !== flag.archived ||
-      JSON.stringify(rules) !== JSON.stringify(flag.rules || [])
+      JSON.stringify(rules) !== JSON.stringify([])
     ) {
       return true;
     }
 
-    // Check default values - compare with both old and new format
-    if (flag.defaultValues) {
       return (
         JSON.stringify(defaultValues) !==
         JSON.stringify({
@@ -336,16 +324,6 @@ export default function EditFlagPage() {
           production: flag.defaultValues.production || "",
         })
       );
-    } else {
-      // Legacy comparison
-      const legacyValue = flag.defaultValue || "";
-      return !(
-        JSON.stringify(defaultValues.development) ===
-          JSON.stringify(legacyValue) &&
-        JSON.stringify(defaultValues.staging) === JSON.stringify(legacyValue) &&
-        JSON.stringify(defaultValues.production) === JSON.stringify(legacyValue)
-      );
-    }
   })();
 
   return (
@@ -384,9 +362,9 @@ export default function EditFlagPage() {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
         {/* Main Configuration */}
-        <Grid item xs={12} md={8}>
+        <Box sx={{ flex: '1 1 auto', maxWidth: { xs: '100%', md: '66.67%' } }}>
           <Stack spacing={3}>
             <Card>
               <CardContent sx={{ p: 3 }}>
@@ -510,13 +488,15 @@ export default function EditFlagPage() {
                     const currentEnv = getCurrentEnvironment();
                     const value =
                       defaultValues[currentEnv as keyof typeof defaultValues];
-                    if (type === "bool") return value === "true";
-                    if (type === "int") return parseInt(value) || 0;
-                    if (type === "double") return parseFloat(value) || 0.0;
+                    if (type === "bool") return Boolean(value);
+                    if (type === "int") return typeof value === 'number' ? value : parseInt(String(value)) || 0;
+                    if (type === "double") return typeof value === 'number' ? value : parseFloat(String(value)) || 0.0;
                     if (type === "json") {
-                      const error =
-                        jsonErrors[currentEnv as keyof typeof jsonErrors];
-                      return error ? value : JSON.parse(value);
+                      try {
+                        return typeof value === 'string' ? JSON.parse(value) : value;
+                      } catch {
+                        return value;
+                      }
                     }
                     return value;
                   })()}
@@ -525,10 +505,10 @@ export default function EditFlagPage() {
               </CardContent>
             </Card>
           </Stack>
-        </Grid>
+        </Box>
 
         {/* Preview & Actions */}
-        <Grid item xs={12} md={4}>
+        <Box sx={{ flex: '0 0 auto', width: { xs: '100%', md: '33.33%' } }}>
           <Stack spacing={3}>
             <Card>
               <CardContent sx={{ p: 3 }}>
@@ -675,7 +655,7 @@ export default function EditFlagPage() {
                             production: flag.defaultValues.production || "",
                           });
                       } else {
-                        const legacyValue = flag.defaultValue || "";
+                        const legacyValue = "";
                         defaultValuesChanged = !(
                           JSON.stringify(defaultValues.development) ===
                             JSON.stringify(legacyValue) &&
@@ -704,7 +684,7 @@ export default function EditFlagPage() {
                       </Typography>
                     )}
                     {JSON.stringify(rules) !==
-                      JSON.stringify(flag.rules || []) && (
+                      JSON.stringify([]) && (
                       <Typography variant="body2">
                         • Targeting rules updated ({rules.length} rule
                         {rules.length !== 1 ? "s" : ""})
@@ -741,8 +721,8 @@ export default function EditFlagPage() {
               </Button>
             </Stack>
           </Stack>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 }

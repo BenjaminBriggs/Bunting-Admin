@@ -101,9 +101,9 @@ export default function NewCohortPage() {
           {error}
         </Alert>
       )}
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'flex', gap: 3, flexDirection: { xs: 'column', md: 'row' } }}>
         {/* Main Configuration */}
-        <Grid item xs={12} md={8}>
+        <Box sx={{ flex: '1 1 auto', maxWidth: { xs: '100%', md: '66.67%' } }}>
           <Card>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>
@@ -149,10 +149,10 @@ export default function NewCohortPage() {
               />
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
         {/* Preview & Actions */}
-        <Grid item xs={12} md={4}>
+        <Box sx={{ flex: '0 0 auto', width: { xs: '100%', md: '33.33%' } }}>
           <Stack spacing={3}>
             <Card>
               <CardContent sx={{ p: 3 }}>
@@ -272,8 +272,8 @@ export default function NewCohortPage() {
               </Button>
             </Stack>
           </Stack>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Box>
   );
 }

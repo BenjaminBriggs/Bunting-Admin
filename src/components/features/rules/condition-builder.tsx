@@ -320,7 +320,7 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                 <TextField
                   label="Value"
-                  type={template.valueType === 'number' ? 'number' : 'text'}
+                  type="text"
                   value={valueInput}
                   onChange={(e) => setValueInput(e.target.value)}
                   onKeyPress={handleKeyPress}

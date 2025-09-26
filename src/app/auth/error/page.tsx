@@ -1,13 +1,14 @@
 import { Container, Box, Typography, Button, Alert } from '@mui/material'
-import { AlertCircle } from '@mui/icons-material'
+import { Error } from '@mui/icons-material'
 import Link from 'next/link'
 
 interface ErrorPageProps {
-  searchParams: { error?: string }
+  searchParams: Promise<{ error?: string }>
 }
 
-export default function ErrorPage({ searchParams }: ErrorPageProps) {
-  const error = searchParams.error
+export default async function ErrorPage({ searchParams }: ErrorPageProps) {
+  const params = await searchParams;
+  const error = params.error
 
   let message = 'An error occurred during authentication.'
 
@@ -30,7 +31,7 @@ export default function ErrorPage({ searchParams }: ErrorPageProps) {
         }}
       >
         <Box sx={{ textAlign: 'center' }}>
-          <AlertCircle sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
+          <Error sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
 
           <Typography variant="h4" component="h1" gutterBottom>
             Access Denied

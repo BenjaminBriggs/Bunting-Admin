@@ -104,7 +104,7 @@ export function CohortRuleBuilder({
   const hasMultipleConditions = rule.conditions.length > 1;
 
   return (
-    <ConditionsProvider appId={appId}>
+    <ConditionsProvider appId={appId || ''}>
       <Card 
         variant="outlined" 
         sx={{ 
@@ -164,7 +164,7 @@ export function CohortRuleBuilder({
 
             {/* Validation Warning */}
             {hasIncompleteConditions && (
-              <Alert severity="warning" size="small">
+              <Alert severity="warning">
                 <Typography variant="body2">
                   This rule has incomplete conditions. Please specify values for all conditions.
                 </Typography>
@@ -239,7 +239,7 @@ export function CohortRuleBuilder({
                     </Typography>
                     
                     {condition.values.length === 0 && (
-                      <Alert severity="warning" size="small" sx={{ mt: 1 }}>
+                      <Alert severity="warning" sx={{ mt: 1 }}>
                         This condition needs values to be configured.
                       </Alert>
                     )}

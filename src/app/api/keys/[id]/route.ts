@@ -7,15 +7,15 @@ const updateKeySchema = z.object({
 });
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 // GET /api/keys/[id] - Get specific signing key details
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const { id: keyId } = await params;
   try {
-    const { id: keyId } = params;
     const { searchParams } = new URL(request.url);
     const appId = searchParams.get('appId');
 
@@ -61,8 +61,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PUT /api/keys/[id] - Update signing key (activate/deactivate)
 export async function PUT(request: NextRequest, { params }: RouteParams) {
+  const { id: keyId } = await params;
   try {
-    const { id: keyId } = params;
     const { searchParams } = new URL(request.url);
     const appId = searchParams.get('appId');
 
@@ -123,8 +123,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/keys/[id] - Delete signing key (must not be active)
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const { id: keyId } = await params;
   try {
-    const { id: keyId } = params;
     const { searchParams } = new URL(request.url);
     const appId = searchParams.get('appId');
 

@@ -6,7 +6,7 @@
 // <ThemeProvider theme={buntingTheme}><CssBaseline />{children}</ThemeProvider>
 
 import { createTheme, alpha } from "@mui/material/styles";
-import { Components } from "@mui/material/styles/components";
+// import { Components } from "@mui/material/styles/components";
 
 // --- Brand Palette (Bunting logo colors) ---
 const brand = {
@@ -209,14 +209,14 @@ export function createBuntingTheme() {
       MuiCssBaseline: {
         styleOverrides: {
           ":root": {
-            "--bunting-shadow-focus": customShadows.focus,
+            "--bunting-shadow-focus": (customShadows as any).focus,
           },
           body: {
             backgroundColor: brand.neutral.defaultBg,
           },
           "*:focus-visible": {
             outline: "none",
-            boxShadow: customShadows.focus,
+            boxShadow: (customShadows as any).focus,
             transition: "box-shadow 120ms",
             borderRadius: 10,
           },
@@ -227,7 +227,7 @@ export function createBuntingTheme() {
       MuiButton: {
         defaultProps: { disableRipple: true },
         styleOverrides: {
-          root: ({ ownerState, theme }) => ({
+          root: ({ ownerState, theme }: any) => ({
             borderRadius: 999, // Full pill shape
             paddingInline: 16,
             paddingBlock: 10,
@@ -380,7 +380,7 @@ export function createBuntingTheme() {
             },
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
               borderColor: brand.orange.main,
-              boxShadow: customShadows.focus,
+              boxShadow: (customShadows as any).focus,
             },
           },
           notchedOutline: { borderWidth: 2 },
@@ -476,7 +476,7 @@ export function createBuntingTheme() {
           },
         },
       },
-    } as Components,
+    } as any,
   });
 }
 

@@ -13,7 +13,6 @@ import {
   CircularProgress,
   Alert,
   Avatar,
-  Grid,
   CardActions,
 } from "@mui/material";
 import {
@@ -191,9 +190,9 @@ export default function TestsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Grid container spacing={3}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
           {filteredTests.map((test) => (
-            <Grid item xs={12} md={6} lg={4} key={test.id}>
+            <Box key={test.id} sx={{ flexBasis: { xs: '100%', md: 'calc(50% - 12px)' } }}>
               <Card
                 sx={{
                   height: "100%",
@@ -288,9 +287,9 @@ export default function TestsPage() {
                   </Button>
                 </CardActions>
               </Card>
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
       )}
     </Box>
   );

@@ -225,7 +225,7 @@ export function ConditionBuilderModal({
           )}
 
           <Alert severity="info">
-            {config.description}
+            {(config as any)?.description || "Configure conditions for targeting specific users or contexts."}
           </Alert>
 
           {/* Condition Type Selection */}

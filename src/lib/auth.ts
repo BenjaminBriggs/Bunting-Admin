@@ -32,7 +32,7 @@ if (process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET) {
     AzureAD({
       clientId: process.env.MICROSOFT_CLIENT_ID,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-      tenantId: process.env.MICROSOFT_TENANT_ID,
+      // tenantId: process.env.MICROSOFT_TENANT_ID,
     })
   )
 }
@@ -56,7 +56,7 @@ if (process.env.NODE_ENV === 'development' && process.env.DISABLE_DEV_AUTH !== '
         email: { label: "Email", type: "email", placeholder: "admin@example.com" },
         password: { label: "Password", type: "password" }
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<any> {
         // Use environment variables with sensible defaults
         const adminEmail = process.env.DEV_ADMIN_EMAIL || 'admin@example.com';
         const adminPassword = process.env.DEV_ADMIN_PASSWORD || 'admin';
@@ -64,9 +64,9 @@ if (process.env.NODE_ENV === 'development' && process.env.DISABLE_DEV_AUTH !== '
         // Check against configured credentials
         if (credentials?.email === adminEmail && credentials?.password === adminPassword) {
           return {
-            id: credentials.email,
-            email: credentials.email,
-            name: credentials.email.split('@')[0],
+            id: String(credentials.email),
+            email: String(credentials.email),
+            name: String(credentials.email).split('@')[0],
             role: "ADMIN"
           }
         }
@@ -74,9 +74,9 @@ if (process.env.NODE_ENV === 'development' && process.env.DISABLE_DEV_AUTH !== '
         // Fallback: allow any email with the configured admin password for flexibility
         if (credentials?.password === adminPassword && credentials?.email) {
           return {
-            id: credentials.email,
-            email: credentials.email,
-            name: credentials.email.split('@')[0],
+            id: String(credentials.email),
+            email: String(credentials.email),
+            name: String(credentials.email).split('@')[0],
             role: "ADMIN"
           }
         }

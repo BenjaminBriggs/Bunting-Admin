@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         description,
         type: 'TEST',
         salt,
-        conditions,
+        conditions: conditions as any,
         variants,
         flagIds: [], // Will be populated when flags are assigned to this test
         appId

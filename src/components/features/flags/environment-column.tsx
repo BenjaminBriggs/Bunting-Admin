@@ -56,7 +56,7 @@ export default function EnvironmentColumn({
   onDefaultValueEdit,
 }: EnvironmentColumnProps) {
   const formatValue = (value: FlagValue): string => {
-    return formatValueForDisplay(value, flagType);
+    return formatValueForDisplay(value, flagType as any);
   };
 
   const getTestVariantValues = (test: any): string => {
@@ -68,7 +68,7 @@ export default function EnvironmentColumn({
         
         // Check if the variant has values for this environment and flag
         if (variant.values && variant.values[environment] && variant.values[environment][flagId] !== undefined) {
-          displayValue = formatValueForDisplay(variant.values[environment][flagId], flagType);
+          displayValue = formatValueForDisplay(variant.values[environment][flagId], flagType as any);
         }
         
         values.push(displayValue);
@@ -280,7 +280,7 @@ export default function EnvironmentColumn({
         </Box>
 
         {variants.map((variant, index) => (
-          <Stack spacing={1}>
+          <Stack key={variant.id || index} spacing={1}>
             <Box key={variant.id}>
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <Box sx={{ flexGrow: 1 }}>

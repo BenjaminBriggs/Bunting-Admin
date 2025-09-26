@@ -349,7 +349,7 @@ export function useFormModal(initialOpen: boolean = false) {
       // Optionally close modal after successful action
       // closeModal();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError((err as any)?.message || 'An error occurred');
     } finally {
       setSaving(false);
     }

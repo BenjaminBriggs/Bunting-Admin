@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
+import { TextField } from '@mui/material';
 import { validateIdentifierKey, normalizeToIdentifierKey, generateDisplayName } from '@/lib/validation';
-import { AlertCircle, Check } from 'lucide-react';
 
 interface FlagKeyInputProps {
   value: string;
@@ -54,19 +53,14 @@ export function FlagKeyInput({
           Flag Name
         </label>
         <div className="relative mt-2">
-          <Input
+          <TextField
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={placeholder}
             disabled={disabled}
-            className={validation.valid ? '' : 'border-destructive focus-visible:ring-destructive'}
+            error={!validation.valid}
+            fullWidth
           />
-          {validation.valid && normalizedKey && (
-            <Check className="absolute right-3 top-3 h-4 w-4 text-green-500" />
-          )}
-          {!validation.valid && (
-            <AlertCircle className="absolute right-3 top-3 h-4 w-4 text-destructive" />
-          )}
         </div>
       </div>
 
@@ -96,8 +90,7 @@ export function FlagKeyInput({
 
       {/* Validation Error */}
       {!validation.valid && validation.error && (
-        <div className="flex items-center space-x-2 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4" />
+        <div className="text-sm text-destructive">
           <span>{validation.error}</span>
         </div>
       )}

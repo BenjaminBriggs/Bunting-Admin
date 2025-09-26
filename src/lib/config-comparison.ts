@@ -7,41 +7,23 @@ export interface ConfigArtifact {
   app_identifier: string;
   development?: {
     flags: Record<string, any>;
-    cohorts: Record<string, any>;
     test_rollouts?: Record<string, any>;
   };
   staging?: {
     flags: Record<string, any>;
-    cohorts: Record<string, any>;
     test_rollouts?: Record<string, any>;
   };
   production?: {
     flags: Record<string, any>;
-    cohorts: Record<string, any>;
     test_rollouts?: Record<string, any>;
   };
-  // Legacy schema v1 support
-  cohorts?: Record<string, any>;
-  flags?: Record<string, any>;
-  // Current schema v2 support
+  cohorts: Record<string, any>;
   tests?: Record<string, any>;
   rollouts?: Record<string, any>;
 }
 
 // Helper functions to extract data from both schema versions
 function extractFlags(config: ConfigArtifact): Record<string, any> {
-  // Check if this is the current schema v2 format (flags with environment sub-objects)
-  if (config.flags && typeof config.flags === 'object') {
-    const firstFlag = Object.values(config.flags)[0] as any;
-    if (firstFlag && typeof firstFlag === 'object' &&
-        ('development' in firstFlag || 'staging' in firstFlag || 'production' in firstFlag)) {
-      // Current schema v2: flags with environment sub-objects
-      return config.flags;
-    }
-  }
-
-  if (config.development) {
-    // Old schema v2: environment-first
     const allFlags: Record<string, any> = {};
     ['development', 'staging', 'production'].forEach(env => {
       const envData = config[env as keyof ConfigArtifact] as any;
@@ -53,39 +35,17 @@ function extractFlags(config: ConfigArtifact): Record<string, any> {
       }
     });
     return allFlags;
-  } else {
-    // Schema v1: legacy format
-    return config.flags || {};
-  }
 }
 
 function extractCohorts(config: ConfigArtifact): Record<string, any> {
-  if (config.development) {
-    // Schema v2: cohorts are the same across environments, just take from development
-    return config.development.cohorts || {};
-  } else {
-    // Schema v1: legacy format
     return config.cohorts || {};
-  }
-}
-
-function extractTestRollouts(config: ConfigArtifact): Record<string, any> {
-  if (config.development) {
-    // Schema v2: test_rollouts from development (they're the same across envs)
-    return config.development.test_rollouts || {};
-  } else {
-    // Schema v1: no test_rollouts
-    return {};
-  }
 }
 
 function extractTests(config: ConfigArtifact): Record<string, any> {
-  // Current schema v2: tests are at top level
   return config.tests || {};
 }
 
 function extractRollouts(config: ConfigArtifact): Record<string, any> {
-  // Current schema v2: rollouts are at top level
   return config.rollouts || {};
 }
 
@@ -152,7 +112,8 @@ export function getConfigChanges(currentConfig: ConfigArtifact, publishedConfig:
     // All current items are "added"
     const currentFlags = extractFlags(currentConfig);
     const currentCohorts = extractCohorts(currentConfig);
-    const currentTestRollouts = extractTestRollouts(currentConfig);
+    const currentTest = extractTests(currentConfig);
+    const currentRollouts = extractRollouts(currentConfig);
 
     Object.keys(currentFlags).forEach(key => {
       changes.push({

@@ -71,7 +71,7 @@ export default function DefaultValueEditModal({
 
 
   const handleSave = async () => {
-    if (flagType === 'json' && jsonError) return;
+    if (!isValid()) return;
 
     setSaving(true);
     setSaveError(null);
@@ -87,7 +87,7 @@ export default function DefaultValueEditModal({
 
       // Update the flag with the new default value for this environment
       await updateFlag(flagId, {
-        defaultValues: updatedDefaultValues
+        defaultValues: updatedDefaultValues as any
       });
 
       onSave(processedValue);

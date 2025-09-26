@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import { createApp, type App } from "@/lib/api";
 import { Apps, Storage, Check, Flag } from "@mui/icons-material";
 
@@ -525,7 +526,7 @@ export default function SetupPage() {
                   })
                 }
                 fullWidth
-                required={setupData.storageType !== "aws"}
+                required={setupData.storageType === "custom" || setupData.storageType === "minio" || setupData.storageType === "b2"}
                 helperText="Full endpoint URL (e.g., http://localhost:9000)"
               />
             )}
@@ -678,9 +679,11 @@ export default function SetupPage() {
     >
       <Container maxWidth="md">
         <Box sx={{ textAlign: "center", mb: 4 }}>
-          <img
+          <Image
             src="/images/Icon.png"
             alt="Bunting"
+            width={200}
+            height={200}
             style={{
               height: "200px",
               width: "auto",

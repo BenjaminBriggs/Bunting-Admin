@@ -143,11 +143,10 @@ export function ConditionsContainer({
       {validationErrors.length > 0 && (
         <Stack spacing={1} sx={{ mb: 2 }}>
           {validationErrors.map((error, index) => (
-            <Alert 
+            <Alert
               key={index}
               severity={error.type}
               icon={error.type === 'error' ? <Warning /> : <Info />}
-              size="small"
             >
               {error.message}
             </Alert>
@@ -167,7 +166,7 @@ export function ConditionsContainer({
         ) : (
           <>
             {conditions.length > 1 && (
-              <Alert severity="info" size="small">
+              <Alert severity="info">
                 All conditions must be met (AND logic). Users will only match if they satisfy every condition below.
               </Alert>
             )}
@@ -196,8 +195,6 @@ export function ConditionsContainer({
                   condition={condition}
                   onChange={(updatedCondition) => handleConditionChange(condition.id, updatedCondition)}
                   onDelete={() => handleDeleteCondition(condition.id)}
-                  canDelete={conditions.length > 1 || !disabled}
-                  appId={appId}
                 />
               </Box>
             ))}

@@ -71,7 +71,7 @@ export default function FlagTestAssignmentModal({
               testId: test.id,
               testName: test.name,
               groupName,
-              value: getDefaultValueForType(flagType)
+              value: getDefaultValueForType(flagType as any)
             });
           });
         }
@@ -121,7 +121,7 @@ export default function FlagTestAssignmentModal({
         if (!testUpdates[gv.testId]) {
           testUpdates[gv.testId] = {};
         }
-        testUpdates[gv.testId][gv.groupName] = processValueForType(gv.value, flagType);
+        testUpdates[gv.testId][gv.groupName] = processValueForType(gv.value, flagType as any);
       });
 
       console.log('Test updates to apply:', testUpdates);
@@ -149,7 +149,7 @@ export default function FlagTestAssignmentModal({
               }
               
               // Update the variant's values for this environment
-              updatedVariants[groupName].values[environment][flagId] = testUpdates[testId][groupName];
+              (updatedVariants[groupName].values as any)[environment][flagId] = testUpdates[testId][groupName];
             }
           });
 
@@ -185,7 +185,7 @@ export default function FlagTestAssignmentModal({
 
       // Also handle rollouts (simpler - just one value per rollout)
       for (const rollout of selectedRollouts) {
-        const rolloutValue = getDefaultValueForType(flagType);
+        const rolloutValue = getDefaultValueForType(flagType as any);
         
         const updatedRolloutValues = {
           development: {},
@@ -193,8 +193,8 @@ export default function FlagTestAssignmentModal({
           production: {},
           ...rollout.rolloutValues,
           [environment]: {
-            ...rollout.rolloutValues?.[environment],
-            [flagId]: processValueForType(rolloutValue, flagType)
+            ...(rollout.rolloutValues as any)?.[environment],
+            [flagId]: processValueForType(rolloutValue, flagType as any)
           }
         };
 
@@ -295,7 +295,7 @@ export default function FlagTestAssignmentModal({
                         
                         <Grid container spacing={2}>
                           {groups.map((groupValue) => (
-                            <Grid key={`${groupValue.testId}-${groupValue.groupName}`} item xs={12} sm={6} md={4}>
+                            <Grid key={`${groupValue.testId}-${groupValue.groupName}`} size={{ xs: 12, sm: 6, md: 4 }}>
                               <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                                   {groupValue.groupName}
@@ -331,7 +331,7 @@ export default function FlagTestAssignmentModal({
                             testId: rollout.id,
                             testName: rollout.name,
                             groupName: 'rollout',
-                            value: getDefaultValueForType(flagType)
+                            value: getDefaultValueForType(flagType as any)
                           })}
                         </Box>
                       </Box>

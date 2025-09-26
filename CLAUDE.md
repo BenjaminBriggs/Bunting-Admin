@@ -509,3 +509,7 @@ enum TestRolloutType {
 - **JSON Storage**: Flexible storage for variants, conditions, and configurations
 - **App Isolation**: All entities scoped to applications via `appId`
 - **Enum Mapping**: Database stores lowercase (`bool`) while Prisma returns uppercase (`BOOL`)
+
+## Important Conciderations
+
+- Before we commit we must ensure all tests pass and everything builds.

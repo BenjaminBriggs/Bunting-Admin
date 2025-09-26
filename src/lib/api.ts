@@ -176,8 +176,8 @@ export async function createCohort(data: {
   appId: string;
   key: string;
   name: string;
-  percentage: number;
   description?: string;
+  conditions?: any[];
 }): Promise<Cohort> {
   const response = await fetch('/api/cohorts', {
     method: 'POST',

@@ -94,7 +94,7 @@ export function EntryConditionsContainer({
     return errors;
   };
 
-  const validationErrors = useMemo(() => validateRules(), [rules]);
+  const validationErrors = useMemo(() => validateRules(), [rules]); // eslint-disable-line react-hooks/exhaustive-deps
   const hasErrors = validationErrors.filter(e => e.type === 'error').length > 0;
   const hasWarnings = validationErrors.filter(e => e.type === 'warning').length > 0;
 

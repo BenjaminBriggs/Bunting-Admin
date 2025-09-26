@@ -13,7 +13,6 @@ import {
   CircularProgress,
   Alert,
   Avatar,
-  Grid,
   CardActions,
   Slider,
   IconButton,
@@ -242,9 +241,9 @@ export default function RolloutsPage() {
           </CardContent>
         </Card>
       ) : (
-        <Grid container spacing={3}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
           {filteredRollouts.map((rollout) => (
-            <Grid item xs={12} key={rollout.id}>
+            <Box key={rollout.id} sx={{ flexBasis: { xs: '100%', md: 'calc(50% - 12px)' } }}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
@@ -399,9 +398,9 @@ export default function RolloutsPage() {
                   </Box>
                 </CardContent>
               </Card>
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
       )}
     </Box>
   );

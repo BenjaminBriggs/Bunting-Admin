@@ -2,13 +2,13 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { fetchCohorts } from '@/lib/api';
-import { Cohort } from '@/types';
+import { DBCohort } from '@/types';
 import { useApp } from '@/lib/app-context';
 
 export type ConditionContextType = 'cohort' | 'flag_variant';
 
 interface ConditionContextData {
-  cohorts: Cohort[];
+  cohorts: DBCohort[];
   loading: boolean;
   error: string | null;
   config: Record<string, any>;
@@ -22,7 +22,7 @@ interface ConditionsProviderProps {
 }
 
 export function ConditionsProvider({ children, appId }: ConditionsProviderProps) {
-  const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const [cohorts, setCohorts] = useState<DBCohort[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

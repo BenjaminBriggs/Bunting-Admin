@@ -71,15 +71,15 @@ export default function FlagAssignmentEditModal({
             if (variant.values?.[environment]?.[flagId] !== undefined) {
               currentValues[variantName] = variant.values[environment][flagId];
             } else {
-              currentValues[variantName] = getDefaultValueForType(flagType);
+              currentValues[variantName] = getDefaultValueForType(flagType as any);
             }
           });
         } else if (type === "rollout" && data.rolloutValues) {
           // For rollouts, get the single value
-          if (data.rolloutValues[environment]?.[flagId] !== undefined) {
-            currentValues.rollout = data.rolloutValues[environment][flagId];
+          if ((data.rolloutValues as any)[environment]?.[flagId] !== undefined) {
+            currentValues.rollout = (data.rolloutValues as any)[environment][flagId];
           } else {
-            currentValues.rollout = getDefaultValueForType(flagType);
+            currentValues.rollout = getDefaultValueForType(flagType as any);
           }
         }
         
@@ -131,7 +131,7 @@ export default function FlagAssignmentEditModal({
             if (!updatedVariants[variantName].values[environment]) {
               updatedVariants[variantName].values[environment] = {};
             }
-            updatedVariants[variantName].values[environment][flagId] = processValueForType(value, flagType);
+            (updatedVariants[variantName].values as any)[environment][flagId] = processValueForType(value, flagType as any);
           }
         });
 
@@ -141,12 +141,12 @@ export default function FlagAssignmentEditModal({
         const updatedRolloutValues = {
           ...item.rolloutValues,
           [environment]: {
-            ...item.rolloutValues?.[environment],
-            [flagId]: processValueForType(flagValues.rollout, flagType)
+            ...(item.rolloutValues as any)?.[environment],
+            [flagId]: processValueForType(flagValues.rollout, flagType as any)
           }
         };
 
-        await updateRollout(itemId, { rolloutValues: updatedRolloutValues });
+        await updateRollout(itemId, { rolloutValues: updatedRolloutValues as any });
       }
 
       onSave();

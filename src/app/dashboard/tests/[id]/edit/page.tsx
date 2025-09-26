@@ -122,9 +122,9 @@ export default function EditTestPage() {
             acc[variant.name] = {
               percentage: variant.percentage,
               values: {
-                development: null,
-                staging: null,
-                production: null,
+                development: "",
+                staging: "",
+                production: "",
               },
             };
             return acc;
@@ -232,7 +232,7 @@ export default function EditTestPage() {
 
       <Grid container spacing={3}>
         {/* Main Configuration */}
-        <Grid item xs={12} md={8}>
+        <Grid size={{ xs: 12, md: 8 }}>
           <Stack spacing={3}>
             {/* Basic Configuration */}
             <Card>
@@ -328,7 +328,7 @@ export default function EditTestPage() {
         </Grid>
 
         {/* Preview & Actions */}
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 6, md: 8 }}>
           <Box sx={{ position: "sticky", top: 24 }}>
             <Stack spacing={3}>
               <Card>

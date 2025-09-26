@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -47,31 +47,31 @@ export default function ReleasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    if (selectedApp) {
-      loadReleases();
-    } else {
-      setLoading(false);
-    }
-  }, [selectedApp]);
-
-  const loadReleases = async () => {
+  const loadReleases = useCallback(async () => {
     if (!selectedApp) return;
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const history = await getPublishHistory(selectedApp.id);
       setPublishHistory(history);
-      
+
     } catch (err) {
       console.error('Failed to load releases:', err);
       setError(err instanceof Error ? err.message : 'Failed to load releases');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedApp]);
+
+  useEffect(() => {
+    if (selectedApp) {
+      loadReleases();
+    } else {
+      setLoading(false);
+    }
+  }, [selectedApp, loadReleases]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
@@ -146,7 +146,7 @@ export default function ReleasesPage() {
       {selectedApp && (
         <Grid container spacing={3}>
           {/* Main Content */}
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             <Stack spacing={3}>
               {/* Empty State */}
               {publishHistory.length === 0 && (
@@ -295,7 +295,7 @@ export default function ReleasesPage() {
           </Grid>
 
           {/* Sidebar */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Stack spacing={3}>
               {/* Quick Actions */}
               <Card>

@@ -155,12 +155,12 @@ export function RulesContainer({ rules, onChange, flagType, defaultValue, appId 
             {validationErrors.length > 0 && (
               <Stack spacing={1}>
                 {validationErrors.filter(e => e.type === 'error').map((error, index) => (
-                  <Alert key={index} severity="error" size="small">
+                  <Alert key={index} severity="error">
                     {error.message}
                   </Alert>
                 ))}
                 {validationErrors.filter(e => e.type === 'warning').map((warning, index) => (
-                  <Alert key={index} severity="warning" size="small">
+                  <Alert key={index} severity="warning">
                     {warning.message}
                   </Alert>
                 ))}
@@ -176,7 +176,7 @@ export function RulesContainer({ rules, onChange, flagType, defaultValue, appId 
               </Alert>
             ) : (
               <Stack spacing={2}>
-                <Alert severity="info" size="small">
+                <Alert severity="info">
                   Rules are evaluated from top to bottom. The first rule with matching conditions determines the returned value.
                 </Alert>
                 
@@ -196,7 +196,7 @@ export function RulesContainer({ rules, onChange, flagType, defaultValue, appId 
             )}
 
             {/* Default Value Notice */}
-            <Alert severity="info" size="small">
+            <Alert severity="info">
               <Typography variant="body2">
                 <strong>Default Value:</strong> {JSON.stringify(defaultValue)}
                 <br />

@@ -7,11 +7,11 @@ import {
   CardContent,
   Button,
   Typography,
-  Grid,
   CardActions,
   CircularProgress,
   Alert,
   Avatar,
+  Grid,
 } from "@mui/material";
 import { 
   Add, 
@@ -26,6 +26,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useApp } from "@/lib/app-context";
 import { formatTimestamp } from "@/lib/utils";
+import { type App } from "@/lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -105,8 +106,8 @@ export default function DashboardPage() {
       </Box>
 
       {/* Overview Stats */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={3}>
+      <Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
+        <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', md: '200px' } }}>
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -121,9 +122,9 @@ export default function DashboardPage() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={3}>
+        <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', md: '200px' } }}>
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -138,9 +139,9 @@ export default function DashboardPage() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={3}>
+        <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', md: '200px' } }}>
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -155,9 +156,9 @@ export default function DashboardPage() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
+        </Box>
 
-        <Grid item xs={12} md={3}>
+        <Box sx={{ flex: '1 1 auto', minWidth: { xs: '100%', md: '200px' } }}>
           <Card>
             <CardContent>
               <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -172,8 +173,8 @@ export default function DashboardPage() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Applications */}
       <Box sx={{ mb: 3 }}>
@@ -207,7 +208,7 @@ export default function DashboardPage() {
         ) : (
           <Grid container spacing={3}>
             {apps.map((app) => (
-              <Grid item xs={12} md={6} lg={4} key={app.id}>
+              <Grid size={{ xs: 12, md: 6, lg: 4 }} key={app.id}>
                 <Card 
                   sx={{ 
                     height: "100%", 

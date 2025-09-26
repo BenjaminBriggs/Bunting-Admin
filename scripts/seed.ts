@@ -45,9 +45,14 @@ async function main() {
       appId: app.id,
       key: 'beta_users',
       name: 'Beta Users',
-      salt: 'beta_salt_123',
-      percentage: 10,
-      description: 'Users in the beta testing program'
+      description: 'Users in the beta testing program',
+      conditions: [
+        {
+          type: 'app_version',
+          operator: 'greater_than_or_equal',
+          value: '2.0.0'
+        }
+      ]
     }
   });
 
@@ -61,11 +66,17 @@ async function main() {
     update: {},
     create: {
       appId: app.id,
-      key: 'premium_subscribers', 
+      key: 'premium_subscribers',
       name: 'Premium Subscribers',
-      salt: 'premium_salt_456',
-      percentage: 25,
-      description: 'Users with premium subscriptions'
+      description: 'Users with premium subscriptions',
+      conditions: [
+        {
+          type: 'custom_attribute',
+          key: 'subscription_type',
+          operator: 'equals',
+          value: 'premium'
+        }
+      ]
     }
   });
 

@@ -2,9 +2,7 @@
 
 import { useState } from 'react';
 import { FlagType, FlagValue } from '@/types';
-// import { Input } from '@/components/ui/input'; // TODO: Fix this import
-// import { Button } from '@/components/ui/button'; // TODO: Fix this import
-import { cn } from '@/lib/utils';
+import { Button, TextField } from '@mui/material';
 
 interface DefaultValueEditorProps {
   type: FlagType;
@@ -27,11 +25,11 @@ export function DefaultValueEditor({ type, value, onChange, disabled = false }: 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     if (inputValue === '') {
-      onChange(type === 'int' ? 0 : 0.0);
+      onChange((type as any) === 'int' ? 0 : 0.0);
       return;
     }
     
-    const numValue = type === 'int' ? parseInt(inputValue, 10) : parseFloat(inputValue);
+    const numValue = (type as any) === 'int' ? parseInt(inputValue, 10) : parseFloat(inputValue);
     if (!isNaN(numValue)) {
       onChange(numValue);
     }
@@ -73,66 +71,69 @@ export function DefaultValueEditor({ type, value, onChange, disabled = false }: 
         Default Value
       </label>
       
-      {type === 'bool' && (
+      {(type as any) === 'bool' && (
         <div className="flex space-x-4">
           <Button
             type="button"
-            variant={value === true ? 'default' : 'outline'}
+            variant={value === true ? 'contained' : 'outlined'}
             onClick={() => handleBoolChange(true)}
             disabled={disabled}
-            className={cn(value === true && 'ring-2 ring-ring ring-offset-2')}
+            className={value === true ? 'ring-2 ring-ring ring-offset-2' : ''}
           >
             True
           </Button>
           <Button
             type="button"
-            variant={value === false ? 'default' : 'outline'}
+            variant={value === false ? 'contained' : 'outlined'}
             onClick={() => handleBoolChange(false)}
             disabled={disabled}
-            className={cn(value === false && 'ring-2 ring-ring ring-offset-2')}
+            className={value === false ? 'ring-2 ring-ring ring-offset-2' : ''}
           >
             False
           </Button>
         </div>
       )}
       
-      {type === 'string' && (
-        <Input
+      {(type as any) === 'string' && (
+        <TextField
           type="text"
           value={value as string}
           onChange={handleStringChange}
           placeholder="Enter default string value"
           disabled={disabled}
+          fullWidth
+          size="small"
         />
       )}
       
-      {(type === 'int' || type === 'double') && (
-        <Input
+      {((type as any) === 'int' || (type as any) === 'double') && (
+        <TextField
           type="number"
           value={value as number}
           onChange={handleNumberChange}
-          placeholder={type === 'int' ? 'Enter default integer' : 'Enter default number'}
-          step={type === 'double' ? 'any' : '1'}
+          placeholder={(type as any) === 'int' ? 'Enter default integer' : 'Enter default number'}
+          inputProps={{ step: (type as any) === 'double' ? 'any' : '1' }}
           disabled={disabled}
+          fullWidth
+          size="small"
         />
       )}
       
-      {type === 'date' && (
-        <Input
+      {(type as any) === 'date' && (
+        <TextField
           type="datetime-local"
           value={typeof value === 'string' ? formatDateForInput(value) : ''}
           onChange={handleDateChange}
           disabled={disabled}
+          fullWidth
+          size="small"
         />
       )}
       
-      {type === 'json' && (
+      {(type as any) === 'json' && (
         <div className="space-y-2">
           <textarea
-            className={cn(
-              "flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono",
-              jsonError && 'border-destructive focus-visible:ring-destructive'
-            )}
+            className={`flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono ${jsonError ? 'border-destructive focus-visible:ring-destructive' : ''}`}
             value={JSON.stringify(value, null, 2)}
             onChange={handleJsonChange}
             placeholder='{"key": "value"}'

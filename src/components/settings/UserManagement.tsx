@@ -268,7 +268,7 @@ export default function UserManagement() {
                 <Select
                   value={newEntry.role}
                   label="Role"
-                  onChange={(e) => setNewEntry({ ...newEntry, role: e.target.value as 'ADMIN' | 'DEVELOPER' })}
+                  onChange={(e) => setNewEntry({ ...newEntry, role: e.target.value as any })}
                 >
                   <MenuItem value="DEVELOPER">Developer</MenuItem>
                   <MenuItem value="ADMIN">Admin</MenuItem>

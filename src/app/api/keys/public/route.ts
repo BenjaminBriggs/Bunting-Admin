@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Find the app
     const whereClause = appId
       ? { id: appId }
-      : { identifier: appIdentifier };
+      : { identifier: appIdentifier as string };
 
     const app = await prisma.app.findUnique({
       where: whereClause,

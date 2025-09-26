@@ -177,7 +177,7 @@ export function ConfigurationSection({
       )}
 
       {statusMessage && (
-        <Alert severity={status === 'default' ? 'info' : status} size="small">
+        <Alert severity={status === 'default' ? 'info' : status}>
           {statusMessage}
         </Alert>
       )}

@@ -4,8 +4,9 @@ import { prisma } from '@/lib/db';
 // POST /api/test-rollouts/[id]/archive
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const { type } = await request.json();
 
@@ -17,7 +18,7 @@ export async function POST(
 
     // Get the current test/rollout to determine its type
     const testRollout = await prisma.testRollout.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!testRollout) {
@@ -38,12 +39,12 @@ export async function POST(
     // but for now we'll just mark as archived
 
     const updated = await prisma.testRollout.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData
     });
 
     return NextResponse.json(updated);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error archiving test/rollout:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Test/Rollout not found' }, { status: 404 });

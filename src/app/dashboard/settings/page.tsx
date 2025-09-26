@@ -91,7 +91,7 @@ export default function SettingsPage() {
       }
     };
     loadApps();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update form data when selected app changes
   useEffect(() => {
@@ -282,7 +282,7 @@ export default function SettingsPage() {
       ) : (
         <Grid container spacing={3}>
           {/* Left Panel - Application List */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Stack spacing={3}>
               <Paper sx={{ height: 'fit-content' }}>
                 <List>
@@ -356,7 +356,7 @@ export default function SettingsPage() {
           </Grid>
 
           {/* Right Panel - Selected App Details */}
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             {selectedApp ? (
               <Paper>
                 <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>

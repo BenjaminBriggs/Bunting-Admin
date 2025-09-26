@@ -1,8 +1,7 @@
 'use client';
 
 import { FlagType } from '@/types';
-// import { Button } from '@/components/ui/button'; // TODO: Fix this import
-import { cn } from '@/lib/utils';
+import { Button } from '@mui/material';
 
 interface FlagTypeSelectorProps {
   value: FlagType;
@@ -10,7 +9,7 @@ interface FlagTypeSelectorProps {
   disabled?: boolean;
 }
 
-const flagTypes: { value: FlagType; label: string; description: string; example: string }[] = [
+const flagTypes: any[] = [
   {
     value: 'bool',
     label: 'Boolean',
@@ -60,11 +59,8 @@ export function FlagTypeSelector({ value, onChange, disabled = false }: FlagType
         {flagTypes.map((type) => (
           <Button
             key={type.value}
-            variant={value === type.value ? 'default' : 'outline'}
-            className={cn(
-              'h-auto p-4 flex flex-col items-start space-y-2',
-              value === type.value && 'ring-2 ring-ring ring-offset-2'
-            )}
+            variant={value === type.value ? 'contained' : 'outlined'}
+            className={`h-auto p-4 flex flex-col items-start space-y-2 ${value === type.value ? 'ring-2 ring-ring ring-offset-2' : ''}`}
             onClick={() => onChange(type.value)}
             disabled={disabled}
           >

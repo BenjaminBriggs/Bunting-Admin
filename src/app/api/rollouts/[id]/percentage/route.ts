@@ -4,8 +4,9 @@ import { prisma } from '@/lib/db';
 // PUT /api/rollouts/[id]/percentage
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const { percentage } = await request.json();
 
@@ -17,15 +18,15 @@ export async function PUT(
     }
 
     const rollout = await prisma.testRollout.update({
-      where: { 
-        id: params.id,
+      where: {
+        id,
         type: 'ROLLOUT'
       },
       data: { percentage }
     });
 
     return NextResponse.json(rollout);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating rollout percentage:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Rollout not found' }, { status: 404 });

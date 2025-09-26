@@ -153,11 +153,11 @@ export default function TestRolloutAssignmentModal({
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
                   <Chip
-                    key={option.id}
                     label={option.name}
                     color={option.type === "TEST" ? "primary" : "secondary"}
                     icon={option.type === "TEST" ? <Science /> : <Rocket />}
                     {...getTagProps({ index })}
+                    key={option.id}
                   />
                 ))
               }

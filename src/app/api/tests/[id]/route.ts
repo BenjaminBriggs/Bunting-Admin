@@ -4,12 +4,13 @@ import { prisma } from '@/lib/db';
 // GET /api/tests/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const test = await prisma.testRollout.findUnique({
-      where: { 
-        id: params.id,
+      where: {
+        id,
         type: 'TEST'
       }
     });
@@ -19,7 +20,7 @@ export async function GET(
     }
 
     return NextResponse.json(test);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching test:', error);
     return NextResponse.json({ error: 'Failed to fetch test' }, { status: 500 });
   }
@@ -28,24 +29,25 @@ export async function GET(
 // PUT /api/tests/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const body = await request.json();
-    
+
     // Remove fields that shouldn't be updated directly
-    const { id, createdAt, updatedAt, appId, type, ...updateData } = body;
+    const { id: bodyId, createdAt, updatedAt, appId, type, ...updateData } = body;
 
     const test = await prisma.testRollout.update({
-      where: { 
-        id: params.id,
+      where: {
+        id,
         type: 'TEST'
       },
       data: updateData
     });
 
     return NextResponse.json(test);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating test:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Test not found' }, { status: 404 });
@@ -57,18 +59,19 @@ export async function PUT(
 // DELETE /api/tests/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await prisma.testRollout.delete({
-      where: { 
-        id: params.id,
+      where: {
+        id,
         type: 'TEST'
       }
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting test:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Test not found' }, { status: 404 });

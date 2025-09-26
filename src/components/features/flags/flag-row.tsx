@@ -98,9 +98,9 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
         if (!rollout.flagIds.includes(flagData.id)) return false;
         
         // Check if rollout has values for this environment and flag
-        return rollout.rolloutValues && 
-               rollout.rolloutValues[env] && 
-               rollout.rolloutValues[env][flagData.id] !== undefined;
+        return rollout.rolloutValues &&
+               (rollout.rolloutValues as any)[env] &&
+               (rollout.rolloutValues as any)[env][flagData.id] !== undefined;
       })
       .map(rollout => ({
         id: rollout.id,
@@ -408,7 +408,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
       <Box sx={{ p: 3 }}>
         <Grid container spacing={3} alignItems="stretch">
           {/* Column 1: Flag Info */}
-          <Grid item xs={12} lg={3}>
+          <Grid size={{ xs: 12 }}>
             <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
               <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", mb: 1 }}>
                 <Typography variant="h6" component="h3" sx={{ fontWeight: 600 }}>
@@ -458,17 +458,17 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
           </Grid>
 
           {/* Columns 2-4: Environment Columns */}
-          <Grid item xs={12} lg={9}>
+          <Grid size={{ xs: 12 }}>
             <Grid container spacing={2}>
               {(["production", "staging", "development"] as Environment[]).map((env) => (
-                <Grid key={env} item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }} key={env}>
                   <EnvironmentColumn
                     environment={env}
                     flagId={flagData.id}
                     flagType={flagData.type}
                     defaultValue={flagData.defaultValues[env]}
                     variants={getEnvironmentVariants(env)}
-                    activeTests={getActiveTests(env)}
+                    activeTests={getActiveTests(env) as any}
                     activeRollouts={getActiveRollouts(env)}
                     onVariantAdd={() => handleVariantAdd(env)}
                     onVariantEdit={(variant) => handleVariantEdit(variant, env)}
@@ -509,7 +509,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
         flagType={flagData.type}
         flagId={flagData.id}
         appId={selectedApp?.id}
-        existingVariant={editingVariant}
+        existingVariant={editingVariant || undefined}
       />
 
       {/* Test/Rollout Assignment Modal */}

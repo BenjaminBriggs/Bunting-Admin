@@ -3,12 +3,13 @@ import { prisma } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const testRollout = await prisma.testRollout.findUnique({
       where: {
-        id: params.id,
+        id,
       },
     });
 
@@ -31,15 +32,16 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const body = await request.json();
     const { name, description, percentage, conditions, flagIds, archived, variants, rolloutValues } = body;
 
     const testRollout = await prisma.testRollout.update({
       where: {
-        id: params.id,
+        id,
       },
       data: {
         name,
@@ -66,12 +68,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await prisma.testRollout.delete({
       where: {
-        id: params.id,
+        id,
       },
     });
 

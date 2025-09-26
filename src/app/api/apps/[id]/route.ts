@@ -26,11 +26,13 @@ const updateAppSchema = z.object({
 // GET /api/apps/[id] - Get a specific app
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  // Await params in Next.js 15
+  const { id } = await params;
   try {
     const app = await prisma.app.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -55,15 +57,17 @@ export async function GET(
 // PUT /api/apps/[id] - Update an app
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  // Await params in Next.js 15
+  const { id } = await params;
   try {
     const body = await request.json();
     const validatedData = updateAppSchema.parse(body);
 
     // Check if app exists
     const existingApp = await prisma.app.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingApp) {
@@ -85,7 +89,7 @@ export async function PUT(
     }
 
     const updatedApp = await prisma.app.update({
-      where: { id: params.id },
+      where: { id },
       data: validatedData,
       include: {
         _count: {
@@ -111,12 +115,14 @@ export async function PUT(
 // DELETE /api/apps/[id] - Delete an app
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  // Await params in Next.js 15
+  const { id } = await params;
   try {
     // Check if app exists
     const existingApp = await prisma.app.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingApp) {
@@ -125,7 +131,7 @@ export async function DELETE(
 
     // Delete the app (cascades to flags and cohorts due to Prisma schema)
     await prisma.app.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ message: 'App deleted successfully' });

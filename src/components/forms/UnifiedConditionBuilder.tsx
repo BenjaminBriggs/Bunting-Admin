@@ -330,7 +330,7 @@ export function UnifiedConditionBuilder({
 
         {/* Validation warning */}
         {condition.values.length === 0 && variant !== 'compact' && (
-          <Alert severity="warning" size="small">
+          <Alert severity="warning">
             This condition needs values to be configured.
           </Alert>
         )}

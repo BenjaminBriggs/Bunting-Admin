@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         key,
         name,
         description,
-        conditions,
+        conditions: conditions as any,
         appId
       },
       include: {

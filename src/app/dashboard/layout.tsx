@@ -31,6 +31,7 @@ import {
   AccountCircle,
 } from "@mui/icons-material";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { ChangesProvider, useChanges } from "@/lib/changes-context";
@@ -152,9 +153,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           }}
         >
           <Link href="/dashboard" style={{ textDecoration: "none" }}>
-            <img
+            <Image
               src="/images/Logotype.png"
               alt="Bunting"
+              width={200}
+              height={50}
               style={{
                 height: "50px",
                 width: "auto",

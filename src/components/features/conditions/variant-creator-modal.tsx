@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -62,26 +62,8 @@ export function VariantCreatorModal({
   const [editingConditionIndex, setEditingConditionIndex] = useState<number | null>(null);
   const [editingCondition, setEditingCondition] = useState<RuleCondition | undefined>(undefined);
 
-  useEffect(() => {
-    if (existingVariant) {
-      setVariantValue(existingVariant.value);
-      setConditions(existingVariant.conditions);
-      setOrder(existingVariant.order);
-    } else {
-      resetForm();
-    }
-  }, [existingVariant, open]);
-
-  const resetForm = () => {
-    setVariantValue(getDefaultValue());
-    setConditions([]);
-    setConditionLogic('AND');
-    setOrder(1);
-    setErrors([]);
-  };
-
-  const getDefaultValue = (): FlagValue => {
-    switch (flagType) {
+  const getDefaultValue = useCallback((): FlagValue => {
+    switch (flagType as any) {
       case 'bool':
         return false;
       case 'string':
@@ -96,7 +78,25 @@ export function VariantCreatorModal({
       default:
         return '';
     }
-  };
+  }, [flagType]);
+
+  const resetForm = useCallback(() => {
+    setVariantValue(getDefaultValue());
+    setConditions([]);
+    setConditionLogic('AND');
+    setOrder(1);
+    setErrors([]);
+  }, [getDefaultValue]);
+
+  useEffect(() => {
+    if (existingVariant) {
+      setVariantValue(existingVariant.value);
+      setConditions(existingVariant.conditions as any);
+      setOrder(existingVariant.order);
+    } else {
+      resetForm();
+    }
+  }, [existingVariant, open, resetForm]);
 
 
   const generateVariantName = (conditions: RuleCondition[]): string => {
@@ -208,7 +208,7 @@ export function VariantCreatorModal({
       id: existingVariant?.id || generateId(),
       name: generateVariantName(conditions),
       type: 'conditional', // Explicit type for consistency
-      conditions,
+      conditions: conditions as any,
       value: variantValue,
       order,
     };
@@ -223,7 +223,7 @@ export function VariantCreatorModal({
   };
 
   return (
-    <ConditionsProvider appId={appId}>
+    <ConditionsProvider appId={appId || ''}>
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
           {existingVariant ? 'Edit Conditional Variant' : 'Create Conditional Variant'} - {environment}
@@ -252,7 +252,7 @@ export function VariantCreatorModal({
                 Value ({flagType})
               </Typography>
               <FlagValueInput
-                flagType={flagType}
+                flagType={flagType as any}
                 value={variantValue}
                 onChange={handleVariantValueChange}
                 label={`${flagType.charAt(0).toUpperCase()}${flagType.slice(1)} Value`}

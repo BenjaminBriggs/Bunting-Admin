@@ -219,7 +219,7 @@ export default function NewTestPage() {
 
       <Grid container spacing={3}>
         {/* Main Configuration */}
-        <Grid item xs={12} md={8}>
+        <Grid size={{ xs: 12, md: 8 }}>
           <Stack spacing={3}>
             {/* Basic Configuration */}
             <Card>
@@ -339,7 +339,7 @@ export default function NewTestPage() {
         </Grid>
 
         {/* Preview & Actions */}
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Box sx={{ position: "sticky", top: 24 }}>
             <Stack spacing={3}>
               <Card>

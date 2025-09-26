@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -56,26 +56,8 @@ export default function ConditionCreatorModal({
   const [order, setOrder] = useState(1);
   const [errors, setErrors] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (existingVariant) {
-      setVariantValue(existingVariant.value);
-      setConditions(existingVariant.conditions);
-      setOrder(existingVariant.order);
-    } else {
-      resetForm();
-    }
-  }, [existingVariant, open]);
-
-  const resetForm = () => {
-    setVariantValue(getDefaultValue());
-    setConditions([createDefaultCondition()]);
-    setConditionLogic("AND");
-    setOrder(1);
-    setErrors([]);
-  };
-
-  const getDefaultValue = (): FlagValue => {
-    switch (flagType) {
+  const getDefaultValue = useCallback((): FlagValue => {
+    switch (flagType as any) {
       case "bool":
         return false;
       case "string":
@@ -90,21 +72,21 @@ export default function ConditionCreatorModal({
       default:
         return "";
     }
-  };
+  }, [flagType]);
 
-  const createDefaultCondition = (): RuleCondition => ({
+  const createDefaultCondition = useCallback((): RuleCondition => ({
     id: generateId(),
-    type: "environment",
+    type: "environment" as any,
     operator: "in",
     values: [environment],
-  });
+  }), [environment]);
 
   const generateVariantName = (conditions: RuleCondition[]): string => {
     if (conditions.length === 0) return "Variant";
     
     // Generate a descriptive name from conditions
     const descriptions = conditions.map(condition => {
-      if (condition.type === "environment") {
+      if ((condition.type as any) === "environment") {
         return condition.values.join("/");
       } else if (condition.type === "app_version") {
         return `v${condition.values.join("/")}`;
@@ -195,13 +177,22 @@ export default function ConditionCreatorModal({
     return newErrors.length === 0;
   };
 
+  const resetForm = useCallback(() => {
+    setVariantValue(getDefaultValue());
+    setConditions([createDefaultCondition()]);
+    setConditionLogic("AND");
+    setOrder(1);
+    setErrors([]);
+  }, [getDefaultValue, createDefaultCondition]);
+
   const handleSave = () => {
     if (!validateForm()) return;
 
     const variant: ConditionalVariant = {
       id: existingVariant?.id || generateId(),
       name: generateVariantName(conditions),
-      conditions,
+      type: 'conditional',
+      conditions: conditions as any,
       value: variantValue,
       order,
     };

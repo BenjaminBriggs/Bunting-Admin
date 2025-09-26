@@ -101,7 +101,7 @@ export async function createDetachedSignature(appId: string, configString: strin
         kid: signingKey.kid,
         typ: 'JWT',
         crit: ['b64'], // Critical header parameter
-        b64: false,    // Unencoded payload (for detached signature)
+        b64: false as any,    // Unencoded payload (for detached signature)
       })
       .setIssuedAt()
       .setExpirationTime('24h');

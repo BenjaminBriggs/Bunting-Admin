@@ -1,4 +1,5 @@
 import React from 'react'
+import Image from 'next/image'
 import { Stack, Typography, Alert } from '@mui/material'
 import { Security } from '@mui/icons-material'
 import { StepProps } from './types'
@@ -6,16 +7,18 @@ import { StepProps } from './types'
 export function WelcomeStep({ onNext }: StepProps) {
   return (
     <Stack spacing={3} alignItems="center">
-                 <img
-              src="/images/Icon.png"
-              alt="Bunting"
-              style={{
-                height: "50px",
-                width: "auto",
-                objectFit: "contain",
-                cursor: "pointer",
-              }}
-            />
+      <Image
+        src="/images/Icon.png"
+        alt="Bunting"
+        width={50}
+        height={50}
+        style={{
+          height: "50px",
+          width: "auto",
+          objectFit: "contain",
+          cursor: "pointer",
+        }}
+      />
       <Typography variant="h4" align="center" gutterBottom>
         Welcome to Bunting!
       </Typography>

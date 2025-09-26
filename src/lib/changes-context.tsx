@@ -83,7 +83,7 @@ export function ChangesProvider({ children }: { children: ReactNode }) {
     if (selectedApp) {
       refreshChanges();
     }
-  }, [selectedApp]);
+  }, [selectedApp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reduced frequency fallback polling (every 5 minutes)
   // This catches any changes from external sources
@@ -92,7 +92,7 @@ export function ChangesProvider({ children }: { children: ReactNode }) {
     
     const interval = setInterval(refreshChanges, 300000); // 5 minutes
     return () => clearInterval(interval);
-  }, [selectedApp]);
+  }, [selectedApp]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const value: ChangesContextType = {
     hasChanges,

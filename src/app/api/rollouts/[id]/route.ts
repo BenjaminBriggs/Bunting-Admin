@@ -4,12 +4,13 @@ import { prisma } from '@/lib/db';
 // GET /api/rollouts/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const rollout = await prisma.testRollout.findUnique({
-      where: { 
-        id: params.id,
+      where: {
+        id,
         type: 'ROLLOUT'
       }
     });
@@ -19,7 +20,7 @@ export async function GET(
     }
 
     return NextResponse.json(rollout);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching rollout:', error);
     return NextResponse.json({ error: 'Failed to fetch rollout' }, { status: 500 });
   }
@@ -28,13 +29,14 @@ export async function GET(
 // PUT /api/rollouts/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const body = await request.json();
-    
+
     // Remove fields that shouldn't be updated directly
-    const { id, createdAt, updatedAt, appId, type, ...updateData } = body;
+    const { id: bodyId, createdAt, updatedAt, appId, type, ...updateData } = body;
 
     // Validate percentage if it's being updated
     if (updateData.percentage !== undefined) {
@@ -46,15 +48,15 @@ export async function PUT(
     }
 
     const rollout = await prisma.testRollout.update({
-      where: { 
-        id: params.id,
+      where: {
+        id,
         type: 'ROLLOUT'
       },
       data: updateData
     });
 
     return NextResponse.json(rollout);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating rollout:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Rollout not found' }, { status: 404 });
@@ -66,18 +68,19 @@ export async function PUT(
 // DELETE /api/rollouts/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await prisma.testRollout.delete({
-      where: { 
-        id: params.id,
+      where: {
+        id,
         type: 'ROLLOUT'
       }
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting rollout:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Rollout not found' }, { status: 404 });

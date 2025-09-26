@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -76,15 +76,7 @@ export default function PublishPage() {
   const canPublish =
     hasChangesDetected && !hasBlockingErrors && changelog.trim() && selectedApp;
 
-  useEffect(() => {
-    if (selectedApp) {
-      loadAppData(selectedApp.id);
-    } else {
-      setLoading(false);
-    }
-  }, [selectedApp]);
-
-  const loadAppData = async (appId: string) => {
+  const loadAppData = useCallback(async (appId: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -122,7 +114,15 @@ export default function PublishPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedApp]);
+
+  useEffect(() => {
+    if (selectedApp) {
+      loadAppData(selectedApp.id);
+    } else {
+      setLoading(false);
+    }
+  }, [selectedApp, loadAppData]);
 
   const handlePublish = async () => {
     if (!canPublish || !selectedApp) return;
@@ -271,7 +271,7 @@ export default function PublishPage() {
       {selectedApp && (
         <Grid container spacing={3}>
           {/* Main Content */}
-          <Grid item xs={12} md={8}>
+          <Grid size={{ xs: 12, md: 8 }}>
             <Stack spacing={3}>
               {/* Validation Results */}
               {validation &&
@@ -906,7 +906,7 @@ export default function PublishPage() {
           </Grid>
 
           {/* Sidebar */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Stack spacing={3}>
               {/* Publish Actions */}
               <Card>

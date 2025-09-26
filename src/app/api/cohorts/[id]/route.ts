@@ -4,11 +4,12 @@ import { prisma } from '@/lib/db';
 // GET /api/cohorts/[id] - Get a specific cohort
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const cohort = await prisma.cohort.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         app: {
           select: { name: true, identifier: true }
@@ -21,7 +22,7 @@ export async function GET(
     }
 
     return NextResponse.json(cohort);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching cohort:', error);
     return NextResponse.json({ error: 'Failed to fetch cohort' }, { status: 500 });
   }
@@ -30,13 +31,14 @@ export async function GET(
 // PUT /api/cohorts/[id] - Update a cohort (condition group)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     const body = await request.json();
-    
+
     // Remove fields that shouldn't be updated directly
-    const { id, createdAt, updatedAt, appId, ...updateData } = body;
+    const { id: bodyId, createdAt, updatedAt, appId, ...updateData } = body;
 
     // Validate conditions don't contain cohort references if being updated
     if (updateData.conditions) {
@@ -50,7 +52,7 @@ export async function PUT(
     }
 
     const cohort = await prisma.cohort.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         app: {
@@ -60,7 +62,7 @@ export async function PUT(
     });
 
     return NextResponse.json(cohort);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating cohort:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Cohort not found' }, { status: 404 });
@@ -72,15 +74,16 @@ export async function PUT(
 // DELETE /api/cohorts/[id] - Delete a cohort
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
     await prisma.cohort.delete({
-      where: { id: params.id }
+      where: { id }
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting cohort:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Cohort not found' }, { status: 404 });

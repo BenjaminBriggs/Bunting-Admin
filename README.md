@@ -5,7 +5,6 @@
 # Bunting Admin
 
 [![Tests](https://github.com/BenjaminBriggs/Bunting-Admin/workflows/Tests/badge.svg)](https://github.com/BenjaminBriggs/Bunting-Admin/actions)
-[![codecov](https://codecov.io/gh/BenjaminBriggs/Bunting-Admin/branch/main/graph/badge.svg)](https://codecov.io/gh/BenjaminBriggs/Bunting-Admin)
 [![Build](https://github.com/BenjaminBriggs/Bunting-Admin/workflows/Build/badge.svg)](https://github.com/BenjaminBriggs/Bunting-Admin/actions)
 [![License](https://img.shields.io/github/license/BenjaminBriggs/Bunting-Admin)](https://github.com/BenjaminBriggs/Bunting-Admin/blob/main/LICENSE)
 
