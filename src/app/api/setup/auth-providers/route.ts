@@ -5,11 +5,11 @@ import path from 'path';
 
 const setupSchema = z.object({
   providers: z.array(z.string()),
-  configs: z.record(z.record(z.string())),
+  configs: z.record(z.string(), z.record(z.string(), z.string())),
   platformIntegration: z.object({
     enabled: z.boolean(),
     platform: z.string(),
-    apiCredentials: z.record(z.any())
+    apiCredentials: z.record(z.string(), z.any())
   })
 });
 
@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
     console.error('❌ Setup auth providers error:', error);
 
     if (error instanceof z.ZodError) {
-      console.error('❌ Validation error:', error.errors);
+      console.error('❌ Validation error:', error.issues);
       return NextResponse.json(
-        { error: 'Invalid setup data', details: error.errors },
+        { error: 'Invalid setup data', details: error.issues },
         { status: 400 }
       );
     }

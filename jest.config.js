@@ -3,7 +3,7 @@ const sharedProjectConfig = {
   testEnvironment: 'node',
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
   transformIgnorePatterns: [
-    'node_modules/(?!(@faker-js/faker|msw|@mswjs|until-async)/)'
+    'node_modules/(?!(@faker-js/faker|msw|@mswjs|until-async|jose)/)'
   ],
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }]
