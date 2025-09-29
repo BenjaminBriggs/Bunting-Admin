@@ -19,8 +19,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Protected routes - require authentication
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/api')) {
+  // Dashboard routes - temporarily allow without authentication for development
+  // TODO: Re-enable authentication for dashboard in production
+  if (pathname.startsWith('/dashboard') && process.env.NODE_ENV === 'development') {
+    return NextResponse.next()
+  }
+
+  // Dashboard routes in production - require authentication
+  if (pathname.startsWith('/dashboard')) {
     if (!session?.user) {
       // Redirect to sign in page
       const signInUrl = new URL('/auth/signin', request.url)
@@ -31,6 +37,23 @@ export async function middleware(request: NextRequest) {
     // TODO: Add role-based access control in Phase 5
     // For now, all authenticated users can access everything
     // Note: User activity tracking removed from middleware due to Prisma edge runtime limitations
+  }
+
+  // API routes - temporarily allow without authentication for development
+  // TODO: Re-enable authentication for API routes in production
+  if (pathname.startsWith('/api') && process.env.NODE_ENV === 'development') {
+    return NextResponse.next()
+  }
+
+  // API routes in production - require authentication
+  if (pathname.startsWith('/api')) {
+    if (!session?.user) {
+      // Return 401 for API routes
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
   }
 
   return NextResponse.next()

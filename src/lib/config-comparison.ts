@@ -24,17 +24,8 @@ export interface ConfigArtifact {
 
 // Helper functions to extract data from both schema versions
 function extractFlags(config: ConfigArtifact): Record<string, any> {
-    const allFlags: Record<string, any> = {};
-    ['development', 'staging', 'production'].forEach(env => {
-      const envData = config[env as keyof ConfigArtifact] as any;
-      if (envData?.flags) {
-        Object.keys(envData.flags).forEach(flagKey => {
-          if (!allFlags[flagKey]) allFlags[flagKey] = {};
-          allFlags[flagKey][env] = envData.flags[flagKey];
-        });
-      }
-    });
-    return allFlags;
+    // Schema v1 has flags at the top level
+    return (config as any).flags || {};
 }
 
 function extractCohorts(config: ConfigArtifact): Record<string, any> {

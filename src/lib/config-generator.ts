@@ -44,7 +44,7 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
       throw new Error(
         `Flag "${flag.key}" has invalid defaultValues structure. Expected object with development/staging/production keys. ` +
         `Current value: ${JSON.stringify(flag.defaultValues)}. ` +
-        `This flag may need migration to schema v2.`
+        `This flag may need migration to schema v1.`
       );
     }
 
@@ -54,7 +54,7 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
         throw new Error(
           `Flag "${flag.key}" is missing default value for environment "${env}". ` +
           `Current defaultValues: ${JSON.stringify(flag.defaultValues)}. ` +
-          `This flag may need migration to schema v2.`
+          `This flag may need migration to schema v1.`
         );
       }
     }
@@ -244,7 +244,7 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
 
   // Generate the corrected config artifact
   const config: ConfigArtifact = {
-    schema_version: 2,
+    schema_version: 1,
     config_version: '', // Will be set during publishing
     published_at: '', // Will be set during publishing
     app_identifier: app.identifier,

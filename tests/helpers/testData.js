@@ -215,7 +215,7 @@ class TestDataHelpers {
   }
 
   static validateConfigJsonSchema(config, expectedVersion) {
-    expect(config).toHaveProperty('schema_version', 2);
+    expect(config).toHaveProperty('schema_version', 1);
     expect(config).toHaveProperty('config_version', expectedVersion);
     expect(config).toHaveProperty('published_at');
     expect(config).toHaveProperty('app_identifier');

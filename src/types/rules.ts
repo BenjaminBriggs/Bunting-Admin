@@ -1,5 +1,9 @@
 // Targeting Rules Types for Bunting Feature Flags
+// NOTE: These are legacy aliases - use types from core.ts for new code
 
+import { ConditionType, ConditionOperator, Condition } from './core';
+
+// Legacy aliases for backward compatibility
 export type RuleConditionType =
   | 'app_version'
   | 'os_version'
@@ -31,13 +35,6 @@ export type RuleOperator =
   | 'is_not_in_cohort'
   | 'custom';  // For custom attributes
 
-export interface RuleCondition {
-  id: string;
-  type: RuleConditionType;
-  operator: RuleOperator;
-  values: string[];
-  attribute?: string; // For custom attributes
-}
 
 export interface TargetingRule {
   id: string;
@@ -86,3 +83,6 @@ export interface RuleValidationError {
   message: string;
   type: 'error' | 'warning';
 }
+
+// Legacy aliases - use Condition from core.ts for new code
+export type RuleCondition = Condition;

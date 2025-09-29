@@ -15,7 +15,7 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 - ✅ **Gradual Rollouts**: Percentage-based feature rollouts with real-time controls
 - ✅ **Rule-Based Cohorts**: Reusable condition groups for user targeting
 - ✅ **Conditional Variants**: Environment-specific rule-based overrides
-- ✅ **Publishing Pipeline**: Environment-first config generation with schema v2
+- ✅ **Publishing Pipeline**: Environment-first config generation with schema v1
 - ✅ **Configuration Validation**: Real-time validation with error/warning categorization
 - ✅ **Multi-App Support**: App selector with per-app isolation
 - ✅ **Real-time Change Tracking**: Changes context with publish button visibility
@@ -41,7 +41,7 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 - **Tests API**: `/api/tests` - A/B test management with traffic validation
 - **Rollouts API**: `/api/rollouts` - Gradual rollout management with archiving
 - **Cohorts API**: `/api/cohorts` - Rule-based cohort groups (no percentage/salt)
-- **Config API**: `/api/config/*` - Environment-first generation with schema v2
+- **Config API**: `/api/config/*` - Environment-first generation with schema v1
 - **Bootstrap API**: `/api/bootstrap/plist` - iOS/macOS SDK plist generation with signing keys
 - **Real S3 Integration**: Actual file uploads with versioning
 
@@ -92,7 +92,7 @@ bunting-admin/
 │   │   ├── db.ts             # Prisma client
 │   │   └── utils.ts          # Utility functions
 │   └── types/                # TypeScript definitions
-│       ├── index.ts         # Core types with schema v2
+│       ├── index.ts         # Core types with schema v1
 │       └── rules.ts         # Rule builder types
 ├── prisma/                   # Database schema
 │   └── schema.prisma        # Updated schema with TestRollouts
@@ -204,10 +204,10 @@ validateKey("store/new_feature") // → { valid: true }
 validateKey("store/123invalid") // → { valid: false, error: "cannot start with number" }
 ```
 
-### Config Artifact Generation (Schema v2)
+### Config Artifact Generation (Schema v1)
 ```typescript
 interface ConfigArtifact {
-  schema_version: 2;
+  schema_version: 1;
   config_version: string;        // "2025-09-12.1"
   published_at: string;          // ISO8601
   app_identifier: string;        // user-defined

@@ -7,7 +7,7 @@ export const configArtifactSchema = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
-    "schema_version": { "type": "integer", "const": 2 },
+    "schema_version": { "type": "integer", "const": 1 },
     "config_version": { "type": "string" },
     "published_at": { "type": "string", "format": "date-time" },
     "app_identifier": { "type": "string" },
@@ -216,8 +216,8 @@ export function validateConfigArtifact(config: any): {
   }
 
   // Validate schema version
-  if (config.schema_version !== 2) {
-    errors.push(`Invalid schema_version: expected 2, got ${config.schema_version}`);
+  if (config.schema_version !== 1) {
+    errors.push(`Invalid schema_version: expected 1, got ${config.schema_version}`);
   }
 
   // Validate config version format (YYYY-MM-DD.N)

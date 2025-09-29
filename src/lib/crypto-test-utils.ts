@@ -130,7 +130,7 @@ export async function testConfigSigning(appId: string): Promise<TestResult> {
   try {
     // Create a test config
     const testConfig = {
-      schema_version: 2,
+      schema_version: 1,
       config_version: '2025-01-01.1',
       published_at: new Date().toISOString(),
       app_identifier: 'test-app',
@@ -194,7 +194,7 @@ export async function testSignatureVerification(appId: string): Promise<TestResu
   try {
     // Create a test config
     const testConfig = {
-      schema_version: 2,
+      schema_version: 1,
       config_version: '2025-01-01.1',
       published_at: new Date().toISOString(),
       app_identifier: 'test-app',

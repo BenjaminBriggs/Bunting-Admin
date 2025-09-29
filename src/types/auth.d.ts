@@ -1,3 +1,5 @@
+// Authentication and authorization types
+
 import NextAuth from "next-auth"
 
 declare module "next-auth" {
