@@ -52,3 +52,5 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+# Claude Code agent-local state
+.claude/

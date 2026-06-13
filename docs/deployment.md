@@ -51,3 +51,24 @@ After the build completes, open the deployed URL and the setup wizard will guide
 - Admins can promote/demote accounts from the dashboard under **Settings → Team**.
 
 Once authentication is configured, continue setting up your first application via the dashboard. For a product tour, see `docs/product-overview.md`.
+
+## CDN Configuration for SDK Signature Verification
+
+The Bunting Swift SDK verifies config integrity by reading a `x-bunting-signature` HTTP response header containing the JWS-signed config. When you publish a config, Bunting Admin uploads two files to S3:
+
+- `{app-identifier}/config.json` — the config artifact
+- `{app-identifier}/config.json.sig` — the JWS signature string
+
+**You must configure your CDN to set the `x-bunting-signature` response header** from the contents of the companion `.sig` file on every `config.json` response. Without this, every SDK fetch will fail signature verification and fall back to cached config.
+
+### CloudFront Example
+
+Use a CloudFront Function or Lambda@Edge to:
+1. Fetch `config.json.sig` from S3 (or cache it alongside `config.json`)
+2. Set the `x-bunting-signature` response header to its contents
+
+### Local Development (MinIO)
+
+For local development, you can run a thin proxy that fetches both files and merges the signature into the response header. A sample proxy script is available in `scripts/local-proxy.js`.
+
+> **Note:** Until CDN header injection is configured, SDK clients will fail signature verification on every config fetch. They will fall back to cached config if available, or to the bundled seed config.

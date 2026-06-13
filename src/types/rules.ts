@@ -15,14 +15,10 @@ export type RuleConditionType =
   | 'cohort'
   | 'custom_attribute';
 
+// Keep in sync with ConditionOperator in core.ts — must match SDK raw values exactly
 export type RuleOperator =
   | 'equals'
-  | 'not_equals'
-  | 'does_not_equal'  // SDK spec alias for not_equals
-  | 'contains'
-  | 'not_contains'
-  | 'starts_with'
-  | 'ends_with'
+  | 'does_not_equals'  // plural — matches SDK ConditionOperator.doesNotEquals raw value
   | 'in'
   | 'not_in'
   | 'greater_than'
@@ -30,10 +26,7 @@ export type RuleOperator =
   | 'greater_than_or_equal'
   | 'less_than_or_equal'
   | 'between'
-  | 'regex_match'
-  | 'is_in_cohort'
-  | 'is_not_in_cohort'
-  | 'custom';  // For custom attributes
+  | 'custom';  // For custom_attribute type only
 
 
 export interface TargetingRule {
@@ -58,7 +51,7 @@ export interface FlagWithRules {
   id: string;
   key: string;
   displayName: string;
-  type: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
+  type: 'boolean' | 'string' | 'integer' | 'double' | 'date' | 'json';
   defaultValue: any;
   description?: string;
   archived: boolean;

@@ -177,7 +177,7 @@ export function TargetingRuleBuilder({
 
   const hasEmptyConditions = rule.conditions.some(condition => 
     condition.values.length === 0 || 
-    (condition.type === 'custom_attribute' && !condition.attribute)
+    (condition.type === 'custom_attribute' && !condition.values[0])
   );
 
   return (

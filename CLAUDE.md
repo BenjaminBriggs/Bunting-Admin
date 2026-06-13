@@ -169,13 +169,17 @@ npm run type-check         # TypeScript checking
 - **S3 Upload**: Versioned configs with YYYY-MM-DD.N format
 - **Change Comparison**: Before/after diff visualization
 
-### Enhanced Conditions Support (NEW)
+### Conditions Support
 - **SDK-Aligned Conditions**: All condition types from Bunting SDK specification supported
 - **Comprehensive Targeting**: `app_version`, `os_version`, `build_number`, `platform`, `device_model`, `region`, `locale`, `cohort`, `custom_attribute`
-- **Advanced Operators**: Range queries (`between`), SDK-compatible operators (`does_not_equal`), custom evaluation (`custom`)
+- **Operators per type**:
+  - `app_version`, `os_version`, `build_number`: `equals`, `does_not_equals`, `greater_than`, `greater_than_or_equal`, `less_than`, `less_than_or_equal`, `between`
+  - `platform`, `device_model`, `region`: `in`, `not_in`
+  - `locale`: `equals` (exact), `in` (prefix match), `not_in` (prefix non-match)
+  - `cohort`: `in`, `not_in`
+  - `custom_attribute`: `custom` (attribute name goes in `values[0]`)
 - **Apple Platform Support**: Full platform options (iOS, iPadOS, macOS, watchOS, tvOS)
-- **Custom Attributes**: App-defined attributes with real-time validation and contextual help
-- **Enhanced UX**: Visual validation feedback, improved layout, and specialized input types
+- **Custom Attributes**: App-defined attributes stored as `values[0]` in the condition, resolved at runtime via SDK callback
 - **Bootstrap Integration**: Downloadable plist files for iOS/macOS SDK integration
 
 ### Multi-App Support

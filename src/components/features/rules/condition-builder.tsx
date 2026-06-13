@@ -72,15 +72,12 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
   const validateCondition = () => {
     const errors: string[] = [];
 
-    // Custom attributes require an attribute name
+    // Custom attributes: attribute name is stored in values[0]
     if (condition.type === 'custom_attribute') {
-      if (!condition.attribute || condition.attribute.trim() === '') {
+      if (!condition.values[0] || condition.values[0].trim() === '') {
         errors.push('Custom attribute name is required');
       }
-    }
-
-    // Most condition types require values (except custom attributes)
-    if (condition.values.length === 0 && condition.type !== 'custom_attribute') {
+    } else if (condition.values.length === 0) {
       errors.push('At least one value is required');
     }
 
@@ -112,8 +109,6 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
       type: newType,
       operator: defaultOperator,
       values: [],
-      // Reset attribute for non-custom types
-      attribute: newType === 'custom_attribute' ? condition.attribute || '' : undefined
     });
   };
 
@@ -220,16 +215,16 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
           {template.description}
         </Typography>
 
-        {/* Custom Attribute Name Input */}
+        {/* Custom Attribute Name Input — stored in values[0] so the SDK can read it */}
         {condition.type === 'custom_attribute' && (
           <TextField
             label="Attribute Name"
-            value={condition.attribute || ''}
-            onChange={(e) => onChange({ ...condition, attribute: e.target.value })}
+            value={condition.values[0] || ''}
+            onChange={(e) => onChange({ ...condition, values: [e.target.value] })}
             placeholder="e.g., subscription_plan, user_tier"
             size="small"
             fullWidth
-            helperText="Enter the name of the custom attribute your app will provide"
+            helperText="The attribute name your app's custom attribute resolver will receive"
           />
         )}
 
@@ -244,24 +239,18 @@ export function ConditionBuilder({ condition, onChange, onDelete, canDelete = tr
           </Alert>
         )}
 
-        {/* Custom Attribute Special Info */}
+        {/* Custom Attribute Info */}
         {condition.type === 'custom_attribute' && (
           <Alert severity="info">
             <Typography variant="body2">
-              <strong>Custom Attribute:</strong> Your app must provide this attribute via the SDK's custom attributes callback.
-              The SDK will evaluate this condition by calling your app's custom attribute resolver.
+              <strong>Custom Attribute:</strong> Your app provides a resolver callback to the SDK.
+              The attribute name above is passed to that callback at evaluation time.
             </Typography>
           </Alert>
         )}
 
-        {/* Value Input */}
-        {condition.type === 'custom_attribute' ? (
-          <Alert severity="info">
-            <Typography variant="body2">
-              Custom attributes are evaluated by your app at runtime. No values need to be specified here.
-            </Typography>
-          </Alert>
-        ) : template.valueType === 'cohort' ? (
+        {/* Value Input — hidden for custom_attribute since name field above is the value */}
+        {condition.type === 'custom_attribute' ? null : template.valueType === 'cohort' ? (
           <Autocomplete
             multiple
             options={cohorts.map(c => ({ value: c.key, label: c.name }))}

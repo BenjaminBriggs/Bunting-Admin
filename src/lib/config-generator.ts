@@ -3,6 +3,20 @@ import { ConfigArtifact, Environment, Test, Rollout } from '@/types';
 import { validateIdentifierKey } from '@/lib/validation';
 const { normalizeFlagType } = require('@/lib/config-validation');
 
+// Bridge legacy conditions that stored custom_attribute name in `attribute` field.
+// SDK reads values[0] as the attribute name — migrate on the fly until DB is updated.
+function normalizeCondition(condition: any): any {
+  if (
+    condition.type === 'custom_attribute' &&
+    condition.attribute &&
+    (!condition.values || condition.values.length === 0)
+  ) {
+    const { attribute, ...rest } = condition;
+    return { ...rest, values: [attribute] };
+  }
+  return condition;
+}
+
 export async function generateConfigFromDb(appId: string): Promise<ConfigArtifact> {
   // Get app info with all related data
   const app = await prisma.app.findUnique({
@@ -32,7 +46,7 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
     cohorts[cohort.key] = {
       name: cohort.name,
       description: cohort.description || '',
-      conditions: cohort.conditions || []
+      conditions: (cohort.conditions || []).map(normalizeCondition),
     };
   });
 
@@ -70,24 +84,24 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
 
     // Start with conditional variants from the flag itself
     const developmentVariants = (flag.variants.development || []).map((variant: any) => ({
-      type: 'conditional', // All flag variants are conditional
+      type: 'conditional',
       order: variant.order || 0,
       value: variant.value,
-      conditions: variant.conditions || [] // Always include conditions for flag variants
+      conditions: (variant.conditions || []).map(normalizeCondition),
     }));
 
     const stagingVariants = (flag.variants.staging || []).map((variant: any) => ({
-      type: 'conditional', // All flag variants are conditional
+      type: 'conditional',
       order: variant.order || 0,
       value: variant.value,
-      conditions: variant.conditions || [] // Always include conditions for flag variants
+      conditions: (variant.conditions || []).map(normalizeCondition),
     }));
 
     const productionVariants = (flag.variants.production || []).map((variant: any) => ({
-      type: 'conditional', // All flag variants are conditional
+      type: 'conditional',
       order: variant.order || 0,
       value: variant.value,
-      conditions: variant.conditions || [] // Always include conditions for flag variants
+      conditions: (variant.conditions || []).map(normalizeCondition),
     }));
 
     flags[flag.key] = {
@@ -120,13 +134,20 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
     }
 
     if (testRollout.type === 'TEST') {
-      // JSON Spec compliant test
+      // Derive groups from variants — SDK needs groups to do deterministic bucketing
+      const variants = testRollout.variants || {};
+      const groups = Object.entries(variants).map(([name, v]: [string, any]) => ({
+        name,
+        percentage: v.percentage ?? 0,
+      }));
+
       tests[testRollout.key] = {
         name: testRollout.name,
         description: testRollout.description,
         type: 'test',
         salt: testRollout.salt,
-        conditions: testRollout.conditions || []
+        conditions: (testRollout.conditions || []).map(normalizeCondition),
+        ...(groups.length > 0 ? { groups } : {}),
       };
 
       // Add test variants to assigned flags
@@ -182,14 +203,13 @@ export async function generateConfigFromDb(appId: string): Promise<ConfigArtifac
       });
 
     } else if (testRollout.type === 'ROLLOUT') {
-      // JSON Spec compliant rollout
       rollouts[testRollout.key] = {
         name: testRollout.name,
         description: testRollout.description,
         type: 'rollout',
         salt: testRollout.salt,
-        conditions: testRollout.conditions || [],
-        percentage: testRollout.percentage || 0
+        conditions: (testRollout.conditions || []).map(normalizeCondition),
+        percentage: testRollout.percentage || 0,
       };
 
       // Add rollout variants to assigned flags

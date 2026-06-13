@@ -155,13 +155,15 @@ export default function EnvironmentColumn({
   const formatOperator = (operator: string): string => {
     const operatorMap: Record<string, string> = {
       'equals': 'is',
-      'not_equals': 'not',
+      'does_not_equals': 'is not',
       'greater_than': '>',
       'less_than': '<',
       'greater_than_or_equal': '>=',
       'less_than_or_equal': '<=',
+      'between': 'between',
       'in': 'in',
-      'not_in': 'not in'
+      'not_in': 'not in',
+      'custom': 'has'
     };
     return operatorMap[operator] || operator;
   };

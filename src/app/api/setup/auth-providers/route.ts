@@ -18,14 +18,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    console.log('📋 Setup request body:', body);
 
     const { providers, configs, platformIntegration } = setupSchema.parse(body);
 
+    // Never log credential values — only non-sensitive shape for diagnostics.
     console.log('✅ Setup configuration parsed successfully:', {
       providers,
-      configs: Object.keys(configs),
-      platformIntegration
+      configKeys: Object.keys(configs),
+      platformIntegrationEnabled: platformIntegration.enabled,
+      platform: platformIntegration.platform
     });
 
     // For development builds, store the selected providers

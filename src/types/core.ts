@@ -39,13 +39,14 @@ export interface Cohort {
 export interface FlagVariant {
   type: 'conditional' | 'test' | 'rollout';
   order: number;
-  value: FlagValue;
+  value?: FlagValue;
 
   // For conditional variants
   conditions?: Condition[];
 
-  // For test variants
+  // For test variants: group-name → value map
   test?: string;
+  values?: Record<string, FlagValue>;
 
   // For rollout variants
   rollout?: string;
@@ -59,30 +60,41 @@ export type Environment = 'development' | 'staging' | 'production';
 
 export type Platform = 'iOS' | 'iPadOS' | 'macOS' | 'watchOS' | 'tvOS';
 
-// JSON Spec compliant condition system
+// JSON Spec compliant condition system — operators must exactly match SDK ConditionOperator raw values
 export type ConditionType = 'app_version' | 'os_version' | 'build_number' | 'platform' | 'device_model' | 'region' | 'locale' | 'cohort' | 'custom_attribute';
 
-export type ConditionOperator = 'equals' | 'not_equals' | 'does_not_equal' | 'contains' | 'not_contains' | 'starts_with' | 'ends_with' | 'in' | 'not_in' | 'greater_than' | 'less_than' | 'greater_than_or_equal' | 'less_than_or_equal' | 'between' | 'regex_match' | 'is_in_cohort' | 'is_not_in_cohort' | 'custom';
+export type ConditionOperator =
+  | 'equals'
+  | 'does_not_equals'   // plural — matches SDK raw value "does_not_equals"
+  | 'in'
+  | 'not_in'
+  | 'greater_than'
+  | 'less_than'
+  | 'greater_than_or_equal'
+  | 'less_than_or_equal'
+  | 'between'
+  | 'custom';           // for custom_attribute type only
 
 export interface Condition {
   id: string;
   type: ConditionType;
   operator: ConditionOperator;
-  values: string[]; // For 'between': [minVersion, maxVersion], for 'in': [item1, item2, ...]
-  attribute?: string; // For custom attributes
+  // For 'between': [min, max]; for 'in'/'not_in': list of values;
+  // for 'custom_attribute': [attributeName] (SDK reads values[0] as attribute name)
+  values: string[];
 }
 
-// JSON Spec compliant operator mapping
+// Operators supported per condition type — must match SDK evaluation logic
 export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
-  app_version: ['equals', 'not_equals', 'does_not_equal', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
-  os_version: ['equals', 'not_equals', 'does_not_equal', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
-  build_number: ['equals', 'not_equals', 'does_not_equal', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
-  platform: ['in', 'not_in'],
-  device_model: ['in', 'not_in', 'contains', 'not_contains', 'starts_with', 'ends_with', 'regex_match'],
-  region: ['in', 'not_in'],
-  locale: ['in', 'not_in', 'equals', 'not_equals', 'does_not_equal'],
-  cohort: ['is_in_cohort', 'is_not_in_cohort'],
-  custom_attribute: ['custom']
+  app_version:       ['equals', 'does_not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
+  os_version:        ['equals', 'does_not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
+  build_number:      ['equals', 'does_not_equals', 'greater_than', 'greater_than_or_equal', 'less_than', 'less_than_or_equal', 'between'],
+  platform:          ['in', 'not_in'],
+  device_model:      ['in', 'not_in'],
+  region:            ['in', 'not_in'],
+  locale:            ['equals', 'in', 'not_in'],  // 'equals'=exact, 'in'/'not_in'=prefix match
+  cohort:            ['in', 'not_in'],
+  custom_attribute:  ['custom'],
 };
 
 // Predefined options for list-based conditions
@@ -106,12 +118,18 @@ export const REGION_OPTIONS = [
 ];
 
 // JSON Spec compliant Tests and Rollouts
+export interface TestGroup {
+  name: string;
+  percentage: number;
+}
+
 export interface Test {
   name: string;
   description?: string;
   type: 'test';
   salt: string;
   conditions: Condition[];
+  groups?: TestGroup[];  // SDK uses groups to assign users to variants via deterministic bucketing
 }
 
 export interface Rollout {

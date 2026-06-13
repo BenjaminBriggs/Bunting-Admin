@@ -84,10 +84,11 @@ export function ConditionEditor({
     }
   };
 
+  // For custom_attribute conditions the SDK reads the attribute name from values[0].
   const handleAttributeChange = (newAttribute: string) => {
     onChange({
       ...condition,
-      attribute: newAttribute
+      values: [newAttribute]
     });
   };
 
@@ -124,7 +125,7 @@ export function ConditionEditor({
               <TextField
                 size="small"
                 label="Attribute Name"
-                value={condition.attribute || ''}
+                value={condition.values[0] || ''}
                 onChange={(e) => handleAttributeChange(e.target.value)}
                 placeholder="e.g., subscription_tier, user_segment"
                 disabled={disabled}
@@ -150,7 +151,8 @@ export function ConditionEditor({
               </FormControl>
             )}
 
-            {/* Values Input */}
+            {/* Values Input — custom_attribute stores only the attribute name in values[0] */}
+            {condition.type !== 'custom_attribute' && (
             <Box>
               <Stack direction="row" spacing={1} alignItems="center">
                 <TextField
@@ -194,6 +196,7 @@ export function ConditionEditor({
                 </Alert>
               )}
             </Box>
+            )}
 
             {/* Template description */}
             {template?.description && (
