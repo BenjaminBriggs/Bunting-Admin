@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { CreateTestRequest } from '@/types';
+import { createTestSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/tests?appId=xxx
 export async function GET(request: NextRequest) {
@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
 // POST /api/tests
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateTestRequest = await request.json();
-    const { key, name, description, conditions, variantCount, trafficSplit, variantNames, appId } = body;
+    const { key, name, description, conditions, variantCount, trafficSplit, variantNames, appId } =
+      createTestSchema.parse(await request.json());
 
     // Validate traffic split adds up to 100
     const totalTraffic = trafficSplit.reduce((sum, percent) => sum + percent, 0);
@@ -94,6 +94,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(test, { status: 201 });
   } catch (error) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Error creating test:', error);
     return NextResponse.json({ error: 'Failed to create test' }, { status: 500 });
   }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { CreateRolloutRequest } from '@/types';
+import { createRolloutSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/rollouts?appId=xxx
 export async function GET(request: NextRequest) {
@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
 // POST /api/rollouts
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateRolloutRequest = await request.json();
-    const { key, name, description, conditions, percentage, appId } = body;
+    const { key, name, description, conditions, percentage, appId } =
+      createRolloutSchema.parse(await request.json());
 
     // Validate percentage
     if (percentage < 0 || percentage > 100) {
@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(rollout, { status: 201 });
   } catch (error) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Error creating rollout:', error);
     return NextResponse.json({ error: 'Failed to create rollout' }, { status: 500 });
   }

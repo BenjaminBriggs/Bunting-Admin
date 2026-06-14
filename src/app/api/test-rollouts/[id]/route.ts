@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { updateTestRolloutSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 export async function GET(
   request: NextRequest,
@@ -36,8 +37,8 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
-    const body = await request.json();
-    const { name, description, percentage, conditions, flagIds, archived, variants, rolloutValues } = body;
+    const { name, description, percentage, conditions, flagIds, archived, variants, rolloutValues } =
+      updateTestRolloutSchema.parse(await request.json());
 
     const testRollout = await prisma.testRollout.update({
       where: {
@@ -58,6 +59,8 @@ export async function PUT(
 
     return NextResponse.json(testRollout);
   } catch (error) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Failed to update test/rollout:', error);
     return NextResponse.json(
       { error: 'Failed to update test/rollout' },

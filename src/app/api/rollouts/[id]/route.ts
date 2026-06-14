@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { updateRolloutSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/rollouts/[id]
 export async function GET(
@@ -33,19 +34,7 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
-    const body = await request.json();
-
-    // Remove fields that shouldn't be updated directly
-    const { id: bodyId, createdAt, updatedAt, appId, type, ...updateData } = body;
-
-    // Validate percentage if it's being updated
-    if (updateData.percentage !== undefined) {
-      if (updateData.percentage < 0 || updateData.percentage > 100) {
-        return NextResponse.json({ 
-          error: 'Percentage must be between 0 and 100' 
-        }, { status: 400 });
-      }
-    }
+    const updateData: Record<string, any> = updateRolloutSchema.parse(await request.json());
 
     const rollout = await prisma.testRollout.update({
       where: {
@@ -57,6 +46,8 @@ export async function PUT(
 
     return NextResponse.json(rollout);
   } catch (error: any) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Error updating rollout:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Rollout not found' }, { status: 404 });

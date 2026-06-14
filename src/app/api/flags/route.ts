@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { CreateFlagRequest } from '@/types';
+import { createFlagSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/flags - List all flags for an app
 export async function GET(request: NextRequest) {
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
 // POST /api/flags - Create a new flag with environment defaults
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateFlagRequest = await request.json();
-    const { key, displayName, type, description, defaultValues, appId } = body;
+    const { key, displayName, type, description, defaultValues, appId } =
+      createFlagSchema.parse(await request.json());
 
     // Check if flag key already exists for this app
     const existingFlag = await prisma.flag.findUnique({
@@ -90,6 +90,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(flag, { status: 201 });
   } catch (error) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Error creating flag:', error);
     return NextResponse.json({ error: 'Failed to create flag' }, { status: 500 });
   }

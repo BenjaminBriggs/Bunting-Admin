@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { createTestRolloutSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/test-rollouts?appId=xxx&flagId=xxx
 export async function GET(request: NextRequest) {
@@ -42,8 +43,8 @@ export async function GET(request: NextRequest) {
 // POST /api/test-rollouts (for createTestRollout function)
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { appId, name, description, type, variants, percentage, conditions, flagIds } = body;
+    const { appId, name, description, type, variants, percentage, conditions, flagIds } =
+      createTestRolloutSchema.parse(await request.json());
 
     // Generate salt for consistent user bucketing
     const salt = Math.random().toString(36).substring(2, 15);
@@ -85,6 +86,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(testRollout, { status: 201 });
   } catch (error) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Error creating test/rollout:', error);
     return NextResponse.json({ error: 'Failed to create test/rollout' }, { status: 500 });
   }

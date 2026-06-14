@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { updateCohortSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/cohorts/[id] - Get a specific cohort
 export async function GET(
@@ -35,10 +36,7 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
-    const body = await request.json();
-
-    // Remove fields that shouldn't be updated directly
-    const { id: bodyId, createdAt, updatedAt, appId, ...updateData } = body;
+    const updateData: Record<string, any> = updateCohortSchema.parse(await request.json());
 
     // Validate conditions don't contain cohort references if being updated
     if (updateData.conditions) {
@@ -63,6 +61,8 @@ export async function PUT(
 
     return NextResponse.json(cohort);
   } catch (error: any) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Error updating cohort:', error);
     if (error.code === 'P2025') {
       return NextResponse.json({ error: 'Cohort not found' }, { status: 404 });

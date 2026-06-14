@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { CreateCohortRequest } from '@/types';
+import { createCohortSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/cohorts - List all cohorts for an app
 export async function GET(request: NextRequest) {
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest) {
 // POST /api/cohorts - Create a new cohort (condition group)
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateCohortRequest = await request.json();
-    const { key, name, description, conditions, appId } = body;
+    const { key, name, description, conditions, appId } =
+      createCohortSchema.parse(await request.json());
 
     // Check if cohort key already exists for this app
     const existingCohort = await prisma.cohort.findUnique({
@@ -78,6 +78,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(cohort, { status: 201 });
   } catch (error) {
+    const validationError = zodErrorResponse(error);
+    if (validationError) return validationError;
     console.error('Error creating cohort:', error);
     return NextResponse.json({ error: 'Failed to create cohort' }, { status: 500 });
   }
