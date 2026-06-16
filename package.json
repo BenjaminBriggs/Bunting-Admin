@@ -38,6 +38,7 @@
     "setup:wait": "echo 'Waiting for services to be ready...' && sleep 10 && docker wait bunting-minio-init || echo 'MinIO initialization complete'"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "^3.1070.0",
     "@aws-sdk/client-s3": "^3.470.0",
     "@aws-sdk/s3-request-presigner": "^3.470.0",
     "@emotion/react": "^11.11.0",

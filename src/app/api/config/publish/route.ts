@@ -7,6 +7,7 @@ import { getConfigChanges } from '@/lib/config-comparison';
 import { signConfig, createDetachedSignature } from '@/lib/jws-signer';
 import { generateRSAKeyPair } from '@/lib/crypto';
 import { getS3Client, getConfigBucket } from '@/lib/storage';
+import { storePrivateKey } from '@/lib/key-protection';
 
 const publishConfigSchema = z.object({
   appId: z.string(),
@@ -243,7 +244,7 @@ async function ensureSigningKey(appId: string): Promise<void> {
       data: {
         appId,
         kid: keyPair.kid,
-        privateKey: keyPair.privateKey,
+        privateKey: await storePrivateKey(keyPair.privateKey),
         publicKey: keyPair.publicKey,
         algorithm: keyPair.algorithm,
         isActive: true,

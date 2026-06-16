@@ -22,6 +22,8 @@ services:
       # Public read URL the SDK fetches from. Browser-reachable MinIO (not the
       # internal minio:9000 hostname used for server-side uploads).
       CDN_BASE_URL: http://localhost:9000/bunting-configs
+      # Signing-key encryption at rest (local AES-GCM scheme; prod uses KMS).
+      SIGNING_KEY_SECRET: bunting-dev-signing-secret-change-me
       # Auth: real OIDC against the local dex container (same code path as prod).
       AUTH_MODE: oidc
       OIDC_ISSUER: http://auth.localhost:5556/dex

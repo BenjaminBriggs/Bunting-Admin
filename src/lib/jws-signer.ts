@@ -7,6 +7,7 @@
 
 import { SignJWT, importPKCS8, importSPKI, jwtVerify } from 'jose';
 import { prisma } from './db';
+import { loadPrivateKey } from './key-protection';
 
 export interface SigningResult {
   signature: string;     // Compact JWS string
@@ -41,8 +42,9 @@ export async function signConfig(appId: string, configJson: any): Promise<Signin
       throw new Error(`No active signing key found for app ${appId}`);
     }
 
-    // Import the private key for signing
-    const privateKey = await importPKCS8(signingKey.privateKey, signingKey.algorithm);
+    // Decrypt (if enveloped) then import the private key for signing
+    const privateKeyPem = await loadPrivateKey(signingKey.privateKey);
+    const privateKey = await importPKCS8(privateKeyPem, signingKey.algorithm);
 
     // Convert config to canonical JSON string (byte-for-byte signing)
     const configString = JSON.stringify(configJson);
@@ -91,8 +93,9 @@ export async function createDetachedSignature(appId: string, configString: strin
       throw new Error(`No active signing key found for app ${appId}`);
     }
 
-    // Import the private key for signing
-    const privateKey = await importPKCS8(signingKey.privateKey, signingKey.algorithm);
+    // Decrypt (if enveloped) then import the private key for signing
+    const privateKeyPem = await loadPrivateKey(signingKey.privateKey);
+    const privateKey = await importPKCS8(privateKeyPem, signingKey.algorithm);
 
     // Create JWS with empty payload (detached signature)
     const jwt = new SignJWT({})

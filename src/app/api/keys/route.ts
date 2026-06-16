@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { generateRSAKeyPair, KeySecurity } from '@/lib/crypto';
+import { storePrivateKey } from '@/lib/key-protection';
 
 const createKeySchema = z.object({
   appId: z.string(),
@@ -82,8 +83,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'App not found' }, { status: 404 });
     }
 
-    // Generate new RSA key pair
+    // Generate new RSA key pair and encrypt the private key before persistence.
     const keyPair = await generateRSAKeyPair();
+    const protectedPrivateKey = await storePrivateKey(keyPair.privateKey);
 
     // If this key should be active, deactivate other keys first
     await prisma.$transaction(async (tx) => {
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
         data: {
           appId,
           kid: keyPair.kid,
-          privateKey: keyPair.privateKey,
+          privateKey: protectedPrivateKey,
           publicKey: keyPair.publicKey,
           algorithm: keyPair.algorithm,
           isActive,
