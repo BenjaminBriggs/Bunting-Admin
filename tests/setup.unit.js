@@ -5,5 +5,5 @@ const originalDateNow = Date.now;
 Date.now = () => 1_700_000_000_000;
 
 afterAll(() => {
-  Date.now = originalDateNow;
+	Date.now = originalDateNow;
 });

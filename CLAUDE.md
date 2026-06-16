@@ -9,6 +9,7 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 ## Current Implementation Status ✅
 
 ### Completed Features
+
 - ✅ **Application Management**: Full CRUD with editable settings and SDK integration
 - ✅ **Environment-First Flags**: Separate default values for development/staging/production
 - ✅ **A/B Testing**: Multi-variant tests with traffic splitting and statistical analysis
@@ -22,10 +23,13 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 - ✅ **SDK Integration**: Downloadable plist files for iOS/macOS apps
 - ✅ **Unified Value Input System**: Type-aware flag value inputs with consistent UI/UX
 - ✅ **Environment-Specific Assignments**: Tests/rollouts properly isolated per environment
+- ✅ **Authentication & RBAC**: NextAuth-based auth (OIDC, OAuth, magic-link) with role-based access control; first sign-in becomes admin
+- ✅ **Test Suite**: Unit, integration, and E2E tests in `tests/` (Jest + Playwright)
 
 ### Architecture Implemented
 
-#### Frontend (Next.js 14 + React 18)
+#### Frontend (Next.js 15 + React 19)
+
 - **Application Settings**: Two-panel interface with editable app configuration
 - **Environment-First Flags**: Flag management with per-environment defaults and variants
 - **A/B Test Management**: Traffic splitting, variant configuration, and result tracking
@@ -36,6 +40,7 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 - **Responsive Design**: Material-UI v5 with proper mobile support
 
 #### Backend (Next.js API Routes)
+
 - **Apps API**: `/api/apps` - Application CRUD with test_rollouts counting
 - **Flags API**: `/api/flags` - Environment-first flag CRUD with defaultValues/variants
 - **Tests API**: `/api/tests` - A/B test management with traffic validation
@@ -46,6 +51,7 @@ Bunting Admin is a fully implemented Next.js + React web application for managin
 - **Real S3 Integration**: Actual file uploads with versioning
 
 #### Database (PostgreSQL + Prisma)
+
 - **Apps**: Store app configs, artifact URLs, public keys, fetch policies
 - **Flags**: Environment-first definitions with defaultValues (dev/staging/prod) and variants
 - **TestRollouts**: Unified model for both A/B tests (with variants) and rollouts (with percentage)
@@ -131,6 +137,7 @@ npm run type-check         # TypeScript checking
 ## Core Features Implemented
 
 ### Application Management
+
 - **Two-Panel Interface**: App list on left, tabbed settings on right
 - **Editable Settings**: Name and fetch policy (6-hour default minimum interval)
 - **SDK Integration**: Download bunting-config.plist files
@@ -138,6 +145,7 @@ npm run type-check         # TypeScript checking
 - **CRUD Operations**: Create, edit, delete with confirmation dialogs
 
 ### Environment-First Feature Flags
+
 - **Auto-normalization**: "Store: New Paywall" → "store/new_paywall"
 - **Environment Defaults**: Separate default values for development, staging, production
 - **Conditional Variants**: Per-environment rule-based value overrides
@@ -147,6 +155,7 @@ npm run type-check         # TypeScript checking
 - **Archiving**: Soft delete functionality
 
 ### A/B Testing & Rollouts
+
 - **A/B Tests**: Multi-variant testing with traffic percentage allocation
 - **Gradual Rollouts**: Simple percentage-based feature rollouts with real-time sliders
 - **Test Management**: Create, run, pause, and complete tests with statistical tracking
@@ -155,6 +164,7 @@ npm run type-check         # TypeScript checking
 - **Flag Integration**: Tests and rollouts can target multiple flags simultaneously
 
 ### Rule-Based Cohorts
+
 - **Condition Groups**: Pure rule-based user targeting without percentages
 - **Reusable Rules**: Create cohorts once, use across multiple flags and tests
 - **Enhanced Rule Builder**: Define complex targeting conditions with comprehensive SDK-aligned condition types
@@ -163,6 +173,7 @@ npm run type-check         # TypeScript checking
 - **Custom Attributes**: Full support for app-defined custom attributes with validation
 
 ### Publishing Pipeline
+
 - **Change Detection**: Real-time tracking of modified flags/cohorts
 - **Config Generation**: Transform database data to SDK format
 - **Validation Engine**: Blocking errors vs warnings
@@ -170,6 +181,7 @@ npm run type-check         # TypeScript checking
 - **Change Comparison**: Before/after diff visualization
 
 ### Conditions Support
+
 - **SDK-Aligned Conditions**: All condition types from Bunting SDK specification supported
 - **Comprehensive Targeting**: `app_version`, `os_version`, `build_number`, `platform`, `device_model`, `region`, `locale`, `cohort`, `custom_attribute`
 - **Operators per type**:
@@ -183,11 +195,13 @@ npm run type-check         # TypeScript checking
 - **Bootstrap Integration**: Downloadable plist files for iOS/macOS SDK integration
 
 ### Multi-App Support
+
 - **App Isolation**: Flags and cohorts scoped to applications
 - **Shared Interface**: Single admin UI managing multiple apps
 - **Context Switching**: Seamless app selection with state preservation
 
 ### Unified Flag Value Input System
+
 - **FlagValueInput Component**: Single component handles all flag types with consistent UI
 - **Type-Aware Inputs**: Boolean dropdowns, number inputs, date pickers, JSON editors
 - **Collapsible JSON Editor**: Rich JSON editing with validation and summary display
@@ -198,45 +212,48 @@ npm run type-check         # TypeScript checking
 ## Technical Implementation
 
 ### Flag Key Processing
+
 ```typescript
 // Auto-normalize user input
-normalizeKey("Store: Use New Paywall Design") 
+normalizeKey('Store: Use New Paywall Design');
 // → "store/use_new_paywall_design"
 
 // Real-time validation
-validateKey("store/new_feature") // → { valid: true }
-validateKey("store/123invalid") // → { valid: false, error: "cannot start with number" }
+validateKey('store/new_feature'); // → { valid: true }
+validateKey('store/123invalid'); // → { valid: false, error: "cannot start with number" }
 ```
 
 ### Config Artifact Generation (Schema v1)
+
 ```typescript
 interface ConfigArtifact {
-  schema_version: 1;
-  config_version: string;        // "2025-09-12.1"
-  published_at: string;          // ISO8601
-  app_identifier: string;        // user-defined
-  
-  // Top-level structure with environment-specific flags
-  cohorts: Record<string, Cohort>;
-  flags: Record<string, EnvironmentFlag>;
-  tests: Record<string, TestRollout>;
-  rollouts: Record<string, TestRollout>;
+	schema_version: 1;
+	config_version: string; // "2025-09-12.1"
+	published_at: string; // ISO8601
+	app_identifier: string; // user-defined
+
+	// Top-level structure with environment-specific flags
+	cohorts: Record<string, Cohort>;
+	flags: Record<string, EnvironmentFlag>;
+	tests: Record<string, TestRollout>;
+	rollouts: Record<string, TestRollout>;
 }
 
 interface EnvironmentFlag {
-  type: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
-  development: EnvironmentFlagConfig;
-  staging: EnvironmentFlagConfig;
-  production: EnvironmentFlagConfig;
+	type: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
+	development: EnvironmentFlagConfig;
+	staging: EnvironmentFlagConfig;
+	production: EnvironmentFlagConfig;
 }
 
 interface EnvironmentFlagConfig {
-  default: any;
-  variants?: ConditionalVariant[];
+	default: any;
+	variants?: ConditionalVariant[];
 }
 ```
 
 ### Validation Rules (Implemented)
+
 - **Blocking Errors**: Invalid JSON, missing defaults, unknown cohort references
 - **Warnings**: Unreachable rules, long descriptions
 - **Flag Keys**: snake_case validation with optional namespaces
@@ -260,6 +277,7 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
 ## User Interface
 
 ### Sidebar Navigation
+
 - **Logo**: Clickable logo at top linking to dashboard
 - **App Selector**: Top-level dropdown with app switching and creation
 - **Main Menu**: Feature Flags, A/B Tests, Rollouts, Cohorts (middle section)
@@ -267,11 +285,13 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
 - **Settings**: Bottom section for application management
 
 ### Application Settings
+
 - **Settings Tab**: Editable name and fetch policy (in hours)
 - **SDK Integration Tab**: Plist download and integration instructions
 - **Real-time Updates**: Changes immediately reflected across interface
 
 ### Publishing Flow
+
 1. **Make Changes**: Edit flags, create tests/rollouts, modify cohorts (changes tracked automatically)
 2. **Review Changes**: Releases page shows pending changes with badge count in sidebar
 3. **Environment Selection**: Choose which environment(s) to publish (dev/staging/prod)
@@ -281,17 +301,19 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
 ## Known Limitations & TODOs
 
 ### Mock Data Remaining
+
 - **Test Result Analytics**: Statistical significance calculations need real data
 - **Rollout Impact Metrics**: User impact estimation needs analytics integration
 
 ### Incomplete Features
-- **Authentication**: No user authentication implemented
+
 - **Test Analytics**: A/B test statistical analysis needs implementation
 - **Flag Creation Flow**: Still needs update to new environment-first model
-- **User Management**: No role-based access control
+- **User Management**: RBAC implemented; self-service user provisioning not yet exposed in UI
 - **Advanced Rollout Scheduling**: Time-based rollout progression not implemented
 
 ### Future Enhancements
+
 - **Real-time Collaboration**: Multi-user editing support
 - **Advanced Analytics**: Flag usage metrics and performance data
 - **Statistical Analysis**: Confidence intervals, significance testing for A/B tests
@@ -305,38 +327,44 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
 - **Input Validation**: All user inputs sanitized via Zod schemas
 - **SQL Injection**: Protected by Prisma ORM
 - **XSS Protection**: React's built-in escaping
-- **Missing**: Authentication, authorization, rate limiting
+- **Missing**: Rate limiting
 
 ## Testing Status
 
+A test suite exists under `tests/` with unit, integration, and E2E (Playwright) coverage. Run with `npm test` (unit), `npm run test:integration`, or `npm run test:e2e`.
+
 ### Manual Testing ✅
+
 - All CRUD operations work correctly
 - Publishing pipeline functional with S3
 - App switching and context preservation
 - Form validation and error handling
 
-### Missing Tests
-- Unit tests for components
-- API endpoint testing
-- E2E workflow testing
-- Error boundary testing
+### Automated Test Coverage Gaps
+
+- Component unit test coverage is partial
+- E2E workflow test coverage is partial
+- Error boundary testing not yet implemented
 
 ## Integration Points
 
 ### Current Integrations
+
 - **PostgreSQL**: Full database integration via Prisma
 - **AWS S3**: Real file uploads with versioning
 - **Material-UI**: Complete design system implementation
 
 ### Missing Integrations
+
 - **CDN**: No CDN distribution setup
 - **Analytics**: No user metrics or flag usage data
-- **Authentication**: No user management system
+- **User Provisioning UI**: Admin can manage users via API; no self-service UI yet
 - **Monitoring**: No error tracking or performance monitoring
 
 ## Getting Started
 
 1. **Clone and Install**:
+
    ```bash
    git clone <repo>
    cd bunting-admin
@@ -344,6 +372,7 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
    ```
 
 2. **Setup Database**:
+
    ```bash
    npm run setup  # Starts Docker PostgreSQL + pushes schema
    ```
@@ -352,6 +381,7 @@ S3_ENDPOINT="https://s3.amazonaws.com"  # Custom endpoint for S3-compatible stor
    Create `.env.local` with database and AWS credentials
 
 4. **Start Development**:
+
    ```bash
    npm run dev  # Opens http://localhost:3000
    ```
@@ -413,7 +443,7 @@ model Flag {
 
   // Default values for each environment (set at creation)
   defaultValues Json @map("default_values") // {development: any, staging: any, production: any}
-  
+
   // Conditional variants per environment
   variants Json @default("{}") @map("variants") // {development: ConditionalVariant[], staging: ConditionalVariant[], production: ConditionalVariant[]}
 
@@ -450,17 +480,17 @@ model TestRollout {
   type        TestRolloutType
   salt        String   // For consistent user bucketing
   conditions  Json     @default("[]") // Array of condition objects for entry requirements
-  
+
   // For tests: multiple variants with traffic split
   variants    Json?    // {variantName: {percentage: number, values: {dev: any, staging: any, prod: any}}}
-  
+
   // For rollouts: single percentage and values
   percentage     Int?     // 0-100 for rollouts
   rolloutValues Json?  // {development: any, staging: any, production: any}
-  
+
   // Flags affected by this test/rollout
   flagIds     Json     @default("[]") // Array of flag IDs
-  
+
   archived    Boolean  @default(false)
   archivedAt  DateTime? @map("archived_at")
   createdAt   DateTime @default(now()) @map("created_at")

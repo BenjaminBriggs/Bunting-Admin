@@ -1,231 +1,262 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { Rocket, Save, Science } from '@mui/icons-material';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Box,
-  Stack,
-  TextField,
-  FormControl,
-  Select,
-  MenuItem,
-  Alert,
-  CircularProgress,
-} from "@mui/material";
-import { Save, Science, Rocket } from "@mui/icons-material";
-import { Environment, DBTestRollout } from "@/types";
-import { fetchTest, fetchRollout, updateTest, updateRollout } from "@/lib/api";
-import FlagValueInput, { getDefaultValueForType, processValueForType, validateValue } from "./flag-value-input";
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Dialog,
+	DialogActions,
+	DialogContent,
+	DialogTitle,
+	FormControl,
+	MenuItem,
+	Select,
+	Stack,
+	TextField,
+	Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
+import { fetchRollout, fetchTest, updateRollout, updateTest } from '@/lib/api';
+import type { DBTestRollout, Environment } from '@/types';
+import FlagValueInput, {
+	getDefaultValueForType,
+	processValueForType,
+	validateValue,
+} from './flag-value-input';
 
 interface FlagAssignmentEditModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  type: "test" | "rollout";
-  itemId: string;
-  flagId: string;
-  flagName: string;
-  flagType: string;
-  environment: Environment;
+	open: boolean;
+	onClose: () => void;
+	onSave: () => void;
+	type: 'test' | 'rollout';
+	itemId: string;
+	flagId: string;
+	flagName: string;
+	flagType: string;
+	environment: Environment;
 }
 
 export default function FlagAssignmentEditModal({
-  open,
-  onClose,
-  onSave,
-  type,
-  itemId,
-  flagId,
-  flagName,
-  flagType,
-  environment,
+	open,
+	onClose,
+	onSave,
+	type,
+	itemId,
+	flagId,
+	flagName,
+	flagType,
+	environment,
 }: FlagAssignmentEditModalProps) {
-  const [item, setItem] = useState<DBTestRollout | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [flagValues, setFlagValues] = useState<Record<string, any>>({});
+	const [item, setItem] = useState<DBTestRollout | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const [flagValues, setFlagValues] = useState<Record<string, any>>({});
 
-  useEffect(() => {
-    const loadItem = async () => {
-      if (!open || !itemId) return;
-      
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const data = type === "test" ? await fetchTest(itemId) : await fetchRollout(itemId);
-        setItem(data);
-        
-        // Extract current flag values
-        const currentValues: Record<string, any> = {};
-        
-        if (type === "test" && data.variants) {
-          // For tests, get values from each variant
-          Object.entries(data.variants).forEach(([variantName, variant]: [string, any]) => {
-            if (variant.values?.[environment]?.[flagId] !== undefined) {
-              currentValues[variantName] = variant.values[environment][flagId];
-            } else {
-              currentValues[variantName] = getDefaultValueForType(flagType as any);
-            }
-          });
-        } else if (type === "rollout" && data.rolloutValues) {
-          // For rollouts, get the single value
-          if ((data.rolloutValues as any)[environment]?.[flagId] !== undefined) {
-            currentValues.rollout = (data.rolloutValues as any)[environment][flagId];
-          } else {
-            currentValues.rollout = getDefaultValueForType(flagType as any);
-          }
-        }
-        
-        setFlagValues(currentValues);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load item');
-      } finally {
-        setLoading(false);
-      }
-    };
+	useEffect(() => {
+		const loadItem = async () => {
+			if (!open || !itemId) {
+				return;
+			}
 
-    loadItem();
-  }, [open, itemId, type, environment, flagId, flagType]);
+			setLoading(true);
+			setError(null);
 
-  const validateValues = (): boolean => {
-    return Object.values(flagValues).every(value => validateValue(value, flagType as any).isValid);
-  };
+			try {
+				const data =
+					type === 'test'
+						? await fetchTest(itemId)
+						: await fetchRollout(itemId);
+				setItem(data);
 
-  const handleValueChange = (key: string, value: any) => {
-    setFlagValues(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
+				// Extract current flag values
+				const currentValues: Record<string, any> = {};
 
-  const handleSave = async () => {
-    if (!validateValues() || !item) {
-      setError('Please fix validation errors before saving');
-      return;
-    }
+				if (type === 'test' && data.variants) {
+					// For tests, get values from each variant
+					Object.entries(data.variants).forEach(
+						([variantName, variant]: [string, any]) => {
+							if (variant.values?.[environment]?.[flagId] !== undefined) {
+								currentValues[variantName] =
+									variant.values[environment][flagId];
+							} else {
+								currentValues[variantName] = getDefaultValueForType(
+									flagType as any,
+								);
+							}
+						},
+					);
+				} else if (type === 'rollout' && data.rolloutValues) {
+					// For rollouts, get the single value
+					if (
+						(data.rolloutValues as any)[environment]?.[flagId] !== undefined
+					) {
+						currentValues.rollout = (data.rolloutValues as any)[environment][
+							flagId
+						];
+					} else {
+						currentValues.rollout = getDefaultValueForType(flagType as any);
+					}
+				}
 
-    setSaving(true);
-    setError(null);
+				setFlagValues(currentValues);
+			} catch (err) {
+				setError(err instanceof Error ? err.message : 'Failed to load item');
+			} finally {
+				setLoading(false);
+			}
+		};
 
-    try {
-      if (type === "test") {
-        // Update test variants
-        const updatedVariants = { ...item.variants };
-        
-        Object.entries(flagValues).forEach(([variantName, value]) => {
-          if (updatedVariants[variantName]) {
-            if (!updatedVariants[variantName].values) {
-              updatedVariants[variantName].values = {
-                development: {},
-                staging: {},
-                production: {}
-              };
-            }
-            if (!updatedVariants[variantName].values[environment]) {
-              updatedVariants[variantName].values[environment] = {};
-            }
-            (updatedVariants[variantName].values as any)[environment][flagId] = processValueForType(value, flagType as any);
-          }
-        });
+		loadItem();
+	}, [open, itemId, type, environment, flagId, flagType]);
 
-        await updateTest(itemId, { variants: updatedVariants });
-      } else {
-        // Update rollout values
-        const updatedRolloutValues = {
-          ...item.rolloutValues,
-          [environment]: {
-            ...(item.rolloutValues as any)?.[environment],
-            [flagId]: processValueForType(flagValues.rollout, flagType as any)
-          }
-        };
+	const validateValues = (): boolean => {
+		return Object.values(flagValues).every(
+			(value) => validateValue(value, flagType as any).isValid,
+		);
+	};
 
-        await updateRollout(itemId, { rolloutValues: updatedRolloutValues as any });
-      }
+	const handleValueChange = (key: string, value: any) => {
+		setFlagValues((prev) => ({
+			...prev,
+			[key]: value,
+		}));
+	};
 
-      onSave();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update flag values');
-    } finally {
-      setSaving(false);
-    }
-  };
+	const handleSave = async () => {
+		if (!validateValues() || !item) {
+			setError('Please fix validation errors before saving');
+			return;
+		}
 
-  const renderValueInput = (key: string, value: any) => {
-    return (
-      <FlagValueInput
-        flagType={flagType as any}
-        value={value}
-        onChange={(newValue) => handleValueChange(key, newValue)}
-        size="small"
-        fullWidth
-      />
-    );
-  };
+		setSaving(true);
+		setError(null);
 
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {type === "test" ? <Science color="primary" /> : <Rocket color="secondary" />}
-          Edit Flag Values - {environment.charAt(0).toUpperCase() + environment.slice(1)}
-        </Box>
-      </DialogTitle>
-      
-      <DialogContent>
-        <Box sx={{ mt: 1 }}>
-          {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-              <CircularProgress sx={{ mr: 2 }} />
-              <Typography>Loading {type}...</Typography>
-            </Box>
-          )}
+		try {
+			if (type === 'test') {
+				// Update test variants
+				const updatedVariants = { ...item.variants };
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+				Object.entries(flagValues).forEach(([variantName, value]) => {
+					if (updatedVariants[variantName]) {
+						if (!updatedVariants[variantName].values) {
+							updatedVariants[variantName].values = {
+								development: {},
+								staging: {},
+								production: {},
+							};
+						}
+						if (!updatedVariants[variantName].values[environment]) {
+							updatedVariants[variantName].values[environment] = {};
+						}
+						(updatedVariants[variantName].values as any)[environment][flagId] =
+							processValueForType(value, flagType as any);
+					}
+				});
 
-          {item && !loading && (
-            <>
-              <Alert severity="info" sx={{ mb: 3 }}>
-                Edit values for <strong>{flagName}</strong> ({flagType}) in <strong>{item.name}</strong>
-              </Alert>
+				await updateTest(itemId, { variants: updatedVariants });
+			} else {
+				// Update rollout values
+				const updatedRolloutValues = {
+					...item.rolloutValues,
+					[environment]: {
+						...(item.rolloutValues as any)?.[environment],
+						[flagId]: processValueForType(flagValues.rollout, flagType as any),
+					},
+				};
 
-              <Stack spacing={3}>
-                {Object.entries(flagValues).map(([key, value]) => (
-                  <Box key={key}>
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                      {type === "test" ? `${key} Group` : "Rollout Value"}
-                    </Typography>
-                    {renderValueInput(key, value)}
-                  </Box>
-                ))}
-              </Stack>
-            </>
-          )}
-        </Box>
-      </DialogContent>
+				await updateRollout(itemId, {
+					rolloutValues: updatedRolloutValues as any,
+				});
+			}
 
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained" 
-          disabled={saving || !validateValues() || loading}
-          startIcon={saving ? <CircularProgress size={20} /> : <Save />}
-        >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
+			onSave();
+			onClose();
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : 'Failed to update flag values',
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const renderValueInput = (key: string, value: any) => {
+		return (
+			<FlagValueInput
+				flagType={flagType as any}
+				value={value}
+				onChange={(newValue) => handleValueChange(key, newValue)}
+				size="small"
+				fullWidth
+			/>
+		);
+	};
+
+	return (
+		<Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+			<DialogTitle>
+				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+					{type === 'test' ? (
+						<Science color="primary" />
+					) : (
+						<Rocket color="secondary" />
+					)}
+					Edit Flag Values -{' '}
+					{environment.charAt(0).toUpperCase() + environment.slice(1)}
+				</Box>
+			</DialogTitle>
+
+			<DialogContent>
+				<Box sx={{ mt: 1 }}>
+					{loading && (
+						<Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+							<CircularProgress sx={{ mr: 2 }} />
+							<Typography>Loading {type}...</Typography>
+						</Box>
+					)}
+
+					{error && (
+						<Alert severity="error" sx={{ mb: 3 }}>
+							{error}
+						</Alert>
+					)}
+
+					{item && !loading && (
+						<>
+							<Alert severity="info" sx={{ mb: 3 }}>
+								Edit values for <strong>{flagName}</strong> ({flagType}) in{' '}
+								<strong>{item.name}</strong>
+							</Alert>
+
+							<Stack spacing={3}>
+								{Object.entries(flagValues).map(([key, value]) => (
+									<Box key={key}>
+										<Typography variant="subtitle2" sx={{ mb: 1 }}>
+											{type === 'test' ? `${key} Group` : 'Rollout Value'}
+										</Typography>
+										{renderValueInput(key, value)}
+									</Box>
+								))}
+							</Stack>
+						</>
+					)}
+				</Box>
+			</DialogContent>
+
+			<DialogActions>
+				<Button onClick={onClose}>Cancel</Button>
+				<Button
+					onClick={handleSave}
+					variant="contained"
+					disabled={saving || !validateValues() || loading}
+					startIcon={saving ? <CircularProgress size={20} /> : <Save />}
+				>
+					{saving ? 'Saving...' : 'Save Changes'}
+				</Button>
+			</DialogActions>
+		</Dialog>
+	);
 }

@@ -33,10 +33,10 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: bunting-dev-secret-change-in-production
     ports:
-      - "3000:3000"
+      - '3000:3000'
     # auth.localhost must reach dex (published on the host) from inside the container.
     extra_hosts:
-      - "auth.localhost:host-gateway"
+      - 'auth.localhost:host-gateway'
     volumes:
       - ./src:/app/src
       - ./prisma:/app/prisma
@@ -54,7 +54,7 @@ services:
     volumes:
       - ./dex/config.yaml:/etc/dex/config.yaml:ro
     ports:
-      - "5556:5556"
+      - '5556:5556'
 
   postgres:
     image: postgres:17
@@ -64,12 +64,12 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d bunting_admin"]
+      test: ['CMD-SHELL', 'pg_isready -U admin -d bunting_admin']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -82,12 +82,12 @@ services:
       MINIO_ROOT_USER: admin
       MINIO_ROOT_PASSWORD: admin123
     ports:
-      - "9000:9000" # MinIO API
-      - "9001:9001" # MinIO Console (Web UI)
+      - '9000:9000' # MinIO API
+      - '9001:9001' # MinIO Console (Web UI)
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
       timeout: 20s
       retries: 3
@@ -117,7 +117,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@example.com
       PGADMIN_DEFAULT_PASSWORD: admin123
     ports:
-      - "5050:80" # open http://localhost:5050
+      - '5050:80' # open http://localhost:5050
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ./pgadmin/servers.json:/pgadmin4/servers.json

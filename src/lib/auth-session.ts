@@ -8,58 +8,62 @@
  */
 
 import { createRemoteJWKSet } from 'jose';
-import { resolveProxyIdentity, type ProxyAuthConfig } from './auth-proxy';
-import { resolveAuthConfig, type AuthConfig } from './auth-env';
+import { type AuthConfig, resolveAuthConfig } from './auth-env';
+import { type ProxyAuthConfig, resolveProxyIdentity } from './auth-proxy';
 
 export interface Identity {
-  email: string;
+	email: string;
 }
 
 // Memoise the remote JWKS per URL — it caches keys and must not be rebuilt per request.
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 function jwksFor(url: string): ReturnType<typeof createRemoteJWKSet> {
-  let set = jwksCache.get(url);
-  if (!set) {
-    set = createRemoteJWKSet(new URL(url));
-    jwksCache.set(url, set);
-  }
-  return set;
+	let set = jwksCache.get(url);
+	if (!set) {
+		set = createRemoteJWKSet(new URL(url));
+		jwksCache.set(url, set);
+	}
+	return set;
 }
 
 /** Resolve identity from request headers in proxy mode. Returns null for non-proxy configs. */
 export async function identityFromHeaders(
-  headers: Headers,
-  config: AuthConfig
+	headers: Headers,
+	config: AuthConfig,
 ): Promise<Identity | null> {
-  if (config.mode !== 'proxy') return null;
+	if (config.mode !== 'proxy') {
+		return null;
+	}
 
-  const proxyConfig: ProxyAuthConfig = config.jwt
-    ? {
-        emailHeader: config.emailHeader,
-        jwt: {
-          header: config.jwt.header,
-          audience: config.jwt.audience,
-          emailClaim: config.jwt.emailClaim,
-          keyResolver: jwksFor(config.jwt.jwksUrl),
-        },
-      }
-    : { emailHeader: config.emailHeader };
+	const proxyConfig: ProxyAuthConfig = config.jwt
+		? {
+				emailHeader: config.emailHeader,
+				jwt: {
+					header: config.jwt.header,
+					audience: config.jwt.audience,
+					emailClaim: config.jwt.emailClaim,
+					keyResolver: jwksFor(config.jwt.jwksUrl),
+				},
+			}
+		: { emailHeader: config.emailHeader };
 
-  return resolveProxyIdentity(headers, proxyConfig);
+	return resolveProxyIdentity(headers, proxyConfig);
 }
 
 /** Resolve the authenticated identity for a request, or null if unauthenticated. */
-export async function identityFromRequest(headers: Headers): Promise<Identity | null> {
-  const config = resolveAuthConfig();
+export async function identityFromRequest(
+	headers: Headers,
+): Promise<Identity | null> {
+	const config = resolveAuthConfig();
 
-  if (config.mode === 'proxy') {
-    return identityFromHeaders(headers, config);
-  }
+	if (config.mode === 'proxy') {
+		return identityFromHeaders(headers, config);
+	}
 
-  // oidc: lazy-load NextAuth so non-oidc paths (and unit tests) don't pull it in.
-  const { auth } = await import('./auth');
-  const session = await auth();
-  const email = session?.user?.email?.trim().toLowerCase();
-  return email ? { email } : null;
+	// oidc: lazy-load NextAuth so non-oidc paths (and unit tests) don't pull it in.
+	const { auth } = await import('./auth');
+	const session = await auth();
+	const email = session?.user?.email?.trim().toLowerCase();
+	return email ? { email } : null;
 }

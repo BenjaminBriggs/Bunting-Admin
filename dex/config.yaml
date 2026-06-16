@@ -27,6 +27,6 @@ enablePasswordDB: true
 staticPasswords:
   # Login: admin@bunting.dev / password
   - email: admin@bunting.dev
-    hash: "$2a$10$twjbVDhIz8QJY4Md1d46S.6XajbtJ57qt6BZ4lMDmBix8Rvq2tM5q"
+    hash: '$2a$10$twjbVDhIz8QJY4Md1d46S.6XajbtJ57qt6BZ4lMDmBix8Rvq2tM5q'
     username: admin
-    userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+    userID: '08a8684b-db88-4b73-90a9-3cd1661f5466'

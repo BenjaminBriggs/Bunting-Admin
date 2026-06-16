@@ -1,259 +1,273 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { generateConfigFromDb } from '@/lib/config-generator';
-import { prisma } from '@/lib/db';
 import { getConfigChanges } from '@/lib/config-comparison';
-import { signConfigDetached } from '@/lib/jws-signer';
+import { generateConfigFromDb } from '@/lib/config-generator';
 import { generateRSAKeyPair } from '@/lib/crypto';
-import { getS3Client, getConfigBucket } from '@/lib/storage';
+import { prisma } from '@/lib/db';
+import { signConfigDetached } from '@/lib/jws-signer';
 import { storePrivateKey } from '@/lib/key-protection';
+import { getConfigBucket, getS3Client } from '@/lib/storage';
 
 const publishConfigSchema = z.object({
-  appId: z.string(),
-  changelog: z.string().min(1, 'Changelog is required'),
+	appId: z.string(),
+	changelog: z.string().min(1, 'Changelog is required'),
 });
 
 const s3Client = getS3Client();
 
 // POST /api/config/publish - Publish configuration to S3
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { appId, changelog } = publishConfigSchema.parse(body);
+	try {
+		const body = await request.json();
+		const { appId, changelog } = publishConfigSchema.parse(body);
 
-    const bucketName = getConfigBucket();
+		const bucketName = getConfigBucket();
 
-    // Generate current config
-    const baseConfig = await generateConfigFromDb(appId);
-    
-    // Get app identifier from the config
-    const appIdentifier = baseConfig.app_identifier;
-    
-    // Generate version number
-    const version = await generateNextVersion(appId, appIdentifier);
-    
-    // Get previous published config for comparison
-    const previousConfig = await getPublishedConfigFromS3(appIdentifier).catch(() => ({ config: null }));
-    const configChanges = getConfigChanges(baseConfig, previousConfig.config);
-    
-    // Create final publishable config
-    const publishedConfig = {
-      ...baseConfig,
-      config_version: version,
-      published_at: new Date().toISOString()
-    };
+		// Generate current config
+		const baseConfig = await generateConfigFromDb(appId);
 
-    // Ensure app has a signing key (create one if none exists)
-    await ensureSigningKey(appId);
+		// Get app identifier from the config
+		const appIdentifier = baseConfig.app_identifier;
 
-    // Serialize ONCE, then sign exactly these bytes with a detached JWS so the
-    // signature binds to the precise config.json the SDK will fetch.
-    const configContent = JSON.stringify(publishedConfig, null, 2);
-    const signingResult = await signConfigDetached(appId, configContent);
+		// Generate version number
+		const version = await generateNextVersion(appId, appIdentifier);
 
-    // Upload config to S3 with signature
-    const configKey = `${appIdentifier}/config.json`;
-    const signatureKey = `${appIdentifier}/config.json.sig`;
+		// Get previous published config for comparison
+		const previousConfig = await getPublishedConfigFromS3(appIdentifier).catch(
+			() => ({ config: null }),
+		);
+		const configChanges = getConfigChanges(baseConfig, previousConfig.config);
 
-    // Upload the config file
-    const configCommand = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: configKey,
-      Body: configContent,
-      ContentType: 'application/json',
-      CacheControl: 'max-age=300, stale-while-revalidate=86400',
-      Metadata: {
-        'x-bunting-key-id': signingResult.keyId,
-        'x-bunting-algorithm': signingResult.algorithm,
-        'x-bunting-version': version,
-      },
-    });
+		// Create final publishable config
+		const publishedConfig = {
+			...baseConfig,
+			config_version: version,
+			published_at: new Date().toISOString(),
+		};
 
-    // Upload the signature as a separate file (for detached signature support)
-    const signatureCommand = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: signatureKey,
-      Body: signingResult.signature,
-      ContentType: 'text/plain',
-      CacheControl: 'max-age=300, stale-while-revalidate=86400',
-    });
+		// Ensure app has a signing key (create one if none exists)
+		await ensureSigningKey(appId);
 
-    // Upload both files
-    await Promise.all([
-      s3Client.send(configCommand),
-      s3Client.send(signatureCommand),
-    ]);
+		// Serialize ONCE, then sign exactly these bytes with a detached JWS so the
+		// signature binds to the precise config.json the SDK will fetch.
+		const configContent = JSON.stringify(publishedConfig, null, 2);
+		const signingResult = await signConfigDetached(appId, configContent);
 
-    // Store publish history in database
-    await storePublishHistory({
-      appId,
-      version,
-      changelog,
-      publishedBy: 'admin@example.com',
-      configContent: publishedConfig,
-      changes: configChanges,
-      signature: signingResult.signature,
-      keyId: signingResult.keyId,
-    });
+		// Upload config to S3 with signature
+		const configKey = `${appIdentifier}/config.json`;
+		const signatureKey = `${appIdentifier}/config.json.sig`;
 
-    return NextResponse.json({
-      version,
-      publishedAt: publishedConfig.published_at,
-      keyId: signingResult.keyId,
-      signed: true,
-      message: 'Configuration published and signed successfully'
-    });
+		// Upload the config file
+		const configCommand = new PutObjectCommand({
+			Bucket: bucketName,
+			Key: configKey,
+			Body: configContent,
+			ContentType: 'application/json',
+			CacheControl: 'max-age=300, stale-while-revalidate=86400',
+			Metadata: {
+				'x-bunting-key-id': signingResult.keyId,
+				'x-bunting-algorithm': signingResult.algorithm,
+				'x-bunting-version': version,
+			},
+		});
 
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
-    }
-    
-    console.error('Error publishing config:', error);
-    return NextResponse.json({ 
-      error: 'Failed to publish configuration',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
-  }
+		// Upload the signature as a separate file (for detached signature support)
+		const signatureCommand = new PutObjectCommand({
+			Bucket: bucketName,
+			Key: signatureKey,
+			Body: signingResult.signature,
+			ContentType: 'text/plain',
+			CacheControl: 'max-age=300, stale-while-revalidate=86400',
+		});
+
+		// Upload both files
+		await Promise.all([
+			s3Client.send(configCommand),
+			s3Client.send(signatureCommand),
+		]);
+
+		// Store publish history in database
+		await storePublishHistory({
+			appId,
+			version,
+			changelog,
+			publishedBy: 'admin@example.com',
+			configContent: publishedConfig,
+			changes: configChanges,
+			signature: signingResult.signature,
+			keyId: signingResult.keyId,
+		});
+
+		return NextResponse.json({
+			version,
+			publishedAt: publishedConfig.published_at,
+			keyId: signingResult.keyId,
+			signed: true,
+			message: 'Configuration published and signed successfully',
+		});
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return NextResponse.json(
+				{ error: 'Invalid request data', details: error.issues },
+				{ status: 400 },
+			);
+		}
+
+		console.error('Error publishing config:', error);
+		return NextResponse.json(
+			{
+				error: 'Failed to publish configuration',
+				details: error instanceof Error ? error.message : 'Unknown error',
+			},
+			{ status: 500 },
+		);
+	}
 }
 
-async function generateNextVersion(appId: string, appIdentifier: string): Promise<string> {
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-  
-  // Query database for existing versions today
-  const existingVersions = await prisma.auditLog.findMany({
-    where: {
-      appId,
-      configVersion: {
-        startsWith: today
-      }
-    },
-    select: {
-      configVersion: true
-    },
-    orderBy: {
-      configVersion: 'desc'
-    }
-  });
-  
-  // Find the highest version number for today
-  let maxVersionNumber = 0;
-  for (const version of existingVersions) {
-    const versionParts = version.configVersion.split('.');
-    if (versionParts.length === 2 && versionParts[0] === today) {
-      const versionNumber = parseInt(versionParts[1], 10);
-      if (versionNumber > maxVersionNumber) {
-        maxVersionNumber = versionNumber;
-      }
-    }
-  }
-  
-  return `${today}.${maxVersionNumber + 1}`;
+async function generateNextVersion(
+	appId: string,
+	appIdentifier: string,
+): Promise<string> {
+	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+	// Query database for existing versions today
+	const existingVersions = await prisma.auditLog.findMany({
+		where: {
+			appId,
+			configVersion: {
+				startsWith: today,
+			},
+		},
+		select: {
+			configVersion: true,
+		},
+		orderBy: {
+			configVersion: 'desc',
+		},
+	});
+
+	// Find the highest version number for today
+	let maxVersionNumber = 0;
+	for (const version of existingVersions) {
+		const versionParts = version.configVersion.split('.');
+		if (versionParts.length === 2 && versionParts[0] === today) {
+			const versionNumber = parseInt(versionParts[1], 10);
+			if (versionNumber > maxVersionNumber) {
+				maxVersionNumber = versionNumber;
+			}
+		}
+	}
+
+	return `${today}.${maxVersionNumber + 1}`;
 }
 
 async function storePublishHistory(data: {
-  appId: string;
-  version: string;
-  changelog: string;
-  publishedBy: string;
-  configContent: any;
-  changes: any[];
-  signature: string;
-  keyId: string;
+	appId: string;
+	version: string;
+	changelog: string;
+	publishedBy: string;
+	configContent: any;
+	changes: any[];
+	signature: string;
+	keyId: string;
 }) {
-  // Count flags and cohorts in config
-  const flagCount = Object.keys(data.configContent.flags || {}).length;
-  const cohortCount = Object.keys(data.configContent.cohorts || {}).length;
-  
-  // Store in audit log
-  await prisma.auditLog.create({
-    data: {
-      appId: data.appId,
-      configVersion: data.version,
-      publishedAt: new Date(),
-      publishedBy: data.publishedBy,
-      changelog: data.changelog,
-      configDiff: {
-        changes: data.changes,
-        flagCount,
-        cohortCount,
-        configSize: JSON.stringify(data.configContent).length
-      },
-      artifactSize: JSON.stringify(data.configContent).length,
-    }
-  });
+	// Count flags and cohorts in config
+	const flagCount = Object.keys(data.configContent.flags || {}).length;
+	const cohortCount = Object.keys(data.configContent.cohorts || {}).length;
+
+	// Store in audit log
+	await prisma.auditLog.create({
+		data: {
+			appId: data.appId,
+			configVersion: data.version,
+			publishedAt: new Date(),
+			publishedBy: data.publishedBy,
+			changelog: data.changelog,
+			configDiff: {
+				changes: data.changes,
+				flagCount,
+				cohortCount,
+				configSize: JSON.stringify(data.configContent).length,
+			},
+			artifactSize: JSON.stringify(data.configContent).length,
+		},
+	});
 }
 
-async function getPublishedConfigFromS3(appIdentifier: string): Promise<{ config: any | null }> {
-  const bucketName = getConfigBucket();
+async function getPublishedConfigFromS3(
+	appIdentifier: string,
+): Promise<{ config: any | null }> {
+	const bucketName = getConfigBucket();
 
-  try {
-    const configKey = `${appIdentifier}/config.json`;
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: configKey,
-    });
+	try {
+		const configKey = `${appIdentifier}/config.json`;
+		const command = new GetObjectCommand({
+			Bucket: bucketName,
+			Key: configKey,
+		});
 
-    const response = await s3Client.send(command);
-    
-    if (!response.Body) {
-      return { config: null };
-    }
+		const response = await s3Client.send(command);
 
-    const configContent = await response.Body.transformToString();
-    const config = JSON.parse(configContent);
-    
-    return { config };
-    
-  } catch (error) {
-    // Config doesn't exist yet or other error
-    return { config: null };
-  }
+		if (!response.Body) {
+			return { config: null };
+		}
+
+		const configContent = await response.Body.transformToString();
+		const config = JSON.parse(configContent);
+
+		return { config };
+	} catch (error) {
+		// Config doesn't exist yet or other error
+		return { config: null };
+	}
 }
 
 // Ensure an app has at least one active signing key
 async function ensureSigningKey(appId: string): Promise<void> {
-  try {
-    // Check if app has any active signing keys
-    const existingActiveKey = await prisma.signingKey.findFirst({
-      where: { appId, isActive: true },
-    });
+	try {
+		// Check if app has any active signing keys
+		const existingActiveKey = await prisma.signingKey.findFirst({
+			where: { appId, isActive: true },
+		});
 
-    if (existingActiveKey) {
-      return; // Already has an active key
-    }
+		if (existingActiveKey) {
+			return; // Already has an active key
+		}
 
-    // Check if app has any inactive keys we can activate
-    const existingInactiveKey = await prisma.signingKey.findFirst({
-      where: { appId, isActive: false },
-    });
+		// Check if app has any inactive keys we can activate
+		const existingInactiveKey = await prisma.signingKey.findFirst({
+			where: { appId, isActive: false },
+		});
 
-    if (existingInactiveKey) {
-      // Activate an existing inactive key
-      await prisma.signingKey.update({
-        where: { id: existingInactiveKey.id },
-        data: { isActive: true },
-      });
-      console.log(`Activated existing signing key ${existingInactiveKey.kid} for app ${appId}`);
-      return;
-    }
+		if (existingInactiveKey) {
+			// Activate an existing inactive key
+			await prisma.signingKey.update({
+				where: { id: existingInactiveKey.id },
+				data: { isActive: true },
+			});
+			console.log(
+				`Activated existing signing key ${existingInactiveKey.kid} for app ${appId}`,
+			);
+			return;
+		}
 
-    // No keys exist, generate a new one
-    const keyPair = await generateRSAKeyPair();
-    await prisma.signingKey.create({
-      data: {
-        appId,
-        kid: keyPair.kid,
-        privateKey: await storePrivateKey(keyPair.privateKey),
-        publicKey: keyPair.publicKey,
-        algorithm: keyPair.algorithm,
-        isActive: true,
-      },
-    });
-    console.log(`Generated new signing key ${keyPair.kid} for app ${appId}`);
-  } catch (error) {
-    console.error('Failed to ensure signing key:', error);
-    throw new Error('Failed to ensure signing key exists');
-  }
+		// No keys exist, generate a new one
+		const keyPair = await generateRSAKeyPair();
+		await prisma.signingKey.create({
+			data: {
+				appId,
+				kid: keyPair.kid,
+				privateKey: await storePrivateKey(keyPair.privateKey),
+				publicKey: keyPair.publicKey,
+				algorithm: keyPair.algorithm,
+				isActive: true,
+			},
+		});
+		console.log(`Generated new signing key ${keyPair.kid} for app ${appId}`);
+	} catch (error) {
+		console.error('Failed to ensure signing key:', error);
+		throw new Error('Failed to ensure signing key exists');
+	}
 }
