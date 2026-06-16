@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { generateConfigFromDb } from '@/lib/config-generator';
+import { getS3Client, getConfigBucket, artifactUrlFor } from '@/lib/storage';
 
 const createAppSchema = z.object({
   name: z.string(),
   identifier: z.string(),
-  artifactUrl: z.string(),
   publicKeys: z.array(z.object({
     kid: z.string(),
     pem: z.string()
@@ -16,31 +16,12 @@ const createAppSchema = z.object({
     min_interval_seconds: z.number(),
     hard_ttl_days: z.number()
   }),
-  storageConfig: z.object({
-    bucket: z.string(),
-    region: z.string(),
-    endpoint: z.string().optional(),
-    accessKeyId: z.string().optional(),
-    secretAccessKey: z.string().optional()
-  })
 });
 
-// Configure AWS S3 Client
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-  },
-  region: process.env.S3_REGION || 'us-east-1',
-  forcePathStyle: true, // Required for MinIO compatibility
-});
+const s3Client = getS3Client();
 
 async function publishInitialConfig(appId: string): Promise<void> {
-  const bucketName = process.env.S3_BUCKET;
-  if (!bucketName) {
-    throw new Error('S3_BUCKET not configured');
-  }
+  const bucketName = getConfigBucket();
 
   // Generate initial config
   const baseConfig = await generateConfigFromDb(appId);
@@ -127,7 +108,13 @@ export async function POST(request: NextRequest) {
     }
 
     const app = await prisma.app.create({
-      data: validatedData,
+      data: {
+        ...validatedData,
+        // Storage is a single global bucket; the public read URL is derived
+        // from CDN_BASE_URL, and per-app storage settings are no longer used.
+        artifactUrl: artifactUrlFor(validatedData.identifier),
+        storageConfig: {},
+      },
       include: {
         _count: {
           select: {

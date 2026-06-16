@@ -22,8 +22,8 @@ Self-hosted feature flagging for Apple platform apps, with staged rollouts, A/B 
 
 ## Quick Start
 
-- **Deploy to the cloud**: Use the buttons below, then walk through the setup wizard. Extra detail lives in [Deployment](docs/deployment.md).
-- **Run locally**: `npm install && npm run setup && npm run dev` — more in [Local Development](docs/local-development.md).
+- **Deploy to the cloud**: Configure auth and storage via environment variables (see `.env.example`), then deploy. Extra detail lives in [Deployment](docs/deployment.md).
+- **Run locally**: `docker compose up` for the full stack (app, Postgres, MinIO, and a local OIDC provider) — more in [Local Development](docs/local-development.md).
 
 ## One-Click Deployment
 
@@ -31,7 +31,7 @@ Self-hosted feature flagging for Apple platform apps, with staged rollouts, A/B 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/BenjaminBriggs/Bunting-Admin)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/BenjaminBriggs/Bunting-Admin)
 
-After deploying, open your app URL and complete the `/setup` wizard to configure authentication.
+Authentication is configured via environment variables before deploy (`AUTH_MODE` with generic OIDC or a trusted reverse-proxy; see `.env.example`). The first user to sign in becomes the admin.
 
 ## Documentation
 

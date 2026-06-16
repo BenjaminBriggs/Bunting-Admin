@@ -1,27 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 import { getConfigChanges } from '@/lib/config-comparison';
 import { signConfig, createDetachedSignature } from '@/lib/jws-signer';
 import { generateRSAKeyPair } from '@/lib/crypto';
+import { getS3Client, getConfigBucket } from '@/lib/storage';
 
 const publishConfigSchema = z.object({
   appId: z.string(),
   changelog: z.string().min(1, 'Changelog is required'),
 });
 
-// Configure AWS S3 Client
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-  },
-  region: process.env.S3_REGION || 'us-east-1',
-  forcePathStyle: true, // Required for MinIO compatibility
-});
+const s3Client = getS3Client();
 
 // POST /api/config/publish - Publish configuration to S3
 export async function POST(request: NextRequest) {
@@ -29,10 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { appId, changelog } = publishConfigSchema.parse(body);
 
-    const bucketName = process.env.S3_BUCKET;
-    if (!bucketName) {
-      return NextResponse.json({ error: 'S3_BUCKET not configured' }, { status: 500 });
-    }
+    const bucketName = getConfigBucket();
 
     // Generate current config
     const baseConfig = await generateConfigFromDb(appId);
@@ -195,10 +184,7 @@ async function storePublishHistory(data: {
 }
 
 async function getPublishedConfigFromS3(appIdentifier: string): Promise<{ config: any | null }> {
-  const bucketName = process.env.S3_BUCKET;
-  if (!bucketName) {
-    throw new Error('S3_BUCKET not configured');
-  }
+  const bucketName = getConfigBucket();
 
   try {
     const configKey = `${appIdentifier}/config.json`;

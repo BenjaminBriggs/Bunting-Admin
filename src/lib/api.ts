@@ -50,7 +50,14 @@ export async function fetchApps(): Promise<App[]> {
   return response.json();
 }
 
-export async function createApp(data: Omit<App, 'id' | 'createdAt' | 'updatedAt'>): Promise<App> {
+// artifactUrl and storageConfig are server-managed (single global bucket; URL
+// derived from CDN_BASE_URL), so they are not part of the create payload.
+export type CreateAppInput = Omit<
+  App,
+  'id' | 'createdAt' | 'updatedAt' | 'artifactUrl' | 'storageConfig' | '_count'
+>;
+
+export async function createApp(data: CreateAppInput): Promise<App> {
   const response = await fetch('/api/apps', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

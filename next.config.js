@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Emit a self-contained server for the production Docker image.
+  output: 'standalone',
   eslint: {
     dirs: ['src'],
   },

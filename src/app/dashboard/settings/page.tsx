@@ -40,7 +40,6 @@ import { Add, Apps, MoreVert, Edit, Delete, Download, Settings, Code, Warning, P
 import { fetchApps, updateApp, type App } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { StorageConfigForm, generateArtifactUrl, detectStorageType, type StorageConfigData } from '@/components/forms/StorageConfigForm';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -58,21 +57,10 @@ export default function SettingsPage() {
     name: string;
     minIntervalHours: number;
     hardTtlDays: number;
-    storage: StorageConfigData;
   }>({
     name: '',
     minIntervalHours: 6,
     hardTtlDays: 7,
-    storage: {
-      storageType: process.env.NODE_ENV === "development" ? "minio" : "aws",
-      storageConfig: {
-        bucket: '',
-        region: 'us-east-1',
-        endpoint: '',
-        accessKeyId: '',
-        secretAccessKey: ''
-      }
-    }
   });
 
   useEffect(() => {
@@ -96,42 +84,20 @@ export default function SettingsPage() {
   // Update form data when selected app changes
   useEffect(() => {
     if (selectedApp && !editMode) {
-      const storageType = detectStorageType(selectedApp.storageConfig.endpoint);
       setFormData({
         name: selectedApp.name,
         minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
         hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
-        storage: {
-          storageType,
-          storageConfig: {
-            bucket: selectedApp.storageConfig.bucket,
-            region: selectedApp.storageConfig.region,
-            endpoint: selectedApp.storageConfig.endpoint || '',
-            accessKeyId: selectedApp.storageConfig.accessKeyId || '',
-            secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
-          }
-        }
       });
     }
   }, [selectedApp, editMode]);
 
   const handleEditStart = () => {
     if (selectedApp) {
-      const storageType = detectStorageType(selectedApp.storageConfig.endpoint);
       setFormData({
         name: selectedApp.name,
         minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
         hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
-        storage: {
-          storageType,
-          storageConfig: {
-            bucket: selectedApp.storageConfig.bucket,
-            region: selectedApp.storageConfig.region,
-            endpoint: selectedApp.storageConfig.endpoint || '',
-            accessKeyId: selectedApp.storageConfig.accessKeyId || '',
-            secretAccessKey: selectedApp.storageConfig.secretAccessKey || ''
-          }
-        }
       });
       setEditMode(true);
     }
@@ -161,37 +127,16 @@ export default function SettingsPage() {
       return;
     }
 
-    if (!formData.storage.storageConfig.bucket.trim()) {
-      setError('S3 bucket is required');
-      return;
-    }
-
-    if (!formData.storage.storageConfig.region.trim()) {
-      setError('AWS region is required');
-      return;
-    }
-
     try {
       setSaving(true);
       setError(null);
 
-      // Generate new artifact URL based on updated storage config
-      const newArtifactUrl = generateArtifactUrl(formData.storage.storageType, formData.storage.storageConfig, selectedApp.identifier);
-
       const updatedApp = await updateApp(selectedApp.id, {
         name: formData.name,
-        artifactUrl: newArtifactUrl,
         fetchPolicy: {
           min_interval_seconds: formData.minIntervalHours * 3600,
           hard_ttl_days: formData.hardTtlDays
         },
-        storageConfig: {
-          bucket: formData.storage.storageConfig.bucket,
-          region: formData.storage.storageConfig.region,
-          endpoint: formData.storage.storageConfig.endpoint || undefined,
-          accessKeyId: formData.storage.storageConfig.accessKeyId || undefined,
-          secretAccessKey: formData.storage.storageConfig.secretAccessKey || undefined
-        }
       });
 
       // Update the apps list and selected app
@@ -441,13 +386,6 @@ export default function SettingsPage() {
                             inputProps={{ min: 1, max: 365 }}
                             helperText="Maximum age before config is considered stale (1-365 days)"
                           />
-
-                          <StorageConfigForm
-                            value={formData.storage}
-                            onChange={(storage) => setFormData({ ...formData, storage })}
-                            disabled={saving}
-                            showTypeSelector={true}
-                          />
                         </Stack>
                       ) : (
                         <Stack spacing={2}>
@@ -493,26 +431,6 @@ export default function SettingsPage() {
                             </Typography>
                             <Typography variant="body1">
                               {selectedApp.fetchPolicy.min_interval_seconds / 3600} hour interval, {selectedApp.fetchPolicy.hard_ttl_days} day TTL
-                            </Typography>
-                          </Box>
-
-                          <Box>
-                            <Typography variant="body2" color="text.secondary">
-                              Storage Configuration
-                            </Typography>
-                            <Typography variant="body1">
-                              Bucket: {selectedApp.storageConfig.bucket}
-                            </Typography>
-                            <Typography variant="body1">
-                              Region: {selectedApp.storageConfig.region}
-                            </Typography>
-                            {selectedApp.storageConfig.endpoint && (
-                              <Typography variant="body1">
-                                Endpoint: {selectedApp.storageConfig.endpoint}
-                              </Typography>
-                            )}
-                            <Typography variant="body1">
-                              Credentials: {selectedApp.storageConfig.accessKeyId ? 'Custom keys configured' : 'Using environment/IAM'}
                             </Typography>
                           </Box>
                         </Stack>

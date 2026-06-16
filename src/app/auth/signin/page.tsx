@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import SignInForm from '@/components/auth/SignInForm'
+import { getAvailableProviders } from '@/lib/auth-config'
 import { Container, Box, Typography } from '@mui/material'
 
 export default async function SignInPage() {
@@ -9,6 +10,9 @@ export default async function SignInPage() {
   if (session?.user) {
     redirect('/dashboard')
   }
+
+  // Computed server-side: provider availability depends on server-only env vars.
+  const providers = getAvailableProviders()
 
   return (
     <Container maxWidth="sm">
@@ -32,7 +36,7 @@ export default async function SignInPage() {
         </Box>
 
         <Box sx={{ width: '100%' }}>
-          <SignInForm />
+          <SignInForm providers={providers} />
         </Box>
       </Box>
     </Container>

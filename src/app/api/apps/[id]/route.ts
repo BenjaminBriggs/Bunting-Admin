@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
+import { artifactUrlFor } from '@/lib/storage';
 
 const updateAppSchema = z.object({
   name: z.string().optional(),
   identifier: z.string().optional(),
-  artifactUrl: z.string().optional(),
   publicKeys: z.array(z.object({
     kid: z.string(),
     pem: z.string()
@@ -14,13 +14,6 @@ const updateAppSchema = z.object({
     min_interval_seconds: z.number(),
     hard_ttl_days: z.number()
   }).optional(),
-  storageConfig: z.object({
-    bucket: z.string(),
-    region: z.string(),
-    endpoint: z.string().optional(),
-    accessKeyId: z.string().optional(),
-    secretAccessKey: z.string().optional()
-  }).optional()
 });
 
 // GET /api/apps/[id] - Get a specific app
@@ -74,8 +67,10 @@ export async function PUT(
       return NextResponse.json({ error: 'App not found' }, { status: 404 });
     }
 
-    // If identifier is being updated, check if it conflicts with another app
-    if (validatedData.identifier && validatedData.identifier !== existingApp.identifier) {
+    // If identifier is being updated, check for conflicts and re-derive the artifact URL.
+    const identifierChanged =
+      !!validatedData.identifier && validatedData.identifier !== existingApp.identifier;
+    if (identifierChanged) {
       const conflictingApp = await prisma.app.findUnique({
         where: { identifier: validatedData.identifier }
       });
@@ -90,7 +85,12 @@ export async function PUT(
 
     const updatedApp = await prisma.app.update({
       where: { id },
-      data: validatedData,
+      data: {
+        ...validatedData,
+        ...(identifierChanged
+          ? { artifactUrl: artifactUrlFor(validatedData.identifier!) }
+          : {}),
+      },
       include: {
         _count: {
           select: {

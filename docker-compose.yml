@@ -1,4 +1,59 @@
 services:
+  app:
+    build:
+      context: .
+      target: dev
+    container_name: bunting-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      dex:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://admin:admin123@postgres:5432/bunting_admin
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_ID: admin
+      S3_SECRET_ACCESS_KEY: admin123
+      S3_BUCKET: bunting-configs
+      S3_REGION: us-east-1
+      # Public read URL the SDK fetches from. Browser-reachable MinIO (not the
+      # internal minio:9000 hostname used for server-side uploads).
+      CDN_BASE_URL: http://localhost:9000/bunting-configs
+      # Auth: real OIDC against the local dex container (same code path as prod).
+      AUTH_MODE: oidc
+      OIDC_ISSUER: http://auth.localhost:5556/dex
+      OIDC_CLIENT_ID: bunting-admin
+      OIDC_CLIENT_SECRET: bunting-dev-secret
+      OIDC_PROVIDER_NAME: Dev SSO
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: bunting-dev-secret-change-in-production
+    ports:
+      - "3000:3000"
+    # auth.localhost must reach dex (published on the host) from inside the container.
+    extra_hosts:
+      - "auth.localhost:host-gateway"
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./public:/app/public
+      - ./next.config.js:/app/next.config.js
+      # Shield image-built artefacts from the bind mounts above.
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npx prisma db push --skip-generate && npm run dev"
+
+  dex:
+    image: ghcr.io/dexidp/dex:latest
+    container_name: bunting-dex
+    command: dex serve /etc/dex/config.yaml
+    volumes:
+      - ./dex/config.yaml:/etc/dex/config.yaml:ro
+    ports:
+      - "5556:5556"
+
   postgres:
     image: postgres:17
     container_name: bunting-postgres

@@ -2,12 +2,13 @@
 
 export function getAvailableProviders() {
   const providers = {
+    oidc: !!(process.env.OIDC_ISSUER && process.env.OIDC_CLIENT_ID && process.env.OIDC_CLIENT_SECRET),
     google: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
     github: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
     microsoft: !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET && process.env.MICROSOFT_TENANT_ID),
     email: !!(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
-    // Enable dev credentials by default in development, can be disabled with DISABLE_DEV_AUTH=true
-    credentials: process.env.NODE_ENV === 'development' && process.env.DISABLE_DEV_AUTH !== 'true'
+    // Dev/local logins now go through real OIDC (the dex container), not a credentials provider.
+    credentials: false,
   }
 
   return providers
@@ -20,10 +21,10 @@ export function getConfiguredProviders() {
 
 export function hasAnyOAuthProvider() {
   const providers = getAvailableProviders()
-  return providers.google || providers.github || providers.microsoft
+  return providers.oidc || providers.google || providers.github || providers.microsoft
 }
 
 export function hasAnyProvider() {
   const providers = getConfiguredProviders()
-  return providers.google || providers.github || providers.microsoft || providers.email || providers.credentials
+  return providers.oidc || providers.google || providers.github || providers.microsoft || providers.email || providers.credentials
 }

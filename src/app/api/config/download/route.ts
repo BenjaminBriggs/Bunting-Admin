@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getS3Client, getConfigBucket } from '@/lib/storage';
 
 const downloadConfigSchema = z.object({
   appIdentifier: z.string(),
 });
 
-// Configure AWS S3 Client
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
-  },
-  region: process.env.S3_REGION || 'us-east-1',
-  forcePathStyle: true, // Required for MinIO compatibility
-});
+const s3Client = getS3Client();
 
 // POST /api/config/download - Download published config file
 export async function POST(request: NextRequest) {
@@ -23,10 +15,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { appIdentifier } = downloadConfigSchema.parse(body);
 
-    const bucketName = process.env.S3_BUCKET;
-    if (!bucketName) {
-      return NextResponse.json({ error: 'S3_BUCKET not configured' }, { status: 500 });
-    }
+    const bucketName = getConfigBucket();
 
     // Get config from S3
     const configKey = `${appIdentifier}/config.json`;

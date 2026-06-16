@@ -13,7 +13,7 @@ Bunting Admin is a feature flag dashboard tailored for Apple platform apps, with
 
 ## Typical Workflow (iOS/macOS)
 
-1. Deploy Bunting Admin (see `docs/deployment.md`) and finish the setup wizard.
+1. Deploy Bunting Admin (see `docs/deployment.md`), configuring authentication via environment variables; the first user to sign in becomes the admin.
 2. Create an application entry for your iOS or macOS app under **Settings → Applications**.
 3. Define feature flags with environment-specific defaults and optional targeting rules.
 4. Publish changes to generate a signed configuration bundle.

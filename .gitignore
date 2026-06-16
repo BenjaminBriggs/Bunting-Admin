@@ -54,3 +54,6 @@ next-env.d.ts
 Thumbs.db
 # Claude Code agent-local state
 .claude/
+
+# Working design specs / plans (temporary, not repo artifacts)
+docs/superpowers/

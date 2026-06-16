@@ -1,0 +1,32 @@
+# Local-only OpenID Connect provider for development.
+# Lets `docker compose up` exercise the SAME OIDC code path as production,
+# so there is no special-case dev auth bypass in the app.
+#
+# Issuer host `auth.localhost` resolves to 127.0.0.1 in the browser (RFC 6761)
+# and to the host gateway inside the app container (see docker-compose extra_hosts),
+# so both the browser redirect and the server-side token exchange reach dex.
+issuer: http://auth.localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: bunting-admin
+    name: Bunting Admin (dev)
+    secret: bunting-dev-secret
+    redirectURIs:
+      - http://localhost:3000/api/auth/callback/oidc
+
+enablePasswordDB: true
+staticPasswords:
+  # Login: admin@bunting.dev / password
+  - email: admin@bunting.dev
+    hash: "$2a$10$twjbVDhIz8QJY4Md1d46S.6XajbtJ57qt6BZ4lMDmBix8Rvq2tM5q"
+    username: admin
+    userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"

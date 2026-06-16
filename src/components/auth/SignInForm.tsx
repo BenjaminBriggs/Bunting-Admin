@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react'
 import { useState } from 'react'
-import { getAvailableProviders, hasAnyOAuthProvider } from '@/lib/auth-config'
+import type { getAvailableProviders } from '@/lib/auth-config'
 import {
   Card,
   CardContent,
@@ -14,17 +14,17 @@ import {
   Box,
   Divider
 } from '@mui/material'
-import { Login, Google, GitHub, Microsoft, Email, Settings } from '@mui/icons-material'
-import Link from 'next/link'
+import { Login, Google, GitHub, Microsoft, Email, VpnKey } from '@mui/icons-material'
 
-export default function SignInForm() {
+type Providers = ReturnType<typeof getAvailableProviders>
+
+export default function SignInForm({ providers }: { providers: Providers }) {
   const [emailPassword, setEmailPassword] = useState({ email: '', password: '' })
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [emailSent, setEmailSent] = useState(false)
-  const providers = getAvailableProviders()
-  const hasOAuth = hasAnyOAuthProvider()
+  const hasOAuth = providers.oidc || providers.google || providers.github || providers.microsoft
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,6 +69,17 @@ export default function SignInForm() {
     } catch (err) {
       setError('Something went wrong')
     } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSsoSignIn = async () => {
+    setIsLoading(true)
+    setError('')
+    try {
+      await signIn('oidc', { callbackUrl: '/dashboard' })
+    } catch (err) {
+      setError('Authentication failed')
       setIsLoading(false)
     }
   }
@@ -159,6 +170,19 @@ export default function SignInForm() {
           {/* OAuth Providers */}
           {hasOAuth && (
             <Stack spacing={2}>
+              {providers.oidc && (
+                <Button
+                  onClick={handleSsoSignIn}
+                  variant="contained"
+                  size="large"
+                  disabled={isLoading}
+                  startIcon={<VpnKey />}
+                  fullWidth
+                >
+                  Continue with SSO
+                </Button>
+              )}
+
               {providers.google && (
                 <Button
                   onClick={() => handleOAuthSignIn('google')}
@@ -248,35 +272,14 @@ export default function SignInForm() {
             )
           )}
 
-          {/* Development mode notice for OAuth without credentials */}
-          {process.env.NODE_ENV === 'development' && hasOAuth && !providers.credentials && !providers.email && (
-            <Alert severity="info">
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                Development Mode
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                OAuth providers are selected but require real credentials to work. Click the buttons below to see the error messages, or reconfigure authentication.
-              </Typography>
-              <Button
-                component={Link}
-                href="/setup"
-                variant="outlined"
-                startIcon={<Settings />}
-                size="small"
-              >
-                Reconfigure Authentication
-              </Button>
-            </Alert>
-          )}
-
           {/* No providers configured fallback */}
-          {!hasOAuth && !providers.email && !providers.credentials && (
+          {!hasOAuth && !providers.email && (
             <Alert severity="warning">
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
                 No authentication providers configured
               </Typography>
               <Typography variant="body2">
-                Please configure OAuth providers or email authentication in your environment variables.
+                Configure an auth provider via environment variables (AUTH_MODE / OIDC_* / AUTH_PROXY_*). See .env.example.
               </Typography>
             </Alert>
           )}
