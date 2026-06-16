@@ -1,7 +1,9 @@
 # Guardian Tech-Stack Alignment
 
-> Status: recommendation / audit. Nothing here is implemented yet — this doc proposes a
-> phased path, not a finished migration.
+> Status: **Tier 1 implemented** (shared configs, pnpm, tooling, Tailwind removal, committed
+> Prisma migrations, Dependabot + Makefile). **Tier 2 evaluated** — `@guardian/source` foundations
+> adopted (accessible focus token); a full component migration and `@guardian/libs` are not a fit
+> right now (see Tier 2 below). Tiers 3–4 remain proposals.
 
 ## Purpose & the dual goal
 
@@ -125,11 +127,23 @@ MUI, so MUI is a perfectly defensible, lower-effort resting point.
 Recommendation: treat Source as a **later, optional** migration, not a Tier 1 requirement. If
 pursued, do it incrementally (foundations/tokens first, then swap components screen by screen).
 
+**Outcome (foundations adopted, components deferred).** Bunting has a deliberate, distinct brand
+— custom palette (teal/mint/yellow/orange), Belanosima/Nunito fonts, playful pill components in
+`src/theme/buntingTheme.ts`. A full Source **component** migration would erase that identity for
+little familiarity gain (a Guardian dev is already at home in MUI + Emotion, which Source uses under
+the hood, and `support-admin-console` itself uses MUI). So we took the **foundations-first** step:
+installed `@guardian/source` and adopted its accessible **focus** token (`focus[400]`) in the theme
+— which also fixed a real bug where the focus ring resolved to `undefined` (no visible keyboard
+focus). Full component adoption stays deferred and brand-gated.
+
 ### 2.2 Pull in `@guardian/libs` where it duplicates hand-rolled code
 
-`@guardian/libs` offers `storage`, `switches`, `format`, logging, and time helpers. Where Bunting
-has hand-rolled equivalents in `src/lib/`, swapping to `@guardian/libs` reduces surface area and
-adds familiarity. Adopt opportunistically, not as a big-bang.
+**Outcome: not applicable right now — skipped.** `@guardian/libs` targets dotcom concerns
+(consent/CMP, commercial, cookies, browser `storage`, `switches`, country/locale, ophan). An audit
+of `src/lib/` found **no matching surface**: no `localStorage`/`sessionStorage`/`document.cookie`
+usage, and the hand-rolled utilities are flag-domain-specific (key normalization, validation,
+bucketing, JWS signing) with no `@guardian/libs` equivalent. Adopting it here would be artificial.
+Revisit if/when a client-side storage, cookie, or consent surface appears.
 
 ---
 
@@ -205,19 +219,23 @@ an additive layer.
 
 ## Phased checklist
 
-**Tier 1 — do first (low risk, high signal)**
+**Tier 1 — done ✅ (low risk, high signal)**
 
-- [ ] Adopt `@guardian/tsconfig`, `@guardian/eslint-config`, `@guardian/prettier`; add `.prettierrc`; delete `esling.config.js`; collapse to one ESLint config — _S_
-- [ ] Migrate npm → pnpm (lockfile, scripts, CI, Dockerfile, README) — _M_
-- [ ] Loosen `engines.node` to a maintained LTS range — _XS_
-- [ ] Remove Tailwind; fold theme into `buntingTheme.ts` — _M_
-- [ ] Commit Prisma migrations; widen `collectCoverageFrom` beyond `src/lib/db.ts` — _S_
-- [ ] Add Dependabot config + a Makefile — _XS_
+- [x] Adopt `@guardian/tsconfig`, `@guardian/eslint-config`, `@guardian/prettier`; add `.prettierrc`; delete `esling.config.js`; collapse to one ESLint config — _S_
+- [x] Migrate npm → pnpm (lockfile, scripts, CI, Dockerfile, README) — _M_
+- [x] Loosen `engines.node` to a maintained LTS range — _XS_
+- [x] Remove Tailwind (was already dead); restyle the 3 affected form components to MUI — _M_
+- [x] Commit Prisma migrations; widen `collectCoverageFrom` beyond `src/lib/db.ts` — _S_
+- [x] Add Dependabot config + a Makefile — _XS_
 
-**Tier 2 — optional, forward-looking**
+> Ratchet TODOs left behind (search `TODO(guardian-alignment)`): re-enable the 3 stricter
+> `@guardian/tsconfig` flags (~200 fixes), promote the ~1,800 `warn`-downgraded ESLint rules back to
+> `error`, and raise the coverage floor as `src/lib` coverage grows.
 
-- [ ] Evaluate `@guardian/source` (tokens first, then components) — _L_
-- [ ] Adopt `@guardian/libs` where it replaces hand-rolled utilities — _S–M_
+**Tier 2 — evaluated**
+
+- [x] Evaluate `@guardian/source` → **foundations adopted** (accessible focus token; fixed a broken focus ring); full component migration deferred (brand-gated) — _L_
+- [x] Evaluate `@guardian/libs` → **N/A, skipped** (no client storage/cookie/consent/commercial surface; utils are flag-domain-specific) — _S–M_
 
 **Tier 3 — easy Riff-Raff path (Docker stays default)**
 

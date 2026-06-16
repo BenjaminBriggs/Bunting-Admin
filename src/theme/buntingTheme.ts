@@ -6,6 +6,7 @@
 // <ThemeProvider theme={buntingTheme}><CssBaseline />{children}</ThemeProvider>
 
 import { alpha, createTheme } from '@mui/material/styles';
+import { focus } from '@guardian/source/foundations';
 // import { Components } from "@mui/material/styles/components";
 
 // --- Brand Palette (Bunting logo colors) ---
@@ -49,11 +50,14 @@ const brand = {
 const soften = (c: string, a = 0.08) => alpha(c, a);
 const elevate = (c: string, a = 0.12) => `0 8px 24px ${alpha(c, a)}`;
 // --- Custom shadows (grounded + subtle) ---
+// `focus` uses the @guardian/source accessible focus colour so keyboard focus is
+// always visible (the brand palette is intentionally low-contrast for this).
 const customShadows = {
 	xs: `0 0 4px ${alpha('#000', 0.04)}`,
 	sm: `0 0 8px ${alpha('#000', 0.04)}`,
 	md: `0 0 12px ${alpha('#000', 0.04)}`,
 	lg: `0 0 24px ${alpha('#000', 0.01)}`,
+	focus: `0 0 0 3px ${focus[400]}`,
 };
 
 export function createBuntingTheme() {
@@ -177,14 +181,14 @@ export function createBuntingTheme() {
 			MuiCssBaseline: {
 				styleOverrides: {
 					':root': {
-						'--bunting-shadow-focus': (customShadows as any).focus,
+						'--bunting-shadow-focus': customShadows.focus,
 					},
 					body: {
 						backgroundColor: brand.neutral.defaultBg,
 					},
 					'*:focus-visible': {
 						outline: 'none',
-						boxShadow: (customShadows as any).focus,
+						boxShadow: customShadows.focus,
 						transition: 'box-shadow 120ms',
 						borderRadius: 10,
 					},
@@ -348,7 +352,7 @@ export function createBuntingTheme() {
 						},
 						'&.Mui-focused .MuiOutlinedInput-notchedOutline': {
 							borderColor: brand.orange.main,
-							boxShadow: (customShadows as any).focus,
+							boxShadow: customShadows.focus,
 						},
 					},
 					notchedOutline: { borderWidth: 2 },
