@@ -4,7 +4,7 @@ import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 import { getConfigChanges } from '@/lib/config-comparison';
-import { signConfig, createDetachedSignature } from '@/lib/jws-signer';
+import { signConfigDetached } from '@/lib/jws-signer';
 import { generateRSAKeyPair } from '@/lib/crypto';
 import { getS3Client, getConfigBucket } from '@/lib/storage';
 import { storePrivateKey } from '@/lib/key-protection';
@@ -47,9 +47,10 @@ export async function POST(request: NextRequest) {
     // Ensure app has a signing key (create one if none exists)
     await ensureSigningKey(appId);
 
-    // Sign the configuration with JWS
+    // Serialize ONCE, then sign exactly these bytes with a detached JWS so the
+    // signature binds to the precise config.json the SDK will fetch.
     const configContent = JSON.stringify(publishedConfig, null, 2);
-    const signingResult = await signConfig(appId, publishedConfig);
+    const signingResult = await signConfigDetached(appId, configContent);
 
     // Upload config to S3 with signature
     const configKey = `${appIdentifier}/config.json`;

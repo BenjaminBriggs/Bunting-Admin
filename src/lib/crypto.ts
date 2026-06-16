@@ -34,6 +34,15 @@ export function generateKeyId(): string {
 }
 
 /**
+ * Generate a cryptographically secure salt for deterministic user bucketing.
+ * Must be a CSPRNG (not Math.random) — the salt is the only entropy preventing
+ * a predictable, biased bucket assignment.
+ */
+export function generateSalt(): string {
+  return randomBytes(16).toString('hex');
+}
+
+/**
  * Generate an RSA key pair for JWS signing
  * Returns both public and private keys in PEM format with a generated kid
  */

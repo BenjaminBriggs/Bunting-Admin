@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createRolloutSchema, zodErrorResponse } from '@/lib/validation-schemas';
+import { generateSalt } from '@/lib/crypto';
 
 // GET /api/rollouts?appId=xxx
 export async function GET(request: NextRequest) {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate salt for consistent user bucketing
-    const salt = Math.random().toString(36).substring(2, 15);
+    const salt = generateSalt();
 
     const rollout = await prisma.testRollout.create({
       data: {

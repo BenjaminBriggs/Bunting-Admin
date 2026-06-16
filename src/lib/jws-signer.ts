@@ -8,6 +8,7 @@
 import { SignJWT, importPKCS8, importSPKI, jwtVerify } from 'jose';
 import { prisma } from './db';
 import { loadPrivateKey } from './key-protection';
+import { signDetached } from './detached-signature';
 
 export interface SigningResult {
   signature: string;     // Compact JWS string
@@ -70,6 +71,37 @@ export async function signConfig(appId: string, configJson: any): Promise<Signin
     console.error('Config signing failed:', error);
     throw new Error(`Failed to sign config: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+/**
+ * Sign the EXACT config bytes with a detached JWS (RFC 7797).
+ *
+ * This is what the publish pipeline uses: the signature binds to the precise
+ * bytes uploaded as config.json, and the SDK verifies its fetched bytes against
+ * it. `configString` MUST be the identical string uploaded to storage.
+ */
+export async function signConfigDetached(
+  appId: string,
+  configString: string
+): Promise<SigningResult> {
+  const signingKey = await prisma.signingKey.findFirst({
+    where: { appId, isActive: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!signingKey) {
+    throw new Error(`No active signing key found for app ${appId}`);
+  }
+
+  const privateKeyPem = await loadPrivateKey(signingKey.privateKey);
+  const privateKey = await importPKCS8(privateKeyPem, signingKey.algorithm);
+
+  const signature = await signDetached(configString, privateKey, {
+    alg: signingKey.algorithm,
+    kid: signingKey.kid,
+  });
+
+  return { signature, keyId: signingKey.kid, algorithm: signingKey.algorithm };
 }
 
 /**

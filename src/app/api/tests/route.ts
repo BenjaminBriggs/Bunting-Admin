@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createTestSchema, zodErrorResponse } from '@/lib/validation-schemas';
+import { generateSalt } from '@/lib/crypto';
 
 // GET /api/tests?appId=xxx
 export async function GET(request: NextRequest) {
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate salt for consistent user bucketing
-    const salt = Math.random().toString(36).substring(2, 15);
+    const salt = generateSalt();
 
     // Create variants object with default null values for each environment
     const variants: Record<string, any> = {};
