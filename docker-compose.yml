@@ -45,7 +45,10 @@ services:
       # Shield image-built artefacts from the bind mounts above.
       - /app/node_modules
       - /app/.next
-    command: sh -c "npx prisma db push --skip-generate && npm run dev"
+    # Apply versioned migrations (not `db push`) so dev matches prod. On a fresh
+    # volume this applies 0_init; if you have a pre-migrations volume, reset it
+    # with `docker compose down -v`.
+    command: sh -c "npx prisma migrate deploy && npm run dev"
 
   dex:
     image: ghcr.io/dexidp/dex:latest

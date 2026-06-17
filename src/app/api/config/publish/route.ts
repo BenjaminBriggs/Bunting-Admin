@@ -1,7 +1,9 @@
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { identityFromRequest } from '@/lib/auth-session';
 import { getConfigChanges } from '@/lib/config-comparison';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { generateRSAKeyPair } from '@/lib/crypto';
@@ -9,6 +11,7 @@ import { prisma } from '@/lib/db';
 import { signConfigDetached } from '@/lib/jws-signer';
 import { storePrivateKey } from '@/lib/key-protection';
 import { getConfigBucket, getS3Client } from '@/lib/storage';
+import { computeNextVersion } from '@/lib/versioning';
 
 const publishConfigSchema = z.object({
 	appId: z.string(),
@@ -25,79 +28,108 @@ export async function POST(request: NextRequest) {
 
 		const bucketName = getConfigBucket();
 
+		// Who is publishing — works in both oidc and proxy auth modes.
+		const identity = await identityFromRequest(request.headers);
+		const publishedBy = identity?.email ?? 'unknown';
+
 		// Generate current config
 		const baseConfig = await generateConfigFromDb(appId);
-
-		// Get app identifier from the config
 		const appIdentifier = baseConfig.app_identifier;
 
-		// Generate version number
-		const version = await generateNextVersion(appId, appIdentifier);
-
-		// Get previous published config for comparison
+		// Previous published config (for the changelog diff).
 		const previousConfig = await getPublishedConfigFromS3(appIdentifier).catch(
 			() => ({ config: null }),
 		);
-		const configChanges = getConfigChanges(baseConfig, previousConfig.config);
 
-		// Create final publishable config
+		// Ensure app has a signing key (create one if none exists)
+		await ensureSigningKey(appId);
+
+		// Allocate + RESERVE the version atomically. A per-app advisory lock
+		// serializes concurrent publishes so two instances can't mint the same N.
+		const today = new Date().toISOString().split('T')[0];
+		const reservation = await prisma.$transaction(async (tx) => {
+			await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${appId}))`;
+			const rows = await tx.auditLog.findMany({
+				where: { appId, configVersion: { startsWith: today } },
+				select: { configVersion: true },
+			});
+			const version = computeNextVersion(
+				rows.map((r) => r.configVersion),
+				today,
+			);
+			const audit = await tx.auditLog.create({
+				data: {
+					appId,
+					configVersion: version,
+					publishedAt: new Date(),
+					publishedBy,
+					changelog,
+					configDiff: {},
+				},
+			});
+			return { version, auditId: audit.id };
+		});
+		const version = reservation.version;
+
+		// Build + sign exactly the bytes we upload.
 		const publishedConfig = {
 			...baseConfig,
 			config_version: version,
 			published_at: new Date().toISOString(),
 		};
-
-		// Ensure app has a signing key (create one if none exists)
-		await ensureSigningKey(appId);
-
-		// Serialize ONCE, then sign exactly these bytes with a detached JWS so the
-		// signature binds to the precise config.json the SDK will fetch.
 		const configContent = JSON.stringify(publishedConfig, null, 2);
 		const signingResult = await signConfigDetached(appId, configContent);
 
-		// Upload config to S3 with signature
 		const configKey = `${appIdentifier}/config.json`;
 		const signatureKey = `${appIdentifier}/config.json.sig`;
 
-		// Upload the config file
-		const configCommand = new PutObjectCommand({
-			Bucket: bucketName,
-			Key: configKey,
-			Body: configContent,
-			ContentType: 'application/json',
-			CacheControl: 'max-age=300, stale-while-revalidate=86400',
-			Metadata: {
-				'x-bunting-key-id': signingResult.keyId,
-				'x-bunting-algorithm': signingResult.algorithm,
-				'x-bunting-version': version,
+		// Upload the signature FIRST, then config.json. The SDK keys on config.json
+		// (and derives the .sig URL from it), so once config.json lands its matching
+		// signature is already present. Two S3 objects can't be updated truly
+		// atomically; this ordering keeps a reader either consistent or safely
+		// falling back to its cached config.
+		await s3Client.send(
+			new PutObjectCommand({
+				Bucket: bucketName,
+				Key: signatureKey,
+				Body: signingResult.signature,
+				ContentType: 'text/plain',
+				CacheControl: 'max-age=300, stale-while-revalidate=86400',
+			}),
+		);
+		await s3Client.send(
+			new PutObjectCommand({
+				Bucket: bucketName,
+				Key: configKey,
+				Body: configContent,
+				ContentType: 'application/json',
+				CacheControl: 'max-age=300, stale-while-revalidate=86400',
+				Metadata: {
+					'x-bunting-key-id': signingResult.keyId,
+					'x-bunting-algorithm': signingResult.algorithm,
+					'x-bunting-version': version,
+				},
+			}),
+		);
+
+		// Finalize the reserved audit row now that the upload succeeded.
+		const configChanges = getConfigChanges(baseConfig, previousConfig.config);
+		const flagCount = Object.keys(publishedConfig.flags || {}).length;
+		const cohortCount = Object.keys(
+			(publishedConfig as { cohorts?: object }).cohorts || {},
+		).length;
+		const artifactSize = configContent.length;
+		await prisma.auditLog.update({
+			where: { id: reservation.auditId },
+			data: {
+				configDiff: {
+					changes: configChanges,
+					flagCount,
+					cohortCount,
+					configSize: artifactSize,
+				} as unknown as Prisma.InputJsonValue,
+				artifactSize,
 			},
-		});
-
-		// Upload the signature as a separate file (for detached signature support)
-		const signatureCommand = new PutObjectCommand({
-			Bucket: bucketName,
-			Key: signatureKey,
-			Body: signingResult.signature,
-			ContentType: 'text/plain',
-			CacheControl: 'max-age=300, stale-while-revalidate=86400',
-		});
-
-		// Upload both files
-		await Promise.all([
-			s3Client.send(configCommand),
-			s3Client.send(signatureCommand),
-		]);
-
-		// Store publish history in database
-		await storePublishHistory({
-			appId,
-			version,
-			changelog,
-			publishedBy: 'admin@example.com',
-			configContent: publishedConfig,
-			changes: configChanges,
-			signature: signingResult.signature,
-			keyId: signingResult.keyId,
 		});
 
 		return NextResponse.json({
@@ -124,76 +156,6 @@ export async function POST(request: NextRequest) {
 			{ status: 500 },
 		);
 	}
-}
-
-async function generateNextVersion(
-	appId: string,
-	appIdentifier: string,
-): Promise<string> {
-	const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-
-	// Query database for existing versions today
-	const existingVersions = await prisma.auditLog.findMany({
-		where: {
-			appId,
-			configVersion: {
-				startsWith: today,
-			},
-		},
-		select: {
-			configVersion: true,
-		},
-		orderBy: {
-			configVersion: 'desc',
-		},
-	});
-
-	// Find the highest version number for today
-	let maxVersionNumber = 0;
-	for (const version of existingVersions) {
-		const versionParts = version.configVersion.split('.');
-		if (versionParts.length === 2 && versionParts[0] === today) {
-			const versionNumber = parseInt(versionParts[1], 10);
-			if (versionNumber > maxVersionNumber) {
-				maxVersionNumber = versionNumber;
-			}
-		}
-	}
-
-	return `${today}.${maxVersionNumber + 1}`;
-}
-
-async function storePublishHistory(data: {
-	appId: string;
-	version: string;
-	changelog: string;
-	publishedBy: string;
-	configContent: any;
-	changes: any[];
-	signature: string;
-	keyId: string;
-}) {
-	// Count flags and cohorts in config
-	const flagCount = Object.keys(data.configContent.flags || {}).length;
-	const cohortCount = Object.keys(data.configContent.cohorts || {}).length;
-
-	// Store in audit log
-	await prisma.auditLog.create({
-		data: {
-			appId: data.appId,
-			configVersion: data.version,
-			publishedAt: new Date(),
-			publishedBy: data.publishedBy,
-			changelog: data.changelog,
-			configDiff: {
-				changes: data.changes,
-				flagCount,
-				cohortCount,
-				configSize: JSON.stringify(data.configContent).length,
-			},
-			artifactSize: JSON.stringify(data.configContent).length,
-		},
-	});
 }
 
 async function getPublishedConfigFromS3(
