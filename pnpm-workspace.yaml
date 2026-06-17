@@ -1,0 +1,18 @@
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  sharp: true
+  msw: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@aws-sdk/client-kms@3.1070.0'
+overrides:
+  # Jest shipped an inconsistent 30.4.x point release: jest-runtime resolves to
+  # 30.4.2 while jest-mock / jest-environment-* stay at 30.4.1, which breaks the
+  # module mocker (clearMocksOnScope). Pin the whole jest stack to one version.
+  jest-runtime: 30.4.1
+  '@jest/core': 30.4.1
+  # Preserve the coverage pin that the package.json `overrides` field carried under
+  # npm (pnpm reads overrides from here, not from package.json).
+  test-exclude: 7.0.1

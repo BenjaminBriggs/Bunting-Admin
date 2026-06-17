@@ -5,479 +5,456 @@
 // import { buntingTheme } from './buntingTheme';
 // <ThemeProvider theme={buntingTheme}><CssBaseline />{children}</ThemeProvider>
 
-import { createTheme, alpha } from "@mui/material/styles";
+import { alpha, createTheme } from '@mui/material/styles';
 // import { Components } from "@mui/material/styles/components";
+
+// Guardian Source accessible focus colour (the `@guardian/source` foundations `focus[400]`
+// token). Inlined rather than importing the package: only this single token applied here,
+// and the `@guardian/source/foundations` subpath export does not resolve under Turbopack +
+// pnpm. Keep this value in sync with Source if it changes.
+const guardianFocus = '#0077B6';
 
 // --- Brand Palette (Bunting logo colors) ---
 const brand = {
-  teal: {
-    main: "#56D5C4",
-    light: "#79DEBA",
-    dark: "#3BA896",
-  },
-  mint: {
-    main: "#79DEBA",
-    light: "#9AE6C7",
-    dark: "#56C29F",
-  },
-  yellow: {
-    main: "#F9C730",
-    light: "#FBD85A",
-    dark: "#E6B41D",
-  },
-  orange: {
-    main: "#FC7A51",
-    light: "#FD9572",
-    dark: "#E8633A",
-  },
-  error: {
-    main: "#FC7A51",
-    light: "#FD9572",
-    dark: "#E8633A",
-  },
-  neutral: {
-    defaultBg: "#FAF8F0",
-    paper: "#FFFEFB",
-    divider: "#E8E6DF",
-    textPrimary: "#13130F",
-    textSecondary: "#4A4A44",
-    textDisabled: "#8B8B85",
-  },
+	teal: {
+		main: '#56D5C4',
+		light: '#79DEBA',
+		dark: '#3BA896',
+	},
+	mint: {
+		main: '#79DEBA',
+		light: '#9AE6C7',
+		dark: '#56C29F',
+	},
+	yellow: {
+		main: '#F9C730',
+		light: '#FBD85A',
+		dark: '#E6B41D',
+	},
+	orange: {
+		main: '#FC7A51',
+		light: '#FD9572',
+		dark: '#E8633A',
+	},
+	error: {
+		main: '#FC7A51',
+		light: '#FD9572',
+		dark: '#E8633A',
+	},
+	neutral: {
+		defaultBg: '#FAF8F0',
+		paper: '#FFFEFB',
+		divider: '#E8E6DF',
+		textPrimary: '#13130F',
+		textSecondary: '#4A4A44',
+		textDisabled: '#8B8B85',
+	},
 };
 
 // --- Helpers ---
 const soften = (c: string, a = 0.08) => alpha(c, a);
 const elevate = (c: string, a = 0.12) => `0 8px 24px ${alpha(c, a)}`;
 // --- Custom shadows (grounded + subtle) ---
+// `focus` uses the @guardian/source accessible focus colour so keyboard focus is
+// always visible (the brand palette is intentionally low-contrast for this).
 const customShadows = {
-  xs: `0 0 4px ${alpha("#000", 0.04)}`,
-  sm: `0 0 8px ${alpha("#000", 0.04)}`,
-  md: `0 0 12px ${alpha("#000", 0.04)}`,
-  lg: `0 0 24px ${alpha("#000", 0.01)}`,
+	xs: `0 0 4px ${alpha('#000', 0.04)}`,
+	sm: `0 0 8px ${alpha('#000', 0.04)}`,
+	md: `0 0 12px ${alpha('#000', 0.04)}`,
+	lg: `0 0 24px ${alpha('#000', 0.01)}`,
+	focus: `0 0 0 3px ${guardianFocus}`,
 };
 
 export function createBuntingTheme() {
-  return createTheme({
-    cssVariables: true,
-    palette: {
-      mode: "light",
-      primary: {
-        main: brand.orange.main,
-        light: brand.teal.light,
-        dark: brand.teal.dark,
-        contrastText: "#FFFFFF",
-      },
-      secondary: {
-        main: brand.yellow.main,
-        light: brand.mint.light,
-        dark: brand.mint.dark,
-        contrastText: "#FFFFFF",
-      },
-      warning: {
-        main: brand.yellow.main,
-        light: brand.yellow.light,
-        dark: brand.yellow.dark,
-        contrastText: "#13130F",
-      },
-      error: {
-        main: brand.error.main,
-        light: brand.error.light,
-        dark: brand.error.dark,
-        contrastText: "#FFFFFF",
-      },
-      divider: brand.neutral.divider,
-      background: {
-        default: brand.neutral.defaultBg,
-        paper: brand.neutral.paper,
-      },
-      text: {
-        primary: brand.neutral.textPrimary,
-        secondary: brand.neutral.textSecondary,
-        disabled: brand.neutral.textDisabled,
-      },
-      success: {
-        main: brand.mint.dark,
-      },
-      info: {
-        main: brand.teal.dark,
-      },
-    },
-    shape: {
-      borderRadius: 24, // Friendly, rounded look
-    },
-    spacing: 8,
-    typography: {
-      // Belanosima for headings, Nunito for body text
-      fontFamily: [
-        "var(--font-nunito)",
-        "Nunito",
-        "ui-sans-serif",
-        "system-ui",
-        "-apple-system",
-        "Segoe UI",
-        "Roboto",
-        "sans-serif",
-      ].join(","),
-      h1: {
-        fontFamily: [
-          "var(--font-belanosima)",
-          "Belanosima",
-          "serif"
-        ].join(","),
-        fontWeight: 700,
-        letterSpacing: -0.5,
-      },
-      h2: {
-        fontFamily: [
-          "var(--font-belanosima)",
-          "Belanosima",
-          "serif"
-        ].join(","),
-        fontWeight: 700,
-        letterSpacing: -0.4,
-      },
-      h3: {
-        fontFamily: [
-          "var(--font-belanosima)",
-          "Belanosima",
-          "serif"
-        ].join(","),
-        fontWeight: 600,
-        letterSpacing: -0.2,
-      },
-      h4: {
-        fontFamily: [
-          "var(--font-belanosima)",
-          "Belanosima",
-          "serif"
-        ].join(","),
-        fontWeight: 600,
-      },
-      h5: {
-        fontFamily: [
-          "var(--font-belanosima)",
-          "Belanosima",
-          "serif"
-        ].join(","),
-        fontWeight: 600,
-      },
-      h6: {
-        fontFamily: [
-          "var(--font-belanosima)",
-          "Belanosima",
-          "serif"
-        ].join(","),
-        fontWeight: 600,
-      },
-      subtitle1: { fontWeight: 600 },
-      button: { fontWeight: 700, textTransform: "none", letterSpacing: 0.1 },
-      caption: {
-        fontFamily: [
-          "var(--font-nunito)",
-          "Nunito",
-          "sans-serif"
-        ].join(","),
-        fontSize: "0.75rem",
-      },
-      body2: {
-        fontFamily: [
-          "var(--font-nunito)",
-          "Nunito",
-          "sans-serif"
-        ].join(","),
-        fontSize: "0.875rem",
-      },
-    },
-    transitions: {
-      easing: {
-        easeInOut: "cubic-bezier(0.22, 1, 0.36, 1)", // playful springy feel
-        easeOut: "cubic-bezier(0.16, 1, 0.3, 1)",
-        easeIn: "cubic-bezier(0.7, 0, 0.84, 0)",
-        sharp: "cubic-bezier(0.4, 0, 0.6, 1)",
-      },
-      duration: {
-        shortest: 120,
-        shorter: 160,
-        short: 200,
-        standard: 240,
-        complex: 320,
-        enteringScreen: 220,
-        leavingScreen: 200,
-      },
-    },
-    components: {
-      MuiCssBaseline: {
-        styleOverrides: {
-          ":root": {
-            "--bunting-shadow-focus": (customShadows as any).focus,
-          },
-          body: {
-            backgroundColor: brand.neutral.defaultBg,
-          },
-          "*:focus-visible": {
-            outline: "none",
-            boxShadow: (customShadows as any).focus,
-            transition: "box-shadow 120ms",
-            borderRadius: 10,
-          },
-        },
-      },
+	return createTheme({
+		cssVariables: true,
+		palette: {
+			mode: 'light',
+			primary: {
+				main: brand.orange.main,
+				light: brand.teal.light,
+				dark: brand.teal.dark,
+				contrastText: '#FFFFFF',
+			},
+			secondary: {
+				main: brand.yellow.main,
+				light: brand.mint.light,
+				dark: brand.mint.dark,
+				contrastText: '#FFFFFF',
+			},
+			warning: {
+				main: brand.yellow.main,
+				light: brand.yellow.light,
+				dark: brand.yellow.dark,
+				contrastText: '#13130F',
+			},
+			error: {
+				main: brand.error.main,
+				light: brand.error.light,
+				dark: brand.error.dark,
+				contrastText: '#FFFFFF',
+			},
+			divider: brand.neutral.divider,
+			background: {
+				default: brand.neutral.defaultBg,
+				paper: brand.neutral.paper,
+			},
+			text: {
+				primary: brand.neutral.textPrimary,
+				secondary: brand.neutral.textSecondary,
+				disabled: brand.neutral.textDisabled,
+			},
+			success: {
+				main: brand.mint.dark,
+			},
+			info: {
+				main: brand.teal.dark,
+			},
+		},
+		shape: {
+			borderRadius: 24, // Friendly, rounded look
+		},
+		spacing: 8,
+		typography: {
+			// Belanosima for headings, Nunito for body text
+			fontFamily: [
+				'var(--font-nunito)',
+				'Nunito',
+				'ui-sans-serif',
+				'system-ui',
+				'-apple-system',
+				'Segoe UI',
+				'Roboto',
+				'sans-serif',
+			].join(','),
+			h1: {
+				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
+				fontWeight: 700,
+				letterSpacing: -0.5,
+			},
+			h2: {
+				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
+				fontWeight: 700,
+				letterSpacing: -0.4,
+			},
+			h3: {
+				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
+				fontWeight: 600,
+				letterSpacing: -0.2,
+			},
+			h4: {
+				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
+				fontWeight: 600,
+			},
+			h5: {
+				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
+				fontWeight: 600,
+			},
+			h6: {
+				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
+				fontWeight: 600,
+			},
+			subtitle1: { fontWeight: 600 },
+			button: { fontWeight: 700, textTransform: 'none', letterSpacing: 0.1 },
+			caption: {
+				fontFamily: ['var(--font-nunito)', 'Nunito', 'sans-serif'].join(','),
+				fontSize: '0.75rem',
+			},
+			body2: {
+				fontFamily: ['var(--font-nunito)', 'Nunito', 'sans-serif'].join(','),
+				fontSize: '0.875rem',
+			},
+		},
+		transitions: {
+			easing: {
+				easeInOut: 'cubic-bezier(0.22, 1, 0.36, 1)', // playful springy feel
+				easeOut: 'cubic-bezier(0.16, 1, 0.3, 1)',
+				easeIn: 'cubic-bezier(0.7, 0, 0.84, 0)',
+				sharp: 'cubic-bezier(0.4, 0, 0.6, 1)',
+			},
+			duration: {
+				shortest: 120,
+				shorter: 160,
+				short: 200,
+				standard: 240,
+				complex: 320,
+				enteringScreen: 220,
+				leavingScreen: 200,
+			},
+		},
+		components: {
+			MuiCssBaseline: {
+				styleOverrides: {
+					':root': {
+						'--bunting-shadow-focus': customShadows.focus,
+					},
+					body: {
+						backgroundColor: brand.neutral.defaultBg,
+					},
+					'*:focus-visible': {
+						outline: 'none',
+						boxShadow: customShadows.focus,
+						transition: 'box-shadow 120ms',
+						borderRadius: 10,
+					},
+				},
+			},
 
-      // Buttons: friendly, slightly elevated, with fun hover
-      MuiButton: {
-        defaultProps: { disableRipple: true },
-        styleOverrides: {
-          root: ({ ownerState, theme }: any) => ({
-            borderRadius: 999, // Full pill shape
-            paddingInline: 16,
-            paddingBlock: 10,
-            boxShadow: "none",
-            transition: theme.transitions.create(
-              ["transform", "box-shadow", "background-color"],
-              {
-                duration: theme.transitions.duration.shorter,
-                easing: theme.transitions.easing.easeOut,
-              },
-            ),
-            "&:hover": {
-              transform: "translateY(-1px)",
-              boxShadow: customShadows.sm,
-            },
-            "&:active": {
-              transform: "translateY(0)",
-              boxShadow: customShadows.xs,
-            },
-          }),
-          containedPrimary: {
-            backgroundColor: brand.yellow.main,
-            "&:hover": {
-              backgroundColor: brand.orange.dark,
-            },
-          },
-          containedSecondary: {
-            backgroundColor: brand.mint.main,
-            "&:hover": {
-              backgroundColor: brand.mint.dark,
-            },
-          },
-          outlined: {
-            borderWidth: 2,
-            "&:hover": { backgroundColor: soften("#000", 0.04) },
-          },
-          sizeSmall: { borderRadius: 999, paddingBlock: 8, paddingInline: 14 },
-          sizeLarge: { borderRadius: 999, paddingBlock: 12, paddingInline: 22 },
-        },
-        variants: [
-          {
-            props: { color: "warning", variant: "contained" },
-            style: {
-              color: "#13130F",
-              backgroundColor: brand.yellow.main,
-              "&:hover": {
-                backgroundColor: brand.yellow.dark,
-              },
-            },
-          },
-          {
-            props: { variant: "soft" as any },
-            style: {
-              backgroundColor: alpha(brand.yellow.main, 0.12),
-              color: brand.teal.dark,
-              "&:hover": { backgroundColor: alpha(brand.teal.main, 0.18) },
-            },
-          },
-        ],
-      },
+			// Buttons: friendly, slightly elevated, with fun hover
+			MuiButton: {
+				defaultProps: { disableRipple: true },
+				styleOverrides: {
+					root: ({ ownerState, theme }: any) => ({
+						borderRadius: 999, // Full pill shape
+						paddingInline: 16,
+						paddingBlock: 10,
+						boxShadow: 'none',
+						transition: theme.transitions.create(
+							['transform', 'box-shadow', 'background-color'],
+							{
+								duration: theme.transitions.duration.shorter,
+								easing: theme.transitions.easing.easeOut,
+							},
+						),
+						'&:hover': {
+							transform: 'translateY(-1px)',
+							boxShadow: customShadows.sm,
+						},
+						'&:active': {
+							transform: 'translateY(0)',
+							boxShadow: customShadows.xs,
+						},
+					}),
+					containedPrimary: {
+						backgroundColor: brand.yellow.main,
+						'&:hover': {
+							backgroundColor: brand.orange.dark,
+						},
+					},
+					containedSecondary: {
+						backgroundColor: brand.mint.main,
+						'&:hover': {
+							backgroundColor: brand.mint.dark,
+						},
+					},
+					outlined: {
+						borderWidth: 2,
+						'&:hover': { backgroundColor: soften('#000', 0.04) },
+					},
+					sizeSmall: { borderRadius: 999, paddingBlock: 8, paddingInline: 14 },
+					sizeLarge: { borderRadius: 999, paddingBlock: 12, paddingInline: 22 },
+				},
+				variants: [
+					{
+						props: { color: 'warning', variant: 'contained' },
+						style: {
+							color: '#13130F',
+							backgroundColor: brand.yellow.main,
+							'&:hover': {
+								backgroundColor: brand.yellow.dark,
+							},
+						},
+					},
+					{
+						props: { variant: 'soft' as any },
+						style: {
+							backgroundColor: alpha(brand.yellow.main, 0.12),
+							color: brand.teal.dark,
+							'&:hover': { backgroundColor: alpha(brand.teal.main, 0.18) },
+						},
+					},
+				],
+			},
 
-      // Chips: pill-y, playful
-      MuiChip: {
-        styleOverrides: {
-          root: {
-            borderRadius: 999,
-            fontWeight: 700,
-          },
-          colorPrimary: {
-            backgroundColor: alpha(brand.yellow.main, 0.16),
-            color: brand.orange.dark,
-          },
-          colorSecondary: {
-            backgroundColor: alpha(brand.mint.main, 0.18),
-            color: brand.mint.dark,
-          },
-        },
-      },
+			// Chips: pill-y, playful
+			MuiChip: {
+				styleOverrides: {
+					root: {
+						borderRadius: 999,
+						fontWeight: 700,
+					},
+					colorPrimary: {
+						backgroundColor: alpha(brand.yellow.main, 0.16),
+						color: brand.orange.dark,
+					},
+					colorSecondary: {
+						backgroundColor: alpha(brand.mint.main, 0.18),
+						color: brand.mint.dark,
+					},
+				},
+			},
 
-      // Cards & Paper: soft edges and subtle shadows
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            backgroundColor: "#FFFEFB",
-            borderRadius: 24,
-            boxShadow: customShadows.xs,
-            backgroundImage: "none",
-          },
-          outlined: {
-            borderColor: alpha("#000", 0.08),
-          },
-        },
-      },
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            borderRadius: 20,
-            boxShadow: customShadows.sm,
-          },
-        },
-      },
+			// Cards & Paper: soft edges and subtle shadows
+			MuiPaper: {
+				styleOverrides: {
+					root: {
+						backgroundColor: '#FFFEFB',
+						borderRadius: 24,
+						boxShadow: customShadows.xs,
+						backgroundImage: 'none',
+					},
+					outlined: {
+						borderColor: alpha('#000', 0.08),
+					},
+				},
+			},
+			MuiCard: {
+				styleOverrides: {
+					root: {
+						borderRadius: 20,
+						boxShadow: customShadows.sm,
+					},
+				},
+			},
 
-      // AppBar: translucent glassy header
-      MuiAppBar: {
-        styleOverrides: {
-          root: {
-            backgroundColor: "#FFFEFB",
-            backdropFilter: "saturate(1.2) blur(8px)",
-            color: brand.neutral.textPrimary,
-            boxShadow: "none",
-            borderBottom: `1px solid ${brand.neutral.divider}`,
-          },
-        },
-      },
+			// AppBar: translucent glassy header
+			MuiAppBar: {
+				styleOverrides: {
+					root: {
+						backgroundColor: '#FFFEFB',
+						backdropFilter: 'saturate(1.2) blur(8px)',
+						color: brand.neutral.textPrimary,
+						boxShadow: 'none',
+						borderBottom: `1px solid ${brand.neutral.divider}`,
+					},
+				},
+			},
 
-      // Tabs: underlined with a bubble indicator
-      MuiTabs: {
-        styleOverrides: {
-          indicator: {
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: alpha(brand.teal.main, 0.24),
-          },
-        },
-      },
-      MuiTab: {
-        styleOverrides: {
-          root: {
-            textTransform: "none",
-            fontWeight: 700,
-            borderRadius: 12,
-            minHeight: 44,
-            paddingInline: 14,
-            "&.Mui-selected": { color: brand.teal.dark },
-          },
-        },
-      },
+			// Tabs: underlined with a bubble indicator
+			MuiTabs: {
+				styleOverrides: {
+					indicator: {
+						height: 36,
+						borderRadius: 18,
+						backgroundColor: alpha(brand.teal.main, 0.24),
+					},
+				},
+			},
+			MuiTab: {
+				styleOverrides: {
+					root: {
+						textTransform: 'none',
+						fontWeight: 700,
+						borderRadius: 12,
+						minHeight: 44,
+						paddingInline: 14,
+						'&.Mui-selected': { color: brand.teal.dark },
+					},
+				},
+			},
 
-      // Inputs: soft backgrounds, clear focus ring
-      MuiTextField: {
-        defaultProps: { variant: "outlined" },
-      },
-      MuiOutlinedInput: {
-        styleOverrides: {
-          root: {
-            borderRadius: 14,
-            backgroundColor: "#FFFEFB",
-            "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: alpha(brand.yellow.main, 0.5),
-            },
-            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: brand.orange.main,
-              boxShadow: (customShadows as any).focus,
-            },
-          },
-          notchedOutline: { borderWidth: 2 },
-          input: { paddingBlock: 12, paddingInline: 14 },
-        },
-      },
-      MuiInputLabel: {
-        styleOverrides: { root: { fontWeight: 700 } },
-      },
-      MuiSelect: {
-        styleOverrides: {
-          select: { borderRadius: 12 },
-          icon: { color: brand.neutral.textSecondary },
-        },
-      },
+			// Inputs: soft backgrounds, clear focus ring
+			MuiTextField: {
+				defaultProps: { variant: 'outlined' },
+			},
+			MuiOutlinedInput: {
+				styleOverrides: {
+					root: {
+						borderRadius: 14,
+						backgroundColor: '#FFFEFB',
+						'&:hover .MuiOutlinedInput-notchedOutline': {
+							borderColor: alpha(brand.yellow.main, 0.5),
+						},
+						'&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+							borderColor: brand.orange.main,
+							boxShadow: customShadows.focus,
+						},
+					},
+					notchedOutline: { borderWidth: 2 },
+					input: { paddingBlock: 12, paddingInline: 14 },
+				},
+			},
+			MuiInputLabel: {
+				styleOverrides: { root: { fontWeight: 700 } },
+			},
+			MuiSelect: {
+				styleOverrides: {
+					select: { borderRadius: 12 },
+					icon: { color: brand.neutral.textSecondary },
+				},
+			},
 
-      // Switches and toggles
-      MuiSwitch: {
-        styleOverrides: {
-          thumb: { boxShadow: customShadows.xs },
-          track: { backgroundColor: alpha(brand.teal.main, 0.25) },
-        },
-      },
+			// Switches and toggles
+			MuiSwitch: {
+				styleOverrides: {
+					thumb: { boxShadow: customShadows.xs },
+					track: { backgroundColor: alpha(brand.teal.main, 0.25) },
+				},
+			},
 
-      // Lists & Navigation (great for sidebars)
-      MuiDrawer: {
-        styleOverrides: {
-          paper: {
-            backgroundColor: "#FFFEFB",
-            borderRight: `1px solid ${brand.neutral.divider}`,
-          },
-        },
-      },
-      MuiListItemButton: {
-        styleOverrides: {
-          root: {
-            borderRadius: 12,
-            marginInline: 6,
-            "&.Mui-selected": {
-              backgroundColor: alpha(brand.yellow.main, 0.14),
-              "&:hover": { backgroundColor: alpha(brand.yellow.main, 0.2) },
-            },
-          },
-        },
-      },
+			// Lists & Navigation (great for sidebars)
+			MuiDrawer: {
+				styleOverrides: {
+					paper: {
+						backgroundColor: '#FFFEFB',
+						borderRight: `1px solid ${brand.neutral.divider}`,
+					},
+				},
+			},
+			MuiListItemButton: {
+				styleOverrides: {
+					root: {
+						borderRadius: 12,
+						marginInline: 6,
+						'&.Mui-selected': {
+							backgroundColor: alpha(brand.yellow.main, 0.14),
+							'&:hover': { backgroundColor: alpha(brand.yellow.main, 0.2) },
+						},
+					},
+				},
+			},
 
-      // Tables (denser but friendly)
-      MuiTableHead: {
-        styleOverrides: {
-          root: {
-            backgroundColor: alpha(brand.teal.light, 0.2),
-          },
-        },
-      },
-      MuiTableCell: {
-        styleOverrides: {
-          root: { borderBottom: `1px solid ${brand.neutral.divider}` },
-          head: { fontWeight: 800 },
-        },
-      },
+			// Tables (denser but friendly)
+			MuiTableHead: {
+				styleOverrides: {
+					root: {
+						backgroundColor: alpha(brand.teal.light, 0.2),
+					},
+				},
+			},
+			MuiTableCell: {
+				styleOverrides: {
+					root: { borderBottom: `1px solid ${brand.neutral.divider}` },
+					head: { fontWeight: 800 },
+				},
+			},
 
-      // Feedback
-      MuiAlert: {
-        styleOverrides: {
-          root: { borderRadius: 14 },
-          standardInfo: { backgroundColor: alpha(brand.teal.light, 0.28) },
-          standardSuccess: { backgroundColor: alpha(brand.mint.light, 0.3) },
-          standardWarning: {
-            backgroundColor: alpha(brand.yellow.light, 0.4),
-            color: "#13130F",
-          },
-          standardError: { backgroundColor: alpha(brand.error.light, 0.3) },
-        },
-      },
+			// Feedback
+			MuiAlert: {
+				styleOverrides: {
+					root: { borderRadius: 14 },
+					standardInfo: { backgroundColor: alpha(brand.teal.light, 0.28) },
+					standardSuccess: { backgroundColor: alpha(brand.mint.light, 0.3) },
+					standardWarning: {
+						backgroundColor: alpha(brand.yellow.light, 0.4),
+						color: '#13130F',
+					},
+					standardError: { backgroundColor: alpha(brand.error.light, 0.3) },
+				},
+			},
 
-      MuiTooltip: {
-        styleOverrides: {
-          tooltip: {
-            borderRadius: 10,
-            background: brand.neutral.textPrimary,
-          },
-          arrow: { color: brand.neutral.textPrimary },
-        },
-      },
+			MuiTooltip: {
+				styleOverrides: {
+					tooltip: {
+						borderRadius: 10,
+						background: brand.neutral.textPrimary,
+					},
+					arrow: { color: brand.neutral.textPrimary },
+				},
+			},
 
-      MuiAccordion: {
-        styleOverrides: {
-          root: {
-            borderRadius: 16,
-            "&::before": { display: "none" },
-            boxShadow: customShadows.xs,
-            overflow: "hidden",
-          },
-        },
-      },
-    } as any,
-  });
+			MuiAccordion: {
+				styleOverrides: {
+					root: {
+						borderRadius: 16,
+						'&::before': { display: 'none' },
+						boxShadow: customShadows.xs,
+						overflow: 'hidden',
+					},
+				},
+			},
+		} as any,
+	});
 }
 
 // Default theme export for convenience
@@ -485,31 +462,31 @@ export const buntingTheme = createBuntingTheme();
 
 // --- Optional: a ready-made dark theme variant (toggle when needed)
 export const buntingDarkTheme = createTheme({
-  ...buntingTheme,
-  palette: {
-    mode: "dark",
-    primary: buntingTheme.palette.primary,
-    secondary: buntingTheme.palette.secondary,
-    warning: buntingTheme.palette.warning,
-    error: buntingTheme.palette.error,
-    background: { default: "#1A1A16", paper: "#242420" },
-    divider: alpha("#FFFFFF", 0.12),
-    text: {
-      primary: "#FAF8F0",
-      secondary: alpha("#FAF8F0", 0.72),
-      disabled: alpha("#FAF8F0", 0.44),
-    },
-    success: { main: brand.mint.light },
-    info: { main: brand.teal.light },
-  },
-  components: {
-    ...buntingTheme.components,
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          backgroundColor: "#1A1A16",
-        },
-      },
-    },
-  },
+	...buntingTheme,
+	palette: {
+		mode: 'dark',
+		primary: buntingTheme.palette.primary,
+		secondary: buntingTheme.palette.secondary,
+		warning: buntingTheme.palette.warning,
+		error: buntingTheme.palette.error,
+		background: { default: '#1A1A16', paper: '#242420' },
+		divider: alpha('#FFFFFF', 0.12),
+		text: {
+			primary: '#FAF8F0',
+			secondary: alpha('#FAF8F0', 0.72),
+			disabled: alpha('#FAF8F0', 0.44),
+		},
+		success: { main: brand.mint.light },
+		info: { main: brand.teal.light },
+	},
+	components: {
+		...buntingTheme.components,
+		MuiCssBaseline: {
+			styleOverrides: {
+				body: {
+					backgroundColor: '#1A1A16',
+				},
+			},
+		},
+	},
 });

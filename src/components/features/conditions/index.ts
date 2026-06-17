@@ -1,4 +1,8 @@
-export { ConditionsProvider, useConditions, useConditionContext } from './conditions-context';
+export {
+	ConditionsProvider,
+	useConditions,
+	useConditionContext,
+} from './conditions-context';
 export { ConditionBuilderModal } from './condition-builder-modal';
 export { VariantCreatorModal } from './variant-creator-modal';
 export { ConditionEditor } from './condition-editor';

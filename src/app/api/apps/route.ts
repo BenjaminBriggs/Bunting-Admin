@@ -1,151 +1,166 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { z } from 'zod';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { generateConfigFromDb } from '@/lib/config-generator';
-import { getS3Client, getConfigBucket, artifactUrlFor } from '@/lib/storage';
+import { prisma } from '@/lib/db';
+import { artifactUrlFor, getConfigBucket, getS3Client } from '@/lib/storage';
 
 const createAppSchema = z.object({
-  name: z.string(),
-  identifier: z.string(),
-  publicKeys: z.array(z.object({
-    kid: z.string(),
-    pem: z.string()
-  })),
-  fetchPolicy: z.object({
-    min_interval_seconds: z.number(),
-    hard_ttl_days: z.number()
-  }),
+	name: z.string(),
+	identifier: z.string(),
+	publicKeys: z.array(
+		z.object({
+			kid: z.string(),
+			pem: z.string(),
+		}),
+	),
+	fetchPolicy: z.object({
+		min_interval_seconds: z.number(),
+		hard_ttl_days: z.number(),
+	}),
 });
 
 const s3Client = getS3Client();
 
 async function publishInitialConfig(appId: string): Promise<void> {
-  const bucketName = getConfigBucket();
+	const bucketName = getConfigBucket();
 
-  // Generate initial config
-  const baseConfig = await generateConfigFromDb(appId);
-  const appIdentifier = baseConfig.app_identifier;
-  
-  // Create initial config with version 1.0
-  const publishedConfig = {
-    ...baseConfig,
-    config_version: new Date().toISOString().split('T')[0] + '.1',
-    published_at: new Date().toISOString(),
-  };
+	// Generate initial config
+	const baseConfig = await generateConfigFromDb(appId);
+	const appIdentifier = baseConfig.app_identifier;
 
-  const configKey = `${appIdentifier}/config.json`;
+	// Create initial config with version 1.0
+	const publishedConfig = {
+		...baseConfig,
+		config_version: new Date().toISOString().split('T')[0] + '.1',
+		published_at: new Date().toISOString(),
+	};
 
-  try {
-    // Upload config to S3
-    const putConfigCommand = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: configKey,
-      Body: JSON.stringify(publishedConfig, null, 2),
-      ContentType: 'application/json',
-      CacheControl: 'max-age=300', // 5 minutes
-    });
+	const configKey = `${appIdentifier}/config.json`;
 
-    await s3Client.send(putConfigCommand);
+	try {
+		// Upload config to S3
+		const putConfigCommand = new PutObjectCommand({
+			Bucket: bucketName,
+			Key: configKey,
+			Body: JSON.stringify(publishedConfig, null, 2),
+			ContentType: 'application/json',
+			CacheControl: 'max-age=300', // 5 minutes
+		});
 
-    // Create audit log entry
-    await prisma.auditLog.create({
-      data: {
-        appId,
-        configVersion: publishedConfig.config_version,
-        publishedAt: new Date(),
-        publishedBy: 'system',
-        changelog: 'Initial application configuration',
-        configDiff: {},
-        artifactSize: JSON.stringify(publishedConfig).length
-      }
-    });
-  } catch (error) {
-    console.error('Error publishing initial config:', error);
-    throw error;
-  }
+		await s3Client.send(putConfigCommand);
+
+		// Create audit log entry
+		await prisma.auditLog.create({
+			data: {
+				appId,
+				configVersion: publishedConfig.config_version,
+				publishedAt: new Date(),
+				publishedBy: 'system',
+				changelog: 'Initial application configuration',
+				configDiff: {},
+				artifactSize: JSON.stringify(publishedConfig).length,
+			},
+		});
+	} catch (error) {
+		console.error('Error publishing initial config:', error);
+		throw error;
+	}
 }
 
 // GET /api/apps - List all apps
 export async function GET() {
-  try {
-    const apps = await prisma.app.findMany({
-      orderBy: { name: 'asc' },
-      include: {
-        _count: {
-          select: {
-            flags: true,
-            cohorts: true,
-            testRollouts: true
-          }
-        }
-      }
-    });
+	try {
+		const apps = await prisma.app.findMany({
+			orderBy: { name: 'asc' },
+			include: {
+				_count: {
+					select: {
+						flags: true,
+						cohorts: true,
+						testRollouts: true,
+					},
+				},
+			},
+		});
 
-    return NextResponse.json(apps);
-  } catch (error) {
-    console.error('Error fetching apps:', error);
-    return NextResponse.json({ error: 'Failed to fetch apps' }, { status: 500 });
-  }
+		return NextResponse.json(apps);
+	} catch (error) {
+		console.error('Error fetching apps:', error);
+		return NextResponse.json(
+			{ error: 'Failed to fetch apps' },
+			{ status: 500 },
+		);
+	}
 }
 
 // POST /api/apps - Create a new app
 export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const validatedData = createAppSchema.parse(body);
+	try {
+		const body = await request.json();
+		const validatedData = createAppSchema.parse(body);
 
-    // Check if app identifier already exists
-    const existingApp = await prisma.app.findUnique({
-      where: { identifier: validatedData.identifier }
-    });
+		// Check if app identifier already exists
+		const existingApp = await prisma.app.findUnique({
+			where: { identifier: validatedData.identifier },
+		});
 
-    if (existingApp) {
-      return NextResponse.json(
-        { error: 'An app with this identifier already exists' },
-        { status: 409 }
-      );
-    }
+		if (existingApp) {
+			return NextResponse.json(
+				{ error: 'An app with this identifier already exists' },
+				{ status: 409 },
+			);
+		}
 
-    const app = await prisma.app.create({
-      data: {
-        ...validatedData,
-        // Storage is a single global bucket; the public read URL is derived
-        // from CDN_BASE_URL, and per-app storage settings are no longer used.
-        artifactUrl: artifactUrlFor(validatedData.identifier),
-        storageConfig: {},
-      },
-      include: {
-        _count: {
-          select: {
-            flags: true,
-            cohorts: true,
-            testRollouts: true
-          }
-        }
-      }
-    });
+		const app = await prisma.app.create({
+			data: {
+				...validatedData,
+				// Storage is a single global bucket; the public read URL is derived
+				// from CDN_BASE_URL, and per-app storage settings are no longer used.
+				artifactUrl: artifactUrlFor(validatedData.identifier),
+				storageConfig: {},
+			},
+			include: {
+				_count: {
+					select: {
+						flags: true,
+						cohorts: true,
+						testRollouts: true,
+					},
+				},
+			},
+		});
 
-    // Publish initial empty config to validate storage settings
-    try {
-      await publishInitialConfig(app.id);
-    } catch (error) {
-      // If initial config publish fails, delete the app and return the error
-      await prisma.app.delete({ where: { id: app.id } });
-      console.error('Failed to publish initial config:', error);
-      return NextResponse.json(
-        { error: 'Failed to create initial configuration. Please check your storage settings.' },
-        { status: 500 }
-      );
-    }
+		// Publish initial empty config to validate storage settings
+		try {
+			await publishInitialConfig(app.id);
+		} catch (error) {
+			// If initial config publish fails, delete the app and return the error
+			await prisma.app.delete({ where: { id: app.id } });
+			console.error('Failed to publish initial config:', error);
+			return NextResponse.json(
+				{
+					error:
+						'Failed to create initial configuration. Please check your storage settings.',
+				},
+				{ status: 500 },
+			);
+		}
 
-    return NextResponse.json(app, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
-    }
-    
-    console.error('Error creating app:', error);
-    return NextResponse.json({ error: 'Failed to create app' }, { status: 500 });
-  }
+		return NextResponse.json(app, { status: 201 });
+	} catch (error) {
+		if (error instanceof z.ZodError) {
+			return NextResponse.json(
+				{ error: 'Invalid request data', details: error.issues },
+				{ status: 400 },
+			);
+		}
+
+		console.error('Error creating app:', error);
+		return NextResponse.json(
+			{ error: 'Failed to create app' },
+			{ status: 500 },
+		);
+	}
 }

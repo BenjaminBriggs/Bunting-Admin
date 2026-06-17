@@ -1,375 +1,383 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Box,
-  Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Alert,
-  Stack,
-  Chip,
-  Autocomplete,
-  IconButton
-} from '@mui/material';
 import { Add } from '@mui/icons-material';
-import { RuleCondition, RuleConditionType, RuleOperator } from '@/types/rules';
-import { conditionTemplates, operatorLabels } from '@/components/features/rules/rule-templates';
-import { useConditionContext, ConditionContextType } from './conditions-context';
+import {
+	Alert,
+	Autocomplete,
+	Box,
+	Button,
+	Chip,
+	Dialog,
+	DialogActions,
+	DialogContent,
+	DialogTitle,
+	FormControl,
+	IconButton,
+	InputLabel,
+	MenuItem,
+	Select,
+	Stack,
+	TextField,
+	Typography,
+} from '@mui/material';
+import { useCallback, useEffect, useState } from 'react';
+import {
+	conditionTemplates,
+	operatorLabels,
+} from '@/components/features/rules/rule-templates';
 import { generateId } from '@/lib/utils';
+import type {
+	RuleCondition,
+	RuleConditionType,
+	RuleOperator,
+} from '@/types/rules';
+import type { ConditionContextType } from './conditions-context';
+import { useConditionContext } from './conditions-context';
 
 interface ConditionBuilderModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSave: (condition: RuleCondition) => void;
-  existingCondition?: RuleCondition;
-  contextType: ConditionContextType;
+	open: boolean;
+	onClose: () => void;
+	onSave: (condition: RuleCondition) => void;
+	existingCondition?: RuleCondition;
+	contextType: ConditionContextType;
 }
 
 export function ConditionBuilderModal({
-  open,
-  onClose,
-  onSave,
-  existingCondition,
-  contextType
+	open,
+	onClose,
+	onSave,
+	existingCondition,
+	contextType,
 }: ConditionBuilderModalProps) {
-  const { cohorts, loading, error, config } = useConditionContext(contextType);
-  
-  const [condition, setCondition] = useState<RuleCondition>({
-    id: generateId(),
-    type: 'app_version',
-    operator: 'in',
-    values: []
-  });
-  const [valueInput, setValueInput] = useState('');
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+	const { cohorts, loading, error, config } = useConditionContext(contextType);
 
-  // Handle modal open/close and condition loading
-  useEffect(() => {
-    if (open) {
-      if (existingCondition) {
-        // Editing existing condition
-        setCondition(existingCondition);
-      } else {
-        // Creating new condition - use static default
-        setCondition({
-          id: generateId(),
-          type: 'app_version',
-          operator: 'in',
-          values: []
-        });
-      }
-      setValueInput('');
-      setValidationErrors([]);
-    }
-  }, [open, existingCondition]);
+	const [condition, setCondition] = useState<RuleCondition>({
+		id: generateId(),
+		type: 'app_version',
+		operator: 'in',
+		values: [],
+	});
+	const [valueInput, setValueInput] = useState('');
+	const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  const handleTypeChange = (newType: RuleConditionType) => {
-    const newTemplate = conditionTemplates.find(t => t.type === newType);
-    const defaultOperator = newTemplate?.operators[0] || 'equals';
+	// Handle modal open/close and condition loading
+	useEffect(() => {
+		if (open) {
+			if (existingCondition) {
+				// Editing existing condition
+				setCondition(existingCondition);
+			} else {
+				// Creating new condition - use static default
+				setCondition({
+					id: generateId(),
+					type: 'app_version',
+					operator: 'in',
+					values: [],
+				});
+			}
+			setValueInput('');
+			setValidationErrors([]);
+		}
+	}, [open, existingCondition]);
 
-    setCondition({
-      ...condition,
-      type: newType,
-      operator: defaultOperator,
-      values: []
-    });
+	const handleTypeChange = (newType: RuleConditionType) => {
+		const newTemplate = conditionTemplates.find((t) => t.type === newType);
+		const defaultOperator = newTemplate?.operators[0] || 'equals';
 
-    // Clear validation errors when user makes changes
-    if (validationErrors.length > 0) {
-      setValidationErrors([]);
-    }
-  };
+		setCondition({
+			...condition,
+			type: newType,
+			operator: defaultOperator,
+			values: [],
+		});
 
-  const handleOperatorChange = (operator: RuleOperator) => {
-    setCondition({
-      ...condition,
-      operator,
-      values: []
-    });
+		// Clear validation errors when user makes changes
+		if (validationErrors.length > 0) {
+			setValidationErrors([]);
+		}
+	};
 
-    // Clear validation errors when user makes changes
-    if (validationErrors.length > 0) {
-      setValidationErrors([]);
-    }
-  };
+	const handleOperatorChange = (operator: RuleOperator) => {
+		setCondition({
+			...condition,
+			operator,
+			values: [],
+		});
 
-  const handleAddValue = () => {
-    if (valueInput.trim()) {
-      const newValues = [...condition.values, valueInput.trim()];
-      setCondition({
-        ...condition,
-        values: newValues
-      });
-      setValueInput('');
+		// Clear validation errors when user makes changes
+		if (validationErrors.length > 0) {
+			setValidationErrors([]);
+		}
+	};
 
-      // Clear validation errors when user adds values
-      if (validationErrors.length > 0) {
-        setValidationErrors([]);
-      }
-    }
-  };
+	const handleAddValue = () => {
+		if (valueInput.trim()) {
+			const newValues = [...condition.values, valueInput.trim()];
+			setCondition({
+				...condition,
+				values: newValues,
+			});
+			setValueInput('');
 
-  const handleRemoveValue = (index: number) => {
-    const newValues = condition.values.filter((_, i) => i !== index);
-    setCondition({
-      ...condition,
-      values: newValues
-    });
+			// Clear validation errors when user adds values
+			if (validationErrors.length > 0) {
+				setValidationErrors([]);
+			}
+		}
+	};
 
-    // Clear validation errors when user makes changes
-    if (validationErrors.length > 0) {
-      setValidationErrors([]);
-    }
-  };
+	const handleRemoveValue = (index: number) => {
+		const newValues = condition.values.filter((_, i) => i !== index);
+		setCondition({
+			...condition,
+			values: newValues,
+		});
 
-  const handleValuesChange = (values: string[]) => {
-    setCondition({
-      ...condition,
-      values
-    });
+		// Clear validation errors when user makes changes
+		if (validationErrors.length > 0) {
+			setValidationErrors([]);
+		}
+	};
 
-    // Clear validation errors when user makes changes
-    if (validationErrors.length > 0) {
-      setValidationErrors([]);
-    }
-  };
+	const handleValuesChange = (values: string[]) => {
+		setCondition({
+			...condition,
+			values,
+		});
 
-  const handleKeyPress = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      handleAddValue();
-    }
-  };
+		// Clear validation errors when user makes changes
+		if (validationErrors.length > 0) {
+			setValidationErrors([]);
+		}
+	};
 
-  const validateCondition = (): boolean => {
-    const errors: string[] = [];
+	const handleKeyPress = (event: React.KeyboardEvent) => {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			handleAddValue();
+		}
+	};
 
-    if (!condition.type) {
-      errors.push('Condition type is required');
-    }
+	const validateCondition = (): boolean => {
+		const errors: string[] = [];
 
-    if (!condition.operator) {
-      errors.push('Operator is required');
-    }
+		if (!condition.type) {
+			errors.push('Condition type is required');
+		}
 
-    if (condition.values.length === 0) {
-      errors.push('At least one value is required');
-    }
+		if (!condition.operator) {
+			errors.push('Operator is required');
+		}
 
-    // Type-specific validation
-    if (condition.type === 'cohort' && condition.values.length > 0) {
-      const invalidCohorts = condition.values.filter(
-        value => !cohorts.some(cohort => cohort.key === value)
-      );
-      if (invalidCohorts.length > 0) {
-        errors.push(`Invalid cohort(s): ${invalidCohorts.join(', ')}`);
-      }
-    }
+		if (condition.values.length === 0) {
+			errors.push('At least one value is required');
+		}
 
-    setValidationErrors(errors);
-    return errors.length === 0;
-  };
+		// Type-specific validation
+		if (condition.type === 'cohort' && condition.values.length > 0) {
+			const invalidCohorts = condition.values.filter(
+				(value) => !cohorts.some((cohort) => cohort.key === value),
+			);
+			if (invalidCohorts.length > 0) {
+				errors.push(`Invalid cohort(s): ${invalidCohorts.join(', ')}`);
+			}
+		}
 
-  const handleSave = () => {
-    if (!validateCondition()) {
-      // Validation errors are now set and displayed to the user
-      // But the button is not disabled, so they can fix issues and try again
-      return;
-    }
+		setValidationErrors(errors);
+		return errors.length === 0;
+	};
 
-    onSave(condition);
-    onClose();
-  };
+	const handleSave = () => {
+		if (!validateCondition()) {
+			// Validation errors are now set and displayed to the user
+			// But the button is not disabled, so they can fix issues and try again
+			return;
+		}
 
-  const handleClose = () => {
-    setValidationErrors([]);
-    onClose();
-  };
+		onSave(condition);
+		onClose();
+	};
 
-  const template = conditionTemplates.find(t => t.type === condition.type);
-  const availableTemplates = conditionTemplates.filter(t => 
-    config.allowedTypes.includes(t.type)
-  );
+	const handleClose = () => {
+		setValidationErrors([]);
+		onClose();
+	};
 
-  if (!template) return null;
+	const template = conditionTemplates.find((t) => t.type === condition.type);
+	const availableTemplates = conditionTemplates.filter((t) =>
+		config.allowedTypes.includes(t.type),
+	);
 
-  return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle>{config.title}</DialogTitle>
-      
-      <DialogContent>
-        <Stack spacing={3} sx={{ mt: 1 }}>
-          {validationErrors.length > 0 && (
-            <Alert severity="error">
-              <ul style={{ margin: 0, paddingLeft: 16 }}>
-                {validationErrors.map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
-            </Alert>
-          )}
+	if (!template) {
+		return null;
+	}
 
-          {error && (
-            <Alert severity="warning">
-              {error}
-            </Alert>
-          )}
+	return (
+		<Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+			<DialogTitle>{config.title}</DialogTitle>
 
-          <Alert severity="info">
-            {(config as any)?.description || "Configure conditions for targeting specific users or contexts."}
-          </Alert>
+			<DialogContent>
+				<Stack spacing={3} sx={{ mt: 1 }}>
+					{validationErrors.length > 0 && (
+						<Alert severity="error">
+							<ul style={{ margin: 0, paddingLeft: 16 }}>
+								{validationErrors.map((error, index) => (
+									<li key={index}>{error}</li>
+								))}
+							</ul>
+						</Alert>
+					)}
 
-          {/* Condition Type Selection */}
-          <FormControl fullWidth>
-            <InputLabel>Condition Type</InputLabel>
-            <Select
-              value={condition.type}
-              label="Condition Type"
-              onChange={(e) => handleTypeChange(e.target.value as RuleConditionType)}
-            >
-              {availableTemplates.map((template) => (
-                <MenuItem key={template.type} value={template.type}>
-                  <Box>
-                    <Typography variant="body2">{template.label}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {template.description}
-                    </Typography>
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+					{error && <Alert severity="warning">{error}</Alert>}
 
-          {/* Operator Selection */}
-          <FormControl fullWidth>
-            <InputLabel>Operator</InputLabel>
-            <Select
-              value={condition.operator}
-              label="Operator"
-              onChange={(e) => handleOperatorChange(e.target.value as RuleOperator)}
-            >
-              {template.operators.map((op) => (
-                <MenuItem key={op} value={op}>
-                  {operatorLabels[op]}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+					<Alert severity="info">
+						{(config as any)?.description ||
+							'Configure conditions for targeting specific users or contexts.'}
+					</Alert>
 
-          {/* Values Input */}
-          <Box>
-            <Typography variant="subtitle2" sx={{ mb: 2 }}>
-              Values
-            </Typography>
-            
-            {template.valueType === 'cohort' ? (
-              <Autocomplete
-                multiple
-                loading={loading}
-                options={cohorts.map(c => ({ value: c.key, label: c.name }))}
-                value={cohorts.map(c => ({ value: c.key, label: c.name }))
-                  .filter(cohort => condition.values.includes(cohort.value))}
-                onChange={(_, newValue) => {
-                  handleValuesChange(newValue.map(item => item.value));
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Cohorts"
-                    placeholder="Choose cohorts"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      variant="outlined"
-                      label={option.label}
-                      {...getTagProps({ index })}
-                      key={option.value}
-                    />
-                  ))
-                }
-              />
-            ) : template.valueType === 'select' ? (
-              <Autocomplete
-                multiple
-                options={template.options || []}
-                value={(template.options || []).filter(option => 
-                  condition.values.includes(option.value))}
-                onChange={(_, newValue) => {
-                  handleValuesChange(newValue.map(item => item.value));
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Values"
-                    placeholder="Choose values"
-                  />
-                )}
-                renderTags={(value, getTagProps) =>
-                  value.map((option, index) => (
-                    <Chip
-                      variant="outlined"
-                      label={option.label}
-                      {...getTagProps({ index })}
-                      key={option.value}
-                    />
-                  ))
-                }
-              />
-            ) : (
-              <Stack spacing={2}>
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                  <TextField
-                    label="Value"
-                    value={valueInput}
-                    onChange={(e) => setValueInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder={template.placeholder}
-                    sx={{ flexGrow: 1 }}
-                  />
-                  <IconButton onClick={handleAddValue} disabled={!valueInput.trim()}>
-                    <Add />
-                  </IconButton>
-                </Box>
-                
-                {condition.values.length > 0 && (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {condition.values.map((value, index) => (
-                      <Chip
-                        key={index}
-                        label={value}
-                        onDelete={() => handleRemoveValue(index)}
-                        variant="outlined"
-                      />
-                    ))}
-                  </Box>
-                )}
-              </Stack>
-            )}
-          </Box>
-        </Stack>
-      </DialogContent>
+					{/* Condition Type Selection */}
+					<FormControl fullWidth>
+						<InputLabel>Condition Type</InputLabel>
+						<Select
+							value={condition.type}
+							label="Condition Type"
+							onChange={(e) => handleTypeChange(e.target.value)}
+						>
+							{availableTemplates.map((template) => (
+								<MenuItem key={template.type} value={template.type}>
+									<Box>
+										<Typography variant="body2">{template.label}</Typography>
+										<Typography variant="caption" color="text.secondary">
+											{template.description}
+										</Typography>
+									</Box>
+								</MenuItem>
+							))}
+						</Select>
+					</FormControl>
 
-      <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          disabled={loading}
-        >
-          {existingCondition ? 'Update' : 'Create'} Condition
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
+					{/* Operator Selection */}
+					<FormControl fullWidth>
+						<InputLabel>Operator</InputLabel>
+						<Select
+							value={condition.operator}
+							label="Operator"
+							onChange={(e) => handleOperatorChange(e.target.value)}
+						>
+							{template.operators.map((op) => (
+								<MenuItem key={op} value={op}>
+									{operatorLabels[op]}
+								</MenuItem>
+							))}
+						</Select>
+					</FormControl>
+
+					{/* Values Input */}
+					<Box>
+						<Typography variant="subtitle2" sx={{ mb: 2 }}>
+							Values
+						</Typography>
+
+						{template.valueType === 'cohort' ? (
+							<Autocomplete
+								multiple
+								loading={loading}
+								options={cohorts.map((c) => ({ value: c.key, label: c.name }))}
+								value={cohorts
+									.map((c) => ({ value: c.key, label: c.name }))
+									.filter((cohort) => condition.values.includes(cohort.value))}
+								onChange={(_, newValue) => {
+									handleValuesChange(newValue.map((item) => item.value));
+								}}
+								renderInput={(params) => (
+									<TextField
+										{...params}
+										label="Select Cohorts"
+										placeholder="Choose cohorts"
+									/>
+								)}
+								renderTags={(value, getTagProps) =>
+									value.map((option, index) => (
+										<Chip
+											variant="outlined"
+											label={option.label}
+											{...getTagProps({ index })}
+											key={option.value}
+										/>
+									))
+								}
+							/>
+						) : template.valueType === 'select' ? (
+							<Autocomplete
+								multiple
+								options={template.options || []}
+								value={(template.options || []).filter((option) =>
+									condition.values.includes(option.value),
+								)}
+								onChange={(_, newValue) => {
+									handleValuesChange(newValue.map((item) => item.value));
+								}}
+								renderInput={(params) => (
+									<TextField
+										{...params}
+										label="Select Values"
+										placeholder="Choose values"
+									/>
+								)}
+								renderTags={(value, getTagProps) =>
+									value.map((option, index) => (
+										<Chip
+											variant="outlined"
+											label={option.label}
+											{...getTagProps({ index })}
+											key={option.value}
+										/>
+									))
+								}
+							/>
+						) : (
+							<Stack spacing={2}>
+								<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+									<TextField
+										label="Value"
+										value={valueInput}
+										onChange={(e) => setValueInput(e.target.value)}
+										onKeyPress={handleKeyPress}
+										placeholder={template.placeholder}
+										sx={{ flexGrow: 1 }}
+									/>
+									<IconButton
+										onClick={handleAddValue}
+										disabled={!valueInput.trim()}
+									>
+										<Add />
+									</IconButton>
+								</Box>
+
+								{condition.values.length > 0 && (
+									<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+										{condition.values.map((value, index) => (
+											<Chip
+												key={index}
+												label={value}
+												onDelete={() => handleRemoveValue(index)}
+												variant="outlined"
+											/>
+										))}
+									</Box>
+								)}
+							</Stack>
+						)}
+					</Box>
+				</Stack>
+			</DialogContent>
+
+			<DialogActions>
+				<Button onClick={handleClose}>Cancel</Button>
+				<Button onClick={handleSave} variant="contained" disabled={loading}>
+					{existingCondition ? 'Update' : 'Create'} Condition
+				</Button>
+			</DialogActions>
+		</Dialog>
+	);
 }

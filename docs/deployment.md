@@ -25,22 +25,26 @@ After the build completes, open the deployed URL and the setup wizard will guide
 ## OAuth Provider Guides
 
 ### Google
+
 1. Visit the [Google Cloud Console](https://console.cloud.google.com) and select a project.
 2. Create an OAuth 2.0 Client ID for a web application.
 3. Add your app domain to the Authorized JavaScript origins and redirect URI (`/api/auth/callback/google`).
 4. Copy the Client ID and Client Secret into the setup wizard.
 
 ### GitHub
+
 1. Open **Settings → Developer settings → OAuth Apps**.
 2. Create a new OAuth App with the callback URL `https://<your-domain>/api/auth/callback/github`.
 3. Copy the Client ID and Secret.
 
 ### Microsoft
+
 1. In the [Azure Portal](https://portal.azure.com), open **App registrations** and create a new application.
 2. Configure a web redirect URI that ends with `/api/auth/callback/azure-ad`.
 3. Copy the Client ID, Client Secret, and Tenant ID.
 
 ### Email Magic Links (Resend)
+
 1. Create an account at [Resend](https://resend.com) and generate an API key.
 2. Supply the key (and sending domain if configured) in the wizard.
 
@@ -64,6 +68,7 @@ The Bunting Swift SDK verifies config integrity by reading a `x-bunting-signatur
 ### CloudFront Example
 
 Use a CloudFront Function or Lambda@Edge to:
+
 1. Fetch `config.json.sig` from S3 (or cache it alongside `config.json`)
 2. Set the `x-bunting-signature` response header to its contents
 

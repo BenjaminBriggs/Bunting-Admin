@@ -10,24 +10,24 @@
 import { FlattenedSign } from 'jose';
 
 export interface DetachedHeader {
-  alg: string;
-  kid: string;
+	alg: string;
+	kid: string;
 }
 
 export async function signDetached(
-  payload: string,
-  privateKey: CryptoKey,
-  header: DetachedHeader
+	payload: string,
+	privateKey: CryptoKey,
+	header: DetachedHeader,
 ): Promise<string> {
-  const flattened = await new FlattenedSign(new TextEncoder().encode(payload))
-    .setProtectedHeader({
-      alg: header.alg,
-      kid: header.kid,
-      b64: false,
-      crit: ['b64'],
-    })
-    .sign(privateKey);
+	const flattened = await new FlattenedSign(new TextEncoder().encode(payload))
+		.setProtectedHeader({
+			alg: header.alg,
+			kid: header.kid,
+			b64: false,
+			crit: ['b64'],
+		})
+		.sign(privateKey);
 
-  // Detached compact serialization: drop the payload segment.
-  return `${flattened.protected}..${flattened.signature}`;
+	// Detached compact serialization: drop the payload segment.
+	return `${flattened.protected}..${flattened.signature}`;
 }

@@ -4,72 +4,67 @@ Spin up Bunting Admin locally with Docker-backed services and the standard Next.
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 24
+- pnpm 11 (`npm install -g pnpm@11`)
 - Docker Desktop (or compatible Docker Engine) and Docker Compose
-- npm or yarn
 
 ## Setup Steps
 
 1. **Install dependencies**
    ```bash
-   npm install
+   make install
    ```
-2. **Start infrastructure services** (PostgreSQL + MinIO)
+2. **Start infrastructure services** (PostgreSQL + MinIO + Dex OIDC) and apply the schema
    ```bash
-   npm run docker:up
-   npm run docker:logs   # optional health check
+   make setup
+   docker compose logs -f   # optional health check
    ```
-3. **Generate development RSA keys**
+3. **Run the web app**
    ```bash
-   node scripts/generate-dev-keys.js
+   make dev
    ```
-4. **Apply the Prisma schema**
-   ```bash
-   npm run db:push
-   # Optional visual client
-   npm run db:studio
-   ```
-5. **Run the web app**
-   ```bash
-   npm run dev
-   ```
-6. Open http://localhost:3000.
+4. Open http://localhost:3000.
 
 ## Local Services
 
 - Bunting Admin UI: http://localhost:3000
-- PostgreSQL: `localhost:5432` (`bunting` / `bunting_dev`)
-- MinIO Console: http://localhost:9001 (`bunting` / `bunting_dev`)
+- PostgreSQL: `localhost:5432` (user: `admin` / pass: `admin123`)
+- MinIO Console: http://localhost:9001 (user: `admin` / pass: `admin123`)
 - MinIO API: http://localhost:9000
-- Prisma Studio: http://localhost:5555 (when `npm run db:studio` is active)
+- Dex OIDC: http://auth.localhost:5556/dex (login: `admin@bunting.dev` / `password`)
+- Prisma Studio: http://localhost:5555 (when `pnpm run db:studio` is active)
 
 ## Environment Notes
 
 - Development credentials live in Docker containers; production deployments should use managed DB/S3.
-- RSA keys for JWT signing are written to `./keys/` (ignored by git).
-- Populate `.env` with production secrets before deploying.
+- Populate `.env.local` with production secrets before deploying.
 
-## Helpful npm Scripts
+## Make targets
 
 ```bash
-npm run dev           # Next.js dev server
-npm run build         # Production build
-npm run start         # Serve production build
+make install        # pnpm install --frozen-lockfile
+make setup          # docker compose up + schema push
+make dev            # Next.js dev server
+make build          # Production build
+make start          # Serve production build
 
-npm run db:push       # Apply Prisma schema
-npm run db:migrate    # Generate + run migrations
-npm run db:generate   # Regenerate Prisma client
-npm run db:studio     # Launch Prisma Studio UI
+make db-generate    # Regenerate Prisma client
+make db-migrate     # Run database migrations
+make lint           # ESLint
+make format         # Prettier check
+make type-check     # TypeScript compiler check
+make test           # All tests
+make test-unit      # Unit tests only
+make test-integration # Integration tests (requires Postgres)
+make test-e2e       # Playwright e2e tests
+make clean          # Remove .next, coverage, node_modules
+```
 
-npm run docker:up     # Start PostgreSQL + MinIO
-npm run docker:down   # Stop Docker services
-npm run docker:logs   # Tail container logs
+Direct pnpm / docker equivalents when needed outside Make:
 
-npm run test          # Run test suite
-npm run test:unit     # Unit tests only
-npm run test:coverage # Coverage run
-npm run lint          # ESLint
-npm run type-check    # TypeScript compiler check
-
-npm run setup         # Convenience script: docker + prisma setup
+```bash
+docker compose up -d          # Start services
+docker compose down           # Stop services
+docker compose logs -f        # Tail logs
+pnpm run db:studio            # Launch Prisma Studio UI
 ```

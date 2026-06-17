@@ -35,13 +35,20 @@ Authentication is configured via environment variables before deploy (`AUTH_MODE
 
 ## Documentation
 
-- [Deployment](docs/deployment.md) — one-click hosting and post-deploy checklist.
-- [Local Development](docs/local-development.md) — Docker-powered setup guide and npm scripts.
+Full documentation index: [docs/README.md](docs/README.md)
+
+- [Concepts](docs/concepts.md) — flags vs. cohorts vs. tests vs. rollouts, the publishing pipeline, deterministic bucketing, and glossary.
+- [Config Artifact Specification](docs/config-artifact-spec.md) — the canonical JSON contract consumed by the SDK.
 - [Product Overview](docs/product-overview.md) — capabilities, workflows, and dashboard tour.
+- [Local Development](docs/local-development.md) — Docker-powered setup guide and pnpm scripts.
+- [Deployment](docs/deployment.md) — one-click hosting and post-deploy checklist.
+- [Production Deployment](docs/production-deployment.md) — hardening, auth, and storage configuration.
+- [Security](docs/security.md) — auth model, key management, and signing pipeline.
+- [API Reference](docs/api-reference.md) — REST endpoints and request/response shapes.
 - [Testing](docs/testing.md) — required coverage, test types, and commands.
 - [Troubleshooting](docs/troubleshooting.md) — quick fixes for common issues.
 
-Additional SDKs live alongside this project (e.g., `bunting-sdk-swift`) for integrating feature flags in your apps.
+The companion `bunting-sdk-swift` repo (<SDK repo URL TBD>) contains the Swift SDK and SPM codegen plugin for integrating feature flags in your Apple platform apps.
 
 ## Contributing
 

@@ -5,6 +5,7 @@ This comprehensive test suite validates that the Bunting admin API generates con
 ## 🧪 Test Overview
 
 ### Coverage Goals
+
 - ✅ **100% JSON Spec Compliance** - Every generated config validates against JSON Schema
 - ✅ **Cross-Platform Consistency** - Bucketing algorithm produces identical results
 - ✅ **Type Safety** - All TypeScript types match JSON Spec exactly
@@ -32,6 +33,7 @@ tests/
 ## 🚀 Running Tests
 
 ### Quick Start
+
 ```bash
 # Run all JSON Spec compliance tests
 npm run test:json-spec
@@ -44,6 +46,7 @@ npm run test:json-spec:e2e          # End-to-end pipeline
 ```
 
 ### Individual Test Suites
+
 ```bash
 # Core compliance tests
 npm run test:json-spec:compliance
@@ -59,6 +62,7 @@ npm run test:json-spec:e2e
 ```
 
 ### Development Testing
+
 ```bash
 # Watch mode for development
 npm run test:watch
@@ -91,13 +95,13 @@ npm run test:integration
 
 ```javascript
 describe('JSON Spec Compliance', () => {
-  test('generates config with all required top-level fields', async () => {
-    const config = await generateConfigFromDb(testApp.id);
+	test('generates config with all required top-level fields', async () => {
+		const config = await generateConfigFromDb(testApp.id);
 
-    const validation = validateConfigArtifact(config);
-    expect(validation.valid).toBe(true);
-    expect(validation.errors).toEqual([]);
-  });
+		const validation = validateConfigArtifact(config);
+		expect(validation.valid).toBe(true);
+		expect(validation.errors).toEqual([]);
+	});
 });
 ```
 
@@ -114,17 +118,17 @@ describe('JSON Spec Compliance', () => {
 
 ```javascript
 describe('Bucketing Algorithm', () => {
-  test('produces consistent results for same input', () => {
-    const salt = 'test-salt-123';
-    const localId = '550e8400-e29b-41d4-a716-446655440000';
+	test('produces consistent results for same input', () => {
+		const salt = 'test-salt-123';
+		const localId = '550e8400-e29b-41d4-a716-446655440000';
 
-    const result1 = bucketForNode(salt, localId);
-    const result2 = bucketForNode(salt, localId);
+		const result1 = bucketForNode(salt, localId);
+		const result2 = bucketForNode(salt, localId);
 
-    expect(result1).toBe(result2);
-    expect(result1).toBeGreaterThanOrEqual(1);
-    expect(result1).toBeLessThanOrEqual(100);
-  });
+		expect(result1).toBe(result2);
+		expect(result1).toBeGreaterThanOrEqual(1);
+		expect(result1).toBeLessThanOrEqual(100);
+	});
 });
 ```
 
@@ -142,17 +146,17 @@ describe('Bucketing Algorithm', () => {
 
 ```javascript
 describe('Condition Evaluation', () => {
-  test('app_version greater_than_or_equal operator', async () => {
-    const condition = {
-      id: 'app-version-gte',
-      type: 'app_version',
-      values: ['2.0.0'],
-      operator: 'greater_than_or_equal'
-    };
+	test('app_version greater_than_or_equal operator', async () => {
+		const condition = {
+			id: 'app-version-gte',
+			type: 'app_version',
+			values: ['2.0.0'],
+			operator: 'greater_than_or_equal',
+		};
 
-    const result = await evaluateCondition(condition, mockContext);
-    expect(result).toBe(true);
-  });
+		const result = await evaluateCondition(condition, mockContext);
+		expect(result).toBe(true);
+	});
 });
 ```
 
@@ -169,40 +173,44 @@ describe('Condition Evaluation', () => {
 
 ```javascript
 describe('End-to-End Config Generation', () => {
-  test('generates JSON Spec compliant config for complex scenario', async () => {
-    // Create realistic test data with all entity types
-    await createComplexTestScenario(testApp.id);
+	test('generates JSON Spec compliant config for complex scenario', async () => {
+		// Create realistic test data with all entity types
+		await createComplexTestScenario(testApp.id);
 
-    const config = await generateConfigFromDb(testApp.id);
+		const config = await generateConfigFromDb(testApp.id);
 
-    // Comprehensive validation
-    const schemaValidation = validateConfigArtifact(config);
-    expect(schemaValidation.valid).toBe(true);
+		// Comprehensive validation
+		const schemaValidation = validateConfigArtifact(config);
+		expect(schemaValidation.valid).toBe(true);
 
-    const namingValidation = validateNamingRules(config);
-    expect(namingValidation).toEqual([]);
-  });
+		const namingValidation = validateNamingRules(config);
+		expect(namingValidation).toEqual([]);
+	});
 });
 ```
 
 ## 🎯 Validation Levels
 
 ### Level 1: JSON Schema Compliance
+
 - Validates against complete JSON Schema from JSON Spec
 - Checks required fields, data types, and structure
 - Ensures all entities follow exact specification
 
 ### Level 2: Naming Rule Enforcement
+
 - Validates `^[a-z_]+$` pattern for all identifiers
 - Prevents leading/trailing underscores
 - Enforces 64-character maximum length
 
 ### Level 3: Cross-Platform Consistency
+
 - Tests bucketing algorithm against known vectors
 - Validates big-endian SHA-256 implementation
 - Ensures deterministic results across platforms
 
 ### Level 4: Business Logic Validation
+
 - Tests condition evaluation logic
 - Validates variant ordering and type constraints
 - Ensures proper environment isolation
@@ -210,40 +218,44 @@ describe('End-to-End Config Generation', () => {
 ## 🔍 Test Data Patterns
 
 ### Minimal Valid Setup
+
 ```javascript
 const minimalSetup = {
-  app: { identifier: 'com.test.app' },
-  flag: {
-    key: 'simple_flag',
-    type: 'boolean',
-    defaultValues: { development: false, staging: false, production: false }
-  }
+	app: { identifier: 'com.test.app' },
+	flag: {
+		key: 'simple_flag',
+		type: 'boolean',
+		defaultValues: { development: false, staging: false, production: false },
+	},
 };
 ```
 
 ### Complex Realistic Setup
+
 ```javascript
 const complexSetup = {
-  cohorts: ['premium_users', 'us_users'],
-  tests: ['checkout_flow_test'],
-  rollouts: ['dark_mode_rollout'],
-  flags: ['enable_new_checkout', 'api_timeout_seconds', 'feature_config'],
-  variants: ['conditional', 'test', 'rollout']
+	cohorts: ['premium_users', 'us_users'],
+	tests: ['checkout_flow_test'],
+	rollouts: ['dark_mode_rollout'],
+	flags: ['enable_new_checkout', 'api_timeout_seconds', 'feature_config'],
+	variants: ['conditional', 'test', 'rollout'],
 };
 ```
 
 ### Invalid Test Cases
+
 ```javascript
 const invalidCases = {
-  badKeys: ['_invalid', 'invalid_', 'Invalid-Flag'],
-  badConditions: [{ type: 'unknown', values: [] }],
-  missingFields: { flag: { key: 'test' } } // Missing type, defaults
+	badKeys: ['_invalid', 'invalid_', 'Invalid-Flag'],
+	badConditions: [{ type: 'unknown', values: [] }],
+	missingFields: { flag: { key: 'test' } }, // Missing type, defaults
 };
 ```
 
 ## 📈 Success Criteria
 
 ### Required Passing Tests
+
 - ✅ All config artifacts validate against JSON Schema
 - ✅ All generated keys follow naming rules
 - ✅ Bucketing algorithm produces consistent results
@@ -251,11 +263,13 @@ const invalidCases = {
 - ✅ Complex scenarios generate valid configurations
 
 ### Performance Benchmarks
+
 - ✅ Large configs (100+ flags) generate in < 5 seconds
 - ✅ 10,000 bucketing calculations complete in < 1 second
 - ✅ Complex condition evaluation completes in < 100ms
 
 ### Cross-Platform Consistency
+
 - ✅ Bucketing algorithm matches reference implementations
 - ✅ Generated configs validate in other language SDKs
 - ✅ Condition evaluation produces identical results
@@ -263,12 +277,14 @@ const invalidCases = {
 ## 🚨 Failure Analysis
 
 ### Common Failure Patterns
+
 1. **Schema Violations** - Missing required fields, wrong types
 2. **Naming Rule Violations** - Invalid characters, length limits
 3. **Condition Errors** - Unknown types, missing operators
 4. **Type Mapping Errors** - Prisma enum ↔ JSON Spec mismatches
 
 ### Debugging Commands
+
 ```bash
 # Run with detailed output
 npm run test:json-spec:compliance -- --verbose
@@ -283,22 +299,25 @@ npm run test:coverage
 ## 🔧 Development Workflow
 
 ### Adding New Tests
+
 1. Create test in appropriate category (`unit/` or `integration/`)
 2. Use `DatabaseHelper` for consistent test data
 3. Validate against both JSON Schema and naming rules
 4. Add performance assertions for large datasets
 
 ### Test Data Creation
+
 ```javascript
 // Use DatabaseHelper for consistent setup
 const testApp = await DatabaseHelper.createTestApp();
 const testFlag = await DatabaseHelper.createTestFlag(testApp.id, {
-  key: 'custom_flag',
-  type: 'BOOL'
+	key: 'custom_flag',
+	type: 'BOOL',
 });
 ```
 
 ### Validation Pattern
+
 ```javascript
 // Standard validation pattern
 const config = await generateConfigFromDb(testApp.id);
