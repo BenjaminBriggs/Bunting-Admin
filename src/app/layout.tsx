@@ -25,7 +25,10 @@ export default function RootLayout({
 	children: React.ReactNode;
 }) {
 	return (
-		<html lang="en">
+		// suppressHydrationWarning: browser extensions (e.g. LanguageTool's
+		// data-lt-installed) mutate <html> before hydration; this only suppresses the
+		// warning for <html>'s own attributes, not for app-rendered content.
+		<html lang="en" suppressHydrationWarning>
 			<body className={`${nunito.variable} ${belanosima.variable}`}>
 				<AuthSessionProvider>
 					<ThemeProvider>{children}</ThemeProvider>
