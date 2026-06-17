@@ -35,6 +35,63 @@ export function getEnvironmentLabel(environment: Environment): string {
 	return environment.charAt(0).toUpperCase() + environment.slice(1);
 }
 
+export interface EnvironmentBandColors {
+	/** Header band background tint */
+	bg: string;
+	/** Header band bottom border */
+	border: string;
+	/** Status dot fill */
+	dot: string;
+	/** Label / accent text */
+	text: string;
+	/** Short label used in compact summaries */
+	short: string;
+}
+
+/**
+ * Festive Bunting palette mapped to environments — green Production,
+ * amber Staging, teal Development. Used for the colored env header bands
+ * and the compact flag-row summaries.
+ */
+export function getEnvironmentBandColors(
+	environment: Environment,
+): EnvironmentBandColors {
+	switch (environment) {
+		case 'production':
+			return {
+				bg: '#E9F4E0',
+				border: '#DCEDCF',
+				dot: '#82C868',
+				text: '#3F7A2D',
+				short: 'PROD',
+			};
+		case 'staging':
+			return {
+				bg: '#FCEFD2',
+				border: '#F3E2BD',
+				dot: '#F6A444',
+				text: '#9A6F1C',
+				short: 'STG',
+			};
+		case 'development':
+			return {
+				bg: '#DEF3F0',
+				border: '#C9ECE7',
+				dot: '#54C9C0',
+				text: '#1E7B72',
+				short: 'DEV',
+			};
+		default:
+			return {
+				bg: '#EFE8D9',
+				border: '#E4DBC8',
+				dot: '#A79F8C',
+				text: '#6B6452',
+				short: environment,
+			};
+	}
+}
+
 export function EnvironmentChip({
 	environment,
 	size = 'small',

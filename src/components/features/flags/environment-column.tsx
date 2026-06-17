@@ -7,13 +7,12 @@ import {
 	Chip,
 	Divider,
 	IconButton,
-	Paper,
 	Stack,
 	Typography,
 } from '@mui/material';
 import { useState } from 'react';
 import type { ConditionalVariant, Environment, FlagValue } from '@/types';
-import { EnvironmentChip } from '../../ui/environment-chips';
+import { getEnvironmentBandColors } from '../../ui/environment-chips';
 import { formatValueForDisplay } from './flag-value-input';
 
 interface EnvironmentColumnProps {
@@ -176,196 +175,227 @@ export default function EnvironmentColumn({
 		return operatorMap[operator] || operator;
 	};
 
+	const band = getEnvironmentBandColors(environment);
+
 	return (
-		<Paper
-			variant="outlined"
-			sx={{
-				p: 2,
-				// minHeight: 60, // Ensure consistent height
-				display: 'flex',
-				flexDirection: 'column',
-				borderRadius: 0.5,
-			}}
-		>
-			{/* Environment Header */}
-			<Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-				<EnvironmentChip environment={environment} />
-			</Box>
-
-			{/* Rollouts & Tests Section */}
-			<Box sx={{ mb: 2 }}>
-				<Box
-					sx={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						mb: 1,
-					}}
-				>
-					<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-						Rollouts & Tests
-					</Typography>
-					<IconButton
-						size="small"
-						onClick={onTestRolloutAdd}
-						sx={{
-							bgcolor: 'primary.main',
-							color: 'white',
-							width: 20,
-							height: 20,
-							'&:hover': { bgcolor: 'primary.dark' },
-						}}
-					>
-						<Add sx={{ fontSize: 14 }} />
-					</IconButton>
-				</Box>
-
-				<Stack spacing={1}>
-					{/* Active Rollouts */}
-					{activeRollouts.map((rollout) => (
-						<Box key={rollout.id}>
-							<Typography variant="caption" color="text.secondary">
-								Rollout {rollout.percentage}%
-							</Typography>
-							<Typography
-								variant="body2"
-								sx={{
-									cursor: 'pointer',
-									'&:hover': { color: 'primary.main' },
-								}}
-								onClick={() => onTestRolloutEdit('rollout', rollout.id)}
-							>
-								{formatValue(defaultValue)}
-							</Typography>
-						</Box>
-					))}
-
-					{/* Active Tests */}
-					{activeTests.map((test) => (
-						<Box key={test.id}>
-							<Typography variant="caption" color="text.secondary">
-								{test.name}
-							</Typography>
-							<Typography
-								variant="body2"
-								sx={{
-									cursor: 'pointer',
-									'&:hover': { color: 'primary.main' },
-								}}
-								onClick={() => onTestRolloutEdit('test', test.id)}
-							>
-								{getTestVariantValues(test)}
-							</Typography>
-						</Box>
-					))}
-				</Stack>
-			</Box>
-
-			{/* Variants Section */}
-			<Box sx={{ mb: 2, flexGrow: 1 }}>
-				<Box
-					sx={{
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'space-between',
-						mb: 1,
-					}}
-				>
-					<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-						Variants
-					</Typography>
-					<IconButton
-						size="small"
-						onClick={onVariantAdd}
-						sx={{
-							bgcolor: 'primary.main',
-							color: 'white',
-							width: 20,
-							height: 20,
-							'&:hover': { bgcolor: 'primary.dark' },
-						}}
-					>
-						<Add sx={{ fontSize: 14 }} />
-					</IconButton>
-				</Box>
-
-				{variants.map((variant, index) => (
-					<Stack key={variant.id || index} spacing={1}>
-						<Box key={variant.id}>
-							<Box
-								sx={{
-									display: 'flex',
-									justifyContent: 'space-between',
-									alignItems: 'flex-start',
-								}}
-							>
-								<Box sx={{ flexGrow: 1 }}>
-									<Typography variant="caption" color="text.secondary">
-										{formatVariantSummary(variant)}
-									</Typography>
-									<Typography
-										variant="body2"
-										sx={{
-											cursor: 'pointer',
-											'&:hover': { color: 'primary.main' },
-										}}
-										onClick={() => onVariantEdit(variant)}
-									>
-										{formatValue(variant.value)}
-									</Typography>
-								</Box>
-								<IconButton
-									size="small"
-									onClick={() => onVariantDelete(variant)}
-									sx={{
-										color: 'error.main',
-										opacity: 0.7,
-										'&:hover': {
-											opacity: 1,
-											bgcolor: 'error.main',
-											color: 'white',
-										},
-										ml: 1,
-										flexShrink: 0,
-									}}
-								>
-									<Delete sx={{ fontSize: 16 }} />
-								</IconButton>
-							</Box>
-							{index < variants.length - 1 && <Divider sx={{ my: 0.5 }} />}
-						</Box>
-					</Stack>
-				))}
-			</Box>
-
-			{/* Default Section */}
+		<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+			{/* Colored environment header band */}
 			<Box
 				sx={{
-					mt: 'auto',
-					pt: 2,
-					borderTop: '1px solid',
-					borderColor: 'divider',
+					display: 'flex',
+					alignItems: 'center',
+					gap: 1,
+					px: 2,
+					py: 1.25,
+					bgcolor: band.bg,
+					borderBottom: '1px solid',
+					borderColor: band.border,
 				}}
 			>
-				<Typography
-					variant="caption"
-					color="text.secondary"
-					sx={{ display: 'block', mb: 0.5 }}
-				>
-					Default
-				</Typography>
-				<Typography
-					variant="body1"
+				<Box
 					sx={{
-						cursor: 'pointer',
-						fontWeight: 500,
-						'&:hover': { color: 'primary.main' },
+						width: 10,
+						height: 10,
+						borderRadius: '50%',
+						bgcolor: band.dot,
 					}}
-					onClick={onDefaultValueEdit}
+				/>
+				<Typography
+					sx={{
+						fontWeight: 800,
+						fontSize: 12,
+						letterSpacing: '0.04em',
+						color: band.text,
+					}}
 				>
-					{formatValue(defaultValue)}
+					{environment.toUpperCase()}
 				</Typography>
 			</Box>
-		</Paper>
+
+			{/* Content */}
+			<Box
+				sx={{
+					p: 2,
+					flexGrow: 1,
+					display: 'flex',
+					flexDirection: 'column',
+				}}
+			>
+				{/* Rollouts & Tests Section */}
+				<Box sx={{ mb: 2 }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							mb: 1,
+						}}
+					>
+						<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+							Rollouts & Tests
+						</Typography>
+						<IconButton
+							size="small"
+							onClick={onTestRolloutAdd}
+							sx={{
+								bgcolor: 'primary.main',
+								color: 'white',
+								width: 20,
+								height: 20,
+								'&:hover': { bgcolor: 'primary.dark' },
+							}}
+						>
+							<Add sx={{ fontSize: 14 }} />
+						</IconButton>
+					</Box>
+
+					<Stack spacing={1}>
+						{/* Active Rollouts */}
+						{activeRollouts.map((rollout) => (
+							<Box key={rollout.id}>
+								<Typography variant="caption" color="text.secondary">
+									Rollout {rollout.percentage}%
+								</Typography>
+								<Typography
+									variant="body2"
+									sx={{
+										cursor: 'pointer',
+										'&:hover': { color: 'primary.main' },
+									}}
+									onClick={() => onTestRolloutEdit('rollout', rollout.id)}
+								>
+									{formatValue(defaultValue)}
+								</Typography>
+							</Box>
+						))}
+
+						{/* Active Tests */}
+						{activeTests.map((test) => (
+							<Box key={test.id}>
+								<Typography variant="caption" color="text.secondary">
+									{test.name}
+								</Typography>
+								<Typography
+									variant="body2"
+									sx={{
+										cursor: 'pointer',
+										'&:hover': { color: 'primary.main' },
+									}}
+									onClick={() => onTestRolloutEdit('test', test.id)}
+								>
+									{getTestVariantValues(test)}
+								</Typography>
+							</Box>
+						))}
+					</Stack>
+				</Box>
+
+				{/* Variants Section */}
+				<Box sx={{ mb: 2, flexGrow: 1 }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'space-between',
+							mb: 1,
+						}}
+					>
+						<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+							Variants
+						</Typography>
+						<IconButton
+							size="small"
+							onClick={onVariantAdd}
+							sx={{
+								bgcolor: 'primary.main',
+								color: 'white',
+								width: 20,
+								height: 20,
+								'&:hover': { bgcolor: 'primary.dark' },
+							}}
+						>
+							<Add sx={{ fontSize: 14 }} />
+						</IconButton>
+					</Box>
+
+					{variants.map((variant, index) => (
+						<Stack key={variant.id || index} spacing={1}>
+							<Box key={variant.id}>
+								<Box
+									sx={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'flex-start',
+									}}
+								>
+									<Box sx={{ flexGrow: 1 }}>
+										<Typography variant="caption" color="text.secondary">
+											{formatVariantSummary(variant)}
+										</Typography>
+										<Typography
+											variant="body2"
+											sx={{
+												cursor: 'pointer',
+												'&:hover': { color: 'primary.main' },
+											}}
+											onClick={() => onVariantEdit(variant)}
+										>
+											{formatValue(variant.value)}
+										</Typography>
+									</Box>
+									<IconButton
+										size="small"
+										onClick={() => onVariantDelete(variant)}
+										sx={{
+											color: 'error.main',
+											opacity: 0.7,
+											'&:hover': {
+												opacity: 1,
+												bgcolor: 'error.main',
+												color: 'white',
+											},
+											ml: 1,
+											flexShrink: 0,
+										}}
+									>
+										<Delete sx={{ fontSize: 16 }} />
+									</IconButton>
+								</Box>
+								{index < variants.length - 1 && <Divider sx={{ my: 0.5 }} />}
+							</Box>
+						</Stack>
+					))}
+				</Box>
+
+				{/* Default Section */}
+				<Box
+					sx={{
+						mt: 'auto',
+						pt: 2,
+						borderTop: '1px solid',
+						borderColor: 'divider',
+					}}
+				>
+					<Typography
+						variant="caption"
+						color="text.secondary"
+						sx={{ display: 'block', mb: 0.5 }}
+					>
+						Default
+					</Typography>
+					<Typography
+						variant="body1"
+						sx={{
+							cursor: 'pointer',
+							fontWeight: 500,
+							'&:hover': { color: 'primary.main' },
+						}}
+						onClick={onDefaultValueEdit}
+					>
+						{formatValue(defaultValue)}
+					</Typography>
+				</Box>
+			</Box>
+		</Box>
 	);
 }

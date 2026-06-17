@@ -1,6 +1,12 @@
 'use client';
 
-import { Archive, Delete, MoreVert } from '@mui/icons-material';
+import {
+	Archive,
+	ChevronRight,
+	Delete,
+	ExpandMore,
+	MoreVert,
+} from '@mui/icons-material';
 import {
 	Box,
 	Chip,
@@ -27,9 +33,11 @@ import type {
 	DBTestRollout,
 	Environment,
 } from '@/types';
+import { getEnvironmentBandColors } from '../../ui/environment-chips';
 import { VariantCreatorModal } from '../conditions';
 import DefaultValueEditModal from './default-value-edit-modal';
 import EnvironmentColumn from './environment-column';
+import { formatValueForDisplay } from './flag-value-input';
 import FlagAssignmentEditModal from './flag-assignment-edit-modal';
 import TestRolloutAssignmentModal from './test-rollout-assignment-modal';
 
@@ -42,6 +50,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 	const { markChangesDetected } = useChanges();
 	const { selectedApp } = useApp();
 	const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+	const [expanded, setExpanded] = useState(false);
 	const [flagData, setFlagData] = useState<DBFlag>(flag);
 	const [testsAndRollouts, setTestsAndRollouts] = useState<{
 		tests: DBTestRollout[];
@@ -436,23 +445,8 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 		}
 	};
 
-	const getTypeChipColor = (type: string) => {
-		switch (type.toLowerCase()) {
-			case 'bool':
-				return 'success';
-			case 'string':
-				return 'info';
-			case 'int':
-			case 'double':
-				return 'warning';
-			case 'date':
-				return 'secondary';
-			case 'json':
-				return 'error';
-			default:
-				return 'default';
-		}
-	};
+	const formatValue = (value: any): string =>
+		formatValueForDisplay(value, flagData.type as any);
 
 	return (
 		<Paper
@@ -463,107 +457,165 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				opacity: archived ? 0.6 : 1,
 			}}
 		>
-			<Box sx={{ p: 3 }}>
-				<Grid container spacing={3} alignItems="stretch">
-					{/* Column 1: Flag Info */}
-					<Grid size={{ xs: 12 }}>
-						<Box
-							sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-						>
-							<Box
-								sx={{
-									display: 'flex',
-									alignItems: 'flex-start',
-									justifyContent: 'space-between',
-									mb: 1,
-								}}
-							>
-								<Typography
-									variant="h6"
-									component="h3"
-									sx={{ fontWeight: 600 }}
-								>
-									{flagData.displayName}
-								</Typography>
-								<IconButton
-									size="small"
-									onClick={(e) => setMenuAnchor(e.currentTarget)}
-								>
-									<MoreVert />
-								</IconButton>
-							</Box>
+			{/* Flag header — click to expand/collapse */}
+			<Box
+				onClick={() => setExpanded((value) => !value)}
+				sx={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 2,
+					p: 2.5,
+					cursor: 'pointer',
+					...(expanded && {
+						borderBottom: '1px solid',
+						borderColor: 'divider',
+					}),
+				}}
+			>
+				<Box sx={{ display: 'flex', color: 'text.disabled' }}>
+					{expanded ? <ExpandMore /> : <ChevronRight />}
+				</Box>
 
-							<Typography
-								variant="body2"
-								color="text.secondary"
-								sx={{ fontFamily: 'monospace', mb: 1 }}
-							>
-								{flagData.key}
-							</Typography>
+				<Box sx={{ flex: 1, minWidth: 0 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						<Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
+							{flagData.displayName}
+						</Typography>
+						{archived && <Chip label="Archived" size="small" color="warning" />}
+					</Box>
+					<Typography
+						variant="body2"
+						color="text.secondary"
+						sx={{ fontFamily: 'monospace', mt: 0.5 }}
+					>
+						{flagData.key}
+						{expanded && ` · updated ${formatTimestamp(flagData.updatedAt)}`}
+					</Typography>
+				</Box>
 
-							<Box
-								sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}
-							>
-								<Chip
-									label={flagData.type.toLowerCase()}
-									size="small"
-									color={getTypeChipColor(flagData.type)}
-								/>
-								{archived && (
-									<Chip label="Archived" size="small" color="warning" />
-								)}
-							</Box>
-
-							{flagData.description && (
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									sx={{ mb: 2, flexGrow: 1 }}
-								>
-									{flagData.description}
-								</Typography>
-							)}
-
-							<Typography variant="caption" color="text.secondary">
-								Updated {formatTimestamp(flagData.updatedAt)}
-							</Typography>
-						</Box>
-					</Grid>
-
-					{/* Columns 2-4: Environment Columns */}
-					<Grid size={{ xs: 12 }}>
-						<Grid container spacing={2}>
-							{(['production', 'staging', 'development'] as Environment[]).map(
-								(env) => (
-									<Grid size={{ xs: 12, md: 4 }} key={env}>
-										<EnvironmentColumn
-											environment={env}
-											flagId={flagData.id}
-											flagType={flagData.type}
-											defaultValue={flagData.defaultValues[env]}
-											variants={getEnvironmentVariants(env)}
-											activeTests={getActiveTests(env) as any}
-											activeRollouts={getActiveRollouts(env)}
-											onVariantAdd={() => handleVariantAdd(env)}
-											onVariantEdit={(variant) =>
-												handleVariantEdit(variant, env)
-											}
-											onVariantDelete={(variant) =>
-												handleVariantDelete(variant, env)
-											}
-											onTestRolloutAdd={() => handleTestRolloutAdd(env)}
-											onTestRolloutEdit={(type, id) =>
-												handleTestRolloutEdit(type, id, env)
-											}
-											onDefaultValueEdit={() => handleDefaultValueEdit(env)}
+				{/* Collapsed summary: per-environment value at a glance */}
+				{!expanded && !archived && (
+					<Box
+						sx={{
+							display: { xs: 'none', sm: 'flex' },
+							alignItems: 'center',
+							gap: 2.5,
+							flexShrink: 0,
+						}}
+					>
+						{(['production', 'staging', 'development'] as Environment[]).map(
+							(env) => {
+								const band = getEnvironmentBandColors(env);
+								const rollout = getActiveRollouts(env)[0];
+								return (
+									<Box
+										key={env}
+										sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+									>
+										<Box
+											sx={{
+												width: 9,
+												height: 9,
+												borderRadius: '50%',
+												bgcolor: band.dot,
+											}}
 										/>
-									</Grid>
-								),
-							)}
-						</Grid>
-					</Grid>
-				</Grid>
+										<Typography
+											sx={{
+												fontFamily: 'monospace',
+												fontWeight: 700,
+												fontSize: 10,
+												color: 'text.secondary',
+											}}
+										>
+											{band.short}
+										</Typography>
+										{rollout ? (
+											<Box
+												sx={{
+													fontFamily: 'monospace',
+													fontWeight: 700,
+													fontSize: 10,
+													color: band.text,
+													bgcolor: band.bg,
+													borderRadius: 1,
+													px: 0.75,
+													py: 0.25,
+												}}
+											>
+												rollout {rollout.percentage}%
+											</Box>
+										) : (
+											<Typography sx={{ fontWeight: 700 }}>
+												{formatValue(flagData.defaultValues[env])}
+											</Typography>
+										)}
+									</Box>
+								);
+							},
+						)}
+					</Box>
+				)}
+
+				<IconButton
+					size="small"
+					onClick={(e) => {
+						e.stopPropagation();
+						setMenuAnchor(e.currentTarget);
+					}}
+				>
+					<MoreVert />
+				</IconButton>
 			</Box>
+
+			{/* Environment Columns (expanded only) */}
+			{expanded && (
+				<Box
+					sx={{
+						bgcolor: 'action.hover',
+					}}
+				>
+					<Grid container>
+						{(['production', 'staging', 'development'] as Environment[]).map(
+							(env, index) => (
+								<Grid
+									size={{ xs: 12, md: 4 }}
+									key={env}
+									sx={
+										index > 0
+											? {
+													borderColor: 'divider',
+													borderTop: { xs: '1px solid', md: 'none' },
+													borderLeft: { xs: 'none', md: '1px solid' },
+												}
+											: undefined
+									}
+								>
+									<EnvironmentColumn
+										environment={env}
+										flagId={flagData.id}
+										flagType={flagData.type}
+										defaultValue={flagData.defaultValues[env]}
+										variants={getEnvironmentVariants(env)}
+										activeTests={getActiveTests(env) as any}
+										activeRollouts={getActiveRollouts(env)}
+										onVariantAdd={() => handleVariantAdd(env)}
+										onVariantEdit={(variant) => handleVariantEdit(variant, env)}
+										onVariantDelete={(variant) =>
+											handleVariantDelete(variant, env)
+										}
+										onTestRolloutAdd={() => handleTestRolloutAdd(env)}
+										onTestRolloutEdit={(type, id) =>
+											handleTestRolloutEdit(type, id, env)
+										}
+										onDefaultValueEdit={() => handleDefaultValueEdit(env)}
+									/>
+								</Grid>
+							),
+						)}
+					</Grid>
+				</Box>
+			)}
 
 			{/* Action Menu */}
 			<Menu

@@ -56,21 +56,25 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 			path: '/dashboard/flags',
 			label: 'Feature Flags',
 			icon: <Flag />,
+			newPath: '/dashboard/flags/new',
 		},
 		{
 			path: '/dashboard/tests',
 			label: 'Tests',
 			icon: <Science />,
+			newPath: '/dashboard/tests/new',
 		},
 		{
 			path: '/dashboard/rollouts',
 			label: 'Rollouts',
 			icon: <Rocket />,
+			newPath: '/dashboard/rollouts/new',
 		},
 		{
 			path: '/dashboard/cohorts',
 			label: 'Cohorts',
 			icon: <BarChart />,
+			newPath: '/dashboard/cohorts/new',
 		},
 		{
 			path: '/dashboard/releases',
@@ -191,30 +195,70 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 				</Box>
 				{/* Main Menu */}
 				<List sx={{ flexGrow: 1 }}>
-					{menuItems.map((item, index) => (
-						<React.Fragment key={item.path}>
-							{/* Add divider before releases (index 2) */}
-							{index === 4 && <Divider sx={{ my: 1 }} />}
-							<ListItem disablePadding>
-								<ListItemButton
-									component={Link}
-									href={item.path}
-									selected={isSelected(item.path)}
+					{menuItems.map((item, index) => {
+						const selected = isSelected(item.path);
+						return (
+							<React.Fragment key={item.path}>
+								{/* Add divider before releases (index 2) */}
+								{index === 4 && <Divider sx={{ my: 1 }} />}
+								<ListItem
+									disablePadding
+									sx={
+										item.newPath
+											? {
+													'& .nav-add': {
+														opacity: selected ? 1 : 0,
+														transition: 'opacity .15s ease',
+													},
+													'&:hover .nav-add': { opacity: 1 },
+												}
+											: undefined
+									}
+									secondaryAction={
+										item.newPath ? (
+											<IconButton
+												className="nav-add"
+												edge="end"
+												size="small"
+												aria-label={`New ${item.label}`}
+												onClick={(e) => {
+													e.preventDefault();
+													e.stopPropagation();
+													router.push(item.newPath);
+												}}
+												sx={{
+													bgcolor: 'text.primary',
+													color: 'background.paper',
+													width: 22,
+													height: 22,
+													'&:hover': { bgcolor: 'text.secondary' },
+												}}
+											>
+												<Add sx={{ fontSize: 16 }} />
+											</IconButton>
+										) : undefined
+									}
 								>
-									<ListItemIcon>
-										{item.badge && hasChanges ? (
-											<Badge badgeContent={getChangeCount()} color="primary">
-												{item.icon}
-											</Badge>
-										) : (
-											item.icon
-										)}
-									</ListItemIcon>
-									<ListItemText primary={item.label} />
-								</ListItemButton>
-							</ListItem>
-						</React.Fragment>
-					))}
+									<ListItemButton
+										component={Link}
+										href={item.path}
+										selected={selected}
+									>
+										<ListItemIcon>
+											{item.badge && hasChanges ? (
+												<Badge badgeContent={getChangeCount()} color="primary">
+													{item.icon}
+												</Badge>
+											) : (
+												item.icon
+											)}
+										</ListItemIcon>
+										<ListItemText primary={item.label} />
+									</ListItemButton>
+								</ListItem>
+							</React.Fragment>
+						);
+					})}
 				</List>
 				{/* Settings and User Menu at Bottom */}
 				<List>
