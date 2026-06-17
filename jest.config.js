@@ -6,10 +6,12 @@ const sharedProjectConfig = {
 	// ESM packages we need Babel to transpile must be matched by their .pnpm dir name
 	// (scopes use "+" instead of "/").
 	transformIgnorePatterns: [
-		'node_modules/.pnpm/(?!(jose|@faker-js\\+faker|msw|@mswjs\\+[^@/]+|until-async)@)',
+		'node_modules/.pnpm/(?!(jose|@faker-js\\+faker|msw|@mswjs\\+[^@/]+|@open-draft\\+[^@/]+|@bundled-es-modules\\+[^@/]+|until-async|rettime|strict-event-emitter|headers-polyfill|is-node-process|outvariant|tough-cookie)@)',
 	],
 	transform: {
-		'^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
+		// Include .mjs: msw (and its ESM deps) resolve to .mjs builds that must be
+		// transpiled for the CommonJS jest runtime.
+		'^.+\\.(js|jsx|ts|tsx|mjs)$': ['babel-jest', { presets: ['next/babel'] }],
 	},
 	moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
 };

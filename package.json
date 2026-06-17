@@ -26,7 +26,7 @@
 		"test:cov:open": "pnpm run test:cov && open coverage/lcov-report/index.html",
 		"test:ci": "jest --coverage --runInBand --selectProjects unit",
 		"test:unit": "jest tests/unit",
-		"test:integration": "jest tests/integration",
+		"test:integration": "jest --selectProjects integration --runInBand",
 		"test:json-spec": "jest tests/json-spec-validation.test.js --verbose",
 		"test:e2e": "playwright test",
 		"e2e:build": "next build",
