@@ -1,4 +1,4 @@
-import { bucketFor, isInRollout, assignVariant } from '@/lib/bucketing';
+import { assignVariant, bucketFor, isInRollout } from '@/lib/bucketing';
 
 describe('bucketFor', () => {
 	it('is deterministic for the same salt + id', async () => {
@@ -22,8 +22,9 @@ describe('bucketFor', () => {
 
 	it('different salts generally produce different buckets for the same id', async () => {
 		const buckets = new Set<number>();
-		for (let i = 0; i < 20; i++)
+		for (let i = 0; i < 20; i++) {
 			buckets.add(await bucketFor(`salt-${i}`, 'same-user'));
+		}
 		expect(buckets.size).toBeGreaterThan(1);
 	});
 });
@@ -45,7 +46,9 @@ describe('isInRollout', () => {
 		let wasIn = false;
 		for (let p = 0; p <= 100; p++) {
 			const inNow = await isInRollout('s', id, p);
-			if (wasIn) expect(inNow).toBe(true);
+			if (wasIn) {
+				expect(inNow).toBe(true);
+			}
 			wasIn = inNow;
 		}
 	});

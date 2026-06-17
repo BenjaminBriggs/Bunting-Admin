@@ -1,15 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import type { Prisma } from '@prisma/client';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { generateConfigFromDb } from '@/lib/config-generator';
-import { prisma } from '@/lib/db';
-import { Prisma } from '@prisma/client';
-import { getConfigChanges } from '@/lib/config-comparison';
-import { signConfigDetached } from '@/lib/jws-signer';
-import { generateRSAKeyPair } from '@/lib/crypto';
-import { getS3Client, getConfigBucket } from '@/lib/storage';
-import { storePrivateKey } from '@/lib/key-protection';
 import { identityFromRequest } from '@/lib/auth-session';
+import { getConfigChanges } from '@/lib/config-comparison';
+import { generateConfigFromDb } from '@/lib/config-generator';
+import { generateRSAKeyPair } from '@/lib/crypto';
+import { prisma } from '@/lib/db';
+import { signConfigDetached } from '@/lib/jws-signer';
+import { storePrivateKey } from '@/lib/key-protection';
+import { getConfigBucket, getS3Client } from '@/lib/storage';
 import { computeNextVersion } from '@/lib/versioning';
 
 const publishConfigSchema = z.object({

@@ -8,7 +8,9 @@ const rateLimitStore = new Map<string, RateLimitState>();
 
 function clientIp(request: NextRequest): string {
 	const fwd = request.headers.get('x-forwarded-for');
-	if (fwd) return fwd.split(',')[0].trim();
+	if (fwd) {
+		return fwd.split(',')[0].trim();
+	}
 	return request.headers.get('x-real-ip') ?? 'unknown';
 }
 
