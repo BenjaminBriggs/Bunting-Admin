@@ -6,8 +6,13 @@
 // <ThemeProvider theme={buntingTheme}><CssBaseline />{children}</ThemeProvider>
 
 import { alpha, createTheme } from '@mui/material/styles';
-import { focus } from '@guardian/source/foundations';
 // import { Components } from "@mui/material/styles/components";
+
+// Guardian Source accessible focus colour (the `@guardian/source` foundations `focus[400]`
+// token). Inlined rather than importing the package: only this single token applied here,
+// and the `@guardian/source/foundations` subpath export does not resolve under Turbopack +
+// pnpm. Keep this value in sync with Source if it changes.
+const guardianFocus = '#0077B6';
 
 // --- Brand Palette (Bunting logo colors) ---
 const brand = {
@@ -57,7 +62,7 @@ const customShadows = {
 	sm: `0 0 8px ${alpha('#000', 0.04)}`,
 	md: `0 0 12px ${alpha('#000', 0.04)}`,
 	lg: `0 0 24px ${alpha('#000', 0.01)}`,
-	focus: `0 0 0 3px ${focus[400]}`,
+	focus: `0 0 0 3px ${guardianFocus}`,
 };
 
 export function createBuntingTheme() {

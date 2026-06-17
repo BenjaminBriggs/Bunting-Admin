@@ -1,9 +1,9 @@
 # Guardian Tech-Stack Alignment
 
 > Status: **Tier 1 implemented** (shared configs, pnpm, tooling, Tailwind removal, committed
-> Prisma migrations, Dependabot + Makefile). **Tier 2 evaluated** — `@guardian/source` foundations
-> adopted (accessible focus token); a full component migration and `@guardian/libs` are not a fit
-> right now (see Tier 2 below). Tiers 3–4 remain proposals.
+> Prisma migrations, Dependabot + Makefile). **Tier 2 evaluated** — adopted Source's accessible
+> focus token (value inlined; the package itself isn't a fit yet); a full component migration and
+> `@guardian/libs` are not a fit right now (see Tier 2 below). Tiers 3–4 remain proposals.
 
 ## Purpose & the dual goal
 
@@ -132,9 +132,12 @@ pursued, do it incrementally (foundations/tokens first, then swap components scr
 `src/theme/buntingTheme.ts`. A full Source **component** migration would erase that identity for
 little familiarity gain (a Guardian dev is already at home in MUI + Emotion, which Source uses under
 the hood, and `support-admin-console` itself uses MUI). So we took the **foundations-first** step:
-installed `@guardian/source` and adopted its accessible **focus** token (`focus[400]`) in the theme
-— which also fixed a real bug where the focus ring resolved to `undefined` (no visible keyboard
-focus). Full component adoption stays deferred and brand-gated.
+adopted Source's accessible **focus** token (`focus[400]` = `#0077B6`) in the theme — which also
+fixed a real bug where the focus ring resolved to `undefined` (no visible keyboard focus). The token
+**value is inlined** rather than depending on `@guardian/source`: only this one token applied, and
+its `@guardian/source/foundations` subpath export does not resolve under Turbopack + pnpm. Re-add the
+real package (with a Turbopack resolution fix) if/when a broader set of Source foundations is used.
+Full component adoption stays deferred and brand-gated.
 
 ### 2.2 Pull in `@guardian/libs` where it duplicates hand-rolled code
 
@@ -234,7 +237,7 @@ an additive layer.
 
 **Tier 2 — evaluated**
 
-- [x] Evaluate `@guardian/source` → **foundations adopted** (accessible focus token; fixed a broken focus ring); full component migration deferred (brand-gated) — _L_
+- [x] Evaluate `@guardian/source` → adopted its accessible focus **token value** (inlined; fixed a broken focus ring). Package not retained (subpath breaks Turbopack + only one token applied); full component migration deferred (brand-gated) — _L_
 - [x] Evaluate `@guardian/libs` → **N/A, skipped** (no client storage/cookie/consent/commercial surface; utils are flag-domain-specific) — _S–M_
 
 **Tier 3 — easy Riff-Raff path (Docker stays default)**
