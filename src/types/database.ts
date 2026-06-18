@@ -21,7 +21,6 @@ export interface AppConfig {
 	updated_at: string;
 	_count?: {
 		flags: number;
-		cohorts: number;
 		test_rollouts: number;
 	};
 }
@@ -32,29 +31,20 @@ export interface DBFlag {
 	displayName: string;
 	type: FlagType;
 	description?: string;
+	/** Admin-only grouping label; not part of the published config. */
+	group?: string | null;
 	defaultValues: {
 		development: FlagValue;
-		staging: FlagValue;
+		beta: FlagValue;
 		production: FlagValue;
 	};
 	variants: {
 		development: ConditionalVariant[];
-		staging: ConditionalVariant[];
+		beta: ConditionalVariant[];
 		production: ConditionalVariant[];
 	};
 	archived: boolean;
 	archivedAt?: string;
-	createdAt: string;
-	updatedAt: string;
-	appId: string;
-}
-
-export interface DBCohort {
-	id: string;
-	key: string;
-	name: string;
-	description?: string;
-	conditions: Condition[];
 	createdAt: string;
 	updatedAt: string;
 	appId: string;
@@ -67,12 +57,14 @@ export interface DBTestRollout {
 	description?: string;
 	type: 'TEST' | 'ROLLOUT';
 	salt: string;
+	/** Admin-only grouping label; not part of the published config. */
+	group?: string | null;
 	conditions: Condition[];
 	variants?: Record<string, TestVariant>;
 	percentage?: number;
 	rolloutValues?: {
 		development: FlagValue;
-		staging: FlagValue;
+		beta: FlagValue;
 		production: FlagValue;
 	};
 	flagIds: string[];
@@ -97,9 +89,6 @@ export interface ConfigDiff {
 	added_flags: string[];
 	modified_flags: string[];
 	removed_flags: string[];
-	added_cohorts: string[];
-	modified_cohorts: string[];
-	removed_cohorts: string[];
 	added_test_rollouts: string[];
 	modified_test_rollouts: string[];
 	removed_test_rollouts: string[];

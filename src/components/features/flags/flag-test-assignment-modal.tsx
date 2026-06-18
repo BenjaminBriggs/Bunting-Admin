@@ -1,27 +1,19 @@
 'use client';
 
-import { Rocket, Save, Science } from '@mui/icons-material';
 import {
 	Alert,
 	Box,
 	Button,
-	Chip,
 	CircularProgress,
 	Dialog,
 	DialogActions,
 	DialogContent,
-	DialogTitle,
-	FormControl,
-	Grid,
-	MenuItem,
-	Paper,
-	Select,
+	IconButton,
 	Stack,
-	TextField,
 	Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { updateFlag } from '@/lib/api';
+import { envColors, ink, monoFontFamily, surface } from '@/theme/designTokens';
 import type { DBTestRollout, Environment } from '@/types';
 import FlagValueInput, {
 	getDefaultValueForType,
@@ -48,6 +40,36 @@ interface TestGroupValue {
 	value: any;
 }
 
+// Group swatch palette (matches the Test form / Tests card). Control reads soft + last.
+const PALETTE = ['#F6A444', '#54C9C0', '#F47C5D', '#82C868', '#D8CFBC'];
+const CONTROL_COLOR = '#D8CFBC';
+const isControl = (name: string) => name.trim().toLowerCase() === 'control';
+
+function Ms({ name, sx }: { name: string; sx?: any }) {
+	return (
+		<Box component="span" className="ms" sx={sx}>
+			{name}
+		</Box>
+	);
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+	return (
+		<Typography
+			sx={{
+				fontFamily: 'var(--font-nunito)',
+				fontWeight: 700,
+				fontSize: 10,
+				letterSpacing: '.05em',
+				textTransform: 'uppercase',
+				color: ink.soft,
+			}}
+		>
+			{children}
+		</Typography>
+	);
+}
+
 export default function FlagTestAssignmentModal({
 	open,
 	onClose,
@@ -60,33 +82,45 @@ export default function FlagTestAssignmentModal({
 	selectedRollouts,
 }: FlagTestAssignmentModalProps) {
 	const [groupValues, setGroupValues] = useState<TestGroupValue[]>([]);
+	const [rolloutValues, setRolloutValues] = useState<Record<string, any>>({});
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
+	const env = envColors[environment] ?? envColors.production;
+	const itemCount = selectedTests.length + selectedRollouts.length;
+
 	useEffect(() => {
-		if (open) {
-			// Initialize values for all test groups
-			const initialValues: TestGroupValue[] = [];
-
-			selectedTests.forEach((test) => {
-				if (test.variants && typeof test.variants === 'object') {
-					Object.keys(test.variants).forEach((groupName) => {
-						initialValues.push({
-							testId: test.id,
-							testName: test.name,
-							groupName,
-							value: getDefaultValueForType(flagType as any),
-						});
-					});
-				}
-			});
-
-			setGroupValues(initialValues);
-			setError(null);
+		if (!open) {
+			return;
 		}
-	}, [open, selectedTests, flagType]);
+		const initialValues: TestGroupValue[] = [];
+		selectedTests.forEach((test) => {
+			if (test.variants && typeof test.variants === 'object') {
+				Object.keys(test.variants).forEach((groupName) => {
+					initialValues.push({
+						testId: test.id,
+						testName: test.name,
+						groupName,
+						value: getDefaultValueForType(flagType as any),
+					});
+				});
+			}
+		});
+		setGroupValues(initialValues);
 
-	const handleValueChange = (testId: string, groupName: string, value: any) => {
+		const initialRollouts: Record<string, any> = {};
+		selectedRollouts.forEach((rollout) => {
+			initialRollouts[rollout.id] = getDefaultValueForType(flagType as any);
+		});
+		setRolloutValues(initialRollouts);
+		setError(null);
+	}, [open, selectedTests, selectedRollouts, flagType]);
+
+	const handleGroupValueChange = (
+		testId: string,
+		groupName: string,
+		value: any,
+	) => {
 		setGroupValues((prev) =>
 			prev.map((gv) =>
 				gv.testId === testId && gv.groupName === groupName
@@ -96,15 +130,23 @@ export default function FlagTestAssignmentModal({
 		);
 	};
 
+	const handleRolloutValueChange = (rolloutId: string, value: any) => {
+		setRolloutValues((prev) => ({ ...prev, [rolloutId]: value }));
+	};
+
 	const validateValues = (): boolean => {
-		return groupValues.every(
+		const groupsOk = groupValues.every(
 			(gv) => validateValue(gv.value, flagType as any).isValid,
 		);
+		const rolloutsOk = Object.values(rolloutValues).every(
+			(v) => validateValue(v, flagType as any).isValid,
+		);
+		return groupsOk && rolloutsOk;
 	};
 
 	const handleSave = async () => {
 		if (!validateValues()) {
-			setError('Please fix JSON validation errors before saving');
+			setError('Please fix the value errors before saving');
 			return;
 		}
 
@@ -112,17 +154,8 @@ export default function FlagTestAssignmentModal({
 		setError(null);
 
 		try {
-			console.log('Starting flag assignment save process...', {
-				selectedTests: selectedTests.length,
-				selectedRollouts: selectedRollouts.length,
-				environment,
-				flagId,
-				groupValues,
-			});
-
 			// Group values by test
-			const testUpdates: Record<string, any> = {};
-
+			const testUpdates: Record<string, Record<string, any>> = {};
 			groupValues.forEach((gv) => {
 				if (!testUpdates[gv.testId]) {
 					testUpdates[gv.testId] = {};
@@ -133,9 +166,6 @@ export default function FlagTestAssignmentModal({
 				);
 			});
 
-			console.log('Test updates to apply:', testUpdates);
-
-			// Update each test's variants to include this flag's values
 			for (const testId of Object.keys(testUpdates)) {
 				const test = selectedTests.find((t) => t.id === testId);
 				if (test?.variants) {
@@ -143,36 +173,24 @@ export default function FlagTestAssignmentModal({
 
 					Object.keys(testUpdates[testId]).forEach((groupName) => {
 						if (updatedVariants[groupName]) {
-							// Initialize values object if it doesn't exist
 							if (!updatedVariants[groupName].values) {
 								updatedVariants[groupName].values = {
 									development: {},
-									staging: {},
+									beta: {},
 									production: {},
 								};
 							}
-
-							// Initialize environment object if it doesn't exist
 							if (!updatedVariants[groupName].values[environment]) {
 								updatedVariants[groupName].values[environment] = {};
 							}
-
-							// Update the variant's values for this environment
 							(updatedVariants[groupName].values as any)[environment][flagId] =
 								testUpdates[testId][groupName];
 						}
 					});
 
-					// Update the test with new variants and add flagId if not present
 					const updatedFlagIds = test.flagIds.includes(flagId)
 						? test.flagIds
 						: [...test.flagIds, flagId];
-
-					// Call API to update the test
-					console.log(`Updating test ${testId} with:`, {
-						variants: updatedVariants,
-						flagIds: updatedFlagIds,
-					});
 
 					const response = await fetch(`/api/tests/${testId}`, {
 						method: 'PUT',
@@ -183,28 +201,28 @@ export default function FlagTestAssignmentModal({
 						}),
 					});
 
-					console.log(`Test ${testId} update response:`, response.status);
-
 					if (!response.ok) {
 						const errorText = await response.text();
-						console.error(`Failed to update test ${test.name}:`, errorText);
 						throw new Error(`Failed to update test ${test.name}: ${errorText}`);
 					}
 				}
 			}
 
-			// Also handle rollouts (simpler - just one value per rollout)
+			// Rollouts — one served value per rollout (the picked value, not a default)
 			for (const rollout of selectedRollouts) {
-				const rolloutValue = getDefaultValueForType(flagType as any);
+				const rolloutValue = processValueForType(
+					rolloutValues[rollout.id] ?? getDefaultValueForType(flagType as any),
+					flagType as any,
+				);
 
 				const updatedRolloutValues = {
 					development: {},
-					staging: {},
+					beta: {},
 					production: {},
 					...rollout.rolloutValues,
 					[environment]: {
 						...(rollout.rolloutValues as any)?.[environment],
-						[flagId]: processValueForType(rolloutValue, flagType as any),
+						[flagId]: rolloutValue,
 					},
 				};
 
@@ -212,7 +230,6 @@ export default function FlagTestAssignmentModal({
 					? rollout.flagIds
 					: [...rollout.flagIds, flagId];
 
-				// Call API to update the rollout
 				const response = await fetch(`/api/rollouts/${rollout.id}`, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
@@ -227,168 +244,276 @@ export default function FlagTestAssignmentModal({
 				}
 			}
 
-			console.log('Flag assignment completed successfully');
 			onSave();
 			onClose();
 		} catch (err) {
-			console.error('Flag assignment failed:', err);
 			setError(
-				err instanceof Error ? err.message : 'Failed to assign flag to tests',
+				err instanceof Error ? err.message : 'Failed to assign flag',
 			);
 		} finally {
 			setSaving(false);
 		}
 	};
 
-	const getTestGroupsByTest = () => {
-		const testGroups: Record<string, TestGroupValue[]> = {};
-		groupValues.forEach((gv) => {
-			if (!testGroups[gv.testId]) {
-				testGroups[gv.testId] = [];
-			}
-			testGroups[gv.testId].push(gv);
-		});
-		return testGroups;
-	};
-
-	const renderValueInput = (groupValue: TestGroupValue) => {
-		const { testId, groupName, value } = groupValue;
-
-		return (
-			<FlagValueInput
-				flagType={flagType as any}
-				value={value}
-				onChange={(newValue) => handleValueChange(testId, groupName, newValue)}
-				size="small"
-				fullWidth
-			/>
+	// Group the test group-values back per test, ordering any Control group last.
+	const groupsForTest = (testId: string): TestGroupValue[] => {
+		const rows = groupValues.filter((gv) => gv.testId === testId);
+		return [...rows].sort(
+			(a, b) => (isControl(a.groupName) ? 1 : 0) - (isControl(b.groupName) ? 1 : 0),
 		);
 	};
 
-	const testGroupsByTest = getTestGroupsByTest();
+	const headerIcon =
+		selectedTests.length > 0 && selectedRollouts.length > 0
+			? 'tune'
+			: selectedRollouts.length > 0
+				? 'rocket_launch'
+				: 'science';
+
+	const rowSx = {
+		display: 'flex',
+		alignItems: 'center',
+		gap: 1.5,
+		border: `1px solid ${surface.border}`,
+		borderRadius: '11px',
+		p: '11px 13px',
+	} as const;
 
 	return (
-		<Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-			<DialogTitle>
-				Configure Flag Values -{' '}
-				{environment.charAt(0).toUpperCase() + environment.slice(1)}
-			</DialogTitle>
+		<Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+			{/* header */}
+			<Box
+				sx={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 1.5,
+					p: '18px 22px',
+					borderBottom: '1px solid #F1EBDD',
+				}}
+			>
+				<Box
+					sx={{
+						width: 40,
+						height: 40,
+						borderRadius: '11px',
+						bgcolor: env.headerBg,
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+					}}
+				>
+					<Ms name={headerIcon} sx={{ fontSize: 22, color: env.text }} />
+				</Box>
+				<Box sx={{ flex: 1 }}>
+					<Typography variant="h6" sx={{ fontSize: 17 }}>
+						Configure flag values
+					</Typography>
+					<Typography sx={{ fontWeight: 600, fontSize: 11, color: ink.muted }}>
+						{flagName} ·{' '}
+						<Box component="span" sx={{ color: env.text }}>
+							{env.label}
+						</Box>
+					</Typography>
+				</Box>
+				<IconButton onClick={onClose} size="small">
+					<Ms name="close" sx={{ fontSize: 22, color: '#8B8472' }} />
+				</IconButton>
+			</Box>
 
-			<DialogContent>
-				<Box sx={{ mt: 1 }}>
-					<Alert severity="info" sx={{ mb: 3 }}>
-						Configure values for <strong>{flagName}</strong> ({flagType}) in
-						each test group. These values will be used when users are assigned
-						to each test variant.
-					</Alert>
-
-					{error && (
-						<Alert severity="error" sx={{ mb: 3 }}>
-							{error}
-						</Alert>
-					)}
-
-					<Stack spacing={3}>
-						{selectedTests.length > 0 && (
-							<Box>
-								<Typography
-									variant="h6"
-									sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}
-								>
-									<Science color="primary" />
-									A/B Tests
-								</Typography>
-
-								<Stack spacing={3}>
-									{Object.entries(testGroupsByTest).map(([testId, groups]) => {
-										const test = selectedTests.find((t) => t.id === testId);
-										if (!test) {
-											return null;
-										}
-
-										return (
-											<Paper key={testId} variant="outlined" sx={{ p: 3 }}>
-												<Typography
-													variant="subtitle1"
-													sx={{ fontWeight: 600, mb: 2 }}
-												>
-													{test.name}
-												</Typography>
-
-												<Grid container spacing={2}>
-													{groups.map((groupValue) => (
-														<Grid
-															key={`${groupValue.testId}-${groupValue.groupName}`}
-															size={{ xs: 12, sm: 6, md: 4 }}
-														>
-															<Box>
-																<Typography
-																	variant="caption"
-																	color="text.secondary"
-																	sx={{ mb: 1, display: 'block' }}
-																>
-																	{groupValue.groupName}
-																</Typography>
-																{renderValueInput(groupValue)}
-															</Box>
-														</Grid>
-													))}
-												</Grid>
-											</Paper>
-										);
-									})}
-								</Stack>
+			<DialogContent sx={{ p: '20px 22px' }}>
+				<Stack spacing={2.5}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'flex-start',
+							gap: 1.25,
+							bgcolor: env.headerBg,
+							border: `1px solid ${env.border}`,
+							borderRadius: '11px',
+							p: '12px 14px',
+						}}
+					>
+						<Ms name="info" sx={{ fontSize: 19, color: env.text, mt: '1px' }} />
+						<Typography
+							sx={{ fontWeight: 600, fontSize: 13, color: env.text, lineHeight: 1.5 }}
+						>
+							Configure the value{' '}
+							<Box component="span" sx={{ fontWeight: 800 }}>
+								{flagName}
+							</Box>{' '}
+							(
+							<Box component="span" sx={{ fontFamily: monoFontFamily, fontWeight: 700 }}>
+								{flagType}
 							</Box>
-						)}
+							) serves in {env.label} for each selected test group and rollout.
+						</Typography>
+					</Box>
 
-						{selectedRollouts.length > 0 && (
-							<Box>
-								<Typography
-									variant="h6"
-									sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}
-								>
-									<Rocket color="secondary" />
+					{error && <Alert severity="error">{error}</Alert>}
+
+					{/* Rollouts */}
+					{selectedRollouts.length > 0 && (
+						<Box>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+								<Ms name="rocket_launch" sx={{ fontSize: 19, color: '#9A6F1C' }} />
+								<Typography variant="h6" sx={{ fontSize: 16 }}>
 									Rollouts
 								</Typography>
-
-								<Stack spacing={2}>
-									{selectedRollouts.map((rollout) => (
-										<Paper key={rollout.id} variant="outlined" sx={{ p: 2 }}>
-											<Box
-												sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
-											>
-												<Typography variant="subtitle2" sx={{ minWidth: 150 }}>
-													{rollout.name}
-												</Typography>
-												<Box sx={{ flexGrow: 1 }}>
-													{renderValueInput({
-														testId: rollout.id,
-														testName: rollout.name,
-														groupName: 'rollout',
-														value: getDefaultValueForType(flagType as any),
-													})}
-												</Box>
-											</Box>
-										</Paper>
-									))}
-								</Stack>
 							</Box>
-						)}
-					</Stack>
-				</Box>
+							<Stack spacing={1}>
+								{selectedRollouts.map((rollout) => (
+									<Box key={rollout.id} sx={rowSx}>
+										<Box sx={{ flex: 1, minWidth: 0 }}>
+											<Typography sx={{ fontWeight: 700, fontSize: 13 }}>
+												{rollout.name}
+											</Typography>
+											<Typography
+												sx={{
+													fontFamily: monoFontFamily,
+													fontSize: 10,
+													color: ink.muted,
+												}}
+											>
+												{rollout.key} · serves to rolled-out users
+											</Typography>
+										</Box>
+										<FlagValueInput
+											flagType={flagType as any}
+											value={rolloutValues[rollout.id]}
+											onChange={(v) => handleRolloutValueChange(rollout.id, v)}
+											fullWidth={false}
+											size="small"
+										/>
+									</Box>
+								))}
+							</Stack>
+						</Box>
+					)}
+
+					{/* A/B Tests */}
+					{selectedTests.length > 0 && (
+						<Box>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+								<Ms name="science" sx={{ fontSize: 19, color: '#9A6F1C' }} />
+								<Typography variant="h6" sx={{ fontSize: 16 }}>
+									A/B Tests
+								</Typography>
+							</Box>
+							<Stack spacing={1.5}>
+								{selectedTests.map((test) => {
+									const rows = groupsForTest(test.id);
+									if (rows.length === 0) {
+										return null;
+									}
+									return (
+										<Box
+											key={test.id}
+											sx={{
+												border: `1px solid ${surface.border}`,
+												borderRadius: '12px',
+												p: '14px 15px',
+											}}
+										>
+											<Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1.25 }}>
+												{test.name}
+											</Typography>
+											<Box sx={{ mb: 1 }}>
+												<Label>Value per group</Label>
+											</Box>
+											<Stack spacing={1}>
+												{rows.map((gv) => {
+													const idx = Object.keys(test.variants || {}).indexOf(
+														gv.groupName,
+													);
+													const color = isControl(gv.groupName)
+														? CONTROL_COLOR
+														: PALETTE[(idx < 0 ? 0 : idx) % PALETTE.length];
+													return (
+														<Box
+															key={`${gv.testId}-${gv.groupName}`}
+															sx={{
+																display: 'flex',
+																alignItems: 'center',
+																gap: 1.25,
+																border: `1px solid ${surface.border}`,
+																borderRadius: '10px',
+																p: '10px 12px',
+															}}
+														>
+															<Box
+																sx={{
+																	width: 9,
+																	height: 9,
+																	borderRadius: '3px',
+																	bgcolor: color,
+																	flexShrink: 0,
+																}}
+															/>
+															<Typography
+																sx={{
+																	flex: 1,
+																	fontWeight: 700,
+																	fontSize: 13,
+																	color: isControl(gv.groupName)
+																		? '#8B8472'
+																		: ink.primary,
+																}}
+															>
+																{gv.groupName}
+															</Typography>
+															<FlagValueInput
+																flagType={flagType as any}
+																value={gv.value}
+																onChange={(v) =>
+																	handleGroupValueChange(gv.testId, gv.groupName, v)
+																}
+																fullWidth={false}
+																size="small"
+															/>
+														</Box>
+													);
+												})}
+											</Stack>
+										</Box>
+									);
+								})}
+							</Stack>
+						</Box>
+					)}
+				</Stack>
 			</DialogContent>
 
-			<DialogActions>
-				<Button onClick={onClose}>Cancel</Button>
+			<DialogActions
+				sx={{ p: '15px 22px', bgcolor: '#FCFAF3', borderTop: '1px solid #F1EBDD' }}
+			>
+				<Button variant="outlined" onClick={onClose}>
+					Cancel
+				</Button>
 				<Button
 					onClick={handleSave}
-					variant="contained"
 					disabled={saving || !validateValues()}
-					startIcon={saving ? <CircularProgress size={20} /> : <Save />}
+					startIcon={
+						saving ? (
+							<CircularProgress size={18} sx={{ color: '#fff' }} />
+						) : (
+							<Ms name="save" sx={{ fontSize: 18 }} />
+						)
+					}
+					sx={{
+						bgcolor: env.text,
+						color: '#fff',
+						borderRadius: '11px',
+						px: 2.5,
+						py: 1.25,
+						fontWeight: 700,
+						boxShadow: 'none',
+						'&:hover': { bgcolor: env.text, opacity: 0.9, boxShadow: 'none' },
+						'&.Mui-disabled': { bgcolor: '#C2BAA8', color: '#fff', opacity: 0.55 },
+					}}
 				>
 					{saving
-						? 'Assigning...'
-						: `Assign Flag to ${selectedTests.length + selectedRollouts.length} Item${selectedTests.length + selectedRollouts.length !== 1 ? 's' : ''}`}
+						? 'Assigning…'
+						: `Assign Flag to ${itemCount} Item${itemCount !== 1 ? 's' : ''}`}
 				</Button>
 			</DialogActions>
 		</Dialog>

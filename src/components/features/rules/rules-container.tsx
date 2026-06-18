@@ -35,12 +35,7 @@ export function RulesContainer({
 	};
 
 	const handleAddRule = () => {
-		const generateConditionId = () => {
-			return `condition_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-		};
-
 		const firstCondition = {
-			id: generateConditionId(),
 			type: 'app_version' as const,
 			operator: 'in' as const,
 			values: [],
@@ -81,7 +76,7 @@ export function RulesContainer({
 				if (condition.values.length === 0) {
 					errors.push({
 						ruleId: rule.id,
-						conditionId: condition.id,
+						conditionId: String(conditionIndex),
 						message: `Rule ${ruleIndex + 1}, Condition ${conditionIndex + 1}: No values specified`,
 						type: 'error',
 					});

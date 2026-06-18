@@ -16,7 +16,7 @@ Self-hosted feature flagging for Apple platform apps, with staged rollouts, A/B 
 ## Why Teams Use It
 
 - Built for multi-app workspaces and environment-specific flag values.
-- Gradual rollouts, multi-variant experiments, and reusable cohorts out of the box.
+- Gradual rollouts and multi-variant experiments out of the box.
 - OAuth and magic-link authentication with role-based access control.
 - Simple hosting story—deploy in the cloud, or run locally with Docker.
 
@@ -37,7 +37,7 @@ Authentication is configured via environment variables before deploy (`AUTH_MODE
 
 Full documentation index: [docs/README.md](docs/README.md)
 
-- [Concepts](docs/concepts.md) — flags vs. cohorts vs. tests vs. rollouts, the publishing pipeline, deterministic bucketing, and glossary.
+- [Concepts](docs/concepts.md) — flags vs. tests vs. rollouts, the publishing pipeline, deterministic bucketing, and glossary.
 - [Config Artifact Specification](docs/config-artifact-spec.md) — the canonical JSON contract consumed by the SDK.
 - [Product Overview](docs/product-overview.md) — capabilities, workflows, and dashboard tour.
 - [Local Development](docs/local-development.md) — Docker-powered setup guide and pnpm scripts.

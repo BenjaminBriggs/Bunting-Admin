@@ -16,18 +16,16 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
 	conditionTemplates,
 	operatorLabels,
 } from '@/components/features/rules/rule-templates';
-import { type Cohort, fetchCohorts } from '@/lib/api';
 import type {
 	RuleCondition,
 	RuleConditionType,
 	RuleOperator,
 } from '@/types/rules';
-import { ConditionTemplate } from '@/types/rules';
 
 interface UnifiedConditionBuilderProps {
 	condition: RuleCondition;
@@ -36,7 +34,6 @@ interface UnifiedConditionBuilderProps {
 	canDelete?: boolean;
 	appId?: string;
 	allowedTypes?: RuleConditionType[];
-	showCohortConditions?: boolean;
 	variant?: 'default' | 'compact' | 'modal';
 	disabled?: boolean;
 }
@@ -46,37 +43,14 @@ export function UnifiedConditionBuilder({
 	onChange,
 	onDelete,
 	canDelete = true,
-	appId,
 	allowedTypes,
-	showCohortConditions = true,
 	variant = 'default',
 	disabled = false,
 }: UnifiedConditionBuilderProps) {
-	const [cohorts, setCohorts] = useState<Cohort[]>([]);
-	const [loadingCohorts, setLoadingCohorts] = useState(false);
 	const [valueInput, setValueInput] = useState('');
-
-	// Load cohorts when condition type is 'cohort'
-	useEffect(() => {
-		if (condition.type === 'cohort' && appId) {
-			setLoadingCohorts(true);
-			fetchCohorts(appId)
-				.then((cohortsData) => {
-					setCohorts(cohortsData);
-					setLoadingCohorts(false);
-				})
-				.catch((error) => {
-					console.error('Failed to load cohorts:', error);
-					setLoadingCohorts(false);
-				});
-		}
-	}, [condition.type, appId]);
 
 	const template = conditionTemplates.find((t) => t.type === condition.type);
 	const availableTemplates = conditionTemplates.filter((template) => {
-		if (!showCohortConditions && template.type === 'cohort') {
-			return false;
-		}
 		if (allowedTypes && !allowedTypes.includes(template.type)) {
 			return false;
 		}
@@ -139,43 +113,6 @@ export function UnifiedConditionBuilder({
 	const renderValueInput = () => {
 		if (!template) {
 			return null;
-		}
-
-		if (template.valueType === 'cohort') {
-			return (
-				<Autocomplete
-					multiple
-					options={cohorts.map((c) => ({ value: c.key, label: c.name }))}
-					value={cohorts
-						.map((c) => ({ value: c.key, label: c.name }))
-						.filter((cohort) => condition.values.includes(cohort.value))}
-					onChange={(_, newValue) => {
-						handleValuesChange(newValue.map((item) => item.value));
-					}}
-					getOptionLabel={(option) => option.label}
-					loading={loadingCohorts}
-					disabled={disabled}
-					renderInput={(params) => (
-						<TextField
-							{...params}
-							label="Select Cohorts"
-							placeholder="Choose cohorts"
-							size={variant === 'compact' ? 'small' : 'medium'}
-						/>
-					)}
-					renderTags={(value, getTagProps) =>
-						value.map((option, index) => (
-							<Chip
-								variant="outlined"
-								label={option.label}
-								{...getTagProps({ index })}
-								key={option.value}
-								size={variant === 'compact' ? 'small' : 'medium'}
-							/>
-						))
-					}
-				/>
-			);
 		}
 
 		if (template.valueType === 'select') {
@@ -372,15 +309,11 @@ export { UnifiedConditionBuilder as ConditionEditor };
 // Utility function to create a new condition
 export function createNewCondition(
 	type: RuleConditionType = 'app_version',
-	id?: string,
 ): RuleCondition {
 	const template = conditionTemplates.find((t) => t.type === type);
 	const defaultOperator = template?.operators[0] || 'equals';
 
 	return {
-		id:
-			id ||
-			`condition_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 		type,
 		operator: defaultOperator,
 		values: [],
@@ -388,10 +321,10 @@ export function createNewCondition(
 }
 
 // Validation helper
-export function validateCondition(
-	condition: RuleCondition,
-	cohorts: Cohort[] = [],
-): { isValid: boolean; errors: string[] } {
+export function validateCondition(condition: RuleCondition): {
+	isValid: boolean;
+	errors: string[];
+} {
 	const errors: string[] = [];
 
 	if (!condition.type) {
@@ -404,16 +337,6 @@ export function validateCondition(
 
 	if (condition.values.length === 0) {
 		errors.push('At least one value is required');
-	}
-
-	// Type-specific validation
-	if (condition.type === 'cohort' && condition.values.length > 0) {
-		const invalidCohorts = condition.values.filter(
-			(value) => !cohorts.some((cohort) => cohort.key === value),
-		);
-		if (invalidCohorts.length > 0) {
-			errors.push(`Invalid cohort(s): ${invalidCohorts.join(', ')}`);
-		}
 	}
 
 	return {

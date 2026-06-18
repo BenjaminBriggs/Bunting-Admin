@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 // POST /api/flags - Create a new flag with environment defaults
 export async function POST(request: NextRequest) {
 	try {
-		const { key, displayName, type, description, defaultValues, appId } =
+		const { key, displayName, type, description, group, defaultValues, appId } =
 			createFlagSchema.parse(await request.json());
 
 		// Check if flag key already exists for this app
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 		// Initialize empty variants for all environments
 		const variants = {
 			development: [],
-			staging: [],
+			beta: [],
 			production: [],
 		};
 
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
 				displayName,
 				type: typeMap[type],
 				description,
+				group: group ?? null,
 				defaultValues,
 				variants,
 			},

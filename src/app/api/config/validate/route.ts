@@ -17,14 +17,12 @@ export interface ValidationError {
 	type: string;
 	message: string;
 	flagKey?: string;
-	cohortKey?: string;
 }
 
 export interface ValidationWarning {
 	type: string;
 	message: string;
 	flagKey?: string;
-	cohortKey?: string;
 }
 
 // POST /api/config/validate - Validate current configuration

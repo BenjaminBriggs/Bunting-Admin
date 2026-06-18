@@ -82,7 +82,6 @@ export default function ConditionCreatorModal({
 
 	const createDefaultCondition = useCallback(
 		(): RuleCondition => ({
-			id: generateId(),
 			type: 'environment' as any,
 			operator: 'in',
 			values: [environment],
@@ -102,8 +101,6 @@ export default function ConditionCreatorModal({
 			} else if (condition.type === 'app_version') {
 				return `v${condition.values.join('/')}`;
 			} else if (condition.type === 'platform') {
-				return condition.values.join('/');
-			} else if (condition.type === 'cohort') {
 				return condition.values.join('/');
 			} else {
 				return `${condition.type}:${condition.values.join('/')}`;
@@ -313,7 +310,7 @@ export default function ConditionCreatorModal({
 
 						<Stack spacing={2}>
 							{conditions.map((condition, index) => (
-								<Box key={condition.id}>
+								<Box key={index}>
 									<ConditionBuilder
 										condition={condition}
 										onChange={(newCondition) =>

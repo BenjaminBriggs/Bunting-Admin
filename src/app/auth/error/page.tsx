@@ -1,5 +1,4 @@
-import { Error } from '@mui/icons-material';
-import { Alert, Box, Button, Container, Typography } from '@mui/material';
+import { Box, Button, Typography } from '@mui/material';
 import Link from 'next/link';
 
 interface ErrorPageProps {
@@ -14,44 +13,80 @@ export default async function ErrorPage({ searchParams }: ErrorPageProps) {
 
 	if (error === 'AccessDenied') {
 		message =
-			"Your email isn't authorized. Contact an admin to request access.";
+			"Your email isn't authorized for this instance. Ask an admin to grant access, then try again.";
 	} else if (error === 'CredentialsSignin') {
 		message = 'Invalid credentials. Please check your username and password.';
 	}
 
 	return (
-		<Container maxWidth="sm">
+		<Box
+			sx={{
+				minHeight: '100vh',
+				bgcolor: 'background.default',
+				display: 'flex',
+				justifyContent: 'center',
+				alignItems: 'center',
+				py: 6,
+				px: 2,
+			}}
+		>
 			<Box
 				sx={{
-					minHeight: '100vh',
+					width: '100%',
+					maxWidth: 420,
+					bgcolor: '#fff',
+					border: '1px solid #E4DBC8',
+					borderRadius: '22px',
+					boxShadow: '0 18px 50px rgba(40,33,20,.10)',
+					p: { xs: 4, sm: '46px 40px' },
 					display: 'flex',
 					flexDirection: 'column',
-					justifyContent: 'center',
 					alignItems: 'center',
-					py: 4,
+					textAlign: 'center',
 				}}
 			>
-				<Box sx={{ textAlign: 'center' }}>
-					<Error sx={{ fontSize: 64, color: 'error.main', mb: 2 }} />
-
-					<Typography variant="h4" component="h1" gutterBottom>
-						Access Denied
-					</Typography>
-
-					<Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
-						{message}
-					</Alert>
-
-					<Button
-						component={Link}
-						href="/auth/signin"
-						variant="contained"
-						size="large"
-					>
-						Try Again
-					</Button>
+				<Box
+					sx={{
+						width: 64,
+						height: 64,
+						borderRadius: '50%',
+						bgcolor: '#FBEAE5',
+						border: '1px solid #F0CFC6',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+					}}
+				>
+					<Box component="span" className="ms" sx={{ fontSize: 34, color: '#C8503C' }}>
+						block
+					</Box>
 				</Box>
+
+				<Typography variant="h5" sx={{ mt: 2.5, fontSize: 22 }}>
+					Couldn’t sign you in
+				</Typography>
+				<Typography
+					sx={{
+						font: "600 14px 'Nunito'",
+						color: '#6B6452',
+						mt: 1,
+						maxWidth: 280,
+						lineHeight: 1.5,
+					}}
+				>
+					{message}
+				</Typography>
+
+				<Button
+					component={Link}
+					href="/auth/signin"
+					variant="contained"
+					fullWidth
+					sx={{ mt: 2.75, borderRadius: '13px', py: 1.5 }}
+				>
+					Try a different account
+				</Button>
 			</Box>
-		</Container>
+		</Box>
 	);
 }

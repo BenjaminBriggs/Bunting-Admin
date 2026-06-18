@@ -21,7 +21,7 @@ async function checkAllFlags() {
 
 	for (const flag of flags) {
 		const defaultValues = flag.defaultValues as any;
-		const environments = ['development', 'staging', 'production'];
+		const environments = ['development', 'beta', 'production'];
 		const missingEnvs = environments.filter((env) => !(env in defaultValues));
 
 		if (missingEnvs.length > 0) {

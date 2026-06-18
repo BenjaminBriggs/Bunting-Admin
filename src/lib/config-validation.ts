@@ -14,25 +14,23 @@ export interface ValidationError {
 	type: string;
 	message: string;
 	flagKey?: string;
-	cohortKey?: string;
 }
 
 export interface ValidationWarning {
 	type: string;
 	message: string;
 	flagKey?: string;
-	cohortKey?: string;
 }
 
 const VALID_FLAG_TYPES = [
-	'boolean',
+	'bool',
 	'string',
-	'integer',
+	'int',
 	'double',
 	'date',
 	'json',
 ] as const;
-const ENVIRONMENTS = ['development', 'staging', 'production'] as const;
+const ENVIRONMENTS = ['development', 'beta', 'production'] as const;
 
 export type ValidFlagType = (typeof VALID_FLAG_TYPES)[number];
 export type Environment = (typeof ENVIRONMENTS)[number];
@@ -84,76 +82,7 @@ export function validateConfig(config: any): ValidationResult {
 			});
 		}
 
-		// Check variants and their conditions for each environment
-		ENVIRONMENTS.forEach((env) => {
-			if (flag[env]?.variants && Array.isArray(flag[env].variants)) {
-				flag[env].variants.forEach((variant: any, variantIndex: number) => {
-					// Note: Removed empty variant condition warning
-					// Test and rollout variants don't need conditions, only conditional variants do
-					// and conditional variants are typically created with conditions from the UI
-
-					// Check for cohort references - only for conditional variants that have conditions
-					if (variant.type === 'conditional' && variant.conditions) {
-						variant.conditions.forEach((condition: any) => {
-							if (
-								condition.type === 'cohort' &&
-								condition.values &&
-								Array.isArray(condition.values)
-							) {
-								condition.values.forEach((cohortKey: string) => {
-									if (!config.cohorts[cohortKey]) {
-										errors.push({
-											type: 'missing_cohort_reference',
-											message: `Flag "${key}" (${env}) references missing cohort "${cohortKey}"`,
-											flagKey: key,
-										});
-									}
-								});
-							}
-						});
-					}
-				});
-			}
-		});
 	});
-
-	// Validate cohorts (schema v2 - rule-based)
-	Object.entries(config.cohorts || {}).forEach(
-		([key, cohort]: [string, any]) => {
-			// Check that cohort has conditions
-			if (
-				!cohort.conditions ||
-				!Array.isArray(cohort.conditions) ||
-				cohort.conditions.length === 0
-			) {
-				warnings.push({
-					type: 'empty_cohort',
-					message: `Cohort "${key}" has no conditions`,
-					cohortKey: key,
-				});
-			}
-
-			// Validate cohort conditions
-			cohort.conditions?.forEach((condition: any, conditionIndex: number) => {
-				if (!condition.type) {
-					errors.push({
-						type: 'invalid_condition',
-						message: `Condition ${conditionIndex + 1} in cohort "${key}" is missing a type`,
-						cohortKey: key,
-					});
-				}
-
-				// Prevent circular references - cohorts should not reference other cohorts
-				if (condition.type === 'cohort') {
-					errors.push({
-						type: 'circular_cohort_reference',
-						message: `Cohort "${key}" cannot reference other cohorts (condition ${conditionIndex + 1})`,
-						cohortKey: key,
-					});
-				}
-			});
-		},
-	);
 
 	return { errors, warnings };
 }
@@ -190,11 +119,11 @@ export function validateFlag(flag: any): ValidationResult {
  */
 export function validateFlagValue(type: ValidFlagType, value: any): boolean {
 	switch (type) {
-		case 'boolean':
+		case 'bool':
 			return typeof value === 'boolean';
 		case 'string':
 			return typeof value === 'string';
-		case 'integer':
+		case 'int':
 			return Number.isInteger(value);
 		case 'double':
 			return typeof value === 'number' && !Number.isNaN(value);
@@ -216,14 +145,14 @@ export function validateFlagValue(type: ValidFlagType, value: any): boolean {
 }
 
 /**
- * Normalizes Prisma enum values to JSON spec compliant types.
- * Prisma returns "BOOL" but JSON spec expects "boolean".
+ * Normalizes Prisma enum values to the JSON wire form the SDK decodes.
+ * Prisma returns "BOOL" but the wire form is "bool".
  */
 export function normalizeFlagType(type: string): string {
 	const typeMap: Record<string, string> = {
-		BOOL: 'boolean',
+		BOOL: 'bool',
 		STRING: 'string',
-		INT: 'integer',
+		INT: 'int',
 		DOUBLE: 'double',
 		DATE: 'date',
 		JSON: 'json',
@@ -237,11 +166,11 @@ export function normalizeFlagType(type: string): string {
  */
 export function getDefaultValueForType(type: ValidFlagType): any {
 	switch (type) {
-		case 'boolean':
+		case 'bool':
 			return false;
 		case 'string':
 			return '';
-		case 'integer':
+		case 'int':
 			return 0;
 		case 'double':
 			return 0.0;

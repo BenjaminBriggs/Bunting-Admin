@@ -30,7 +30,7 @@ describe('generateConfigFromDb (integration)', () => {
 				displayName: 'New Paywall',
 				type: 'BOOL',
 				description: 'paywall toggle',
-				defaultValues: { development: true, staging: false, production: false },
+				defaultValues: { development: true, beta: false, production: false },
 			},
 		});
 
@@ -44,24 +44,13 @@ describe('generateConfigFromDb (integration)', () => {
 		// Prisma enum BOOL is normalised to the wire form 'bool'.
 		expect(flag.type).toBe('bool');
 		expect(flag.development.default).toBe(true);
-		expect(flag.staging.default).toBe(false);
+		expect(flag.beta.default).toBe(false);
 		expect(flag.production.default).toBe(false);
 		expect(flag.development.variants).toEqual([]);
 	});
 
-	test('includes cohorts and excludes archived flags', async () => {
+	test('excludes archived flags', async () => {
 		const app = await seedApp(`gen-${Date.now()}-2`);
-
-		await prisma.cohort.create({
-			data: {
-				appId: app.id,
-				key: 'beta_users',
-				name: 'Beta Users',
-				conditions: [
-					{ id: 'c1', type: 'platform', operator: 'in', values: ['iOS'] },
-				],
-			},
-		});
 
 		await prisma.flag.create({
 			data: {
@@ -69,7 +58,7 @@ describe('generateConfigFromDb (integration)', () => {
 				key: 'live_flag',
 				displayName: 'Live',
 				type: 'STRING',
-				defaultValues: { development: 'a', staging: 'b', production: 'c' },
+				defaultValues: { development: 'a', beta: 'b', production: 'c' },
 			},
 		});
 		await prisma.flag.create({
@@ -82,7 +71,7 @@ describe('generateConfigFromDb (integration)', () => {
 				archivedAt: new Date(),
 				defaultValues: {
 					development: false,
-					staging: false,
+					beta: false,
 					production: false,
 				},
 			},
@@ -90,7 +79,6 @@ describe('generateConfigFromDb (integration)', () => {
 
 		const config = await generateConfigFromDb(app.id);
 
-		expect((config.cohorts as Record<string, any>).beta_users).toBeDefined();
 		expect((config.flags as Record<string, any>).live_flag).toBeDefined();
 		// Archived flags must not ship to the SDK.
 		expect((config.flags as Record<string, any>).archived_flag).toBeUndefined();

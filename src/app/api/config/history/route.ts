@@ -15,9 +15,8 @@ export interface PublishHistoryItem {
 	publishedBy: string;
 	changelog: string;
 	flagCount: number;
-	cohortCount: number;
 	changes?: Array<{
-		type: 'flag' | 'cohort';
+		type: 'flag';
 		action: 'added' | 'modified' | 'removed';
 		key: string;
 		name: string;
@@ -63,9 +62,8 @@ export async function POST(request: NextRequest) {
 				}
 			}
 
-			// Count flags and cohorts from diff or set defaults
+			// Count flags from diff or set defaults
 			const flagCount = diff?.flagCount || 0;
-			const cohortCount = diff?.cohortCount || 0;
 
 			return {
 				id: log.id,
@@ -74,7 +72,6 @@ export async function POST(request: NextRequest) {
 				publishedBy: log.publishedBy || 'System',
 				changelog: log.changelog || '',
 				flagCount,
-				cohortCount,
 				changes: changes.length > 0 ? changes : undefined,
 			};
 		});

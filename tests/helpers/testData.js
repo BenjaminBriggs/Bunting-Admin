@@ -43,32 +43,6 @@ class TestDataHelpers {
 		return flags;
 	}
 
-	static async createTestCohort(appId, overrides = {}) {
-		const db = await getTestDatabase();
-
-		const cohortData = TestDataFactories.createCohort(appId, overrides);
-
-		const cohort = await db.prisma.cohort.create({
-			data: cohortData,
-		});
-
-		return cohort;
-	}
-
-	static async createTestCohorts(appId, count = 3, overrides = {}) {
-		const cohorts = [];
-
-		for (let i = 0; i < count; i++) {
-			const cohort = await this.createTestCohort(appId, {
-				...overrides,
-				key: `test_cohort_${i}_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-			});
-			cohorts.push(cohort);
-		}
-
-		return cohorts;
-	}
-
 	static async createTestRollout(
 		appId,
 		type = 'test',
@@ -89,15 +63,14 @@ class TestDataHelpers {
 		return rollout;
 	}
 
-	static async createTestRules(flags, cohorts, environment = 'production') {
+	static async createTestRules(flags, environment = 'production') {
 		const rules = [];
 
-		// Create simple rules linking first few flags to first few cohorts
-		const maxRules = Math.min(flags.length, cohorts.length, 3);
+		// Create simple rules overriding the first few flags
+		const maxRules = Math.min(flags.length, 3);
 
 		for (let i = 0; i < maxRules; i++) {
 			const flag = flags[i];
-			const cohort = cohorts[i];
 
 			// For testing, create a rule that overrides the flag's default value
 			const overrideValue = this.generateOverrideValue(
@@ -107,7 +80,6 @@ class TestDataHelpers {
 
 			const rule = {
 				flagId: flag.id,
-				cohortId: cohort.id,
 				environment: environment,
 				value: overrideValue,
 				priority: i + 1,
@@ -146,7 +118,6 @@ class TestDataHelpers {
 	static async createCompleteTestSetup(appIdentifier = null, options = {}) {
 		const {
 			flagCount = 5,
-			cohortCount = 3,
 			createRules = true,
 			environment = 'production',
 		} = options;
@@ -157,19 +128,15 @@ class TestDataHelpers {
 		// Create test flags
 		const flags = await this.createTestFlags(app.id, flagCount);
 
-		// Create test cohorts
-		const cohorts = await this.createTestCohorts(app.id, cohortCount);
-
 		// Create rules if requested
 		let rules = [];
 		if (createRules) {
-			rules = await this.createTestRules(flags, cohorts, environment);
+			rules = await this.createTestRules(flags, environment);
 		}
 
 		return {
 			app,
 			flags,
-			cohorts,
 			rules,
 		};
 	}
@@ -202,25 +169,8 @@ class TestDataHelpers {
 
 		// Validate defaultValues structure
 		expect(flag.defaultValues).toHaveProperty('development');
-		expect(flag.defaultValues).toHaveProperty('staging');
+		expect(flag.defaultValues).toHaveProperty('beta');
 		expect(flag.defaultValues).toHaveProperty('production');
-	}
-
-	static validateCohortSchema(cohort) {
-		expect(cohort).toHaveProperty('id');
-		expect(cohort).toHaveProperty('key');
-		expect(cohort).toHaveProperty('name');
-		expect(cohort).toHaveProperty('conditions');
-		expect(cohort).toHaveProperty('appId');
-		expect(cohort).toHaveProperty('createdAt');
-
-		// Validate conditions array
-		expect(Array.isArray(cohort.conditions)).toBe(true);
-		cohort.conditions.forEach((condition) => {
-			expect(condition).toHaveProperty('field');
-			expect(condition).toHaveProperty('operator');
-			expect(condition).toHaveProperty('value');
-		});
 	}
 
 	static validateConfigJsonSchema(config, expectedVersion) {
@@ -228,7 +178,6 @@ class TestDataHelpers {
 		expect(config).toHaveProperty('config_version', expectedVersion);
 		expect(config).toHaveProperty('published_at');
 		expect(config).toHaveProperty('app_identifier');
-		expect(config).toHaveProperty('cohorts');
 		expect(config).toHaveProperty('flags');
 
 		// Validate published_at is ISO date
@@ -240,18 +189,12 @@ class TestDataHelpers {
 		Object.values(config.flags).forEach((flag) => {
 			expect(flag).toHaveProperty('type');
 			expect(flag).toHaveProperty('development');
-			expect(flag).toHaveProperty('staging');
+			expect(flag).toHaveProperty('beta');
 			expect(flag).toHaveProperty('production');
 
 			expect(flag.development).toHaveProperty('default');
-			expect(flag.staging).toHaveProperty('default');
+			expect(flag.beta).toHaveProperty('default');
 			expect(flag.production).toHaveProperty('default');
-		});
-
-		// Validate cohorts structure
-		Object.values(config.cohorts).forEach((cohort) => {
-			expect(cohort).toHaveProperty('conditions');
-			expect(Array.isArray(cohort.conditions)).toBe(true);
 		});
 	}
 }

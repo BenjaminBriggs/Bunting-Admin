@@ -149,11 +149,10 @@ export async function testConfigSigning(appId: string): Promise<TestResult> {
 				test_flag: {
 					type: 'bool',
 					development: { default: true },
-					staging: { default: true },
+					beta: { default: true },
 					production: { default: false },
 				},
 			},
-			cohorts: {},
 			tests: {},
 			rollouts: {},
 		};
@@ -219,11 +218,10 @@ export async function testSignatureVerification(
 				verification_test: {
 					type: 'string',
 					development: { default: 'test_value' },
-					staging: { default: 'test_value' },
+					beta: { default: 'test_value' },
 					production: { default: 'production_value' },
 				},
 			},
-			cohorts: {},
 			tests: {},
 			rollouts: {},
 		};

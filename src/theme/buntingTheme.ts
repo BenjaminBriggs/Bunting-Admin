@@ -1,69 +1,63 @@
-// buntingTheme.ts - A playful, branded MUI v5 theme that avoids the stock look
-// Drop this file into your project and import it where you create your ThemeProvider.
+// buntingTheme.ts — MUI theme implementing the Bunting hi-fi design system.
+// Two typographic voices: Baloo 2 (friendly display) + Nunito (UI/body) for people,
+// JetBrains Mono for machine-facing data. Warm cream canvas, ink primary, fixed
+// per-environment colors live in ./designTokens.
+//
 // Example usage:
 // import { ThemeProvider, CssBaseline } from '@mui/material';
 // import { buntingTheme } from './buntingTheme';
 // <ThemeProvider theme={buntingTheme}><CssBaseline />{children}</ThemeProvider>
 
 import { alpha, createTheme } from '@mui/material/styles';
-// import { Components } from "@mui/material/styles/components";
 
-// Guardian Source accessible focus colour (the `@guardian/source` foundations `focus[400]`
-// token). Inlined rather than importing the package: only this single token applied here,
-// and the `@guardian/source/foundations` subpath export does not resolve under Turbopack +
-// pnpm. Keep this value in sync with Source if it changes.
-const guardianFocus = '#0077B6';
-
-// --- Brand Palette (Bunting logo colors) ---
-const brand = {
-	teal: {
-		main: '#56D5C4',
-		light: '#79DEBA',
-		dark: '#3BA896',
-	},
-	mint: {
-		main: '#79DEBA',
-		light: '#9AE6C7',
-		dark: '#56C29F',
-	},
-	yellow: {
-		main: '#F9C730',
-		light: '#FBD85A',
-		dark: '#E6B41D',
-	},
-	orange: {
-		main: '#FC7A51',
-		light: '#FD9572',
-		dark: '#E8633A',
-	},
-	error: {
-		main: '#FC7A51',
-		light: '#FD9572',
-		dark: '#E8633A',
-	},
-	neutral: {
-		defaultBg: '#FAF8F0',
-		paper: '#FFFEFB',
-		divider: '#E8E6DF',
-		textPrimary: '#13130F',
-		textSecondary: '#4A4A44',
-		textDisabled: '#8B8B85',
-	},
+// --- Design tokens (kept local; ./designTokens re-exports the env palette + helpers) ---
+const ink = {
+	primary: '#1C1B1A',
+	soft: '#6B6452',
+	muted: '#A79F8C',
+};
+const surface = {
+	canvas: '#F7F3EA',
+	paper: '#FFFFFF',
+	sidebar: '#FCFAF3',
+	border: '#EAE2D2',
+	borderStrong: '#E6DECB',
+	divider: '#ECE5D6',
+	hover: '#F1EADB',
+	navActive: '#FBEDC6',
+};
+const accent = {
+	amber: '#F6A444',
+	amberDark: '#E89327',
+	amberInk: '#3A2806',
+	coral: '#F47C5D',
+};
+const functional = {
+	success: '#3F7A2D',
+	successBg: '#E9F4E0',
+	warning: '#9A6F1C',
+	warningBg: '#FCEFD2',
+	info: '#1E7B72',
+	infoBg: '#DEF3F0',
+	danger: '#C8503C',
+	dangerBg: '#FBEAE5',
 };
 
-// --- Helpers ---
-const soften = (c: string, a = 0.08) => alpha(c, a);
-const elevate = (c: string, a = 0.12) => `0 8px 24px ${alpha(c, a)}`;
-// --- Custom shadows (grounded + subtle) ---
-// `focus` uses the @guardian/source accessible focus colour so keyboard focus is
-// always visible (the brand palette is intentionally low-contrast for this).
-const customShadows = {
-	xs: `0 0 4px ${alpha('#000', 0.04)}`,
-	sm: `0 0 8px ${alpha('#000', 0.04)}`,
-	md: `0 0 12px ${alpha('#000', 0.04)}`,
-	lg: `0 0 24px ${alpha('#000', 0.01)}`,
-	focus: `0 0 0 3px ${guardianFocus}`,
-};
+const displayFont = ['var(--font-baloo)', 'Baloo 2', 'system-ui', 'sans-serif'].join(',');
+const bodyFont = [
+	'var(--font-nunito)',
+	'Nunito',
+	'ui-sans-serif',
+	'system-ui',
+	'-apple-system',
+	'Segoe UI',
+	'Roboto',
+	'sans-serif',
+].join(',');
+
+const cardShadow = '0 1px 2px rgba(40,33,20,.03)';
+const raisedShadow = '0 8px 24px rgba(40,33,20,.08)';
+const focusRing = `0 0 0 3px ${alpha(ink.primary, 0.1)}`;
 
 export function createBuntingTheme() {
 	return createTheme({
@@ -71,110 +65,71 @@ export function createBuntingTheme() {
 		palette: {
 			mode: 'light',
 			primary: {
-				main: brand.orange.main,
-				light: brand.teal.light,
-				dark: brand.teal.dark,
+				main: ink.primary,
+				light: '#3A352C',
+				dark: '#000000',
 				contrastText: '#FFFFFF',
 			},
 			secondary: {
-				main: brand.yellow.main,
-				light: brand.mint.light,
-				dark: brand.mint.dark,
-				contrastText: '#FFFFFF',
+				main: accent.amber,
+				light: '#FBD85A',
+				dark: accent.amberDark,
+				contrastText: accent.amberInk,
 			},
 			warning: {
-				main: brand.yellow.main,
-				light: brand.yellow.light,
-				dark: brand.yellow.dark,
-				contrastText: '#13130F',
-			},
-			error: {
-				main: brand.error.main,
-				light: brand.error.light,
-				dark: brand.error.dark,
+				main: functional.warning,
+				light: accent.amber,
+				dark: '#5E4A18',
 				contrastText: '#FFFFFF',
 			},
-			divider: brand.neutral.divider,
+			error: {
+				main: functional.danger,
+				light: '#D98B7C',
+				dark: '#A23C2B',
+				contrastText: '#FFFFFF',
+			},
+			success: { main: functional.success, contrastText: '#FFFFFF' },
+			info: { main: functional.info, contrastText: '#FFFFFF' },
+			divider: surface.border,
 			background: {
-				default: brand.neutral.defaultBg,
-				paper: brand.neutral.paper,
+				default: surface.canvas,
+				paper: surface.paper,
 			},
 			text: {
-				primary: brand.neutral.textPrimary,
-				secondary: brand.neutral.textSecondary,
-				disabled: brand.neutral.textDisabled,
-			},
-			success: {
-				main: brand.mint.dark,
-			},
-			info: {
-				main: brand.teal.dark,
+				primary: ink.primary,
+				secondary: ink.soft,
+				disabled: ink.muted,
 			},
 		},
 		shape: {
-			borderRadius: 24, // Friendly, rounded look
+			borderRadius: 11,
 		},
 		spacing: 8,
 		typography: {
-			// Belanosima for headings, Nunito for body text
-			fontFamily: [
-				'var(--font-nunito)',
-				'Nunito',
-				'ui-sans-serif',
-				'system-ui',
-				'-apple-system',
-				'Segoe UI',
-				'Roboto',
-				'sans-serif',
-			].join(','),
-			h1: {
-				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
-				fontWeight: 700,
-				letterSpacing: -0.5,
-			},
-			h2: {
-				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
-				fontWeight: 700,
-				letterSpacing: -0.4,
-			},
-			h3: {
-				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
-				fontWeight: 600,
-				letterSpacing: -0.2,
-			},
-			h4: {
-				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
-				fontWeight: 600,
-			},
-			h5: {
-				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
-				fontWeight: 600,
-			},
-			h6: {
-				fontFamily: ['var(--font-belanosima)', 'Belanosima', 'serif'].join(','),
-				fontWeight: 600,
-			},
-			subtitle1: { fontWeight: 600 },
-			button: { fontWeight: 700, textTransform: 'none', letterSpacing: 0.1 },
-			caption: {
-				fontFamily: ['var(--font-nunito)', 'Nunito', 'sans-serif'].join(','),
-				fontSize: '0.75rem',
-			},
-			body2: {
-				fontFamily: ['var(--font-nunito)', 'Nunito', 'sans-serif'].join(','),
-				fontSize: '0.875rem',
-			},
+			fontFamily: bodyFont,
+			h1: { fontFamily: displayFont, fontWeight: 800, letterSpacing: -0.4 },
+			h2: { fontFamily: displayFont, fontWeight: 800, letterSpacing: -0.3 },
+			h3: { fontFamily: displayFont, fontWeight: 800, letterSpacing: -0.2 },
+			h4: { fontFamily: displayFont, fontWeight: 800 },
+			h5: { fontFamily: displayFont, fontWeight: 700 },
+			h6: { fontFamily: displayFont, fontWeight: 700 },
+			subtitle1: { fontWeight: 700 },
+			subtitle2: { fontWeight: 700 },
+			button: { fontWeight: 700, textTransform: 'none', letterSpacing: 0 },
+			caption: { fontFamily: bodyFont, fontSize: '0.75rem' },
+			body1: { fontFamily: bodyFont },
+			body2: { fontFamily: bodyFont, fontSize: '0.875rem' },
 		},
 		transitions: {
 			easing: {
-				easeInOut: 'cubic-bezier(0.22, 1, 0.36, 1)', // playful springy feel
+				easeInOut: 'cubic-bezier(0.4, 0, 0.2, 1)',
 				easeOut: 'cubic-bezier(0.16, 1, 0.3, 1)',
-				easeIn: 'cubic-bezier(0.7, 0, 0.84, 0)',
+				easeIn: 'cubic-bezier(0.4, 0, 1, 1)',
 				sharp: 'cubic-bezier(0.4, 0, 0.6, 1)',
 			},
 			duration: {
 				shortest: 120,
-				shorter: 160,
+				shorter: 150,
 				short: 200,
 				standard: 240,
 				complex: 320,
@@ -185,149 +140,107 @@ export function createBuntingTheme() {
 		components: {
 			MuiCssBaseline: {
 				styleOverrides: {
-					':root': {
-						'--bunting-shadow-focus': customShadows.focus,
-					},
-					body: {
-						backgroundColor: brand.neutral.defaultBg,
-					},
+					body: { backgroundColor: surface.canvas },
+					// Note: the Material Symbols `.ms` helper lives in globals.css (it references
+					// the self-hosted next/font --font-ms variable). Keep it out of here so it
+					// isn't overridden with a font-family name the browser hasn't loaded.
 					'*:focus-visible': {
 						outline: 'none',
-						boxShadow: customShadows.focus,
-						transition: 'box-shadow 120ms',
-						borderRadius: 10,
+						boxShadow: focusRing,
+						borderRadius: 8,
 					},
 				},
 			},
 
-			// Buttons: friendly, slightly elevated, with fun hover
 			MuiButton: {
-				defaultProps: { disableRipple: true },
+				defaultProps: { disableRipple: true, disableElevation: true },
 				styleOverrides: {
-					root: ({ ownerState, theme }: any) => ({
-						borderRadius: 999, // Full pill shape
-						paddingInline: 16,
+					root: {
+						borderRadius: 11,
+						paddingInline: 18,
 						paddingBlock: 10,
 						boxShadow: 'none',
-						transition: theme.transitions.create(
-							['transform', 'box-shadow', 'background-color'],
-							{
-								duration: theme.transitions.duration.shorter,
-								easing: theme.transitions.easing.easeOut,
-							},
-						),
-						'&:hover': {
-							transform: 'translateY(-1px)',
-							boxShadow: customShadows.sm,
-						},
-						'&:active': {
-							transform: 'translateY(0)',
-							boxShadow: customShadows.xs,
-						},
-					}),
+						fontWeight: 700,
+						'&:hover': { boxShadow: 'none' },
+					},
 					containedPrimary: {
-						backgroundColor: brand.yellow.main,
-						'&:hover': {
-							backgroundColor: brand.orange.dark,
-						},
+						backgroundColor: ink.primary,
+						'&:hover': { backgroundColor: '#000' },
 					},
 					containedSecondary: {
-						backgroundColor: brand.mint.main,
-						'&:hover': {
-							backgroundColor: brand.mint.dark,
-						},
+						backgroundColor: accent.amber,
+						color: accent.amberInk,
+						'&:hover': { backgroundColor: accent.amberDark },
 					},
 					outlined: {
-						borderWidth: 2,
-						'&:hover': { backgroundColor: soften('#000', 0.04) },
+						borderWidth: 1.5,
+						borderColor: '#E2D9C6',
+						color: '#3A352C',
+						'&:hover': {
+							borderWidth: 1.5,
+							borderColor: '#D8CFBC',
+							backgroundColor: surface.hover,
+						},
 					},
-					sizeSmall: { borderRadius: 999, paddingBlock: 8, paddingInline: 14 },
-					sizeLarge: { borderRadius: 999, paddingBlock: 12, paddingInline: 22 },
+					text: { color: ink.soft },
+					sizeSmall: { borderRadius: 9, paddingBlock: 7, paddingInline: 14 },
+					sizeLarge: { borderRadius: 11, paddingBlock: 12, paddingInline: 22 },
 				},
 				variants: [
 					{
 						props: { color: 'warning', variant: 'contained' },
 						style: {
-							color: '#13130F',
-							backgroundColor: brand.yellow.main,
-							'&:hover': {
-								backgroundColor: brand.yellow.dark,
-							},
-						},
-					},
-					{
-						props: { variant: 'soft' as any },
-						style: {
-							backgroundColor: alpha(brand.yellow.main, 0.12),
-							color: brand.teal.dark,
-							'&:hover': { backgroundColor: alpha(brand.teal.main, 0.18) },
+							color: accent.amberInk,
+							backgroundColor: accent.amber,
+							'&:hover': { backgroundColor: accent.amberDark },
 						},
 					},
 				],
 			},
 
-			// Chips: pill-y, playful
 			MuiChip: {
 				styleOverrides: {
-					root: {
-						borderRadius: 999,
-						fontWeight: 700,
-					},
-					colorPrimary: {
-						backgroundColor: alpha(brand.yellow.main, 0.16),
-						color: brand.orange.dark,
-					},
-					colorSecondary: {
-						backgroundColor: alpha(brand.mint.main, 0.18),
-						color: brand.mint.dark,
-					},
+					root: { borderRadius: 8, fontWeight: 700 },
+					label: { fontSize: '0.72rem' },
 				},
 			},
 
-			// Cards & Paper: soft edges and subtle shadows
 			MuiPaper: {
 				styleOverrides: {
 					root: {
-						backgroundColor: '#FFFEFB',
-						borderRadius: 24,
-						boxShadow: customShadows.xs,
+						backgroundColor: surface.paper,
+						borderRadius: 16,
+						boxShadow: cardShadow,
 						backgroundImage: 'none',
 					},
-					outlined: {
-						borderColor: alpha('#000', 0.08),
-					},
+					outlined: { borderColor: surface.border },
 				},
 			},
 			MuiCard: {
+				defaultProps: { variant: 'outlined' },
 				styleOverrides: {
 					root: {
-						borderRadius: 20,
-						boxShadow: customShadows.sm,
+						borderRadius: 16,
+						border: `1px solid ${surface.border}`,
+						boxShadow: cardShadow,
 					},
 				},
 			},
 
-			// AppBar: translucent glassy header
 			MuiAppBar: {
 				styleOverrides: {
 					root: {
-						backgroundColor: '#FFFEFB',
-						backdropFilter: 'saturate(1.2) blur(8px)',
-						color: brand.neutral.textPrimary,
+						backgroundColor: surface.paper,
+						color: ink.primary,
 						boxShadow: 'none',
-						borderBottom: `1px solid ${brand.neutral.divider}`,
+						borderBottom: `1px solid ${surface.divider}`,
 					},
 				},
 			},
 
-			// Tabs: underlined with a bubble indicator
 			MuiTabs: {
 				styleOverrides: {
-					indicator: {
-						height: 36,
-						borderRadius: 18,
-						backgroundColor: alpha(brand.teal.main, 0.24),
-					},
+					indicator: { height: 2.5, borderRadius: 0, backgroundColor: ink.primary },
 				},
 			},
 			MuiTab: {
@@ -335,111 +248,110 @@ export function createBuntingTheme() {
 					root: {
 						textTransform: 'none',
 						fontWeight: 700,
-						borderRadius: 12,
 						minHeight: 44,
-						paddingInline: 14,
-						'&.Mui-selected': { color: brand.teal.dark },
+						paddingInline: 13,
+						color: ink.muted,
+						'&.Mui-selected': { color: ink.primary },
 					},
 				},
 			},
 
-			// Inputs: soft backgrounds, clear focus ring
-			MuiTextField: {
-				defaultProps: { variant: 'outlined' },
-			},
+			MuiTextField: { defaultProps: { variant: 'outlined' } },
 			MuiOutlinedInput: {
 				styleOverrides: {
 					root: {
-						borderRadius: 14,
-						backgroundColor: '#FFFEFB',
-						'&:hover .MuiOutlinedInput-notchedOutline': {
-							borderColor: alpha(brand.yellow.main, 0.5),
-						},
+						borderRadius: 11,
+						backgroundColor: surface.paper,
+						'& .MuiOutlinedInput-notchedOutline': { borderColor: surface.borderStrong },
+						'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#D8CFBC' },
 						'&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-							borderColor: brand.orange.main,
-							boxShadow: customShadows.focus,
+							borderColor: ink.primary,
+							boxShadow: focusRing,
 						},
 					},
-					notchedOutline: { borderWidth: 2 },
-					input: { paddingBlock: 12, paddingInline: 14 },
+					notchedOutline: { borderWidth: 1.5 },
+					input: { paddingBlock: 11, paddingInline: 13 },
 				},
 			},
-			MuiInputLabel: {
-				styleOverrides: { root: { fontWeight: 700 } },
-			},
+			MuiInputLabel: { styleOverrides: { root: { fontWeight: 700 } } },
 			MuiSelect: {
-				styleOverrides: {
-					select: { borderRadius: 12 },
-					icon: { color: brand.neutral.textSecondary },
-				},
+				styleOverrides: { icon: { color: ink.muted } },
 			},
 
-			// Switches and toggles
 			MuiSwitch: {
 				styleOverrides: {
-					thumb: { boxShadow: customShadows.xs },
-					track: { backgroundColor: alpha(brand.teal.main, 0.25) },
+					switchBase: { '&.Mui-checked': { color: '#fff' } },
+					thumb: { boxShadow: '0 1px 2px rgba(0,0,0,.2)' },
+					track: { backgroundColor: '#E2D9C6', opacity: 1 },
 				},
 			},
 
-			// Lists & Navigation (great for sidebars)
 			MuiDrawer: {
 				styleOverrides: {
 					paper: {
-						backgroundColor: '#FFFEFB',
-						borderRight: `1px solid ${brand.neutral.divider}`,
+						backgroundColor: surface.sidebar,
+						borderRight: `1px solid ${surface.divider}`,
 					},
 				},
 			},
 			MuiListItemButton: {
 				styleOverrides: {
 					root: {
-						borderRadius: 12,
+						borderRadius: 11,
 						marginInline: 6,
+						'&:hover': { backgroundColor: surface.hover },
 						'&.Mui-selected': {
-							backgroundColor: alpha(brand.yellow.main, 0.14),
-							'&:hover': { backgroundColor: alpha(brand.yellow.main, 0.2) },
+							backgroundColor: surface.navActive,
+							'&:hover': { backgroundColor: surface.navActive },
 						},
 					},
 				},
 			},
 
-			// Tables (denser but friendly)
 			MuiTableHead: {
-				styleOverrides: {
-					root: {
-						backgroundColor: alpha(brand.teal.light, 0.2),
-					},
-				},
+				styleOverrides: { root: { backgroundColor: alpha(surface.border, 0.4) } },
 			},
 			MuiTableCell: {
 				styleOverrides: {
-					root: { borderBottom: `1px solid ${brand.neutral.divider}` },
+					root: { borderBottom: `1px solid ${surface.border}` },
 					head: { fontWeight: 800 },
 				},
 			},
 
-			// Feedback
 			MuiAlert: {
 				styleOverrides: {
-					root: { borderRadius: 14 },
-					standardInfo: { backgroundColor: alpha(brand.teal.light, 0.28) },
-					standardSuccess: { backgroundColor: alpha(brand.mint.light, 0.3) },
-					standardWarning: {
-						backgroundColor: alpha(brand.yellow.light, 0.4),
-						color: '#13130F',
+					root: { borderRadius: 11, fontWeight: 600 },
+					standardInfo: {
+						backgroundColor: functional.infoBg,
+						color: functional.info,
+						border: '1px solid #C9ECE7',
 					},
-					standardError: { backgroundColor: alpha(brand.error.light, 0.3) },
+					standardSuccess: {
+						backgroundColor: functional.successBg,
+						color: functional.success,
+						border: '1px solid #CDE6C2',
+					},
+					standardWarning: {
+						backgroundColor: functional.warningBg,
+						color: functional.warning,
+						border: '1px solid #F3E2BD',
+					},
+					standardError: {
+						backgroundColor: functional.dangerBg,
+						color: functional.danger,
+						border: '1px solid #EAC7BF',
+					},
 				},
+			},
+
+			MuiDialog: {
+				styleOverrides: { paper: { borderRadius: 20, boxShadow: raisedShadow } },
 			},
 
 			MuiTooltip: {
 				styleOverrides: {
-					tooltip: {
-						borderRadius: 10,
-						background: brand.neutral.textPrimary,
-					},
-					arrow: { color: brand.neutral.textPrimary },
+					tooltip: { borderRadius: 8, background: ink.primary, fontWeight: 600 },
+					arrow: { color: ink.primary },
 				},
 			},
 
@@ -448,7 +360,7 @@ export function createBuntingTheme() {
 					root: {
 						borderRadius: 16,
 						'&::before': { display: 'none' },
-						boxShadow: customShadows.xs,
+						boxShadow: cardShadow,
 						overflow: 'hidden',
 					},
 				},
@@ -460,7 +372,7 @@ export function createBuntingTheme() {
 // Default theme export for convenience
 export const buntingTheme = createBuntingTheme();
 
-// --- Optional: a ready-made dark theme variant (toggle when needed)
+// --- Optional dark theme variant (kept for parity; not the primary surface) ---
 export const buntingDarkTheme = createTheme({
 	...buntingTheme,
 	palette: {
@@ -476,17 +388,13 @@ export const buntingDarkTheme = createTheme({
 			secondary: alpha('#FAF8F0', 0.72),
 			disabled: alpha('#FAF8F0', 0.44),
 		},
-		success: { main: brand.mint.light },
-		info: { main: brand.teal.light },
+		success: { main: '#82C868' },
+		info: { main: '#54C9C0' },
 	},
 	components: {
 		...buntingTheme.components,
 		MuiCssBaseline: {
-			styleOverrides: {
-				body: {
-					backgroundColor: '#1A1A16',
-				},
-			},
+			styleOverrides: { body: { backgroundColor: '#1A1A16' } },
 		},
 	},
 });

@@ -23,11 +23,10 @@ describe('Config Validation', () => {
 						test_flag: {
 							type: type,
 							development: { default: getDefaultValueForType(type) },
-							staging: { default: getDefaultValueForType(type) },
+							beta: { default: getDefaultValueForType(type) },
 							production: { default: getDefaultValueForType(type) },
 						},
 					},
-					cohorts: {},
 				};
 
 				const result = validateConfig(config);
@@ -68,11 +67,10 @@ describe('Config Validation', () => {
 						test_flag: {
 							type: type,
 							development: { default: true },
-							staging: { default: true },
+							beta: { default: true },
 							production: { default: true },
 						},
 					},
-					cohorts: {},
 				};
 
 				const result = validateConfig(config);
@@ -89,11 +87,10 @@ describe('Config Validation', () => {
 					show_shoping_list: {
 						type: 'boolean', // This is the bug!
 						development: { default: true },
-						staging: { default: false },
+						beta: { default: false },
 						production: { default: false },
 					},
 				},
-				cohorts: {},
 			};
 
 			const result = validateConfig(config);
@@ -113,11 +110,10 @@ describe('Config Validation', () => {
 					test_flag: {
 						type: 'bool',
 						development: { default: true },
-						staging: { default: false },
+						beta: { default: false },
 						// Missing production default
 					},
 				},
-				cohorts: {},
 			};
 
 			const result = validateConfig(config);
@@ -132,16 +128,15 @@ describe('Config Validation', () => {
 					test_flag: {
 						type: 'string',
 						development: { default: 'test' },
-						staging: { default: null },
+						beta: { default: null },
 						production: { default: undefined },
 					},
 				},
-				cohorts: {},
 			};
 
 			const result = validateConfig(config);
 			expect(result.errors).toHaveLength(2);
-			expect(result.errors.some((e) => e.message.includes('staging'))).toBe(
+			expect(result.errors.some((e) => e.message.includes('beta'))).toBe(
 				true,
 			);
 			expect(result.errors.some((e) => e.message.includes('production'))).toBe(
@@ -157,88 +152,16 @@ describe('Config Validation', () => {
 					json_flag: {
 						type: 'json',
 						development: { default: '{"valid": "json"}' },
-						staging: { default: '{invalid json}' },
+						beta: { default: '{invalid json}' },
 						production: { default: '{"also": "valid"}' },
 					},
 				},
-				cohorts: {},
 			};
 
 			const result = validateConfig(config);
 			expect(result.errors).toHaveLength(1);
 			expect(result.errors[0].type).toBe('invalid_json');
-			expect(result.errors[0].message).toContain('staging');
-		});
-	});
-
-	describe('Cohort Reference Validation', () => {
-		test('detects missing cohort references', () => {
-			const config = {
-				flags: {
-					test_flag: {
-						type: 'bool',
-						development: {
-							default: false,
-							variants: [
-								{
-									conditions: [
-										{
-											type: 'cohort',
-											values: ['missing_cohort'],
-										},
-									],
-									value: true,
-								},
-							],
-						},
-						staging: { default: false },
-						production: { default: false },
-					},
-				},
-				cohorts: {},
-			};
-
-			const result = validateConfig(config);
-			expect(result.errors).toHaveLength(1);
-			expect(result.errors[0].type).toBe('missing_cohort_reference');
-			expect(result.errors[0].message).toContain('missing_cohort');
-		});
-	});
-
-	describe('Cohort Validation', () => {
-		test('prevents circular cohort references', () => {
-			const config = {
-				flags: {},
-				cohorts: {
-					test_cohort: {
-						conditions: [
-							{
-								type: 'cohort',
-								values: ['other_cohort'],
-							},
-						],
-					},
-				},
-			};
-
-			const result = validateConfig(config);
-			expect(result.errors).toHaveLength(1);
-			expect(result.errors[0].type).toBe('circular_cohort_reference');
-		});
-
-		test('warns about empty cohorts', () => {
-			const config = {
-				flags: {},
-				cohorts: {
-					empty_cohort: {
-						conditions: [],
-					},
-				},
-			};
-
-			const result = validateConfig(config);
-			expect(result.warnings).toHaveLength(1);
-			expect(result.warnings[0].type).toBe('empty_cohort');
+			expect(result.errors[0].message).toContain('beta');
 		});
 	});
 

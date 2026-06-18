@@ -9,7 +9,6 @@ const orderedDeletions = [
 	() => prisma.rule.deleteMany(),
 	() => prisma.testRollout.deleteMany(),
 	() => prisma.flag.deleteMany(),
-	() => prisma.cohort.deleteMany(),
 	() => prisma.app.deleteMany(),
 ];
 

@@ -1,40 +1,27 @@
 'use client';
 
-import { Archive, Save } from '@mui/icons-material';
-import {
-	Alert,
-	Autocomplete,
-	Box,
-	Button,
-	Card,
-	CardContent,
-	Chip,
-	CircularProgress,
-	Grid,
-	IconButton,
-	Paper,
-	Slider,
-	Stack,
-	TextField,
-	Typography,
-} from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { ConditionsContainer } from '@/components/features/conditions';
-import PageHeader from '@/components/ui/page-header';
+import { useCallback, useEffect, useState } from 'react';
+import TestForm, {
+	type TestFormSubmit,
+	type TestGroupValue,
+} from '@/components/features/tests/test-form';
 import {
 	archiveTestRollout,
-	fetchFlags,
+	deleteTest,
 	fetchTestRollout,
 	updateTestRollout,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
 import type { Condition, TestVariant } from '@/types';
 
-interface Variant {
-	name: string;
-	percentage: number;
+function isEvenSplit(groups: TestGroupValue[]): boolean {
+	const n = groups.length;
+	const base = Math.floor(100 / n);
+	const rem = 100 - base * n;
+	return groups.every((g, i) => g.weight === base + (i < rem ? 1 : 0));
 }
 
 export default function EditTestPage() {
@@ -44,430 +31,152 @@ export default function EditTestPage() {
 	const testId = params?.id as string;
 
 	const [loading, setLoading] = useState(true);
+	const [test, setTest] = useState<any>(null);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [test, setTest] = useState<any>(null);
+	const [saveError, setSaveError] = useState<string | null>(null);
 
-	const [name, setName] = useState('');
-	const [description, setDescription] = useState('');
-	const [targetFlags, setTargetFlags] = useState<string[]>([]);
-	const [variants, setVariants] = useState<Variant[]>([]);
-	const [conditions, setConditions] = useState<Condition[]>([]);
-	const [archived, setArchived] = useState(false);
-
-	const [flags, setFlags] = useState<any[]>([]);
-
-	useEffect(() => {
-		const loadData = async () => {
-			try {
-				setLoading(true);
-
-				// First fetch the test data to get the appId
-				const testData = await fetchTestRollout(testId);
-
-				// Then fetch flags using the appId from test data
-				const flagsData = await fetchFlags(testData.appId);
-
-				setTest(testData);
-				setFlags(flagsData);
-				setName(testData.name);
-				setDescription(testData.description || '');
-				setTargetFlags(testData.flagIds || []);
-				setArchived(testData.archived);
-
-				// Convert variants object to array
-				if (testData.variants && typeof testData.variants === 'object') {
-					const variantArray = Object.entries(testData.variants).map(
-						([name, data]: [string, any]) => ({
-							name,
-							percentage: data.percentage || 0,
-						}),
-					);
-					setVariants(variantArray);
-				}
-
-				setConditions(testData.conditions || []);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Failed to load test');
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		loadData();
+	const loadTest = useCallback(async () => {
+		try {
+			setLoading(true);
+			const data = await fetchTestRollout(testId);
+			setTest(data);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : 'Failed to load test');
+		} finally {
+			setLoading(false);
+		}
 	}, [testId]);
 
-	const updateVariantName = (index: number, name: string) => {
-		const newVariants = [...variants];
-		newVariants[index].name = name;
-		setVariants(newVariants);
-	};
+	useEffect(() => {
+		loadTest();
+	}, [loadTest]);
 
-	const getTotalPercentage = () => {
-		return variants.reduce((sum, variant) => sum + variant.percentage, 0);
-	};
-
-	const handleSave = async () => {
+	const handleSubmit = async (payload: TestFormSubmit) => {
 		if (!test) {
 			return;
 		}
-
+		setSaving(true);
+		setSaveError(null);
 		try {
-			setSaving(true);
-			setError(null);
-
+			const variants = payload.groups.reduce<Record<string, TestVariant>>(
+				(acc, g) => {
+					acc[g.name] = {
+						percentage: g.weight,
+						values: { development: '', beta: '', production: '' },
+					};
+					return acc;
+				},
+				{},
+			);
 			await updateTestRollout(testId, {
-				name,
-				description,
-				variants: variants.reduce<Record<string, TestVariant>>(
-					(acc, variant) => {
-						acc[variant.name] = {
-							percentage: variant.percentage,
-							values: {
-								development: '',
-								staging: '',
-								production: '',
-							},
-						};
-						return acc;
-					},
-					{},
-				),
-				conditions: conditions,
-				flagIds: targetFlags,
-				archived,
+				name: payload.name,
+				description: payload.description,
+				group: payload.group || null,
+				variants,
+				conditions: payload.conditions,
+				flagIds: test.flagIds || [],
+				archived: test.archived,
 			});
-
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to update test');
+			setSaveError(err instanceof Error ? err.message : 'Failed to update test');
 		} finally {
 			setSaving(false);
 		}
 	};
 
-	const handleArchive = async (type: 'cancel' | 'complete') => {
+	const handleComplete = async () => {
 		if (!test) {
 			return;
 		}
-
 		try {
-			await archiveTestRollout(testId, type);
+			await archiveTestRollout(testId, 'complete');
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to archive test');
+			setSaveError(err instanceof Error ? err.message : 'Failed to complete test');
+		}
+	};
+
+	const handleDelete = async () => {
+		if (!test) {
+			return;
+		}
+		if (
+			confirm(
+				'Are you sure you want to delete this test? This action cannot be undone.',
+			)
+		) {
+			try {
+				await deleteTest(testId);
+				markChangesDetected();
+				router.push('/dashboard/tests');
+			} catch (err) {
+				setSaveError(err instanceof Error ? err.message : 'Failed to delete test');
+			}
 		}
 	};
 
 	if (loading) {
 		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+			<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
 				<CircularProgress sx={{ mr: 2 }} />
-				<Typography>Loading test...</Typography>
+				<Typography>Loading test…</Typography>
 			</Box>
 		);
 	}
 
-	if (error && !test) {
+	if (error || !test) {
 		return (
 			<Box sx={{ textAlign: 'center', py: 8 }}>
 				<Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
-					{error}
+					{error || 'Test not found'}
 				</Alert>
-				<Button component={Link} href="/dashboard/tests">
+				<Button variant="outlined" component={Link} href="/dashboard/tests">
 					Back to Tests
 				</Button>
 			</Box>
 		);
 	}
 
-	if (!test) {
-		return (
-			<Box sx={{ textAlign: 'center', py: 8 }}>
-				<Typography variant="h5" sx={{ mb: 2 }}>
-					Test Not Found
-				</Typography>
-				<Button component={Link} href="/dashboard/tests">
-					Back to Tests
-				</Button>
-			</Box>
-		);
-	}
-
-	const isValid = name;
-	const hasChanges = test
-		? name !== test.name ||
-			description !== (test.description || '') ||
-			JSON.stringify(targetFlags.sort()) !==
-				JSON.stringify((test.flagIds || []).sort()) ||
-			JSON.stringify(variants) !==
-				JSON.stringify(
-					Object.entries(test.variants || {}).map(
-						([name, data]: [string, any]) => ({
-							name,
-							percentage: data.percentage || 0,
-						}),
-					),
-				)
-		: false;
+	const groups: TestGroupValue[] = Object.entries(test.variants || {}).map(
+		([name, data]: [string, any]) => ({
+			name,
+			weight: data.percentage || 0,
+		}),
+	);
+	const conditions: Condition[] = test.conditions || [];
 
 	return (
-		<Box>
-			<PageHeader
-				title="Edit A/B Test"
-				subtitle="Modify the configuration and settings for this test"
-				backHref="/dashboard/tests"
-				backLabel="Back to Tests"
-			/>
-
-			{archived && (
-				<Alert severity="info" sx={{ mb: 3 }}>
+		<Box sx={{ py: 1 }}>
+			{test.archived && (
+				<Alert severity="info" sx={{ maxWidth: 920, mx: 'auto', mb: 2 }}>
 					This test is archived and no longer active.
 				</Alert>
 			)}
-
-			{error && (
-				<Alert severity="error" sx={{ mb: 3 }}>
-					{error}
-				</Alert>
-			)}
-
-			<Grid container spacing={3}>
-				{/* Main Configuration */}
-				<Grid size={{ xs: 12, md: 8 }}>
-					<Stack spacing={3}>
-						{/* Basic Configuration */}
-						<Card>
-							<CardContent sx={{ p: 3 }}>
-								<Typography variant="h6" sx={{ mb: 2 }}>
-									Basic Configuration
-								</Typography>
-
-								<Stack spacing={3}>
-									<TextField
-										label="Test Name"
-										value={name}
-										placeholder="e.g., Homepage Layout Test"
-										helperText="Test name cannot be changed after creation"
-										fullWidth
-										disabled
-										InputProps={{
-											readOnly: true,
-										}}
-									/>
-
-									<TextField
-										label="Description"
-										value={description}
-										onChange={(e) => setDescription(e.target.value)}
-										placeholder="Describe what this test is measuring"
-										multiline
-										rows={3}
-										fullWidth
-										disabled={archived}
-									/>
-								</Stack>
-							</CardContent>
-						</Card>
-
-						{/* Test Groups */}
-						<Card>
-							<CardContent sx={{ p: 3 }}>
-								<Typography variant="h6" sx={{ mb: 2 }}>
-									Test Groups
-								</Typography>
-								<Typography
-									variant="body2"
-									color="text.secondary"
-									sx={{ mb: 3 }}
-								>
-									You can customize group names, but traffic allocation is fixed
-									from test creation.
-								</Typography>
-
-								<Stack spacing={2}>
-									{variants.map((variant, index) => (
-										<Box
-											key={index}
-											sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
-										>
-											<TextField
-												label={`Group ${index + 1}`}
-												value={variant.name}
-												onChange={(e) =>
-													updateVariantName(index, e.target.value)
-												}
-												size="small"
-												sx={{ minWidth: 200 }}
-												disabled={archived}
-											/>
-											<Chip
-												label={`${variant.percentage}%`}
-												color={index === 0 ? 'primary' : 'secondary'}
-												variant="outlined"
-											/>
-										</Box>
-									))}
-								</Stack>
-							</CardContent>
-						</Card>
-
-						{/* Entry Conditions */}
-						<Card>
-							<CardContent sx={{ p: 3 }}>
-								<ConditionsContainer
-									conditions={conditions}
-									onChange={setConditions}
-									appId={test?.appId || ''}
-									disabled={archived}
-									title="Entry Conditions"
-									description="Define which users are eligible for this test"
-									emptyMessage="No conditions defined. All users are eligible for this test."
-								/>
-							</CardContent>
-						</Card>
-					</Stack>
-				</Grid>
-
-				{/* Preview & Actions */}
-				<Grid size={{ xs: 6, md: 8 }}>
-					<Box sx={{ position: 'sticky', top: 24 }}>
-						<Stack spacing={3}>
-							<Card>
-								<CardContent sx={{ p: 3 }}>
-									<Typography variant="h6" sx={{ mb: 2 }}>
-										Test Preview
-									</Typography>
-									<Typography
-										variant="body2"
-										color="text.secondary"
-										sx={{ mb: 3 }}
-									>
-										Summary of your A/B test configuration
-									</Typography>
-
-									<Stack spacing={2}>
-										<Box>
-											<Typography variant="caption" color="text.secondary">
-												Test Name
-											</Typography>
-											<Typography variant="body1" sx={{ fontWeight: 500 }}>
-												{name}
-											</Typography>
-										</Box>
-
-										<Box>
-											<Typography variant="caption" color="text.secondary">
-												Test Groups
-											</Typography>
-											<Stack
-												direction="row"
-												spacing={1}
-												sx={{ mt: 0.5, flexWrap: 'wrap', gap: 0.5 }}
-											>
-												{variants.map((variant, index) => (
-													<Chip
-														key={variant.name}
-														label={`${variant.name} ${variant.percentage}%`}
-														size="small"
-														color={index === 0 ? 'primary' : 'secondary'}
-													/>
-												))}
-											</Stack>
-										</Box>
-
-										<Box>
-											<Typography variant="caption" color="text.secondary">
-												Status
-											</Typography>
-											<Box sx={{ mt: 0.5 }}>
-												<Chip
-													label={archived ? 'Archived' : 'Active'}
-													color={archived ? 'default' : 'success'}
-													size="small"
-												/>
-											</Box>
-										</Box>
-
-										<Box>
-											<Typography variant="caption" color="text.secondary">
-												Target Flags
-											</Typography>
-											<Typography variant="body2">
-												{targetFlags.length} flag
-												{targetFlags.length === 1 ? '' : 's'} affected
-											</Typography>
-										</Box>
-
-										<Box>
-											<Typography variant="caption" color="text.secondary">
-												Entry Conditions
-											</Typography>
-											<Typography variant="body2">
-												{conditions.length === 0
-													? 'All users eligible'
-													: `${conditions.length} targeting rule${conditions.length === 1 ? '' : 's'}`}
-											</Typography>
-										</Box>
-									</Stack>
-								</CardContent>
-							</Card>
-
-							{/* Actions */}
-							<Stack spacing={2}>
-								<Button
-									variant="contained"
-									startIcon={saving ? <CircularProgress size={20} /> : <Save />}
-									onClick={handleSave}
-									disabled={!isValid || !hasChanges || saving || archived}
-									fullWidth
-									size="large"
-								>
-									{saving
-										? 'Saving...'
-										: !hasChanges
-											? 'No Changes to Save'
-											: 'Save Changes'}
-								</Button>
-
-								{!archived && (
-									<>
-										<Button
-											variant="outlined"
-											onClick={() => handleArchive('cancel')}
-											color="error"
-											fullWidth
-											startIcon={<Archive />}
-										>
-											Cancel Test (0%)
-										</Button>
-										<Button
-											variant="outlined"
-											onClick={() => handleArchive('complete')}
-											color="success"
-											fullWidth
-											startIcon={<Archive />}
-										>
-											Complete Test (100%)
-										</Button>
-									</>
-								)}
-
-								<Button
-									variant="outlined"
-									component={Link}
-									href="/dashboard/tests"
-									fullWidth
-								>
-									Back to Tests
-								</Button>
-							</Stack>
-						</Stack>
-					</Box>
-				</Grid>
-			</Grid>
+			<TestForm
+				mode="edit"
+				initial={{
+					name: test.name,
+					key: test.key,
+					groups: groups.length > 0 ? groups : [
+						{ name: 'Treatment', weight: 50 },
+						{ name: 'Control', weight: 50 },
+					],
+					adjustSplit: groups.length > 0 ? !isEvenSplit(groups) : false,
+					conditions,
+					description: test.description || '',
+					group: test.group || '',
+					archived: test.archived,
+				}}
+				saving={saving}
+				saveError={saveError}
+				onSubmit={handleSubmit}
+				onComplete={handleComplete}
+				onDelete={handleDelete}
+			/>
 		</Box>
 	);
 }

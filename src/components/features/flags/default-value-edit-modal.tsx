@@ -51,7 +51,7 @@ const getEnvironmentColor = (env: Environment) => {
 	switch (env) {
 		case 'development':
 			return 'info';
-		case 'staging':
+		case 'beta':
 			return 'warning';
 		case 'production':
 			return 'success';

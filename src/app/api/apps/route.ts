@@ -78,7 +78,6 @@ export async function GET() {
 				_count: {
 					select: {
 						flags: true,
-						cohorts: true,
 						testRollouts: true,
 					},
 				},
@@ -125,7 +124,6 @@ export async function POST(request: NextRequest) {
 				_count: {
 					select: {
 						flags: true,
-						cohorts: true,
 						testRollouts: true,
 					},
 				},

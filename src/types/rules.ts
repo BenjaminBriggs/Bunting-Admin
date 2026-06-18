@@ -12,8 +12,7 @@ export type RuleConditionType =
 	| 'platform'
 	| 'device_model'
 	| 'region'
-	| 'locale'
-	| 'cohort'
+	| 'language'
 	| 'custom_attribute';
 
 // Keep in sync with ConditionOperator in core.ts — must match SDK raw values exactly
@@ -38,20 +37,11 @@ export interface TargetingRule {
 	priority: number; // Lower numbers = higher priority
 }
 
-// Cohort targeting rules don't have a return value - they just define membership criteria
-export interface CohortTargetingRule {
-	id: string;
-	enabled: boolean;
-	conditions: RuleCondition[];
-	conditionLogic: 'AND' | 'OR'; // How to combine multiple conditions
-	priority: number; // Lower numbers = higher priority
-}
-
 export interface FlagWithRules {
 	id: string;
 	key: string;
 	displayName: string;
-	type: 'boolean' | 'string' | 'integer' | 'double' | 'date' | 'json';
+	type: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
 	defaultValue: any;
 	description?: string;
 	archived: boolean;
@@ -65,7 +55,7 @@ export interface ConditionTemplate {
 	label: string;
 	description: string;
 	operators: RuleOperator[];
-	valueType: 'text' | 'number' | 'select' | 'multi-select' | 'cohort';
+	valueType: 'text' | 'number' | 'select' | 'multi-select';
 	placeholder?: string;
 	options?: Array<{ value: string; label: string }>;
 }

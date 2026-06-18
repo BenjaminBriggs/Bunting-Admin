@@ -13,7 +13,7 @@ import type { DBFlag } from './database';
 export interface FlagListItem extends DBFlag {
 	testRollouts?: {
 		development: TestRollout[];
-		staging: TestRollout[];
+		beta: TestRollout[];
 		production: TestRollout[];
 	};
 }
@@ -26,7 +26,7 @@ export interface CreateFlagRequest {
 	description?: string;
 	defaultValues: {
 		development: FlagValue;
-		staging: FlagValue;
+		beta: FlagValue;
 		production: FlagValue;
 	};
 	appId: string;
@@ -36,6 +36,7 @@ export interface CreateTestRequest {
 	key: string;
 	name: string;
 	description?: string;
+	group?: string | null;
 	conditions: Condition[];
 	variantCount: number; // 2 for A/B, 3 for A/B/C, etc.
 	trafficSplit: number[]; // [50, 50] or [33, 33, 34]
@@ -47,16 +48,9 @@ export interface CreateRolloutRequest {
 	key: string;
 	name: string;
 	description?: string;
+	group?: string | null;
 	conditions: Condition[];
 	percentage: number;
-	appId: string;
-}
-
-export interface CreateCohortRequest {
-	key: string;
-	name: string;
-	description?: string;
-	conditions: Condition[];
 	appId: string;
 }
 

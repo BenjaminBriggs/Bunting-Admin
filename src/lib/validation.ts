@@ -9,7 +9,7 @@ export interface ValidationResult {
 }
 
 /**
- * Validate identifier keys for flags, tests, rollouts, and cohorts
+ * Validate identifier keys for flags, tests, and rollouts
  *
  * JSON Spec Requirements:
  * - Pattern: ^[a-z_]+$
@@ -21,19 +21,15 @@ export function validateIdentifierKey(key: string): ValidationResult {
 		return { valid: false, error: 'Key cannot be empty' };
 	}
 
-	// Check basic pattern: lowercase letters and underscores only
-	if (!/^[a-z_]+$/.test(key)) {
+	// Must start with a lowercase letter, then lowercase letters / digits / underscores,
+	// with optional `/`-separated namespace segments (each segment starting with a letter).
+	// Keep this in sync with validateKey() in lib/utils.ts — input and publish validation
+	// must agree, or a key can be created that later fails config generation.
+	if (!/^[a-z][a-z0-9_]*(?:\/[a-z][a-z0-9_]*)*$/.test(key)) {
 		return {
 			valid: false,
-			error: 'Key must contain only lowercase letters (a-z) and underscores',
-		};
-	}
-
-	// Check no leading underscore (recommended by JSON Spec)
-	if (key.startsWith('_')) {
-		return {
-			valid: false,
-			error: 'Key cannot start with underscore',
+			error:
+				'Key must start with a lowercase letter and contain only lowercase letters, numbers, underscores, and forward slashes',
 		};
 	}
 
@@ -94,58 +90,6 @@ export function generateDisplayName(key: string): string {
 		.split('_')
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(' ');
-}
-
-/**
- * Validate condition ID
- * Condition IDs should be descriptive but follow similar rules
- */
-export function validateConditionId(id: string): ValidationResult {
-	if (!id) {
-		return { valid: false, error: 'Condition ID cannot be empty' };
-	}
-
-	// More lenient pattern for condition IDs - allow hyphens
-	if (!/^[a-z0-9_-]+$/.test(id)) {
-		return {
-			valid: false,
-			error:
-				'Condition ID must contain only lowercase letters, numbers, underscores, and hyphens',
-		};
-	}
-
-	if (id.length > 64) {
-		return {
-			valid: false,
-			error: 'Condition ID cannot exceed 64 characters',
-		};
-	}
-
-	return { valid: true };
-}
-
-/**
- * Generate a descriptive condition ID
- * Examples: "osv-gte-14", "region-eu", "custom-check-1"
- */
-export function generateConditionId(
-	type: string,
-	operator: string,
-	values: string[],
-): string {
-	const typeAbbrev = type.replace('_', '').substring(0, 6);
-	const opAbbrev = operator.replace('_', '-').substring(0, 8);
-	const valueAbbrev =
-		values.length > 0
-			? values[0].replace(/[^a-z0-9]/gi, '').substring(0, 8)
-			: '';
-
-	const id = [typeAbbrev, opAbbrev, valueAbbrev]
-		.filter(Boolean)
-		.join('-')
-		.toLowerCase();
-
-	return id.substring(0, 64);
 }
 
 /**

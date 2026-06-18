@@ -118,6 +118,20 @@ export async function evaluateCondition(
 				values,
 			);
 
+		case 'build_number':
+			return evaluateVersionCondition(
+				context.userAttributes.build_number,
+				operator,
+				values,
+			);
+
+		case 'language':
+			return evaluateListCondition(
+				context.userAttributes.language,
+				operator,
+				values,
+			);
+
 		case 'platform':
 			return evaluateListCondition(
 				context.userAttributes.platform,
@@ -139,18 +153,13 @@ export async function evaluateCondition(
 				values,
 			);
 
-		case 'cohort':
-			return evaluateListCondition(
-				context.userAttributes.cohort,
-				operator,
-				values,
-			);
-
 		case 'custom_attribute':
 			return evaluateCustomCondition(condition, context);
 
 		default:
-			console.warn(`Unknown condition type: ${type}`);
+			// All ConditionType values are handled above; this guards malformed
+			// runtime data whose `type` escapes the union.
+			console.warn(`Unknown condition type: ${String(type)}`);
 			return false;
 	}
 }
@@ -229,7 +238,9 @@ function evaluateCustomCondition(
 ): boolean {
 	// Custom condition evaluation would be implemented by the SDK
 	// This is a placeholder for the concept
-	console.warn(`Custom condition evaluation not implemented: ${condition.id}`);
+	console.warn(
+		`Custom condition evaluation not implemented: ${condition.type}/${condition.values[0] ?? ''}`,
+	);
 	return false;
 }
 
@@ -263,7 +274,7 @@ function compareVersions(a: string, b: string): number {
  */
 export async function testFlagEvaluation(): Promise<void> {
 	const mockFlag = {
-		type: 'boolean',
+		type: 'bool',
 		development: {
 			default: false,
 			variants: [

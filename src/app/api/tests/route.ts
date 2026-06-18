@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
 			key,
 			name,
 			description,
+			group,
 			conditions,
 			variantCount,
 			trafficSplit,
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
 				percentage: trafficSplit[index],
 				values: {
 					development: null,
-					staging: null,
+					beta: null,
 					production: null,
 				},
 			};
@@ -111,6 +112,7 @@ export async function POST(request: NextRequest) {
 				key,
 				name,
 				description,
+				group: group ?? null,
 				type: 'TEST',
 				salt,
 				conditions: conditions as any,

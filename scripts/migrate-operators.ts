@@ -3,8 +3,7 @@
  *
  * Fixes:
  * 1. 'does_not_equal' / 'not_equals' → 'does_not_equals' (SDK uses plural)
- * 2. 'is_in_cohort' → 'in' and 'is_not_in_cohort' → 'not_in' (cohort conditions)
- * 3. custom_attribute conditions: move 'attribute' field value into 'values[0]'
+ * 2. custom_attribute conditions: move 'attribute' field value into 'values[0]'
  *
  * Run: npx ts-node --project tsconfig.scripts.json scripts/migrate-operators.ts
  * Or:  npx tsx scripts/migrate-operators.ts
@@ -17,8 +16,6 @@ const prisma = new PrismaClient();
 const OPERATOR_MAP: Record<string, string> = {
 	does_not_equal: 'does_not_equals',
 	not_equals: 'does_not_equals',
-	is_in_cohort: 'in',
-	is_not_in_cohort: 'not_in',
 };
 
 function migrateCondition(condition: any): {
@@ -74,7 +71,7 @@ function migrateVariantsJson(variantsJson: any): {
 	let anyChanged = false;
 	const updated = { ...variantsJson };
 
-	for (const env of ['development', 'staging', 'production']) {
+	for (const env of ['development', 'beta', 'production']) {
 		if (Array.isArray(updated[env])) {
 			updated[env] = updated[env].map((variant: any) => {
 				if (
@@ -112,29 +109,6 @@ async function migrateFlags() {
 	console.log(`Flags: migrated ${updated} of ${flags.length}`);
 }
 
-async function migrateCohorts() {
-	const cohorts = await prisma.cohort.findMany();
-	let updated = 0;
-
-	for (const cohort of cohorts) {
-		const conditions = Array.isArray(cohort.conditions)
-			? cohort.conditions
-			: [];
-		const { conditions: migrated, changed } = migrateConditionArray(
-			conditions as any[],
-		);
-		if (changed) {
-			await prisma.cohort.update({
-				where: { id: cohort.id },
-				data: { conditions: migrated },
-			});
-			updated++;
-		}
-	}
-
-	console.log(`Cohorts: migrated ${updated} of ${cohorts.length}`);
-}
-
 async function migrateTestRollouts() {
 	const testRollouts = await prisma.testRollout.findMany();
 	let updated = 0;
@@ -160,7 +134,6 @@ async function main() {
 	console.log('Starting operator migration...\n');
 
 	await migrateFlags();
-	await migrateCohorts();
 	await migrateTestRollouts();
 
 	console.log('\nMigration complete.');

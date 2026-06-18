@@ -28,7 +28,7 @@ async function migrateFlagsToV2() {
 			!defaultValues ||
 			typeof defaultValues !== 'object' ||
 			!defaultValues.development ||
-			!defaultValues.staging ||
+			!defaultValues.beta ||
 			!defaultValues.production;
 
 		if (needsMigration) {
@@ -91,7 +91,7 @@ async function migrateFlagsToV2() {
 
 		const newDefaultValues = {
 			development: newDefaultValue,
-			staging: newDefaultValue,
+			beta: newDefaultValue,
 			production: newDefaultValue,
 		};
 

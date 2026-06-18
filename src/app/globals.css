@@ -1,0 +1,28 @@
+/* Material Symbols Rounded — icon font used across the admin UI via className="ms".
+   Self-hosted from /public/fonts (served same-origin) because the app's CSP blocks the
+   Google Fonts CDN (style-src/font-src 'self') and next/font has no manifest entry for it.
+   Without the font, ligature spans render their literal name (e.g. "cloud_sync"). */
+@font-face {
+	font-family: 'Material Symbols Rounded';
+	font-style: normal;
+	font-weight: 100 700;
+	font-display: block;
+	src: url('/fonts/material-symbols-rounded.woff2') format('woff2');
+}
+
+.ms {
+	font-family: 'Material Symbols Rounded';
+	font-weight: normal;
+	font-style: normal;
+	line-height: 1;
+	letter-spacing: normal;
+	text-transform: none;
+	display: inline-block;
+	white-space: nowrap;
+	word-wrap: normal;
+	direction: ltr;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+	font-feature-settings: 'liga';
+	-webkit-font-feature-settings: 'liga';
+}

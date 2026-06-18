@@ -1,25 +1,9 @@
 'use client';
 
-import {
-	CheckCircle,
-	Error as ErrorIcon,
-	ExpandLess,
-	ExpandMore,
-} from '@mui/icons-material';
-import {
-	Box,
-	Collapse,
-	FormControl,
-	FormHelperText,
-	IconButton,
-	InputLabel,
-	MenuItem,
-	Paper,
-	Select,
-	TextField,
-	Typography,
-} from '@mui/material';
+import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
+import { Box, FormHelperText, TextField, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { codeSurface, ink, monoFontFamily, surface } from '@/theme/designTokens';
 
 export type FlagType =
 	| 'bool'
@@ -197,6 +181,37 @@ export function validateValue(
 	}
 }
 
+// Shared label above non-MUI-framed controls (segmented bool / JSON block).
+function FieldLabel({ label }: { label?: string }) {
+	if (!label) {return null;}
+	return (
+		<Typography
+			component="div"
+			sx={{
+				fontFamily: 'var(--font-nunito)',
+				fontWeight: 700,
+				fontSize: 11,
+				letterSpacing: '.04em',
+				textTransform: 'uppercase',
+				color: ink.soft,
+				mb: 1,
+			}}
+		>
+			{label}
+		</Typography>
+	);
+}
+
+// Mono-styled input shared by string / number / date (the "technical voice").
+const monoInputSx = {
+	'& .MuiOutlinedInput-root': { borderRadius: '9px' },
+	'& .MuiOutlinedInput-input': {
+		fontFamily: monoFontFamily,
+		fontWeight: 500,
+		fontSize: 13,
+	},
+} as const;
+
 export default function FlagValueInput({
 	flagType,
 	value,
@@ -212,13 +227,12 @@ export default function FlagValueInput({
 	autoFocus = false,
 	onKeyDown,
 }: FlagValueInputProps) {
-	const [jsonExpanded, setJsonExpanded] = useState(false);
 	const [stringValue, setStringValue] = useState('');
 	const [jsonError, setJsonError] = useState<string | null>(null);
 
 	useEffect(() => {
 		// Convert value to string representation for editing
-		if (flagType === 'json') {
+		if (flagType.toLowerCase() === 'json') {
 			setStringValue(
 				typeof value === 'object'
 					? JSON.stringify(value, null, 2)
@@ -236,132 +250,137 @@ export default function FlagValueInput({
 	// Normalize flag type to lowercase for consistency
 	const normalizedFlagType = flagType.toLowerCase() as FlagType;
 
-	// Boolean input
+	// Boolean input — segmented true / false (selected = ink fill).
 	if (normalizedFlagType === 'bool') {
+		const selected = value === true || value === 'true';
+		const seg = (on: boolean) => ({
+			cursor: disabled ? 'default' : 'pointer',
+			fontFamily: monoFontFamily,
+			fontWeight: 600,
+			fontSize: 13,
+			borderRadius: '8px',
+			px: 2.5,
+			py: 1,
+			border: '1.5px solid',
+			borderColor: on ? ink.primary : surface.borderStrong,
+			backgroundColor: on ? ink.primary : '#fff',
+			color: on ? '#fff' : ink.muted,
+			userSelect: 'none' as const,
+			transition: 'all .12s ease',
+			opacity: disabled ? 0.6 : 1,
+		});
 		return (
-			<FormControl
-				fullWidth={fullWidth}
-				size={size}
-				error={isError}
-				disabled={disabled}
-			>
-				{label && <InputLabel>{label}</InputLabel>}
-				<Select
-					value={value?.toString() || 'false'}
-					onChange={(e) => onChange(e.target.value === 'true')}
-					label={label}
-					autoFocus={autoFocus}
-				>
-					<MenuItem value="false">false</MenuItem>
-					<MenuItem value="true">true</MenuItem>
-				</Select>
+			<Box sx={fullWidth ? { width: '100%' } : undefined}>
+				<FieldLabel label={label} />
+				<Box sx={{ display: 'flex', gap: 0.75 }}>
+					<Box
+						component="span"
+						onClick={() => !disabled && onChange(true)}
+						sx={seg(selected)}
+					>
+						true
+					</Box>
+					<Box
+						component="span"
+						onClick={() => !disabled && onChange(false)}
+						sx={seg(!selected)}
+					>
+						false
+					</Box>
+				</Box>
 				{displayHelperText && (
-					<FormHelperText>{displayHelperText}</FormHelperText>
+					<FormHelperText error={isError} sx={{ mx: 0, mt: 0.75 }}>
+						{displayHelperText}
+					</FormHelperText>
 				)}
-			</FormControl>
+			</Box>
 		);
 	}
 
-	// JSON input with collapsible UI
+	// JSON input — dark code-surface editor with live valid/invalid feedback.
 	if (normalizedFlagType === 'json') {
 		const handleJSONChange = (newValue: string) => {
 			setStringValue(newValue);
 			const jsonErr = validateValue(newValue, 'json');
 			setJsonError(jsonErr.isValid ? null : jsonErr.error || 'Invalid JSON');
-
 			if (jsonErr.isValid) {
 				try {
-					// Validate JSON is parseable, but store as string
 					JSON.parse(newValue);
 					onChange(newValue);
 				} catch {
-					// Ignore parsing errors during typing
+					// Ignore parsing errors mid-typing
 				}
 			}
 		};
 
 		return (
-			<Box>
-				<Paper
-					variant="outlined"
-					sx={{
-						p: 1,
-						cursor: 'pointer',
-						'&:hover': { bgcolor: 'grey.50' },
-					}}
-					onClick={() => setJsonExpanded(!jsonExpanded)}
+			<Box sx={fullWidth ? { width: '100%' } : undefined}>
+				<Box
+					sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}
 				>
+					<FieldLabel label={label || 'JSON value'} />
 					<Box
 						sx={{
-							display: 'flex',
+							display: 'inline-flex',
 							alignItems: 'center',
-							justifyContent: 'space-between',
+							gap: 0.5,
+							fontFamily: monoFontFamily,
+							fontWeight: 700,
+							fontSize: 10,
+							color: jsonError ? 'error.main' : 'success.main',
+							ml: 'auto',
 						}}
 					>
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: 1,
-								flexGrow: 1,
-							}}
-						>
-							<Typography variant="body2" color="text.secondary">
-								{label || 'JSON Value'}:
-							</Typography>
-							<Typography
-								variant="body2"
-								sx={{
-									fontFamily: 'monospace',
-									flexGrow: 1,
-									color: jsonError ? 'error.main' : 'text.primary',
-								}}
-							>
-								{getJSONSummary(stringValue)}
-							</Typography>
-							{jsonError ? (
-								<ErrorIcon color="error" sx={{ fontSize: 16 }} />
-							) : (
-								<CheckCircle color="success" sx={{ fontSize: 16 }} />
-							)}
-						</Box>
-						<IconButton size="small">
-							{jsonExpanded ? <ExpandLess /> : <ExpandMore />}
-						</IconButton>
+						{jsonError ? (
+							<ErrorIcon sx={{ fontSize: 14 }} />
+						) : (
+							<CheckCircle sx={{ fontSize: 14 }} />
+						)}
+						{jsonError ? 'invalid' : 'valid'}
 					</Box>
-				</Paper>
-
-				<Collapse in={jsonExpanded}>
-					<Box sx={{ mt: 1 }}>
-						<TextField
-							multiline
-							rows={6}
-							value={stringValue}
-							onChange={(e) => handleJSONChange(e.target.value)}
-							placeholder={placeholder || '{}'}
-							fullWidth={fullWidth}
-							error={Boolean(jsonError)}
-							helperText={jsonError || displayHelperText || 'Enter valid JSON'}
-							disabled={disabled}
-							autoFocus={autoFocus}
-							onKeyDown={onKeyDown}
-							InputProps={{
-								sx: { fontFamily: 'monospace', fontSize: '0.875rem' },
-							}}
-						/>
-					</Box>
-				</Collapse>
+				</Box>
+				<TextField
+					multiline
+					minRows={4}
+					maxRows={12}
+					value={stringValue}
+					onChange={(e) => handleJSONChange(e.target.value)}
+					placeholder={placeholder || '{}'}
+					fullWidth={fullWidth}
+					disabled={disabled}
+					autoFocus={autoFocus}
+					onKeyDown={onKeyDown}
+					sx={{
+						'& .MuiOutlinedInput-root': {
+							backgroundColor: codeSurface.bg,
+							borderRadius: '11px',
+							p: 1.75,
+						},
+						'& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+						'& .MuiOutlinedInput-input': {
+							fontFamily: monoFontFamily,
+							fontSize: 12,
+							lineHeight: 1.7,
+							color: codeSurface.text,
+						},
+					}}
+				/>
+				{(jsonError || displayHelperText) && (
+					<FormHelperText error={Boolean(jsonError)} sx={{ mx: 0, mt: 0.75 }}>
+						{jsonError || displayHelperText}
+					</FormHelperText>
+				)}
 			</Box>
 		);
 	}
 
-	// Number inputs
+	// Number inputs (mono)
 	if (normalizedFlagType === 'int' || normalizedFlagType === 'double') {
 		return (
 			<TextField
 				label={label}
 				type="number"
-				value={value || ''}
+				value={value ?? ''}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
 				fullWidth={fullWidth}
@@ -372,14 +391,13 @@ export default function FlagValueInput({
 				required={required}
 				autoFocus={autoFocus}
 				onKeyDown={onKeyDown}
-				inputProps={{
-					step: normalizedFlagType === 'double' ? 'any' : 1,
-				}}
+				sx={monoInputSx}
+				inputProps={{ step: normalizedFlagType === 'double' ? 'any' : 1 }}
 			/>
 		);
 	}
 
-	// Date input
+	// Date input (mono)
 	if (normalizedFlagType === 'date') {
 		return (
 			<TextField
@@ -396,14 +414,13 @@ export default function FlagValueInput({
 				required={required}
 				autoFocus={autoFocus}
 				onKeyDown={onKeyDown}
-				InputLabelProps={{
-					shrink: true,
-				}}
+				sx={monoInputSx}
+				InputLabelProps={{ shrink: true }}
 			/>
 		);
 	}
 
-	// String input (default)
+	// String input (default, mono)
 	return (
 		<TextField
 			label={label}
@@ -418,6 +435,7 @@ export default function FlagValueInput({
 			required={required}
 			autoFocus={autoFocus}
 			onKeyDown={onKeyDown}
+			sx={monoInputSx}
 		/>
 	);
 }

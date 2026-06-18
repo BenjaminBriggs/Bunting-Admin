@@ -53,13 +53,8 @@ export function TargetingRuleBuilder({
 }: TargetingRuleBuilderProps) {
 	const [expanded, setExpanded] = useState(true);
 
-	const generateConditionId = () => {
-		return `condition_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-	};
-
 	const handleAddCondition = () => {
 		const newCondition: RuleCondition = {
-			id: generateConditionId(),
 			type: 'app_version',
 			operator: 'equals',
 			values: [],
@@ -72,11 +67,11 @@ export function TargetingRuleBuilder({
 	};
 
 	const handleConditionChange = (
-		conditionId: string,
+		index: number,
 		updatedCondition: RuleCondition,
 	) => {
-		const newConditions = rule.conditions.map((condition) =>
-			condition.id === conditionId ? updatedCondition : condition,
+		const newConditions = rule.conditions.map((condition, i) =>
+			i === index ? updatedCondition : condition,
 		);
 
 		onChange({
@@ -85,10 +80,8 @@ export function TargetingRuleBuilder({
 		});
 	};
 
-	const handleRemoveCondition = (conditionId: string) => {
-		const newConditions = rule.conditions.filter(
-			(condition) => condition.id !== conditionId,
-		);
+	const handleRemoveCondition = (index: number) => {
+		const newConditions = rule.conditions.filter((_, i) => i !== index);
 
 		onChange({
 			...rule,
@@ -278,7 +271,7 @@ export function TargetingRuleBuilder({
 							) : (
 								<Stack spacing={2}>
 									{rule.conditions.map((condition, index) => (
-										<Box key={condition.id}>
+										<Box key={index}>
 											{index > 0 && (
 												<Box
 													sx={{
@@ -297,9 +290,9 @@ export function TargetingRuleBuilder({
 											<ConditionBuilder
 												condition={condition}
 												onChange={(updatedCondition) =>
-													handleConditionChange(condition.id, updatedCondition)
+													handleConditionChange(index, updatedCondition)
 												}
-												onDelete={() => handleRemoveCondition(condition.id)}
+												onDelete={() => handleRemoveCondition(index)}
 												canDelete={rule.conditions.length > 1}
 												appId={appId}
 											/>

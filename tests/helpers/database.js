@@ -75,7 +75,6 @@ class DatabaseHelper {
 
 		await this.prisma.testRollout.deleteMany();
 		await this.prisma.flag.deleteMany();
-		await this.prisma.cohort.deleteMany();
 		await this.prisma.app.deleteMany();
 	}
 
@@ -119,12 +118,12 @@ class DatabaseHelper {
 			description: 'A test flag',
 			defaultValues: {
 				development: false,
-				staging: false,
+				beta: false,
 				production: false,
 			},
 			variants: {
 				development: [],
-				staging: [],
+				beta: [],
 				production: [],
 			},
 			appId,

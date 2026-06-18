@@ -22,7 +22,7 @@ export function getEnvironmentColor(environment: Environment) {
 	switch (environment) {
 		case 'development':
 			return 'info' as const;
-		case 'staging':
+		case 'beta':
 			return 'warning' as const;
 		case 'production':
 			return 'success' as const;
@@ -50,7 +50,7 @@ export interface EnvironmentBandColors {
 
 /**
  * Festive Bunting palette mapped to environments — green Production,
- * amber Staging, teal Development. Used for the colored env header bands
+ * amber Beta, teal Development. Used for the colored env header bands
  * and the compact flag-row summaries.
  */
 export function getEnvironmentBandColors(
@@ -65,7 +65,7 @@ export function getEnvironmentBandColors(
 				text: '#3F7A2D',
 				short: 'PROD',
 			};
-		case 'staging':
+		case 'beta':
 			return {
 				bg: '#FCEFD2',
 				border: '#F3E2BD',

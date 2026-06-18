@@ -4,7 +4,6 @@ import {
 	AccountCircle,
 	Add,
 	Apps,
-	BarChart,
 	Flag,
 	History,
 	KeyboardArrowDown,
@@ -37,7 +36,7 @@ import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from '@/lib/app-context';
 import { ChangesProvider, useChanges } from '@/lib/changes-context';
 
-const drawerWidth = 256;
+const drawerWidth = 266;
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
@@ -69,12 +68,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 			label: 'Rollouts',
 			icon: <Rocket />,
 			newPath: '/dashboard/rollouts/new',
-		},
-		{
-			path: '/dashboard/cohorts',
-			label: 'Cohorts',
-			icon: <BarChart />,
-			newPath: '/dashboard/cohorts/new',
 		},
 		{
 			path: '/dashboard/releases',
@@ -136,28 +129,20 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 					'& .MuiDrawer-paper': {
 						width: drawerWidth,
 						boxSizing: 'border-box',
-						border: 'none',
-						borderRadius: 1,
-						boxShadow: 1,
-						m: 2,
-						height: 'calc(100vh - 32px)',
-						backgroundColor: 'background.paper',
+						borderRight: '1px solid',
+						borderColor: '#ECE5D6',
+						borderRadius: 0,
+						boxShadow: 'none',
+						height: '100vh',
+						p: '22px 16px 18px',
+						backgroundColor: '#FCFAF3',
 					},
 				}}
 				variant="permanent"
 				anchor="left"
 			>
 				{/* Logo at Top */}
-				<Box
-					sx={{
-						p: 3,
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						borderBottom: 1,
-						borderColor: 'divider',
-					}}
-				>
+				<Box sx={{ px: 0.75, pb: 2.25 }}>
 					<Link href="/dashboard" style={{ textDecoration: 'none' }}>
 						<Image
 							src="/images/Logotype.png"
@@ -165,33 +150,58 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 							width={200}
 							height={50}
 							style={{
-								height: '50px',
-								width: 'auto',
+								height: 'auto',
+								width: '176px',
 								objectFit: 'contain',
 								cursor: 'pointer',
+								display: 'block',
 							}}
 						/>
 					</Link>
 				</Box>
 
 				{/* App Selector */}
-				<Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-					<ListItemButton
-						onClick={handleAppMenuClick}
+				<Box
+					component="button"
+					onClick={handleAppMenuClick}
+					sx={{
+						display: 'block',
+						width: '100%',
+						textAlign: 'left',
+						border: '1px solid #E7DFCD',
+						bgcolor: '#fff',
+						borderRadius: '13px',
+						p: '11px 13px',
+						cursor: 'pointer',
+						font: 'inherit',
+					}}
+				>
+					<Box
 						sx={{
-							borderRadius: 1,
-							'&:hover': {
-								bgcolor: 'action.hover',
-							},
+							display: 'flex',
+							justifyContent: 'space-between',
+							alignItems: 'center',
 						}}
 					>
-						<Typography variant="h6" component="h1">
-							<ListItemText
-								primary={selectedApp ? selectedApp.name : 'Select Application'}
-							/>
+						<Typography
+							sx={{ font: "700 15px 'Baloo 2'", color: 'text.primary' }}
+						>
+							{selectedApp ? selectedApp.name : 'Select application'}
 						</Typography>
-						<KeyboardArrowDown />
-					</ListItemButton>
+						<KeyboardArrowDown sx={{ fontSize: 20, color: '#A79F8C' }} />
+					</Box>
+					{selectedApp && (
+						<Typography
+							sx={{
+								font: "500 11px 'JetBrains Mono'",
+								color: '#A79F8C',
+								mt: 0.25,
+							}}
+						>
+							{selectedApp._count?.flags ?? 0} flags ·{' '}
+							{selectedApp._count?.test_rollouts ?? 0} tests
+						</Typography>
+					)}
 				</Box>
 				{/* Main Menu */}
 				<List sx={{ flexGrow: 1 }}>
@@ -311,7 +321,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 						>
 							<ListItemText
 								primary={app.name}
-								secondary={`${app._count?.flags || 0} flags, ${app._count?.cohorts || 0} cohorts`}
+								secondary={`${app._count?.flags || 0} flags`}
 							/>
 						</MenuItem>
 					))}
@@ -356,7 +366,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 					flexGrow: 1,
 					bgcolor: 'background.default',
 					p: 3,
-					ml: '32px', // Just account for sidebar margins
 					minHeight: '100vh',
 				}}
 			>

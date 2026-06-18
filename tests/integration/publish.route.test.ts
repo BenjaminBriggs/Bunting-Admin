@@ -48,7 +48,7 @@ run('POST /api/config/publish (integration)', () => {
 				key: 'feature_a',
 				displayName: 'Feature A',
 				type: 'BOOL',
-				defaultValues: { development: true, staging: false, production: false },
+				defaultValues: { development: true, beta: false, production: false },
 			},
 		});
 

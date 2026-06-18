@@ -4,11 +4,11 @@
  * Enhanced Condition Builder Component
  *
  * This component provides a comprehensive interface for building targeting conditions
- * used in cohorts, tests, and rollouts. It supports all condition types specified
+ * used in tests and rollouts. It supports all condition types specified
  * in the Bunting SDK, including custom attributes.
  *
  * Key features:
- * - All SDK condition types (app_version, os_version, build_number, platform, device_model, region, locale, cohort, custom_attribute)
+ * - All SDK condition types (app_version, os_version, build_number, platform, device_model, region, language, custom_attribute)
  * - Advanced operators including 'between' for range queries and 'custom' for app-defined evaluation
  * - Real-time validation with visual feedback
  * - Special handling for custom attributes with contextual help
@@ -32,8 +32,7 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
-import { type Cohort, fetchCohorts } from '@/lib/api';
+import { useState } from 'react';
 import type {
 	RuleCondition,
 	RuleConditionType,
@@ -53,10 +52,8 @@ interface ConditionBuilderProps {
 	onDelete: () => void;
 	/** Whether to show the delete button (default: true) */
 	canDelete?: boolean;
-	/** Application ID for loading cohorts (required for cohort conditions) */
+	/** Application ID (accepted for API compatibility; currently unused) */
 	appId?: string;
-	/** Whether to show cohort condition types (default: true) */
-	showCohortConditions?: boolean;
 }
 
 export function ConditionBuilder({
@@ -64,12 +61,9 @@ export function ConditionBuilder({
 	onChange,
 	onDelete,
 	canDelete = true,
-	appId,
-	showCohortConditions = true,
 }: ConditionBuilderProps) {
 	const template = conditionTemplates.find((t) => t.type === condition.type);
 	const [valueInput, setValueInput] = useState('');
-	const [cohorts, setCohorts] = useState<Cohort[]>([]);
 
 	/**
 	 * Validates the current condition configuration
@@ -96,20 +90,6 @@ export function ConditionBuilder({
 	};
 
 	const validationErrors = validateCondition();
-
-	useEffect(() => {
-		if (appId && condition.type === 'cohort') {
-			const loadCohorts = async () => {
-				try {
-					const cohortsData = await fetchCohorts(appId);
-					setCohorts(cohortsData);
-				} catch (error) {
-					console.error('Failed to load cohorts:', error);
-				}
-			};
-			loadCohorts();
-		}
-	}, [appId, condition.type]);
 
 	const handleTypeChange = (newType: RuleConditionType) => {
 		const newTemplate = conditionTemplates.find((t) => t.type === newType);
@@ -190,16 +170,11 @@ export function ConditionBuilder({
 							label="Condition Type"
 							onChange={(e) => handleTypeChange(e.target.value)}
 						>
-							{conditionTemplates
-								.filter(
-									(template) =>
-										showCohortConditions || template.type !== 'cohort',
-								)
-								.map((template) => (
-									<MenuItem key={template.type} value={template.type}>
-										{template.label}
-									</MenuItem>
-								))}
+							{conditionTemplates.map((template) => (
+								<MenuItem key={template.type} value={template.type}>
+									{template.label}
+								</MenuItem>
+							))}
 						</Select>
 					</FormControl>
 
@@ -272,36 +247,7 @@ export function ConditionBuilder({
 
 				{/* Value Input — hidden for custom_attribute since name field above is the value */}
 				{condition.type === 'custom_attribute' ? null : template.valueType ===
-				  'cohort' ? (
-					<Autocomplete
-						multiple
-						options={cohorts.map((c) => ({ value: c.key, label: c.name }))}
-						value={cohorts
-							.map((c) => ({ value: c.key, label: c.name }))
-							.filter((cohort) => condition.values.includes(cohort.value))}
-						onChange={(_, newValue) => {
-							handleValuesChange(newValue.map((item) => item.value));
-						}}
-						renderInput={(params) => (
-							<TextField
-								{...params}
-								label="Select Cohorts"
-								placeholder="Choose cohorts"
-							/>
-						)}
-						renderTags={(value, getTagProps) =>
-							value.map((option, index) => (
-								<Chip
-									variant="outlined"
-									label={option.label}
-									{...getTagProps({ index })}
-									key={option.value}
-								/>
-							))
-						}
-					/>
-				) : template.valueType === 'select' ||
-				  template.valueType === 'multi-select' ? (
+						'select' || template.valueType === 'multi-select' ? (
 					template.options && template.options.length > 0 ? (
 						<Autocomplete
 							multiple

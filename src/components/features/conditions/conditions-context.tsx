@@ -1,15 +1,11 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { fetchCohorts } from '@/lib/api';
-import { useApp } from '@/lib/app-context';
-import type { DBCohort } from '@/types';
+import React, { createContext, useContext } from 'react';
 
-export type ConditionContextType = 'cohort' | 'flag_variant';
+export type ConditionContextType = 'flag_variant';
 
 interface ConditionContextData {
-	cohorts: DBCohort[];
 	loading: boolean;
 	error: string | null;
 	config: Record<string, any>;
@@ -24,45 +20,12 @@ interface ConditionsProviderProps {
 	appId: string;
 }
 
-export function ConditionsProvider({
-	children,
-	appId,
-}: ConditionsProviderProps) {
-	const [cohorts, setCohorts] = useState<DBCohort[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	useEffect(() => {
-		const loadCohorts = async () => {
-			if (!appId) {
-				setCohorts([]);
-				setLoading(false);
-				return;
-			}
-
-			try {
-				setLoading(true);
-				setError(null);
-				const cohortsData = await fetchCohorts(appId);
-				setCohorts(cohortsData);
-			} catch (err) {
-				console.error('Failed to load cohorts:', err);
-				setError('Failed to load cohorts');
-				setCohorts([]);
-			} finally {
-				setLoading(false);
-			}
-		};
-
-		loadCohorts();
-	}, [appId]);
-
+export function ConditionsProvider({ children }: ConditionsProviderProps) {
 	return (
 		<ConditionContext.Provider
 			value={{
-				cohorts,
-				loading,
-				error,
+				loading: false,
+				error: null,
 				config: {}, // Basic config object for future extensibility
 			}}
 		>
@@ -79,38 +42,22 @@ export function useConditions() {
 	return context;
 }
 
-export function useConditionContext(contextType: ConditionContextType) {
+export function useConditionContext(_contextType: ConditionContextType) {
 	const context = useConditions();
 
 	// Provide context-specific configuration
 	const config = {
-		title:
-			contextType === 'cohort'
-				? 'Add Rule Condition'
-				: 'Add Targeting Condition',
-		allowedTypes:
-			contextType === 'cohort'
-				? [
-						'app_version',
-						'os_version',
-						'build_number',
-						'platform',
-						'device_model',
-						'region',
-						'locale',
-						'custom_attribute',
-					] // Exclude 'cohort' to prevent circular references
-				: [
-						'app_version',
-						'os_version',
-						'build_number',
-						'platform',
-						'device_model',
-						'region',
-						'locale',
-						'cohort',
-						'custom_attribute',
-					], // Include 'cohort' for flag variants
+		title: 'Add Targeting Condition',
+		allowedTypes: [
+			'app_version',
+			'os_version',
+			'build_number',
+			'platform',
+			'device_model',
+			'region',
+			'language',
+			'custom_attribute',
+		],
 	};
 
 	return {

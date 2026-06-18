@@ -1,18 +1,9 @@
 'use client';
 
 import { Add, Delete } from '@mui/icons-material';
-import {
-	Box,
-	Button,
-	Chip,
-	Divider,
-	IconButton,
-	Stack,
-	Typography,
-} from '@mui/material';
-import { useState } from 'react';
+import { Box, IconButton, Stack, Typography } from '@mui/material';
+import { envColors, ink, monoFontFamily, surface } from '@/theme/designTokens';
 import type { ConditionalVariant, Environment, FlagValue } from '@/types';
-import { getEnvironmentBandColors } from '../../ui/environment-chips';
 import { formatValueForDisplay } from './flag-value-input';
 
 interface EnvironmentColumnProps {
@@ -139,9 +130,6 @@ export default function EnvironmentColumn({
 			case 'region':
 				return `${formatOperator(operator)} ${values.join(', ')}`;
 
-			case 'cohort':
-				return `in ${values.join(', ')}`;
-
 			default:
 				return `${formatConditionType(type)} ${formatOperator(operator)} ${values.join(', ')}`;
 		}
@@ -154,7 +142,6 @@ export default function EnvironmentColumn({
 			os_version: 'OS',
 			platform: 'platform',
 			region: 'region',
-			cohort: 'cohort',
 		};
 		return typeMap[type] || type;
 	};
@@ -175,7 +162,24 @@ export default function EnvironmentColumn({
 		return operatorMap[operator] || operator;
 	};
 
-	const band = getEnvironmentBandColors(environment);
+	const c = envColors[environment] ?? envColors.production;
+
+	// Small square "+" affordance (amber token) used by both section headers.
+	const addButtonSx = {
+		width: 24,
+		height: 24,
+		borderRadius: '8px',
+		bgcolor: '#F4ECDC',
+		color: '#9A6F1C',
+		'&:hover': { bgcolor: '#EFE2C8' },
+	} as const;
+
+	const sectionLabelSx = {
+		fontFamily: 'var(--font-nunito)',
+		fontWeight: 600,
+		fontSize: 12,
+		color: '#8B8472',
+	} as const;
 
 	return (
 		<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -185,215 +189,195 @@ export default function EnvironmentColumn({
 					display: 'flex',
 					alignItems: 'center',
 					gap: 1,
-					px: 2,
-					py: 1.25,
-					bgcolor: band.bg,
+					px: 2.25,
+					py: 1.375,
+					bgcolor: c.headerBg,
 					borderBottom: '1px solid',
-					borderColor: band.border,
+					borderColor: c.border,
 				}}
 			>
-				<Box
-					sx={{
-						width: 10,
-						height: 10,
-						borderRadius: '50%',
-						bgcolor: band.dot,
-					}}
-				/>
+				<Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.dot }} />
 				<Typography
 					sx={{
+						fontFamily: 'var(--font-baloo)',
 						fontWeight: 800,
 						fontSize: 12,
 						letterSpacing: '0.04em',
-						color: band.text,
+						color: c.text,
 					}}
 				>
-					{environment.toUpperCase()}
+					{c.label.toUpperCase()}
 				</Typography>
 			</Box>
 
 			{/* Content */}
-			<Box
-				sx={{
-					p: 2,
-					flexGrow: 1,
-					display: 'flex',
-					flexDirection: 'column',
-				}}
-			>
+			<Box sx={{ p: 2.25, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
 				{/* Rollouts & Tests Section */}
-				<Box sx={{ mb: 2 }}>
+				<Box sx={{ mb: 1.75 }}>
 					<Box
 						sx={{
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'space-between',
-							mb: 1,
 						}}
 					>
-						<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-							Rollouts & Tests
-						</Typography>
-						<IconButton
-							size="small"
-							onClick={onTestRolloutAdd}
-							sx={{
-								bgcolor: 'primary.main',
-								color: 'white',
-								width: 20,
-								height: 20,
-								'&:hover': { bgcolor: 'primary.dark' },
-							}}
-						>
-							<Add sx={{ fontSize: 14 }} />
-						</IconButton>
+						<Typography sx={sectionLabelSx}>Tests &amp; Rollouts</Typography>
+						{activeRollouts.length === 0 && activeTests.length === 0 && (
+							<IconButton size="small" onClick={onTestRolloutAdd} sx={addButtonSx}>
+								<Add sx={{ fontSize: 17 }} />
+							</IconButton>
+						)}
 					</Box>
-
-					<Stack spacing={1}>
-						{/* Active Rollouts */}
+					<Stack spacing={1} sx={{ mt: 1 }}>
 						{activeRollouts.map((rollout) => (
-							<Box key={rollout.id}>
-								<Typography variant="caption" color="text.secondary">
-									Rollout {rollout.percentage}%
-								</Typography>
-								<Typography
-									variant="body2"
-									sx={{
-										cursor: 'pointer',
-										'&:hover': { color: 'primary.main' },
-									}}
-									onClick={() => onTestRolloutEdit('rollout', rollout.id)}
-								>
-									{formatValue(defaultValue)}
-								</Typography>
+							<Box
+								key={rollout.id}
+								onClick={() => onTestRolloutEdit('rollout', rollout.id)}
+								sx={{
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: 0.875,
+									alignSelf: 'flex-start',
+									fontFamily: monoFontFamily,
+									fontWeight: 700,
+									fontSize: 10,
+									color: c.text,
+									bgcolor: c.headerBg,
+									borderRadius: '7px',
+									px: 1.125,
+									py: 0.5,
+									cursor: 'pointer',
+								}}
+							>
+								<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: c.dot }} />
+								Rollout {rollout.percentage}%
 							</Box>
 						))}
-
-						{/* Active Tests */}
 						{activeTests.map((test) => (
-							<Box key={test.id}>
-								<Typography variant="caption" color="text.secondary">
-									{test.name}
-								</Typography>
-								<Typography
-									variant="body2"
-									sx={{
-										cursor: 'pointer',
-										'&:hover': { color: 'primary.main' },
-									}}
-									onClick={() => onTestRolloutEdit('test', test.id)}
-								>
-									{getTestVariantValues(test)}
-								</Typography>
+							<Box
+								key={test.id}
+								onClick={() => onTestRolloutEdit('test', test.id)}
+								sx={{
+									fontFamily: monoFontFamily,
+									fontWeight: 500,
+									fontSize: 11,
+									color: ink.soft,
+									bgcolor: '#fff',
+									border: `1px solid ${surface.borderSidebar}`,
+									borderRadius: '9px',
+									p: '8px 10px',
+									cursor: 'pointer',
+								}}
+							>
+								{test.name}: {getTestVariantValues(test)}
 							</Box>
 						))}
 					</Stack>
 				</Box>
 
 				{/* Variants Section */}
-				<Box sx={{ mb: 2, flexGrow: 1 }}>
+				<Box sx={{ mb: 1.75, flexGrow: 1 }}>
 					<Box
 						sx={{
 							display: 'flex',
 							alignItems: 'center',
 							justifyContent: 'space-between',
-							mb: 1,
 						}}
 					>
-						<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-							Variants
-						</Typography>
-						<IconButton
-							size="small"
-							onClick={onVariantAdd}
-							sx={{
-								bgcolor: 'primary.main',
-								color: 'white',
-								width: 20,
-								height: 20,
-								'&:hover': { bgcolor: 'primary.dark' },
-							}}
-						>
-							<Add sx={{ fontSize: 14 }} />
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+							<Typography sx={{ ...sectionLabelSx, fontWeight: 700, color: '#3A352C' }}>
+								Variants
+							</Typography>
+							{variants.length > 0 && (
+								<Box
+									sx={{
+										fontFamily: monoFontFamily,
+										fontWeight: 700,
+										fontSize: 10,
+										color: ink.soft,
+										bgcolor: surface.token,
+										borderRadius: '6px',
+										px: 1,
+										py: 0.375,
+									}}
+								>
+									{variants.length}
+								</Box>
+							)}
+						</Box>
+						<IconButton size="small" onClick={onVariantAdd} sx={addButtonSx}>
+							<Add sx={{ fontSize: 17 }} />
 						</IconButton>
 					</Box>
 
-					{variants.map((variant, index) => (
-						<Stack key={variant.id || index} spacing={1}>
-							<Box key={variant.id}>
+					<Stack spacing={1} sx={{ mt: 1 }}>
+						{variants.map((variant, index) => (
+							<Box
+								key={variant.id || index}
+								sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+							>
 								<Box
+									onClick={() => onVariantEdit(variant)}
 									sx={{
-										display: 'flex',
-										justifyContent: 'space-between',
-										alignItems: 'flex-start',
+										flexGrow: 1,
+										minWidth: 0,
+										fontFamily: monoFontFamily,
+										fontWeight: 500,
+										fontSize: 11,
+										color: ink.soft,
+										bgcolor: '#fff',
+										border: `1px solid ${surface.borderSidebar}`,
+										borderRadius: '9px',
+										p: '8px 10px',
+										cursor: 'pointer',
+										'&:hover': { borderColor: surface.borderStrong },
 									}}
 								>
-									<Box sx={{ flexGrow: 1 }}>
-										<Typography variant="caption" color="text.secondary">
-											{formatVariantSummary(variant)}
-										</Typography>
-										<Typography
-											variant="body2"
-											sx={{
-												cursor: 'pointer',
-												'&:hover': { color: 'primary.main' },
-											}}
-											onClick={() => onVariantEdit(variant)}
-										>
-											{formatValue(variant.value)}
-										</Typography>
+									if {formatVariantSummary(variant)} →{' '}
+									<Box component="span" sx={{ color: ink.primary }}>
+										{formatValue(variant.value)}
 									</Box>
-									<IconButton
-										size="small"
-										onClick={() => onVariantDelete(variant)}
-										sx={{
-											color: 'error.main',
-											opacity: 0.7,
-											'&:hover': {
-												opacity: 1,
-												bgcolor: 'error.main',
-												color: 'white',
-											},
-											ml: 1,
-											flexShrink: 0,
-										}}
-									>
-										<Delete sx={{ fontSize: 16 }} />
-									</IconButton>
 								</Box>
-								{index < variants.length - 1 && <Divider sx={{ my: 0.5 }} />}
+								<IconButton
+									size="small"
+									onClick={() => onVariantDelete(variant)}
+									sx={{ color: '#B4AC9A', flexShrink: 0, '&:hover': { color: '#C8503C' } }}
+								>
+									<Delete sx={{ fontSize: 16 }} />
+								</IconButton>
 							</Box>
-						</Stack>
-					))}
+						))}
+					</Stack>
 				</Box>
 
 				{/* Default Section */}
-				<Box
-					sx={{
-						mt: 'auto',
-						pt: 2,
-						borderTop: '1px solid',
-						borderColor: 'divider',
-					}}
-				>
+				<Box sx={{ mt: 'auto', pt: 2, borderTop: '1px solid', borderColor: '#F1EBDD' }}>
 					<Typography
-						variant="caption"
-						color="text.secondary"
-						sx={{ display: 'block', mb: 0.5 }}
+						sx={{
+							fontFamily: 'var(--font-nunito)',
+							fontWeight: 600,
+							fontSize: 11,
+							color: ink.muted,
+							display: 'block',
+							mb: 0.5,
+						}}
 					>
 						Default
 					</Typography>
-					<Typography
-						variant="body1"
-						sx={{
-							cursor: 'pointer',
-							fontWeight: 500,
-							'&:hover': { color: 'primary.main' },
-						}}
+					<Box
 						onClick={onDefaultValueEdit}
+						sx={{
+							fontFamily: monoFontFamily,
+							fontWeight: 600,
+							fontSize: 17,
+							color: ink.primary,
+							cursor: 'pointer',
+							display: 'inline-block',
+							'&:hover': { opacity: 0.7 },
+						}}
 					>
 						{formatValue(defaultValue)}
-					</Typography>
+					</Box>
 				</Box>
 			</Box>
 		</Box>

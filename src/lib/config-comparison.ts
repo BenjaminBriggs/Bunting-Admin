@@ -9,7 +9,7 @@ export interface ConfigArtifact {
 		flags: Record<string, any>;
 		test_rollouts?: Record<string, any>;
 	};
-	staging?: {
+	beta?: {
 		flags: Record<string, any>;
 		test_rollouts?: Record<string, any>;
 	};
@@ -17,7 +17,6 @@ export interface ConfigArtifact {
 		flags: Record<string, any>;
 		test_rollouts?: Record<string, any>;
 	};
-	cohorts: Record<string, any>;
 	tests?: Record<string, any>;
 	rollouts?: Record<string, any>;
 }
@@ -26,10 +25,6 @@ export interface ConfigArtifact {
 function extractFlags(config: ConfigArtifact): Record<string, any> {
 	// Schema v1 has flags at the top level
 	return (config as any).flags || {};
-}
-
-function extractCohorts(config: ConfigArtifact): Record<string, any> {
-	return config.cohorts || {};
 }
 
 function extractTests(config: ConfigArtifact): Record<string, any> {
@@ -57,17 +52,6 @@ export function hasConfigChanges(
 	if (
 		JSON.stringify(sortObject(currentFlags)) !==
 		JSON.stringify(sortObject(publishedFlags))
-	) {
-		return true;
-	}
-
-	// Compare cohorts
-	const currentCohorts = extractCohorts(currentConfig);
-	const publishedCohorts = extractCohorts(publishedConfig);
-
-	if (
-		JSON.stringify(sortObject(currentCohorts)) !==
-		JSON.stringify(sortObject(publishedCohorts))
 	) {
 		return true;
 	}
@@ -104,7 +88,7 @@ export function hasConfigChanges(
 
 // Get detailed changes between configs
 export interface ConfigChange {
-	type: 'flag' | 'cohort' | 'test' | 'rollout';
+	type: 'flag' | 'test' | 'rollout';
 	action: 'added' | 'modified' | 'removed';
 	key: string;
 	name: string;
@@ -120,7 +104,6 @@ export function getConfigChanges(
 	if (!publishedConfig) {
 		// All current items are "added"
 		const currentFlags = extractFlags(currentConfig);
-		const currentCohorts = extractCohorts(currentConfig);
 		const currentTest = extractTests(currentConfig);
 		const currentRollouts = extractRollouts(currentConfig);
 
@@ -130,15 +113,6 @@ export function getConfigChanges(
 				action: 'added',
 				key,
 				name: `Flag: ${key}`,
-			});
-		});
-
-		Object.keys(currentCohorts).forEach((key) => {
-			changes.push({
-				type: 'cohort',
-				action: 'added',
-				key,
-				name: `Cohort: ${currentCohorts[key].name || key}`,
 			});
 		});
 
@@ -183,49 +157,6 @@ export function getConfigChanges(
 				action: 'removed',
 				key,
 				name: `Flag: ${key}`,
-			});
-		}
-	});
-
-	// Compare cohorts
-	const currentCohorts = extractCohorts(currentConfig);
-	const publishedCohorts = extractCohorts(publishedConfig);
-
-	// Check for added/modified cohorts
-	Object.keys(currentCohorts).forEach((key) => {
-		if (!publishedCohorts[key]) {
-			changes.push({
-				type: 'cohort',
-				action: 'added',
-				key,
-				name: `Cohort: ${currentCohorts[key].name || key}`,
-			});
-		} else if (
-			JSON.stringify(currentCohorts[key]) !==
-			JSON.stringify(publishedCohorts[key])
-		) {
-			const details = getObjectDifferences(
-				currentCohorts[key],
-				publishedCohorts[key],
-			);
-			changes.push({
-				type: 'cohort',
-				action: 'modified',
-				key,
-				name: `Cohort: ${currentCohorts[key].name || key}`,
-				details,
-			});
-		}
-	});
-
-	// Check for removed cohorts
-	Object.keys(publishedCohorts).forEach((key) => {
-		if (!currentCohorts[key]) {
-			changes.push({
-				type: 'cohort',
-				action: 'removed',
-				key,
-				name: `Cohort: ${publishedCohorts[key].name || key}`,
 			});
 		}
 	});

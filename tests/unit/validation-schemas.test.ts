@@ -1,6 +1,5 @@
 import {
 	conditionSchema,
-	createCohortSchema,
 	createFlagSchema,
 	createRolloutSchema,
 	createTestRolloutSchema,
@@ -12,7 +11,6 @@ import {
 describe('validation-schemas', () => {
 	describe('conditionSchema', () => {
 		const valid = {
-			id: 'c1',
 			type: 'app_version',
 			operator: 'greater_than',
 			values: ['1.2.0'],
@@ -64,7 +62,7 @@ describe('validation-schemas', () => {
 			key: 'store/new_paywall',
 			displayName: 'New Paywall',
 			type: 'bool',
-			defaultValues: { development: true, staging: false, production: false },
+			defaultValues: { development: true, beta: false, production: false },
 			appId: 'app123',
 		};
 
@@ -105,32 +103,11 @@ describe('validation-schemas', () => {
 					type: 'json',
 					defaultValues: {
 						development: { a: 1 },
-						staging: [1, 2],
+						beta: [1, 2],
 						production: {},
 					},
 				}).success,
 			).toBe(true);
-		});
-	});
-
-	describe('createCohortSchema', () => {
-		it('requires a conditions array', () => {
-			const r = createCohortSchema.safeParse({
-				key: 'k',
-				name: 'n',
-				appId: 'a',
-			});
-			expect(r.success).toBe(false);
-		});
-
-		it('rejects malformed conditions in the array', () => {
-			const r = createCohortSchema.safeParse({
-				key: 'k',
-				name: 'n',
-				appId: 'a',
-				conditions: [{ id: 'x', type: 'bad', operator: 'equals', values: [] }],
-			});
-			expect(r.success).toBe(false);
 		});
 	});
 

@@ -7,15 +7,18 @@ const { normalizeFlagType } = require('@/lib/config-validation');
 // Bridge legacy conditions that stored custom_attribute name in `attribute` field.
 // SDK reads values[0] as the attribute name — migrate on the fly until DB is updated.
 function normalizeCondition(condition: any): any {
+	// Strip the legacy `id` field — it was only ever a React UI key and must not
+	// appear in the published artifact (older DB rows may still carry it).
+	const { id, ...rest } = condition;
 	if (
-		condition.type === 'custom_attribute' &&
-		condition.attribute &&
-		(!condition.values || condition.values.length === 0)
+		rest.type === 'custom_attribute' &&
+		rest.attribute &&
+		(!rest.values || rest.values.length === 0)
 	) {
-		const { attribute, ...rest } = condition;
-		return { ...rest, values: [attribute] };
+		const { attribute, ...clean } = rest;
+		return { ...clean, values: [attribute] };
 	}
-	return condition;
+	return rest;
 }
 
 export async function generateConfigFromDb(
@@ -29,9 +32,6 @@ export async function generateConfigFromDb(
 				where: { archived: false },
 				orderBy: { key: 'asc' },
 			},
-			cohorts: {
-				orderBy: { key: 'asc' },
-			},
 			testRollouts: {
 				where: { archived: false },
 				orderBy: { key: 'asc' },
@@ -43,29 +43,19 @@ export async function generateConfigFromDb(
 		throw new Error('App not found');
 	}
 
-	// Transform cohorts (top-level, no environment differences)
-	const cohorts: Record<string, any> = {};
-	app.cohorts.forEach((cohort: any) => {
-		cohorts[cohort.key] = {
-			name: cohort.name,
-			description: cohort.description || '',
-			conditions: (cohort.conditions || []).map(normalizeCondition),
-		};
-	});
-
 	// Transform flags with environment-specific values
 	const flags: Record<string, any> = {};
 	app.flags.forEach((flag: any) => {
 		// Validate flag structure
 		if (!flag.defaultValues || typeof flag.defaultValues !== 'object') {
 			throw new Error(
-				`Flag "${flag.key}" has invalid defaultValues structure. Expected object with development/staging/production keys. ` +
+				`Flag "${flag.key}" has invalid defaultValues structure. Expected object with development/beta/production keys. ` +
 					`Current value: ${JSON.stringify(flag.defaultValues)}. ` +
 					`This flag may need migration to schema v1.`,
 			);
 		}
 
-		const environments = ['development', 'staging', 'production'];
+		const environments = ['development', 'beta', 'production'];
 		for (const env of environments) {
 			if (!(env in flag.defaultValues)) {
 				throw new Error(
@@ -95,7 +85,7 @@ export async function generateConfigFromDb(
 			}),
 		);
 
-		const stagingVariants = (flag.variants.staging || []).map(
+		const betaVariants = (flag.variants.beta || []).map(
 			(variant: any) => ({
 				type: 'conditional',
 				order: variant.order || 0,
@@ -120,9 +110,9 @@ export async function generateConfigFromDb(
 				default: flag.defaultValues.development,
 				variants: developmentVariants,
 			},
-			staging: {
-				default: flag.defaultValues.staging,
-				variants: stagingVariants,
+			beta: {
+				default: flag.defaultValues.beta,
+				variants: betaVariants,
 			},
 			production: {
 				default: flag.defaultValues.production,
@@ -172,7 +162,7 @@ export async function generateConfigFromDb(
 					const variants = testRollout.variants || {};
 
 					// Add test variant to each environment that has variant values
-					['development', 'staging', 'production'].forEach((env) => {
+					['development', 'beta', 'production'].forEach((env) => {
 						if (variants) {
 							// Calculate the highest current order to append test variants after conditional ones
 							const currentVariants = flags[flag.key][env].variants;
@@ -186,7 +176,7 @@ export async function generateConfigFromDb(
 							const testVariantValues: Record<string, any> = {};
 							Object.keys(variants).forEach((variantName: string) => {
 								const variantData = variants[variantName];
-								// The values structure is: { variantName: { percentage, values: { dev: ..., staging: ..., prod: ... } } }
+								// The values structure is: { variantName: { percentage, values: { dev: ..., beta: ..., prod: ... } } }
 								// But we need to get the flag-specific value for this environment
 								if (variantData.values && variantData.values[env] !== null) {
 									// Check if this is the correct flag-specific value structure
@@ -235,7 +225,7 @@ export async function generateConfigFromDb(
 				const flag = app.flags.find((f: any) => f.id === flagId);
 				if (flag && flags[flag.key] && testRollout.rolloutValues) {
 					// Add rollout variant to each environment
-					['development', 'staging', 'production'].forEach((env) => {
+					['development', 'beta', 'production'].forEach((env) => {
 						if (
 							testRollout.rolloutValues?.[env] !== null &&
 							testRollout.rolloutValues[env] !== undefined
@@ -280,7 +270,7 @@ export async function generateConfigFromDb(
 
 	// Sort all variants by order
 	Object.keys(flags).forEach((flagKey) => {
-		['development', 'staging', 'production'].forEach((env) => {
+		['development', 'beta', 'production'].forEach((env) => {
 			flags[flagKey][env].variants.sort((a: any, b: any) => a.order - b.order);
 		});
 	});
@@ -291,7 +281,6 @@ export async function generateConfigFromDb(
 		config_version: '', // Will be set during publishing
 		published_at: '', // Will be set during publishing
 		app_identifier: app.identifier,
-		cohorts,
 		flags,
 		tests,
 		rollouts,

@@ -3,8 +3,8 @@ import type { ConditionTemplate } from '@/types/rules';
 /**
  * Condition Templates for Bunting Feature Flag Targeting
  *
- * This module defines all available condition types for user targeting in cohorts,
- * tests, and rollouts. Each template specifies the condition type, supported operators,
+ * This module defines all available condition types for user targeting in
+ * tests and rollouts. Each template specifies the condition type, supported operators,
  * value input method, and UI configuration.
  *
  * The templates are aligned with the Bunting SDK specification to ensure
@@ -84,30 +84,27 @@ export const conditionTemplates: ConditionTemplate[] = [
 		placeholder: 'iPhone15,2, iPhone14,7, iPad13,1',
 	},
 	{
-		type: 'locale',
-		label: 'Locale',
+		type: 'language',
+		label: 'Language',
 		description:
-			'Target users based on their locale. "in"/"not_in" use prefix matching (e.g. "en" matches "en-US").',
-		operators: ['in', 'not_in', 'equals'],
+			'Target users based on their language code (derived from the device locale, e.g. "en" from "en-GB").',
+		operators: ['in', 'not_in'],
 		valueType: 'multi-select',
-		placeholder: 'en, en-US, fr-CA, de-DE',
+		placeholder: 'en, fr, de, es',
 		options: [
-			{ value: 'en', label: 'English (any)' },
-			{ value: 'en-US', label: 'English (US)' },
-			{ value: 'en-GB', label: 'English (UK)' },
-			{ value: 'fr', label: 'French (any)' },
-			{ value: 'fr-FR', label: 'French (France)' },
-			{ value: 'fr-CA', label: 'French (Canada)' },
-			{ value: 'de', label: 'German (any)' },
-			{ value: 'de-DE', label: 'German (Germany)' },
-			{ value: 'es', label: 'Spanish (any)' },
-			{ value: 'es-ES', label: 'Spanish (Spain)' },
-			{ value: 'es-MX', label: 'Spanish (Mexico)' },
+			{ value: 'en', label: 'English' },
+			{ value: 'fr', label: 'French' },
+			{ value: 'de', label: 'German' },
+			{ value: 'es', label: 'Spanish' },
+			{ value: 'it', label: 'Italian' },
+			{ value: 'pt', label: 'Portuguese' },
+			{ value: 'nl', label: 'Dutch' },
 			{ value: 'ja', label: 'Japanese' },
 			{ value: 'ko', label: 'Korean' },
-			{ value: 'zh', label: 'Chinese (any)' },
-			{ value: 'zh-CN', label: 'Chinese (Simplified)' },
-			{ value: 'zh-TW', label: 'Chinese (Traditional)' },
+			{ value: 'zh', label: 'Chinese' },
+			{ value: 'ru', label: 'Russian' },
+			{ value: 'ar', label: 'Arabic' },
+			{ value: 'hi', label: 'Hindi' },
 		],
 	},
 	{
@@ -125,13 +122,6 @@ export const conditionTemplates: ConditionTemplate[] = [
 			{ value: 'JP', label: 'Japan' },
 			{ value: 'AU', label: 'Australia' },
 		],
-	},
-	{
-		type: 'cohort',
-		label: 'User Cohort',
-		description: 'Target users based on cohort membership',
-		operators: ['in', 'not_in'],
-		valueType: 'cohort',
 	},
 	{
 		type: 'custom_attribute',
@@ -162,5 +152,3 @@ export const operatorLabels: Record<string, string> = {
 	between: 'is between',
 	custom: 'custom evaluation',
 };
-
-// Cohorts are now loaded dynamically from the API in ConditionBuilder

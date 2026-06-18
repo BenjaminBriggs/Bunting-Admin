@@ -17,8 +17,7 @@ export const conditionTypeSchema = z.enum([
 	'platform',
 	'device_model',
 	'region',
-	'locale',
-	'cohort',
+	'language',
 	'custom_attribute',
 ]);
 
@@ -38,7 +37,6 @@ export const conditionOperatorSchema = z.enum([
 ]);
 
 export const conditionSchema = z.object({
-	id: z.string().min(1),
 	type: conditionTypeSchema,
 	operator: conditionOperatorSchema,
 	values: z.array(z.string()),
@@ -68,7 +66,7 @@ export const flagTypeSchema = z.enum([
 
 const envValuesSchema = z.object({
 	development: flagValueSchema,
-	staging: flagValueSchema,
+	beta: flagValueSchema,
 	production: flagValueSchema,
 });
 
@@ -81,15 +79,9 @@ export const createFlagSchema = z.object({
 	displayName: z.string().min(1),
 	type: flagTypeSchema,
 	description: z.string().optional(),
+	// Admin-only grouping label (organizational; not published).
+	group: z.string().nullable().optional(),
 	defaultValues: envValuesSchema,
-	appId: id,
-});
-
-export const createCohortSchema = z.object({
-	key: z.string().min(1),
-	name: z.string().min(1),
-	description: z.string().optional(),
-	conditions: z.array(conditionSchema),
 	appId: id,
 });
 
@@ -97,6 +89,7 @@ export const createTestSchema = z.object({
 	key: z.string().min(1),
 	name: z.string().min(1),
 	description: z.string().optional(),
+	group: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema),
 	variantCount: z.number().int().min(2),
 	trafficSplit: z.array(z.number()),
@@ -108,6 +101,7 @@ export const createRolloutSchema = z.object({
 	key: z.string().min(1),
 	name: z.string().min(1),
 	description: z.string().optional(),
+	group: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema),
 	percentage: z.number().min(0).max(100),
 	appId: id,
@@ -119,6 +113,7 @@ export const createTestRolloutSchema = z
 		appId: id,
 		name: z.string().min(1),
 		description: z.string().optional(),
+		group: z.string().nullable().optional(),
 		type: z.enum(['TEST', 'ROLLOUT']),
 		conditions: z.array(conditionSchema).optional(),
 		flagIds: z.array(z.string()).optional(),
@@ -148,16 +143,10 @@ export const updateFlagSchema = z.object({
 	displayName: z.string().min(1).optional(),
 	type: flagTypeSchema.optional(),
 	description: z.string().nullable().optional(),
+	group: z.string().nullable().optional(),
 	defaultValues: envValuesSchema.optional(),
 	variants: flagVariantsSchema.optional(),
 	archived: z.boolean().optional(),
-});
-
-export const updateCohortSchema = z.object({
-	key: z.string().min(1).optional(),
-	name: z.string().min(1).optional(),
-	description: z.string().nullable().optional(),
-	conditions: z.array(conditionSchema).optional(),
 });
 
 export const updateTestSchema = z.object({
@@ -184,6 +173,7 @@ export const updateRolloutSchema = z.object({
 export const updateTestRolloutSchema = z.object({
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
+	group: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
 	flagIds: z.array(z.string()).optional(),
 	// Opaque JSON blobs written straight to Prisma; typed loosely so `x || null`

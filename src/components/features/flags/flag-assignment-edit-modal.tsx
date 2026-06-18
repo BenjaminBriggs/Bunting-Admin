@@ -144,7 +144,7 @@ export default function FlagAssignmentEditModal({
 						if (!updatedVariants[variantName].values) {
 							updatedVariants[variantName].values = {
 								development: {},
-								staging: {},
+								beta: {},
 								production: {},
 							};
 						}

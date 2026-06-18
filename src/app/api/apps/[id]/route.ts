@@ -37,7 +37,6 @@ export async function GET(
 				_count: {
 					select: {
 						flags: true,
-						cohorts: true,
 					},
 				},
 			},
@@ -103,7 +102,6 @@ export async function PUT(
 				_count: {
 					select: {
 						flags: true,
-						cohorts: true,
 					},
 				},
 			},
@@ -143,7 +141,7 @@ export async function DELETE(
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		// Delete the app (cascades to flags and cohorts due to Prisma schema)
+		// Delete the app (cascades to flags due to Prisma schema)
 		await prisma.app.delete({
 			where: { id },
 		});

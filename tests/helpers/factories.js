@@ -48,41 +48,12 @@ class TestDataFactories {
 			description: faker.lorem.sentence(),
 			defaultValues: {
 				development: this.generateDefaultValue(type),
-				staging: this.generateDefaultValue(type),
+				beta: this.generateDefaultValue(type),
 				production: this.generateDefaultValue(type),
 			},
 			variants: {},
 			appId: appId,
 			archived: false,
-			...overrides,
-		};
-	}
-
-	static createCohort(appId, overrides = {}) {
-		return {
-			key: faker.internet.domainWord().toLowerCase(),
-			name: faker.commerce.productName(),
-			description: faker.lorem.sentence(),
-			conditions: [
-				{
-					field: faker.helpers.arrayElement([
-						'user_id',
-						'app_version',
-						'platform',
-						'country',
-					]),
-					operator: faker.helpers.arrayElement([
-						'eq',
-						'neq',
-						'gte',
-						'lte',
-						'in',
-						'contains',
-					]),
-					value: faker.string.alphanumeric(8),
-				},
-			],
-			appId: appId,
 			...overrides,
 		};
 	}
@@ -107,7 +78,7 @@ class TestDataFactories {
 					percentage: 50,
 					values: {
 						development: false,
-						staging: false,
+						beta: false,
 						production: false,
 					},
 				},
@@ -115,7 +86,7 @@ class TestDataFactories {
 					percentage: 50,
 					values: {
 						development: true,
-						staging: true,
+						beta: true,
 						production: true,
 					},
 				},
@@ -124,7 +95,7 @@ class TestDataFactories {
 			baseData.percentage = faker.number.int({ min: 0, max: 100 });
 			baseData.rolloutValues = {
 				development: true,
-				staging: true,
+				beta: true,
 				production: true,
 			};
 		}
@@ -204,15 +175,6 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA${faker.string.alphanumeric(344)}
 			this.createFlag(appId, {
 				...overrides,
 				key: `test_flag_${i}_${faker.string.alphanumeric(4)}`,
-			}),
-		);
-	}
-
-	static createMultipleCohorts(appId, count = 3, overrides = {}) {
-		return Array.from({ length: count }, (_, i) =>
-			this.createCohort(appId, {
-				...overrides,
-				key: `test_cohort_${i}_${faker.string.alphanumeric(4)}`,
 			}),
 		);
 	}

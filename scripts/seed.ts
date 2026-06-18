@@ -32,56 +32,6 @@ async function main() {
 
 	console.log('Created app:', app.name);
 
-	// Create some sample cohorts
-	const betaCohort = await prisma.cohort.upsert({
-		where: {
-			appId_key: {
-				appId: app.id,
-				key: 'beta_users',
-			},
-		},
-		update: {},
-		create: {
-			appId: app.id,
-			key: 'beta_users',
-			name: 'Beta Users',
-			description: 'Users in the beta testing program',
-			conditions: [
-				{
-					type: 'app_version',
-					operator: 'greater_than_or_equal',
-					value: '2.0.0',
-				},
-			],
-		},
-	});
-
-	const premiumCohort = await prisma.cohort.upsert({
-		where: {
-			appId_key: {
-				appId: app.id,
-				key: 'premium_subscribers',
-			},
-		},
-		update: {},
-		create: {
-			appId: app.id,
-			key: 'premium_subscribers',
-			name: 'Premium Subscribers',
-			description: 'Users with premium subscriptions',
-			conditions: [
-				{
-					type: 'custom_attribute',
-					key: 'subscription_type',
-					operator: 'equals',
-					value: 'premium',
-				},
-			],
-		},
-	});
-
-	console.log('Created cohorts:', betaCohort.name, premiumCohort.name);
-
 	// Create a sample flag (schema v2 format)
 	const sampleFlag = await prisma.flag.upsert({
 		where: {
@@ -98,12 +48,12 @@ async function main() {
 			type: 'BOOL',
 			defaultValues: {
 				development: false,
-				staging: false,
+				beta: false,
 				production: false,
 			},
 			variants: {
 				development: [],
-				staging: [],
+				beta: [],
 				production: [],
 			},
 			description: 'Enable the new paywall UI design',

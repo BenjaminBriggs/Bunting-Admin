@@ -44,6 +44,7 @@ export async function PUT(
 		const {
 			name,
 			description,
+			group,
 			percentage,
 			conditions,
 			flagIds,
@@ -59,6 +60,7 @@ export async function PUT(
 			data: {
 				name,
 				description,
+				group: group ?? null,
 				percentage,
 				conditions: conditions || [],
 				flagIds: flagIds || [],

@@ -36,7 +36,7 @@ describe('flags route', () => {
 				description: 'flag created in test',
 				defaultValues: {
 					development: true,
-					staging: false,
+					beta: false,
 					production: false,
 				},
 				appId: app.id,

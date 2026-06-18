@@ -31,13 +31,8 @@ export function ConditionsContainer({
 	disabled = false,
 	emptyMessage = 'No conditions defined. All users will match.',
 }: ConditionsContainerProps) {
-	const generateConditionId = () => {
-		return `condition_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-	};
-
 	const handleAddCondition = () => {
 		const newCondition: Condition = {
-			id: generateConditionId(),
 			type: 'app_version',
 			operator: 'greater_than_or_equal',
 			values: [],
@@ -47,19 +42,17 @@ export function ConditionsContainer({
 	};
 
 	const handleConditionChange = (
-		conditionId: string,
+		index: number,
 		updatedCondition: Condition,
 	) => {
-		const newConditions = conditions.map((condition) =>
-			condition.id === conditionId ? updatedCondition : condition,
+		const newConditions = conditions.map((condition, i) =>
+			i === index ? updatedCondition : condition,
 		);
 		onChange(newConditions);
 	};
 
-	const handleDeleteCondition = (conditionId: string) => {
-		const newConditions = conditions.filter(
-			(condition) => condition.id !== conditionId,
-		);
+	const handleDeleteCondition = (index: number) => {
+		const newConditions = conditions.filter((_, i) => i !== index);
 		onChange(newConditions);
 	};
 
@@ -70,7 +63,7 @@ export function ConditionsContainer({
 		conditions.forEach((condition, index) => {
 			if (condition.values.length === 0) {
 				errors.push({
-					conditionId: condition.id,
+					conditionId: String(index),
 					message: `Condition ${index + 1}: No values specified`,
 					type: 'error',
 				});
@@ -79,13 +72,13 @@ export function ConditionsContainer({
 			if (condition.operator === 'between') {
 				if (condition.values.length < 2) {
 					errors.push({
-						conditionId: condition.id,
+						conditionId: String(index),
 						message: `Condition ${index + 1}: Between operator requires both min and max values`,
 						type: 'error',
 					});
 				} else if (condition.values[0] === condition.values[1]) {
 					errors.push({
-						conditionId: condition.id,
+						conditionId: String(index),
 						message: `Condition ${index + 1}: Min and max values cannot be the same`,
 						type: 'warning',
 					});
@@ -97,7 +90,7 @@ export function ConditionsContainer({
 				condition.values.forEach((value, valueIndex) => {
 					if (value && !/^\d+(\.\d+)*(\.\d+)*$/.test(value)) {
 						errors.push({
-							conditionId: condition.id,
+							conditionId: String(index),
 							message: `Condition ${index + 1}: Invalid version format "${value}". Use semantic versioning (e.g., 1.0.0)`,
 							type: 'error',
 						});
@@ -179,7 +172,7 @@ export function ConditionsContainer({
 						)}
 
 						{conditions.map((condition, index) => (
-							<Box key={condition.id}>
+							<Box key={index}>
 								{index > 0 && (
 									<Box
 										sx={{ display: 'flex', justifyContent: 'center', my: 1 }}
@@ -203,9 +196,9 @@ export function ConditionsContainer({
 								<ConditionEditor
 									condition={condition}
 									onChange={(updatedCondition) =>
-										handleConditionChange(condition.id, updatedCondition)
+										handleConditionChange(index, updatedCondition)
 									}
-									onDelete={() => handleDeleteCondition(condition.id)}
+									onDelete={() => handleDeleteCondition(index)}
 								/>
 							</Box>
 						))}

@@ -85,11 +85,10 @@ npm run test:integration
 
 - ✅ **Top-level Structure** - `schema_version`, `config_version`, `published_at`, `app_identifier`
 - ✅ **Flag Type Mapping** - `BOOL` → `boolean`, `INT` → `integer`, etc.
-- ✅ **Environment Structure** - `development`, `staging`, `production` with defaults and variants
+- ✅ **Environment Structure** - `development`, `beta`, `production` with defaults and variants
 - ✅ **Variant Types** - `conditional`, `test`, `rollout` with proper fields
 - ✅ **Condition Format** - `{id, type, values[], operator}` structure
 - ✅ **Tests/Rollouts** - Separate objects with type-specific fields
-- ✅ **Cohorts** - Pure condition groups without salt/percentage
 - ✅ **Naming Rules** - `^[a-z_]+$` pattern enforcement
 - ✅ **Schema Validation** - Complete JSON Schema compliance
 
@@ -137,7 +136,7 @@ describe('Bucketing Algorithm', () => {
 **Tests:** Complete condition system per JSON Spec
 
 - ✅ **Version Conditions** - `app_version`, `os_version` with all operators
-- ✅ **List Conditions** - `platform`, `device_model`, `region`, `cohort`
+- ✅ **List Conditions** - `platform`, `device_model`, `region`
 - ✅ **Custom Conditions** - `custom_attribute` with SDK integration
 - ✅ **Operator Testing** - All operators: `equals`, `greater_than`, `in`, etc.
 - ✅ **Multiple Conditions** - AND logic evaluation
@@ -165,9 +164,9 @@ describe('Condition Evaluation', () => {
 **Tests:** Complete database-to-JSON pipeline
 
 - ✅ **Real-World Scenarios** - Complex flags with multiple variants
-- ✅ **All Entity Types** - Flags, cohorts, tests, rollouts working together
+- ✅ **All Entity Types** - Flags, tests, rollouts working together
 - ✅ **Validation Pipeline** - Schema + naming validation
-- ✅ **Performance Testing** - Large configs (50+ cohorts, 100+ flags)
+- ✅ **Performance Testing** - Large configs (100+ flags)
 - ✅ **Edge Cases** - Empty configs, missing data, invalid structures
 - ✅ **Type Integration** - All flag types in realistic combinations
 
@@ -225,7 +224,7 @@ const minimalSetup = {
 	flag: {
 		key: 'simple_flag',
 		type: 'boolean',
-		defaultValues: { development: false, staging: false, production: false },
+		defaultValues: { development: false, beta: false, production: false },
 	},
 };
 ```
@@ -234,7 +233,6 @@ const minimalSetup = {
 
 ```javascript
 const complexSetup = {
-	cohorts: ['premium_users', 'us_users'],
 	tests: ['checkout_flow_test'],
 	rollouts: ['dark_mode_rollout'],
 	flags: ['enable_new_checkout', 'api_timeout_seconds', 'feature_config'],

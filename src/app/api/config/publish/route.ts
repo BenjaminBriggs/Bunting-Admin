@@ -115,9 +115,6 @@ export async function POST(request: NextRequest) {
 		// Finalize the reserved audit row now that the upload succeeded.
 		const configChanges = getConfigChanges(baseConfig, previousConfig.config);
 		const flagCount = Object.keys(publishedConfig.flags || {}).length;
-		const cohortCount = Object.keys(
-			(publishedConfig as { cohorts?: object }).cohorts || {},
-		).length;
 		const artifactSize = configContent.length;
 		await prisma.auditLog.update({
 			where: { id: reservation.auditId },
@@ -125,7 +122,6 @@ export async function POST(request: NextRequest) {
 				configDiff: {
 					changes: configChanges,
 					flagCount,
-					cohortCount,
 					configSize: artifactSize,
 				} as unknown as Prisma.InputJsonValue,
 				artifactSize,

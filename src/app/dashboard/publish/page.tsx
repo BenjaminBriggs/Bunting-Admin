@@ -1,39 +1,6 @@
 'use client';
 
-import {
-	BarChart,
-	CheckCircle,
-	CloudUpload,
-	Code,
-	Error as ErrorIcon,
-	ExpandMore,
-	Flag,
-	History,
-	Warning,
-} from '@mui/icons-material';
-import {
-	Accordion,
-	AccordionDetails,
-	AccordionSummary,
-	Alert,
-	Box,
-	Button,
-	Card,
-	CardContent,
-	Chip,
-	CircularProgress,
-	Divider,
-	Grid,
-	List,
-	ListItem,
-	ListItemIcon,
-	ListItemText,
-	MenuItem,
-	Paper,
-	Stack,
-	TextField,
-	Typography,
-} from '@mui/material';
+import { Alert, Box, Button, CircularProgress, TextField, Typography } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -52,6 +19,71 @@ import {
 	getConfigChanges,
 	hasConfigChanges,
 } from '@/lib/config-comparison';
+import { ink, monoFontFamily, surface, technicalButtonSx } from '@/theme/designTokens';
+
+function Ms({ name, sx }: { name: string; sx?: any }) {
+	return (
+		<Box component="span" className="ms" sx={sx}>
+			{name}
+		</Box>
+	);
+}
+
+const TAG_STYLES: Record<string, { color: string; bg: string }> = {
+	ADDED: { color: '#3F7A2D', bg: '#E9F4E0' },
+	MODIFIED: { color: '#9A6F1C', bg: '#FCEFD2' },
+	REMOVED: { color: '#C8503C', bg: '#FBEAE5' },
+};
+
+function ChangeRow({ tag, change }: { tag: string; change: ConfigChange }) {
+	const t = TAG_STYLES[tag];
+	const detail =
+		change.details && change.details.length > 0
+			? change.details.join(' · ')
+			: change.name;
+	return (
+		<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.375 }}>
+			<Box
+				sx={{
+					width: 78,
+					flexShrink: 0,
+					textAlign: 'center',
+					fontFamily: monoFontFamily,
+					fontWeight: 700,
+					fontSize: 9,
+					color: t.color,
+					bgcolor: t.bg,
+					borderRadius: '6px',
+					py: 0.5,
+				}}
+			>
+				{tag}
+			</Box>
+			<Box
+				sx={{
+					fontFamily: monoFontFamily,
+					fontWeight: 500,
+					fontSize: 13,
+					color: ink.primary,
+				}}
+			>
+				{change.key}
+			</Box>
+			{detail && (
+				<Box sx={{ fontWeight: 600, fontSize: 12, color: ink.muted, minWidth: 0 }}>
+					{detail}
+				</Box>
+			)}
+		</Box>
+	);
+}
+
+const cardSx = {
+	bgcolor: '#fff',
+	border: `1px solid ${surface.border}`,
+	borderRadius: '16px',
+	boxShadow: '0 1px 2px rgba(40,33,20,.03)',
+} as const;
 
 export default function PublishPage() {
 	const router = useRouter();
@@ -65,16 +97,15 @@ export default function PublishPage() {
 	const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
 	const [validation, setValidation] = useState<ValidationResult | null>(null);
 	const [changes, setChanges] = useState<ConfigChange[]>([]);
-	const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>(
-		[],
-	);
+	const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>([]);
 	const [hasChangesDetected, setHasChangesDetected] = useState(false);
 
-	const hasBlockingErrors = validation?.errors.length
-		? validation.errors.length > 0
-		: false;
-	const canPublish =
-		hasChangesDetected && !hasBlockingErrors && changelog.trim() && selectedApp;
+	const errorCount = validation?.errors.length ?? 0;
+	const warningCount = validation?.warnings.length ?? 0;
+	const hasBlockingErrors = errorCount > 0;
+	const canPublish = Boolean(
+		hasChangesDetected && !hasBlockingErrors && changelog.trim() && selectedApp,
+	);
 
 	const loadAppData = useCallback(
 		async (appId: string) => {
@@ -82,7 +113,6 @@ export default function PublishPage() {
 				setLoading(true);
 				setError(null);
 
-				// Load validation, changes, and history in parallel
 				const [
 					validationResult,
 					currentConfig,
@@ -100,7 +130,6 @@ export default function PublishPage() {
 				setValidation(validationResult);
 				setPublishHistory(historyResult);
 
-				// Calculate changes
 				const configChanges = getConfigChanges(
 					currentConfig,
 					publishedConfigResult.config,
@@ -111,9 +140,7 @@ export default function PublishPage() {
 				);
 			} catch (err) {
 				console.error('Failed to load app data:', err);
-				setError(
-					err instanceof Error ? err.message : 'Failed to load app data',
-				);
+				setError(err instanceof Error ? err.message : 'Failed to load app data');
 			} finally {
 				setLoading(false);
 			}
@@ -144,14 +171,8 @@ export default function PublishPage() {
 				`Configuration published successfully as version ${result.version}`,
 			);
 			setChangelog('');
-
-			// Clear changes immediately since we just published
 			markChangesPublished();
-
-			// Reload data to show updated state
 			await loadAppData(selectedApp.id);
-
-			// Navigate back to releases page after successful publish
 			setTimeout(() => {
 				router.push('/dashboard/releases');
 			}, 2000);
@@ -183,15 +204,6 @@ export default function PublishPage() {
 				(c) => c.type === 'flag' && c.action === 'removed',
 			),
 		},
-		cohorts: {
-			added: changes.filter((c) => c.type === 'cohort' && c.action === 'added'),
-			modified: changes.filter(
-				(c) => c.type === 'cohort' && c.action === 'modified',
-			),
-			removed: changes.filter(
-				(c) => c.type === 'cohort' && c.action === 'removed',
-			),
-		},
 		tests: {
 			added: changes.filter((c) => c.type === 'test' && c.action === 'added'),
 			modified: changes.filter(
@@ -214,6 +226,41 @@ export default function PublishPage() {
 		},
 	};
 
+	const renderGroup = (
+		glyph: string,
+		label: string,
+		group: { added: ConfigChange[]; modified: ConfigChange[]; removed: ConfigChange[] },
+	) => {
+		const count = group.added.length + group.modified.length + group.removed.length;
+		if (count === 0) {
+			return null;
+		}
+		return (
+			<Box sx={{ mb: 2.25 }}>
+				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+					<Ms name={glyph} sx={{ fontSize: 18, color: '#7E776A' }} />
+					<Typography sx={{ font: "800 13px 'Baloo 2'" }}>{label}</Typography>
+					<Typography
+						sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 11, color: '#9A9483' }}
+					>
+						{count}
+					</Typography>
+				</Box>
+				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.875 }}>
+					{group.added.map((c, i) => (
+						<ChangeRow key={`a${i}`} tag="ADDED" change={c} />
+					))}
+					{group.modified.map((c, i) => (
+						<ChangeRow key={`m${i}`} tag="MODIFIED" change={c} />
+					))}
+					{group.removed.map((c, i) => (
+						<ChangeRow key={`r${i}`} tag="REMOVED" change={c} />
+					))}
+				</Box>
+			</Box>
+		);
+	};
+
 	if (loading) {
 		return (
 			<Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -228,816 +275,344 @@ export default function PublishPage() {
 				<Alert severity="error" sx={{ mb: 2 }}>
 					{error}
 				</Alert>
-				<Button onClick={() => window.location.reload()}>Retry</Button>
+				<Button variant="outlined" onClick={() => window.location.reload()}>
+					Retry
+				</Button>
 			</Box>
 		);
 	}
 
+	const lastVersion = publishHistory[0]?.version;
+
 	return (
-		<Box>
+		<Box sx={{ maxWidth: 1000, mx: 'auto' }}>
 			{/* Header */}
 			<Box
 				sx={{
 					display: 'flex',
+					alignItems: 'flex-end',
 					justifyContent: 'space-between',
-					alignItems: 'flex-start',
-					mb: 3,
+					flexWrap: 'wrap',
+					gap: 1.75,
 				}}
 			>
 				<Box>
-					<Typography variant="h4" component="h2" sx={{ mb: 1 }}>
-						Publish Configuration
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 0.75,
+							font: "600 12px 'Nunito'",
+							color: ink.muted,
+						}}
+					>
+						<Ms name="history" sx={{ fontSize: 16 }} />
+						Releases
+						<Ms name="chevron_right" sx={{ fontSize: 15 }} />
+						Publish
+					</Box>
+					<Typography variant="h4" sx={{ mt: 0.75 }}>
+						Publish configuration
 					</Typography>
-					<Typography variant="body1" color="text.secondary">
-						Review changes and publish your feature flag configuration for{' '}
-						{selectedApp?.name}
+					<Typography sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.625 }}>
+						Review everything that changed, then ship a new signed config
+						{selectedApp ? ` for ${selectedApp.name}` : ''}.
 					</Typography>
 				</Box>
+				{selectedApp && hasChangesDetected && (
+					<Box
+						sx={{
+							font: "600 12px 'JetBrains Mono'",
+							color: ink.soft,
+							bgcolor: '#fff',
+							border: `1px solid ${surface.borderStrong}`,
+							borderRadius: '9px',
+							px: 1.5,
+							py: 1,
+						}}
+					>
+						next → {generateVersion()}
+					</Box>
+				)}
 			</Box>
 
-			{/* No App Selected */}
 			{!selectedApp && (
-				<Alert severity="warning" sx={{ mb: 3 }}>
+				<Alert severity="warning" sx={{ mt: 3 }}>
 					Please select an application from the sidebar to publish configuration
 					changes.
 				</Alert>
 			)}
 
-			{/* Success Alert */}
 			{publishSuccess && (
-				<Alert severity="success" sx={{ mb: 3 }}>
+				<Alert severity="success" sx={{ mt: 3 }}>
 					{publishSuccess}
 				</Alert>
 			)}
-
-			{/* Publish Error Alert */}
 			{publishError && (
-				<Alert severity="error" sx={{ mb: 3 }}>
+				<Alert severity="error" sx={{ mt: 3 }}>
 					{publishError}
 				</Alert>
 			)}
 
 			{selectedApp && (
-				<Grid container spacing={3}>
-					{/* Main Content */}
-					<Grid size={{ xs: 12, md: 8 }}>
-						<Stack spacing={3}>
-							{/* Validation Results */}
-							{validation &&
-								(validation.errors.length > 0 ||
-									validation.warnings.length > 0) && (
-									<Card>
-										<CardContent>
-											<Typography variant="h6" sx={{ mb: 2 }}>
-												Validation Results
-											</Typography>
-
-											{validation.errors.map((error, index) => (
-												<Alert key={index} severity="error" sx={{ mb: 1 }}>
-													{error.message}
-												</Alert>
-											))}
-
-											{validation.warnings.map((warning, index) => (
-												<Alert key={index} severity="warning" sx={{ mb: 1 }}>
-													{warning.message}
-												</Alert>
-											))}
-										</CardContent>
-									</Card>
-								)}
-
-							{/* Changes Summary */}
-							<Card>
-								<CardContent>
-									<Typography variant="h6" sx={{ mb: 2 }}>
-										Changes to Publish
-									</Typography>
-
-									{!hasChangesDetected ? (
-										<Alert severity="info">
-											No changes detected. Make some changes to your flags or
-											cohorts before publishing.
-										</Alert>
-									) : (
-										<Stack spacing={2}>
-											{/* Flag Changes */}
-											{(groupedChanges.flags.modified.length > 0 ||
-												groupedChanges.flags.added.length > 0 ||
-												groupedChanges.flags.removed.length > 0) && (
-												<Accordion defaultExpanded>
-													<AccordionSummary expandIcon={<ExpandMore />}>
-														<Box
-															sx={{
-																display: 'flex',
-																alignItems: 'center',
-																gap: 1,
-															}}
-														>
-															<Flag />
-															<Typography variant="subtitle1">
-																Feature Flags (
-																{groupedChanges.flags.modified.length +
-																	groupedChanges.flags.added.length +
-																	groupedChanges.flags.removed.length}{' '}
-																changes)
-															</Typography>
-														</Box>
-													</AccordionSummary>
-													<AccordionDetails>
-														<Stack spacing={2}>
-															{groupedChanges.flags.added.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="success.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Added ({groupedChanges.flags.added.length})
-																	</Typography>
-																	{groupedChanges.flags.added.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.flags.modified.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="warning.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Modified (
-																		{groupedChanges.flags.modified.length})
-																	</Typography>
-																	{groupedChanges.flags.modified.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																				{change.details &&
-																					change.details.length > 0 && (
-																						<List dense sx={{ ml: 1 }}>
-																							{change.details.map(
-																								(detail, detailIndex) => (
-																									<ListItem
-																										key={detailIndex}
-																										sx={{ py: 0, px: 0 }}
-																									>
-																										<Typography
-																											variant="caption"
-																											color="text.secondary"
-																										>
-																											• {detail}
-																										</Typography>
-																									</ListItem>
-																								),
-																							)}
-																						</List>
-																					)}
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.flags.removed.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="error.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Removed (
-																		{groupedChanges.flags.removed.length})
-																	</Typography>
-																	{groupedChanges.flags.removed.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-														</Stack>
-													</AccordionDetails>
-												</Accordion>
-											)}
-
-											{/* Cohort Changes */}
-											{(groupedChanges.cohorts.modified.length > 0 ||
-												groupedChanges.cohorts.added.length > 0 ||
-												groupedChanges.cohorts.removed.length > 0) && (
-												<Accordion>
-													<AccordionSummary expandIcon={<ExpandMore />}>
-														<Box
-															sx={{
-																display: 'flex',
-																alignItems: 'center',
-																gap: 1,
-															}}
-														>
-															<BarChart />
-															<Typography variant="subtitle1">
-																Cohorts (
-																{groupedChanges.cohorts.modified.length +
-																	groupedChanges.cohorts.added.length +
-																	groupedChanges.cohorts.removed.length}{' '}
-																changes)
-															</Typography>
-														</Box>
-													</AccordionSummary>
-													<AccordionDetails>
-														<Stack spacing={2}>
-															{groupedChanges.cohorts.added.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="success.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Added ({groupedChanges.cohorts.added.length}
-																		)
-																	</Typography>
-																	{groupedChanges.cohorts.added.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.cohorts.modified.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="warning.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Modified (
-																		{groupedChanges.cohorts.modified.length})
-																	</Typography>
-																	{groupedChanges.cohorts.modified.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																				{change.details &&
-																					change.details.length > 0 && (
-																						<List dense sx={{ ml: 1 }}>
-																							{change.details.map(
-																								(detail, detailIndex) => (
-																									<ListItem
-																										key={detailIndex}
-																										sx={{ py: 0, px: 0 }}
-																									>
-																										<Typography
-																											variant="caption"
-																											color="text.secondary"
-																										>
-																											• {detail}
-																										</Typography>
-																									</ListItem>
-																								),
-																							)}
-																						</List>
-																					)}
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.cohorts.removed.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="error.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Removed (
-																		{groupedChanges.cohorts.removed.length})
-																	</Typography>
-																	{groupedChanges.cohorts.removed.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-														</Stack>
-													</AccordionDetails>
-												</Accordion>
-											)}
-
-											{/* Test Changes */}
-											{(groupedChanges.tests.modified.length > 0 ||
-												groupedChanges.tests.added.length > 0 ||
-												groupedChanges.tests.removed.length > 0) && (
-												<Accordion>
-													<AccordionSummary expandIcon={<ExpandMore />}>
-														<Box
-															sx={{
-																display: 'flex',
-																alignItems: 'center',
-																gap: 1,
-															}}
-														>
-															<Code />
-															<Typography variant="subtitle1">
-																A/B Tests (
-																{groupedChanges.tests.modified.length +
-																	groupedChanges.tests.added.length +
-																	groupedChanges.tests.removed.length}{' '}
-																changes)
-															</Typography>
-														</Box>
-													</AccordionSummary>
-													<AccordionDetails>
-														<Stack spacing={2}>
-															{groupedChanges.tests.added.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="success.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Added ({groupedChanges.tests.added.length})
-																	</Typography>
-																	{groupedChanges.tests.added.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.tests.modified.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="warning.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Modified (
-																		{groupedChanges.tests.modified.length})
-																	</Typography>
-																	{groupedChanges.tests.modified.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																				{change.details &&
-																					change.details.length > 0 && (
-																						<List dense sx={{ ml: 1 }}>
-																							{change.details.map(
-																								(detail, detailIndex) => (
-																									<ListItem
-																										key={detailIndex}
-																										sx={{ py: 0, px: 0 }}
-																									>
-																										<Typography
-																											variant="caption"
-																											color="text.secondary"
-																										>
-																											• {detail}
-																										</Typography>
-																									</ListItem>
-																								),
-																							)}
-																						</List>
-																					)}
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.tests.removed.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="error.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Removed (
-																		{groupedChanges.tests.removed.length})
-																	</Typography>
-																	{groupedChanges.tests.removed.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-														</Stack>
-													</AccordionDetails>
-												</Accordion>
-											)}
-
-											{/* Rollout Changes */}
-											{(groupedChanges.rollouts.modified.length > 0 ||
-												groupedChanges.rollouts.added.length > 0 ||
-												groupedChanges.rollouts.removed.length > 0) && (
-												<Accordion>
-													<AccordionSummary expandIcon={<ExpandMore />}>
-														<Box
-															sx={{
-																display: 'flex',
-																alignItems: 'center',
-																gap: 1,
-															}}
-														>
-															<CloudUpload />
-															<Typography variant="subtitle1">
-																Rollouts (
-																{groupedChanges.rollouts.modified.length +
-																	groupedChanges.rollouts.added.length +
-																	groupedChanges.rollouts.removed.length}{' '}
-																changes)
-															</Typography>
-														</Box>
-													</AccordionSummary>
-													<AccordionDetails>
-														<Stack spacing={2}>
-															{groupedChanges.rollouts.added.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="success.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Added (
-																		{groupedChanges.rollouts.added.length})
-																	</Typography>
-																	{groupedChanges.rollouts.added.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.rollouts.modified.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="warning.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Modified (
-																		{groupedChanges.rollouts.modified.length})
-																	</Typography>
-																	{groupedChanges.rollouts.modified.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																				{change.details &&
-																					change.details.length > 0 && (
-																						<List dense sx={{ ml: 1 }}>
-																							{change.details.map(
-																								(detail, detailIndex) => (
-																									<ListItem
-																										key={detailIndex}
-																										sx={{ py: 0, px: 0 }}
-																									>
-																										<Typography
-																											variant="caption"
-																											color="text.secondary"
-																										>
-																											• {detail}
-																										</Typography>
-																									</ListItem>
-																								),
-																							)}
-																						</List>
-																					)}
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-
-															{groupedChanges.rollouts.removed.length > 0 && (
-																<Box>
-																	<Typography
-																		variant="body2"
-																		color="error.main"
-																		sx={{ fontWeight: 500, mb: 1 }}
-																	>
-																		Removed (
-																		{groupedChanges.rollouts.removed.length})
-																	</Typography>
-																	{groupedChanges.rollouts.removed.map(
-																		(change, index) => (
-																			<Box key={index} sx={{ ml: 2, mb: 1 }}>
-																				<Typography
-																					variant="body2"
-																					sx={{ fontFamily: 'monospace' }}
-																				>
-																					{change.key}
-																				</Typography>
-																				<Typography
-																					variant="caption"
-																					color="text.secondary"
-																				>
-																					{change.name}
-																				</Typography>
-																			</Box>
-																		),
-																	)}
-																</Box>
-															)}
-														</Stack>
-													</AccordionDetails>
-												</Accordion>
-											)}
-										</Stack>
-									)}
-								</CardContent>
-							</Card>
-
-							{/* Changelog */}
-							{hasChangesDetected && (
-								<Card>
-									<CardContent>
-										<Typography variant="h6" sx={{ mb: 2 }}>
-											Changelog
-										</Typography>
-										<TextField
-											label="Describe your changes"
-											value={changelog}
-											onChange={(e) => setChangelog(e.target.value)}
-											placeholder="e.g., Enable new paywall design for all users"
-											multiline
-											rows={3}
-											fullWidth
-											required
-											helperText="This will be included in the publish history"
-										/>
-									</CardContent>
-								</Card>
-							)}
-						</Stack>
-					</Grid>
-
-					{/* Sidebar */}
-					<Grid size={{ xs: 12, md: 4 }}>
-						<Stack spacing={3}>
-							{/* Publish Actions */}
-							<Card>
-								<CardContent>
-									<Typography variant="h6" sx={{ mb: 2 }}>
-										Publish Actions
-									</Typography>
-
-									{hasChangesDetected && (
-										<Box sx={{ mb: 3 }}>
-											<Typography
-												variant="body2"
-												color="text.secondary"
-												sx={{ mb: 1 }}
-											>
-												Next version:
-											</Typography>
-											<Chip
-												label={generateVersion()}
-												sx={{ fontFamily: 'monospace' }}
-											/>
-										</Box>
-									)}
-
-									<Button
-										variant="contained"
-										startIcon={<CloudUpload />}
-										onClick={handlePublish}
-										disabled={!canPublish || isPublishing}
-										fullWidth
-										size="large"
+				<Box
+					sx={{
+						display: 'flex',
+						gap: 2.75,
+						alignItems: 'flex-start',
+						mt: 3.25,
+						flexWrap: 'wrap',
+					}}
+				>
+					{/* LEFT: validation + diff + changelog */}
+					<Box sx={{ flex: 1, minWidth: 420, display: 'flex', flexDirection: 'column', gap: 2 }}>
+						{/* validation banner */}
+						{!hasChangesDetected ? (
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 1.5,
+									bgcolor: '#DEF3F0',
+									border: '1px solid #C9ECE7',
+									borderRadius: '14px',
+									p: '14px 16px',
+								}}
+							>
+								<Ms name="info" sx={{ fontSize: 24, color: '#1E7B72' }} />
+								<Typography sx={{ font: "700 14px 'Baloo 2'", color: '#1E7B72' }}>
+									No changes to publish yet
+								</Typography>
+							</Box>
+						) : (
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 1.5,
+									bgcolor: hasBlockingErrors ? '#FBEAE5' : warningCount > 0 ? '#FCEFD2' : '#E9F4E0',
+									border: `1px solid ${hasBlockingErrors ? '#EAC7BF' : warningCount > 0 ? '#F3E2BD' : '#CDE6C2'}`,
+									borderRadius: '14px',
+									p: '14px 16px',
+								}}
+							>
+								<Ms
+									name={hasBlockingErrors ? 'error' : warningCount > 0 ? 'warning' : 'check_circle'}
+									sx={{ fontSize: 24, color: hasBlockingErrors ? '#C8503C' : warningCount > 0 ? '#9A6F1C' : '#3F7A2D' }}
+								/>
+								<Box sx={{ flex: 1, minWidth: 0 }}>
+									<Typography
+										sx={{
+											font: "700 14px 'Baloo 2'",
+											color: hasBlockingErrors ? '#7A2E20' : warningCount > 0 ? '#5E4A18' : '#2F5E22',
+										}}
 									>
-										{isPublishing ? 'Publishing...' : 'Publish Configuration'}
-									</Button>
-
-									{!hasChangesDetected && (
+										{warningCount} warning{warningCount === 1 ? '' : 's'} · {errorCount} blocking
+										error{errorCount === 1 ? '' : 's'}
+									</Typography>
+									{(validation?.warnings[0] || validation?.errors[0]) && (
 										<Typography
-											variant="body2"
-											color="text.secondary"
-											sx={{ mt: 2, textAlign: 'center' }}
+											sx={{
+												font: "500 12px 'JetBrains Mono'",
+												color: hasBlockingErrors ? '#A23C2B' : '#9A7B36',
+												mt: 0.25,
+											}}
 										>
-											No changes to publish
+											{(validation?.errors[0] || validation?.warnings[0])?.message}
 										</Typography>
 									)}
+								</Box>
+								{!hasBlockingErrors && (
+									<Box
+										sx={{
+											font: "700 10px 'JetBrains Mono'",
+											color: '#3F7A2D',
+											bgcolor: '#E9F4E0',
+											border: '1px solid #CDE6C2',
+											borderRadius: '7px',
+											px: 1.125,
+											py: 0.5,
+											whiteSpace: 'nowrap',
+										}}
+									>
+										SAFE TO PUBLISH
+									</Box>
+								)}
+							</Box>
+						)}
 
-									{hasBlockingErrors && (
-										<Alert severity="error" sx={{ mt: 2 }}>
-											Fix validation errors before publishing
-										</Alert>
-									)}
-								</CardContent>
-							</Card>
+						{/* changes to publish */}
+						<Box sx={{ ...cardSx, p: '20px 22px' }}>
+							<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.25, mb: 0.75 }}>
+								<Typography sx={{ font: "800 17px 'Baloo 2'" }}>
+									Changes to publish
+								</Typography>
+								<Box
+									sx={{
+										font: "700 12px 'Baloo 2'",
+										color: '#9A9483',
+										bgcolor: '#EFE8D9',
+										borderRadius: '20px',
+										px: 1.25,
+										py: 0.25,
+									}}
+								>
+									{changes.length}
+								</Box>
+							</Box>
+							{lastVersion && (
+								<Typography sx={{ font: "600 12px 'Nunito'", color: ink.muted, mb: 2 }}>
+									since {lastVersion}
+								</Typography>
+							)}
+							{!hasChangesDetected ? (
+								<Typography sx={{ font: "600 13px 'Nunito'", color: ink.muted, py: 1 }}>
+									No changes detected. Make some changes to your flags before
+									publishing.
+								</Typography>
+							) : (
+								<Box sx={{ mt: 0.5 }}>
+									{renderGroup('flag', 'Flags', groupedChanges.flags)}
+									{renderGroup('science', 'Tests', groupedChanges.tests)}
+									{renderGroup('rocket_launch', 'Rollouts', groupedChanges.rollouts)}
+								</Box>
+							)}
+						</Box>
 
-							{/* Publish History */}
-							<Card>
-								<CardContent>
-									<Typography variant="h6" sx={{ mb: 2 }}>
-										Recent Publishes
+						{/* changelog */}
+						{hasChangesDetected && (
+							<Box sx={{ ...cardSx, p: '20px 22px' }}>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.875, mb: 1.375 }}>
+									<Typography sx={{ font: "800 16px 'Baloo 2'" }}>Changelog</Typography>
+									<Box
+										sx={{
+											font: "700 10px 'Nunito'",
+											color: '#C8503C',
+											bgcolor: '#FBEAE5',
+											borderRadius: '6px',
+											px: 0.875,
+											py: 0.25,
+										}}
+									>
+										REQUIRED
+									</Box>
+								</Box>
+								<TextField
+									value={changelog}
+									onChange={(e) => setChangelog(e.target.value)}
+									placeholder="Describe what's going live in this release…"
+									multiline
+									rows={3}
+									fullWidth
+								/>
+							</Box>
+						)}
+					</Box>
+
+					{/* RIGHT: ready to ship + recent */}
+					<Box
+						sx={{
+							width: 286,
+							flexShrink: 0,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 1.75,
+							position: { md: 'sticky' },
+							top: 34,
+						}}
+					>
+						<Box sx={{ ...cardSx, p: 2.5 }}>
+							<Typography sx={{ font: "800 15px 'Baloo 2'", mb: 1.75 }}>
+								Ready to ship
+							</Typography>
+							{[
+								{ label: 'New version', value: hasChangesDetected ? generateVersion() : '—', color: ink.primary },
+								{ label: 'Changes', value: String(changes.length), color: ink.primary },
+								{
+									label: 'Blocking errors',
+									value: String(errorCount),
+									color: hasBlockingErrors ? '#C8503C' : '#3F7A2D',
+								},
+							].map((row, i, arr) => (
+								<Box
+									key={row.label}
+									sx={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										py: 1.25,
+										borderBottom: i < arr.length - 1 ? '1px solid #F1EBDD' : 'none',
+									}}
+								>
+									<Typography sx={{ font: "600 12px 'Nunito'", color: '#8B8472' }}>
+										{row.label}
 									</Typography>
+									<Typography
+										sx={{ font: "700 13px 'JetBrains Mono'", color: row.color }}
+									>
+										{row.value}
+									</Typography>
+								</Box>
+							))}
+							<Button
+								onClick={handlePublish}
+								disabled={!canPublish || isPublishing}
+								fullWidth
+								startIcon={
+									isPublishing ? (
+										<CircularProgress size={18} sx={{ color: '#3A2806' }} />
+									) : (
+										<Ms name="bolt" sx={{ fontSize: 19 }} />
+									)
+								}
+								sx={{ ...technicalButtonSx({ accent: true, disabled: !canPublish || isPublishing }), mt: 1.5, width: '100%', py: 1.5 }}
+							>
+								{isPublishing ? 'Publishing…' : 'Publish config'}
+							</Button>
+							<Typography
+								sx={{ font: "500 11px 'Nunito'", color: ink.muted, textAlign: 'center', mt: 1.25 }}
+							>
+								{hasBlockingErrors
+									? 'Fix blocking errors before publishing'
+									: 'Signs & uploads the artifact to your CDN'}
+							</Typography>
+						</Box>
 
-									<Stack spacing={2}>
-										{publishHistory.length === 0 ? (
-											<Typography
-												variant="body2"
-												color="text.secondary"
-												sx={{ textAlign: 'center', py: 2 }}
+						<Box sx={{ ...cardSx, p: '18px 20px' }}>
+							<Typography sx={{ font: "700 12px 'Nunito'", color: '#8B8472', mb: 1.5 }}>
+								RECENT PUBLISHES
+							</Typography>
+							{publishHistory.length === 0 ? (
+								<Typography sx={{ font: "600 12px 'Nunito'", color: ink.muted, textAlign: 'center', py: 1 }}>
+									No publish history yet
+								</Typography>
+							) : (
+								<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.375 }}>
+									{publishHistory.slice(0, 5).map((publish, index) => (
+										<Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1.125 }}>
+											<Box
+												sx={{
+													font: "600 12px 'JetBrains Mono'",
+													color: ink.primary,
+													bgcolor: surface.token,
+													borderRadius: '6px',
+													px: 1,
+													py: 0.375,
+													whiteSpace: 'nowrap',
+												}}
 											>
-												No publish history available
+												{publish.version}
+											</Box>
+											<Typography sx={{ font: "600 12px 'Nunito'", color: ink.soft, minWidth: 0 }}>
+												{new Date(publish.publishedAt).toLocaleDateString()}
 											</Typography>
-										) : (
-											publishHistory.map((publish, index) => (
-												<Paper key={index} variant="outlined" sx={{ p: 2 }}>
-													<Box
-														sx={{
-															display: 'flex',
-															alignItems: 'center',
-															gap: 1,
-															mb: 1,
-														}}
-													>
-														<History
-															sx={{ fontSize: 16, color: 'text.secondary' }}
-														/>
-														<Typography
-															variant="body2"
-															sx={{ fontFamily: 'monospace', fontWeight: 500 }}
-														>
-															{publish.version}
-														</Typography>
-													</Box>
-
-													<Typography variant="body2" sx={{ mb: 1 }}>
-														{publish.changelog}
-													</Typography>
-
-													<Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-														<Chip
-															size="small"
-															label={`${publish.flagCount} flags`}
-															variant="outlined"
-														/>
-														<Chip
-															size="small"
-															label={`${publish.cohortCount} cohorts`}
-															variant="outlined"
-														/>
-													</Box>
-
-													<Typography variant="caption" color="text.secondary">
-														{new Date(publish.publishedAt).toLocaleString()} by{' '}
-														{publish.publishedBy}
-													</Typography>
-												</Paper>
-											))
-										)}
-									</Stack>
-								</CardContent>
-							</Card>
-						</Stack>
-					</Grid>
-				</Grid>
+										</Box>
+									))}
+								</Box>
+							)}
+						</Box>
+					</Box>
+				</Box>
 			)}
 		</Box>
 	);

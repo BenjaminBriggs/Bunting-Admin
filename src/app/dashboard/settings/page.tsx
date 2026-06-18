@@ -1,56 +1,61 @@
 'use client';
 
 import {
-	Add,
-	Apps,
-	Code,
-	Delete,
-	Download,
-	Edit,
-	MoreVert,
-	People,
-	Settings,
-	Warning,
-} from '@mui/icons-material';
-import {
-	Alert,
 	Box,
 	Button,
-	Card,
-	CardActions,
-	CardContent,
-	Chip,
 	CircularProgress,
 	Dialog,
 	DialogActions,
 	DialogContent,
 	DialogContentText,
 	DialogTitle,
-	Divider,
-	FormControl,
-	Grid,
-	IconButton,
-	InputLabel,
-	List,
-	ListItem,
-	ListItemButton,
-	ListItemIcon,
-	ListItemText,
-	Menu,
-	MenuItem,
-	Paper,
-	Select,
 	Stack,
-	Tab,
-	Tabs,
 	TextField,
 	Typography,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import React from 'react';
 import { useEffect, useState } from 'react';
 import { type App, fetchApps, updateApp } from '@/lib/api';
+import {
+	codeSurface,
+	ink,
+	monoFontFamily,
+	surface,
+	technicalButtonSx,
+} from '@/theme/designTokens';
+
+function Ms({ name, sx }: { name: string; sx?: any }) {
+	return (
+		<Box component="span" className="ms" sx={sx}>
+			{name}
+		</Box>
+	);
+}
+
+const cardSx = {
+	bgcolor: '#fff',
+	border: `1px solid ${surface.border}`,
+	borderRadius: '16px',
+	p: '20px 22px',
+	boxShadow: '0 1px 2px rgba(40,33,20,.03)',
+} as const;
+
+const ghostBtnSx = {
+	display: 'inline-flex',
+	alignItems: 'center',
+	gap: 0.75,
+	font: "700 12px 'Nunito'",
+	color: '#3A352C',
+	border: '1.5px solid #E2D9C6',
+	borderRadius: '10px',
+	px: 1.625,
+	py: 0.875,
+	textTransform: 'none',
+	'&:hover': { borderColor: '#D8CFBC', bgcolor: '#F4ECDC' },
+} as const;
+
+const sectionTitleSx = { font: "800 17px 'Baloo 2'", color: ink.primary } as const;
 
 export default function SettingsPage() {
 	const router = useRouter();
@@ -59,20 +64,17 @@ export default function SettingsPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [selectedApp, setSelectedApp] = useState<App | null>(null);
-	const [selectedTab, setSelectedTab] = useState(0);
+	const [tab, setTab] = useState<'settings' | 'sdk'>('settings');
 	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 	const [appToDelete, setAppToDelete] = useState<App | null>(null);
 	const [editMode, setEditMode] = useState(false);
 	const [saving, setSaving] = useState(false);
+	const [copied, setCopied] = useState(false);
 	const [formData, setFormData] = useState<{
 		name: string;
 		minIntervalHours: number;
 		hardTtlDays: number;
-	}>({
-		name: '',
-		minIntervalHours: 6,
-		hardTtlDays: 7,
-	});
+	}>({ name: '', minIntervalHours: 6, hardTtlDays: 7 });
 
 	useEffect(() => {
 		const loadApps = async () => {
@@ -80,8 +82,8 @@ export default function SettingsPage() {
 				setLoading(true);
 				const appsData = await fetchApps();
 				setApps(appsData);
-				if (appsData.length > 0 && !selectedApp) {
-					setSelectedApp(appsData[0]);
+				if (appsData.length > 0) {
+					setSelectedApp((prev) => prev ?? appsData[0]);
 				}
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Failed to load apps');
@@ -90,9 +92,8 @@ export default function SettingsPage() {
 			}
 		};
 		loadApps();
-	}, []); // eslint-disable-line react-hooks/exhaustive-deps
+	}, []);  
 
-	// Update form data when selected app changes
 	useEffect(() => {
 		if (selectedApp && !editMode) {
 			setFormData({
@@ -123,27 +124,21 @@ export default function SettingsPage() {
 		if (!selectedApp) {
 			return;
 		}
-
-		// Basic validation
 		if (!formData.name.trim()) {
 			setError('Application name is required');
 			return;
 		}
-
 		if (formData.minIntervalHours < 0.5 || formData.minIntervalHours > 24) {
 			setError('Minimum interval must be between 0.5 and 24 hours');
 			return;
 		}
-
 		if (formData.hardTtlDays < 1 || formData.hardTtlDays > 365) {
 			setError('Hard TTL must be between 1 and 365 days');
 			return;
 		}
-
 		try {
 			setSaving(true);
 			setError(null);
-
 			const updatedApp = await updateApp(selectedApp.id, {
 				name: formData.name,
 				fetchPolicy: {
@@ -151,24 +146,17 @@ export default function SettingsPage() {
 					hard_ttl_days: formData.hardTtlDays,
 				},
 			});
-
-			// Update the apps list and selected app
-			setApps(
-				apps.map((app) => (app.id === selectedApp.id ? updatedApp : app)),
-			);
+			setApps(apps.map((app) => (app.id === selectedApp.id ? updatedApp : app)));
 			setSelectedApp(updatedApp);
 			setEditMode(false);
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : 'Failed to save application',
-			);
+			setError(err instanceof Error ? err.message : 'Failed to save application');
 		} finally {
 			setSaving(false);
 		}
 	};
 
 	function downloadPlist(app: App): void {
-		// Use the new API endpoint instead of client-side generation
 		const url = `/api/bootstrap/plist?appId=${app.id}`;
 		const a = document.createElement('a');
 		a.href = url;
@@ -176,14 +164,6 @@ export default function SettingsPage() {
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
-	}
-
-	if (loading) {
-		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-				<CircularProgress />
-			</Box>
-		);
 	}
 
 	const handleDeleteApp = (app: App) => {
@@ -194,11 +174,6 @@ export default function SettingsPage() {
 	const confirmDelete = async () => {
 		if (appToDelete) {
 			try {
-				// await deleteApp(appToDelete.id);
-				// setApps(apps.filter(app => app.id !== appToDelete.id));
-				// if (selectedApp?.id === appToDelete.id) {
-				//   setSelectedApp(apps.find(app => app.id !== appToDelete.id) || null);
-				// }
 				console.log('Delete app:', appToDelete.name);
 			} catch (err) {
 				setError(err instanceof Error ? err.message : 'Failed to delete app');
@@ -208,414 +183,452 @@ export default function SettingsPage() {
 		setAppToDelete(null);
 	};
 
+	const copyArtifactUrl = async () => {
+		if (!selectedApp) {
+			return;
+		}
+		try {
+			await navigator.clipboard.writeText(selectedApp.artifactUrl);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		} catch {
+			// Clipboard not available — ignore
+		}
+	};
+
+	if (loading) {
+		return (
+			<Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+				<CircularProgress />
+			</Box>
+		);
+	}
+
+	const fetchPolicyText = selectedApp
+		? `min ${selectedApp.fetchPolicy.min_interval_seconds / 3600}h · hard TTL ${selectedApp.fetchPolicy.hard_ttl_days}d`
+		: '';
+
+	const baseUrl = (() => {
+		if (!selectedApp?.artifactUrl) {
+			return 'https://cdn.bunting.io';
+		}
+		try {
+			return new URL(selectedApp.artifactUrl).origin;
+		} catch {
+			return selectedApp.artifactUrl;
+		}
+	})();
+
+	const steps: Array<{ n: number; title: string; body: string }> = [
+		{
+			n: 1,
+			title: 'Add the package',
+			body: 'Swift Package Manager, CocoaPods or Carthage — see the docs for each.',
+		},
+		{
+			n: 2,
+			title: 'Drop in BuntingConfig.plist',
+			body: 'Add the downloaded file to your app target so the SDK can find its identifier and key.',
+		},
+		{
+			n: 3,
+			title: 'Initialise on launch',
+			body: 'Call start() early; it fetches and caches the config, then reads are instant and offline-safe.',
+		},
+	];
+
+	const tabSx = (active: boolean) => ({
+		font: "700 14px 'Nunito'",
+		color: active ? ink.primary : '#9A9483',
+		borderBottom: `2.5px solid ${active ? ink.primary : 'transparent'}`,
+		px: 1.75,
+		py: 1.375,
+		mb: '-1px',
+		cursor: 'pointer',
+		display: 'inline-flex',
+		alignItems: 'center',
+		gap: 0.875,
+	});
+
 	return (
-		<Box>
-			<Box
-				sx={{
-					display: 'flex',
-					justifyContent: 'space-between',
-					alignItems: 'flex-start',
-					mb: 3,
-				}}
-			>
-				<Typography variant="h4" component="h2">
-					Application Settings
+		<Box sx={{ maxWidth: 840, mx: 'auto', py: 1 }}>
+			{/* header */}
+			<Box>
+				<Typography variant="h4">Settings</Typography>
+				<Typography sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.625 }}>
+					Configuration for{' '}
+					<Box component="span" sx={{ fontWeight: 800, color: '#3A352C' }}>
+						{selectedApp?.name ?? 'your application'}
+					</Box>{' '}
+					and how the SDK connects to it.
 				</Typography>
 			</Box>
 
 			{error && (
-				<Typography color="error" sx={{ mb: 2 }}>
+				<Typography color="error" sx={{ mt: 2, fontWeight: 600 }}>
 					{error}
 				</Typography>
 			)}
 
-			{apps.length === 0 ? (
+			{apps.length === 0 || !selectedApp ? (
 				<Box sx={{ textAlign: 'center', py: 8 }}>
-					<Apps sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
 					<Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
 						No applications configured
 					</Typography>
 					<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-						Let's set up your first application with guided setup
+						Set up your first application with guided setup.
 					</Typography>
 					<Button
-						variant="contained"
-						startIcon={<Add />}
 						onClick={() => router.push('/setup/app')}
+						startIcon={<Ms name="add" sx={{ fontSize: 18 }} />}
+						sx={technicalButtonSx()}
 					>
-						Set Up Your First Application
+						Set up an application
 					</Button>
 				</Box>
 			) : (
-				<Grid container spacing={3}>
-					{/* Left Panel - Application List */}
-					<Grid size={{ xs: 12, md: 4 }}>
-						<Stack spacing={3}>
-							<Paper sx={{ height: 'fit-content' }}>
-								<List>
-									{apps.map((app) => (
-										<ListItem key={app.id} disablePadding>
-											<ListItemButton
-												selected={selectedApp?.id === app.id}
-												onClick={() => setSelectedApp(app)}
-											>
-												<ListItemIcon>
-													<Apps />
-												</ListItemIcon>
-												<ListItemText
-													primary={app.name}
-													secondary={`${app._count?.flags || 0} flags, ${app._count?.cohorts || 0} cohorts`}
-												/>
-												{apps.length > 1 && (
-													<IconButton
-														edge="end"
-														onClick={(e) => {
-															e.stopPropagation();
-															handleDeleteApp(app);
-														}}
-														color="error"
-													>
-														<Delete />
-													</IconButton>
-												)}
-											</ListItemButton>
-										</ListItem>
-									))}
-								</List>
-								<Divider />
-								<Box sx={{ p: 2 }}>
-									<Button
-										variant="contained"
-										startIcon={<Add />}
-										fullWidth
-										onClick={() => router.push('/setup/app')}
-									>
-										Add Application
-									</Button>
-								</Box>
-							</Paper>
+				<>
+					{/* tabs */}
+					<Box sx={{ display: 'flex', gap: 0.5, borderBottom: '1px solid #E4DBC8', mt: 2.75 }}>
+						<Box sx={tabSx(tab === 'settings')} onClick={() => setTab('settings')}>
+							Settings
+						</Box>
+						<Box sx={tabSx(tab === 'sdk')} onClick={() => setTab('sdk')}>
+							SDK Integration
+							<Ms name="terminal" sx={{ fontSize: 17 }} />
+						</Box>
+					</Box>
 
-							{/* User Management Card - Only for Admins */}
-							{session?.user?.role === 'ADMIN' && (
-								<Paper sx={{ height: 'fit-content' }}>
-									<Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-										<Typography
-											variant="h6"
-											sx={{ display: 'flex', alignItems: 'center' }}
-										>
-											<People sx={{ mr: 1 }} />
-											User Management
-										</Typography>
-										<Typography variant="body2" color="text.secondary">
-											Manage access to all applications
-										</Typography>
-									</Box>
-									<Box sx={{ p: 3 }}>
-										<Button
-											variant="contained"
-											startIcon={<People />}
-											fullWidth
-											onClick={() => router.push('/dashboard/users')}
-										>
-											Manage Users
-										</Button>
-									</Box>
-								</Paper>
-							)}
-						</Stack>
-					</Grid>
-
-					{/* Right Panel - Selected App Details */}
-					<Grid size={{ xs: 12, md: 8 }}>
-						{selectedApp ? (
-							<Paper>
-								<Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-									<Typography variant="h6">{selectedApp.name}</Typography>
-									<Typography variant="body2" color="text.secondary">
-										Application configuration and settings
-									</Typography>
-								</Box>
-								<Tabs
-									value={selectedTab}
-									onChange={(e, newValue) => setSelectedTab(newValue)}
+					{tab === 'settings' && (
+						<Stack spacing={2} sx={{ mt: 3 }}>
+							{/* application identity */}
+							<Box sx={cardSx}>
+								<Box
+									sx={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										mb: 0.5,
+									}}
 								>
-									<Tab label="Settings" icon={<Settings />} />
-									<Tab label="SDK Integration" icon={<Code />} />
-								</Tabs>
-								<Divider />
-								<Box sx={{ p: 3 }}>
-									{selectedTab === 0 && (
-										<Box>
-											<Box
-												sx={{
-													display: 'flex',
-													justifyContent: 'space-between',
-													alignItems: 'center',
-													mb: 3,
-												}}
-											>
-												<Typography variant="h6">
-													Application Settings
-												</Typography>
-												{!editMode ? (
-													<Button
-														variant="outlined"
-														startIcon={<Edit />}
-														onClick={handleEditStart}
-													>
-														Edit
-													</Button>
-												) : (
-													<Stack direction="row" spacing={1}>
-														<Button
-															variant="outlined"
-															onClick={handleEditCancel}
-															disabled={saving}
-														>
-															Cancel
-														</Button>
-														<Button
-															variant="contained"
-															onClick={handleSave}
-															disabled={saving}
-														>
-															{saving ? 'Saving...' : 'Save'}
-														</Button>
-													</Stack>
-												)}
+									<Typography sx={sectionTitleSx}>Application</Typography>
+									{!editMode ? (
+										<Box component="button" onClick={handleEditStart} sx={{ ...ghostBtnSx, cursor: 'pointer', bgcolor: '#fff' }}>
+											<Ms name="edit" sx={{ fontSize: 16 }} />
+											Edit
+										</Box>
+									) : (
+										<Stack direction="row" spacing={1}>
+											<Button variant="outlined" size="small" onClick={handleEditCancel} disabled={saving}>
+												Cancel
+											</Button>
+											<Button size="small" onClick={handleSave} disabled={saving} sx={technicalButtonSx({ disabled: saving })}>
+												{saving ? 'Saving…' : 'Save'}
+											</Button>
+										</Stack>
+									)}
+								</Box>
+								<Typography sx={{ font: "600 12px 'Nunito'", color: ink.muted, mb: 1.75 }}>
+									Identity &amp; how the config is served.
+								</Typography>
+
+								{editMode ? (
+									<Stack spacing={2.5} sx={{ pt: 1 }}>
+										<TextField
+											label="Application name"
+											value={formData.name}
+											onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+											fullWidth
+											required
+										/>
+										<TextField
+											label="Minimum interval (hours)"
+											type="number"
+											value={formData.minIntervalHours}
+											onChange={(e) =>
+												setFormData({ ...formData, minIntervalHours: parseFloat(e.target.value) || 0 })
+											}
+											fullWidth
+											inputProps={{ min: 0.5, max: 24, step: 0.5 }}
+											helperText="Minimum time between config fetches (0.5–24 hours)"
+										/>
+										<TextField
+											label="Hard TTL (days)"
+											type="number"
+											value={formData.hardTtlDays}
+											onChange={(e) =>
+												setFormData({ ...formData, hardTtlDays: parseInt(e.target.value) || 0 })
+											}
+											fullWidth
+											inputProps={{ min: 1, max: 365 }}
+											helperText="Maximum age before config is considered stale (1–365 days)"
+										/>
+									</Stack>
+								) : (
+									<Box>
+										<Row label="Name">
+											<Box component="span" sx={{ font: "700 14px 'Nunito'", color: ink.primary }}>
+												{selectedApp.name}
 											</Box>
+										</Row>
+										<Row label="Identifier">
+											<Box component="span" sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 13, color: '#3F7A2D' }}>
+												{selectedApp.identifier}
+											</Box>
+										</Row>
+										<Row label="Artifact URL">
+											<Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+												<Box
+													component="span"
+													sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 12, color: ink.soft, textAlign: 'right', wordBreak: 'break-all' }}
+												>
+													{selectedApp.artifactUrl}
+												</Box>
+												<Box
+													component="button"
+													onClick={copyArtifactUrl}
+													title={copied ? 'Copied' : 'Copy'}
+													sx={{
+														cursor: 'pointer',
+														color: copied ? '#3F7A2D' : '#A79F8C',
+														p: 0.5,
+														borderRadius: '8px',
+														border: `1px solid ${surface.border}`,
+														bgcolor: '#fff',
+														display: 'inline-flex',
+													}}
+												>
+													<Ms name={copied ? 'check' : 'content_copy'} sx={{ fontSize: 18 }} />
+												</Box>
+											</Box>
+										</Row>
+										<Row label="Fetch policy">
+											<Box component="span" sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 13, color: ink.soft }}>
+												{fetchPolicyText}
+											</Box>
+										</Row>
+									</Box>
+								)}
+							</Box>
 
-											{editMode ? (
-												<Stack spacing={3}>
-													<TextField
-														label="Application Name"
-														value={formData.name}
-														onChange={(e) =>
-															setFormData({ ...formData, name: e.target.value })
-														}
-														fullWidth
-														required
-														helperText="Display name for this application"
-													/>
-
-													<Typography variant="subtitle1" sx={{ mt: 2 }}>
-														Fetch Policy
-													</Typography>
-
-													<TextField
-														label="Minimum Interval (hours)"
-														type="number"
-														value={formData.minIntervalHours}
-														onChange={(e) =>
-															setFormData({
-																...formData,
-																minIntervalHours:
-																	parseFloat(e.target.value) || 0,
-															})
-														}
-														fullWidth
-														inputProps={{ min: 0.5, max: 24, step: 0.5 }}
-														helperText="Minimum time between config fetches (0.5 to 24 hours)"
-													/>
-
-													<TextField
-														label="Hard TTL (days)"
-														type="number"
-														value={formData.hardTtlDays}
-														onChange={(e) =>
-															setFormData({
-																...formData,
-																hardTtlDays: parseInt(e.target.value) || 0,
-															})
-														}
-														fullWidth
-														inputProps={{ min: 1, max: 365 }}
-														helperText="Maximum age before config is considered stale (1-365 days)"
-													/>
-												</Stack>
-											) : (
-												<Stack spacing={2}>
-													<Box>
-														<Typography variant="body2" color="text.secondary">
-															Name
-														</Typography>
-														<Typography variant="body1">
-															{selectedApp.name}
-														</Typography>
-													</Box>
-
-													<Box>
-														<Typography variant="body2" color="text.secondary">
-															Identifier
-														</Typography>
-														<Typography variant="body1">
-															{selectedApp.identifier}
-														</Typography>
-													</Box>
-
-													<Box>
-														<Typography variant="body2" color="text.secondary">
-															Artifact URL
-														</Typography>
-														<Typography variant="body1">
-															{selectedApp.artifactUrl}
-														</Typography>
-													</Box>
-
-													<Box>
-														<Typography variant="body2" color="text.secondary">
-															Public Keys
-														</Typography>
-														<Typography variant="body1">
-															{selectedApp.publicKeys.length} configured
-														</Typography>
-													</Box>
-
-													<Box>
-														<Typography variant="body2" color="text.secondary">
-															Fetch Policy
-														</Typography>
-														<Typography variant="body1">
-															{selectedApp.fetchPolicy.min_interval_seconds /
-																3600}{' '}
-															hour interval,{' '}
-															{selectedApp.fetchPolicy.hard_ttl_days} day TTL
-														</Typography>
-													</Box>
-												</Stack>
+							{/* signing keys */}
+							<Box sx={cardSx}>
+								<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.75 }}>
+									<Typography sx={sectionTitleSx}>Signing keys</Typography>
+								</Box>
+								<Stack spacing={1.25}>
+									{(selectedApp.publicKeys.length > 0
+										? selectedApp.publicKeys
+										: [{ kid: 'no key configured' }]
+									).map((k: any, i: number) => (
+										<Box
+											key={k.kid || i}
+											sx={{
+												display: 'flex',
+												alignItems: 'center',
+												gap: 1.5,
+												border: `1px solid ${surface.border}`,
+												borderRadius: '12px',
+												p: '13px 15px',
+												bgcolor: surface.sidebar,
+											}}
+										>
+											<Box sx={{ width: 34, height: 34, borderRadius: '9px', bgcolor: '#E9F4E0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+												<Ms name="key" sx={{ fontSize: 19, color: '#3F7A2D' }} />
+											</Box>
+											<Box sx={{ flex: 1, minWidth: 0 }}>
+												<Box sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 13, color: ink.primary, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+													{k.kid || 'signing key'}
+												</Box>
+												<Box sx={{ font: "500 11px 'Nunito'", color: ink.muted, mt: '1px' }}>
+													Signs every published config
+												</Box>
+											</Box>
+											{selectedApp.publicKeys.length > 0 && (
+												<Box sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 9, color: '#3F7A2D', bgcolor: '#E9F4E0', borderRadius: '6px', px: 1, py: 0.5 }}>
+													ACTIVE
+												</Box>
 											)}
 										</Box>
-									)}
-									{selectedTab === 1 && (
-										<Box>
-											<Typography variant="h6" sx={{ mb: 2 }}>
-												iOS/macOS SDK Integration
-											</Typography>
-											<Typography variant="body2" sx={{ mb: 3 }}>
-												Download the bootstrap configuration file needed for
-												your iOS/macOS application to connect to this Bunting
-												instance.
-											</Typography>
-
-											<Stack spacing={3}>
-												<Alert severity="info">
-													<Typography variant="body2">
-														<strong>BuntingConfig.plist</strong> contains your
-														app's endpoint URL, public keys for signature
-														verification, and fetch policy settings. This file
-														should be added to your Xcode project bundle.
-													</Typography>
-												</Alert>
-
-												<Button
-													variant="contained"
-													startIcon={<Download />}
-													onClick={() => downloadPlist(selectedApp)}
-													sx={{ alignSelf: 'flex-start' }}
-												>
-													Download BuntingConfig.plist
-												</Button>
-
-												<Box>
-													<Typography variant="subtitle2" sx={{ mb: 1 }}>
-														Configuration Preview:
-													</Typography>
-													<Paper
-														variant="outlined"
-														sx={{
-															p: 2,
-															bgcolor: 'grey.50',
-															fontFamily: 'monospace',
-														}}
-													>
-														<Stack spacing={1}>
-															<Typography variant="body2">
-																<strong>endpoint_url:</strong>{' '}
-																{selectedApp.artifactUrl}
-															</Typography>
-															<Typography variant="body2">
-																<strong>public_keys:</strong>{' '}
-																{selectedApp.publicKeys.length} signing key
-																{selectedApp.publicKeys.length !== 1 ? 's' : ''}
-															</Typography>
-															<Typography variant="body2">
-																<strong>fetch_policy:</strong>{' '}
-																{selectedApp.fetchPolicy.min_interval_seconds /
-																	3600}
-																h interval,{' '}
-																{selectedApp.fetchPolicy.hard_ttl_days}d TTL
-															</Typography>
-														</Stack>
-													</Paper>
-												</Box>
-
-												<Box>
-													<Typography variant="subtitle2" sx={{ mb: 1 }}>
-														Integration Steps:
-													</Typography>
-													<Stack spacing={1}>
-														<Typography variant="body2">
-															1. Add the Bunting Swift SDK to your Xcode project
-															via Swift Package Manager
-														</Typography>
-														<Typography variant="body2">
-															2. Add the downloaded BuntingConfig.plist file to
-															your app's main bundle
-														</Typography>
-														<Typography variant="body2">
-															3. Configure Bunting in your app with:{' '}
-															<code>
-																Bunting.configure(environment: .production)
-															</code>
-														</Typography>
-														<Typography variant="body2">
-															4. Access feature flags:{' '}
-															<code>
-																await Bunting.shared.bool("my_flag", default:
-																false)
-															</code>
-														</Typography>
-													</Stack>
-												</Box>
-											</Stack>
-										</Box>
-									)}
-								</Box>
-							</Paper>
-						) : (
-							<Paper sx={{ p: 8, textAlign: 'center' }}>
-								<Typography variant="h6" color="text.secondary">
-									Select an application to view its settings
+									))}
+								</Stack>
+								<Typography sx={{ font: "500 12px 'Nunito'", color: ink.muted, mt: 1.375 }}>
+									{selectedApp.publicKeys.length} key
+									{selectedApp.publicKeys.length === 1 ? '' : 's'} configured. Rotating issues a new key and keeps the old one valid for verification for 30 days.
 								</Typography>
-							</Paper>
-						)}
-					</Grid>
-				</Grid>
+							</Box>
+
+							{/* user management admin link */}
+							{session?.user?.role === 'ADMIN' && (
+								<Box
+									component="a"
+									onClick={() => router.push('/dashboard/users')}
+									sx={{
+										...cardSx,
+										p: '16px 18px',
+										display: 'flex',
+										alignItems: 'center',
+										gap: 1.75,
+										cursor: 'pointer',
+										textDecoration: 'none',
+										'&:hover': { bgcolor: '#FBF8F1' },
+									}}
+								>
+									<Box sx={{ width: 40, height: 40, borderRadius: '11px', bgcolor: '#FBEDC6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+										<Ms name="group" sx={{ fontSize: 22, color: '#9A6F1C' }} />
+									</Box>
+									<Box sx={{ flex: 1 }}>
+										<Box sx={{ font: "800 15px 'Baloo 2'", color: ink.primary }}>User Management</Box>
+										<Box sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mt: '1px' }}>
+											Dashboard-wide access for every app
+										</Box>
+									</Box>
+									<Box sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 9, color: '#9A6F1C', bgcolor: '#FCEFD2', border: '1px solid #F3E2BD', borderRadius: '6px', px: 1, py: 0.5 }}>
+										ADMIN ONLY
+									</Box>
+									<Ms name="chevron_right" sx={{ fontSize: 22, color: '#A79F8C' }} />
+								</Box>
+							)}
+
+							{/* danger zone */}
+							<Box sx={{ ...cardSx, border: '1px solid #ECD4CD', p: '18px 22px' }}>
+								<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+									<Box>
+										<Box sx={{ font: "800 15px 'Baloo 2'", color: '#C8503C' }}>Delete application</Box>
+										<Box sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mt: '2px' }}>
+											Removes all flags, tests, rollouts and published configs. Cannot be undone.
+										</Box>
+									</Box>
+									<Button
+										variant="outlined"
+										color="error"
+										onClick={() => handleDeleteApp(selectedApp)}
+										sx={{ borderColor: '#ECD4CD', color: '#C8503C', flexShrink: 0 }}
+									>
+										Delete
+									</Button>
+								</Box>
+							</Box>
+						</Stack>
+					)}
+
+					{tab === 'sdk' && (
+						<Stack spacing={2} sx={{ mt: 3 }}>
+							{/* download */}
+							<Box sx={{ ...cardSx, display: 'flex', alignItems: 'center', gap: 2, p: '18px 22px' }}>
+								<Box sx={{ width: 46, height: 46, borderRadius: '12px', bgcolor: ink.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+									<Ms name="description" sx={{ fontSize: 24, color: '#fff' }} />
+								</Box>
+								<Box sx={{ flex: 1 }}>
+									<Box sx={{ font: "800 16px 'Baloo 2'" }}>BuntingConfig.plist</Box>
+									<Box sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mt: '2px' }}>
+										Identifier, CDN base URL &amp; public key — drop it into your app bundle.
+									</Box>
+								</Box>
+								<Button
+									onClick={() => downloadPlist(selectedApp)}
+									startIcon={<Ms name="download" sx={{ fontSize: 18 }} />}
+									sx={technicalButtonSx({ accent: false })}
+								>
+									Download
+								</Button>
+							</Box>
+
+							{/* steps + code */}
+							<Box sx={{ ...cardSx, p: '22px' }}>
+								<Typography sx={{ ...sectionTitleSx, mb: 2.25 }}>Set up the SDK</Typography>
+								<Stack spacing={2.25}>
+									{steps.map((st) => (
+										<Box key={st.n} sx={{ display: 'flex', gap: 1.75, alignItems: 'flex-start' }}>
+											<Box sx={{ width: 28, height: 28, flexShrink: 0, borderRadius: '50%', bgcolor: '#FBEDC6', color: '#9A6F1C', font: "800 13px 'Baloo 2'", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+												{st.n}
+											</Box>
+											<Box sx={{ flex: 1 }}>
+												<Box sx={{ font: "700 14px 'Nunito'", color: ink.primary }}>{st.title}</Box>
+												<Box sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mt: '2px' }}>{st.body}</Box>
+											</Box>
+										</Box>
+									))}
+								</Stack>
+
+								<Box sx={{ mt: 2.5, bgcolor: codeSurface.bg, borderRadius: '13px', overflow: 'hidden' }}>
+									<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: '11px 15px', borderBottom: '1px solid #34332D' }}>
+										<Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#F47C5D' }} />
+										<Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#F6A444' }} />
+										<Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#82C868' }} />
+										<Box sx={{ ml: 1, fontFamily: monoFontFamily, fontWeight: 600, fontSize: 11, color: '#8C887B' }}>
+											AppDelegate.swift
+										</Box>
+									</Box>
+									<Box
+										component="pre"
+										sx={{ p: '16px 18px', m: 0, fontFamily: monoFontFamily, fontWeight: 500, fontSize: 12.5, lineHeight: 1.85, color: codeSurface.text, whiteSpace: 'pre', overflow: 'auto' }}
+									>
+{`import Bunting
+
+let bunting = Bunting(
+  identifier: "${selectedApp.identifier}",
+  baseURL: "${baseUrl}"
+)
+await bunting.start()
+
+// read a flag, with a default fallback
+let metering = bunting.bool("metering_enabled", default: false)`}
+									</Box>
+								</Box>
+							</Box>
+
+							<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.375, bgcolor: '#fff', border: '1px solid #DCE6E3', borderRadius: '13px', p: '14px 16px' }}>
+								<Ms name="menu_book" sx={{ fontSize: 20, color: '#3E8E84' }} />
+								<Box sx={{ font: "500 13px 'Nunito'", color: '#46615C', lineHeight: 1.55 }}>
+									Full platform guides (Swift, Kotlin, TypeScript) and the caching model live in the{' '}
+									<Box component="span" sx={{ fontWeight: 700, color: ink.primary }}>SDK docs</Box>. Values are evaluated on-device from the cached config — no network call per read.
+								</Box>
+							</Box>
+						</Stack>
+					)}
+				</>
 			)}
 
-			{/* Delete Confirmation Dialog */}
-			<Dialog
-				open={deleteConfirmOpen}
-				onClose={() => setDeleteConfirmOpen(false)}
-			>
-				<DialogTitle>
-					<Warning sx={{ mr: 1, verticalAlign: 'middle' }} />
-					Delete Application
+			{/* Delete confirmation */}
+			<Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+				<DialogTitle sx={{ fontFamily: 'var(--font-baloo)', fontWeight: 800 }}>
+					Delete application
 				</DialogTitle>
 				<DialogContent>
 					<DialogContentText>
-						Are you sure you want to delete "{appToDelete?.name}"? This will
-						permanently remove the application and all its feature flags and
-						cohorts. This action cannot be undone.
+						Are you sure you want to delete "{appToDelete?.name}"? This will permanently remove the application and all its feature flags. This action cannot be undone.
 					</DialogContentText>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+					<Button variant="outlined" onClick={() => setDeleteConfirmOpen(false)}>
+						Cancel
+					</Button>
 					<Button onClick={confirmDelete} color="error" variant="contained">
 						Delete
 					</Button>
 				</DialogActions>
 			</Dialog>
+		</Box>
+	);
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+	return (
+		<Box
+			sx={{
+				display: 'flex',
+				justifyContent: 'space-between',
+				alignItems: 'center',
+				gap: 2.25,
+				py: 1.625,
+				borderTop: '1px solid #F1EBDD',
+			}}
+		>
+			<Box component="span" sx={{ font: "600 13px 'Nunito'", color: '#8B8472', whiteSpace: 'nowrap' }}>
+				{label}
+			</Box>
+			{children}
 		</Box>
 	);
 }

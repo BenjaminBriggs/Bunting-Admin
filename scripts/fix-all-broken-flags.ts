@@ -21,7 +21,7 @@ async function fixAllBrokenFlags() {
 
 	for (const flag of flags) {
 		const defaultValues = flag.defaultValues as any;
-		const environments = ['development', 'staging', 'production'];
+		const environments = ['development', 'beta', 'production'];
 		const missingEnvs = environments.filter((env) => !(env in defaultValues));
 
 		if (missingEnvs.length > 0) {
@@ -31,7 +31,7 @@ async function fixAllBrokenFlags() {
 			// Get the existing value (probably from development)
 			const existingValue =
 				defaultValues.development ||
-				defaultValues.staging ||
+				defaultValues.beta ||
 				defaultValues.production ||
 				false;
 
@@ -45,9 +45,9 @@ async function fixAllBrokenFlags() {
 					defaultValues.development !== undefined
 						? defaultValues.development
 						: existingValue,
-				staging:
-					defaultValues.staging !== undefined
-						? defaultValues.staging
+				beta:
+					defaultValues.beta !== undefined
+						? defaultValues.beta
 						: existingValue,
 				production:
 					defaultValues.production !== undefined

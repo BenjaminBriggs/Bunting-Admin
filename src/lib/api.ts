@@ -4,11 +4,10 @@ import type {
 	ConfigArtifact,
 	CreateRolloutRequest,
 	CreateTestRequest,
-	DBCohort,
 	DBFlag,
 	DBTestRollout,
 } from '@/types';
-import { CreateCohortRequest, CreateFlagRequest } from '@/types';
+import { CreateFlagRequest } from '@/types';
 
 export interface StorageConfig {
 	bucket: string;
@@ -30,14 +29,12 @@ export interface App {
 	updatedAt: string;
 	_count?: {
 		flags: number;
-		cohorts: number;
 		test_rollouts: number;
 	};
 }
 
 // Re-export types for backward compatibility
 export type Flag = DBFlag;
-export type Cohort = DBCohort;
 export type TestRollout = DBTestRollout;
 
 // Apps API
@@ -119,11 +116,12 @@ export async function createFlag(data: {
 	type: string;
 	defaultValues: {
 		development: any;
-		staging: any;
+		beta: any;
 		production: any;
 	};
 	rules?: any[];
 	description?: string;
+	group?: string | null;
 }): Promise<Flag> {
 	const response = await fetch('/api/flags', {
 		method: 'POST',
@@ -178,67 +176,6 @@ export async function deleteFlag(id: string): Promise<void> {
 	}
 }
 
-// Cohorts API
-export async function fetchCohorts(appId: string): Promise<Cohort[]> {
-	const response = await fetch(`/api/cohorts?appId=${appId}`);
-	if (!response.ok) {
-		throw new Error('Failed to fetch cohorts');
-	}
-	return response.json();
-}
-
-export async function createCohort(data: {
-	appId: string;
-	key: string;
-	name: string;
-	description?: string;
-	conditions?: any[];
-}): Promise<Cohort> {
-	const response = await fetch('/api/cohorts', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(data),
-	});
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to create cohort');
-	}
-	return response.json();
-}
-
-export async function fetchCohort(id: string): Promise<Cohort> {
-	const response = await fetch(`/api/cohorts/${id}`);
-	if (!response.ok) {
-		throw new Error('Failed to fetch cohort');
-	}
-	return response.json();
-}
-
-export async function updateCohort(
-	id: string,
-	data: Partial<Cohort>,
-): Promise<Cohort> {
-	const response = await fetch(`/api/cohorts/${id}`, {
-		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(data),
-	});
-	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to update cohort');
-	}
-	return response.json();
-}
-
-export async function deleteCohort(id: string): Promise<void> {
-	const response = await fetch(`/api/cohorts/${id}`, {
-		method: 'DELETE',
-	});
-	if (!response.ok) {
-		throw new Error('Failed to delete cohort');
-	}
-}
-
 // Config API
 export async function generateCurrentConfig(
 	appId: string,
@@ -250,7 +187,11 @@ export async function generateCurrentConfig(
 	});
 	if (!response.ok) {
 		const error = await response.json();
-		throw new Error(error.error || 'Failed to generate current config');
+		// Surface the server's `details` (the real cause) — not just the generic message.
+		const message = error.details
+			? `${error.error || 'Failed to generate config'}: ${error.details}`
+			: error.error || 'Failed to generate current config';
+		throw new Error(message);
 	}
 	return response.json();
 }
@@ -280,14 +221,12 @@ export interface ValidationError {
 	type: string;
 	message: string;
 	flagKey?: string;
-	cohortKey?: string;
 }
 
 export interface ValidationWarning {
 	type: string;
 	message: string;
 	flagKey?: string;
-	cohortKey?: string;
 }
 
 export async function validateConfig(appId: string): Promise<ValidationResult> {
@@ -328,9 +267,8 @@ export interface PublishHistoryItem {
 	publishedBy: string;
 	changelog: string;
 	flagCount: number;
-	cohortCount: number;
 	changes?: Array<{
-		type: 'flag' | 'cohort';
+		type: 'flag';
 		action: 'added' | 'modified' | 'removed';
 		key: string;
 		name: string;
@@ -552,6 +490,7 @@ export async function createTestRollout(data: {
 	appId: string;
 	name: string;
 	description?: string;
+	group?: string | null;
 	type: 'TEST' | 'ROLLOUT';
 	variants?: Record<string, { percentage: number; value: any }>;
 	percentage?: number;

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 // POST /api/rollouts
 export async function POST(request: NextRequest) {
 	try {
-		const { key, name, description, conditions, percentage, appId } =
+		const { key, name, description, group, conditions, percentage, appId } =
 			createRolloutSchema.parse(await request.json());
 
 		// Validate percentage
@@ -59,13 +59,14 @@ export async function POST(request: NextRequest) {
 				key,
 				name,
 				description,
+				group: group ?? null,
 				type: 'ROLLOUT',
 				salt,
 				conditions: conditions as any,
 				percentage,
 				rolloutValues: {
 					development: null,
-					staging: null,
+					beta: null,
 					production: null,
 				},
 				flagIds: [], // Will be populated when flags are assigned to this rollout

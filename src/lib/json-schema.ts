@@ -11,21 +11,6 @@ export const configArtifactSchema = {
 		config_version: { type: 'string' },
 		published_at: { type: 'string', format: 'date-time' },
 		app_identifier: { type: 'string' },
-		cohorts: {
-			type: 'object',
-			additionalProperties: {
-				type: 'object',
-				properties: {
-					name: { type: 'string' },
-					description: { type: 'string' },
-					conditions: {
-						type: 'array',
-						items: { $ref: '#/definitions/condition' },
-					},
-				},
-				required: ['name', 'conditions'],
-			},
-		},
 		flags: {
 			type: 'object',
 			additionalProperties: {
@@ -33,14 +18,14 @@ export const configArtifactSchema = {
 				properties: {
 					type: {
 						type: 'string',
-						enum: ['boolean', 'string', 'integer', 'double', 'date', 'json'],
+						enum: ['bool', 'string', 'int', 'double', 'date', 'json'],
 					},
 					description: { type: 'string' },
 					development: { $ref: '#/definitions/environment' },
-					staging: { $ref: '#/definitions/environment' },
+					beta: { $ref: '#/definitions/environment' },
 					production: { $ref: '#/definitions/environment' },
 				},
-				required: ['type', 'development', 'staging', 'production'],
+				required: ['type', 'development', 'beta', 'production'],
 			},
 		},
 		tests: {
@@ -84,7 +69,6 @@ export const configArtifactSchema = {
 		'config_version',
 		'published_at',
 		'app_identifier',
-		'cohorts',
 		'flags',
 		'tests',
 		'rollouts',
@@ -147,16 +131,16 @@ export const configArtifactSchema = {
 		condition: {
 			type: 'object',
 			properties: {
-				id: { type: 'string' },
 				type: {
 					type: 'string',
 					enum: [
 						'app_version',
 						'os_version',
+						'build_number',
 						'platform',
 						'device_model',
 						'region',
-						'cohort',
+						'language',
 						'custom_attribute',
 					],
 				},
@@ -181,7 +165,7 @@ export const configArtifactSchema = {
 					],
 				},
 			},
-			required: ['id', 'type', 'values', 'operator'],
+			required: ['type', 'values', 'operator'],
 		},
 	},
 };
@@ -203,7 +187,6 @@ export function validateConfigArtifact(config: any): {
 		'config_version',
 		'published_at',
 		'app_identifier',
-		'cohorts',
 		'flags',
 		'tests',
 		'rollouts',
@@ -242,9 +225,9 @@ export function validateConfigArtifact(config: any): {
 	// Validate flag types
 	if (config.flags) {
 		const validFlagTypes = [
-			'boolean',
+			'bool',
 			'string',
-			'integer',
+			'int',
 			'double',
 			'date',
 			'json',
@@ -256,34 +239,11 @@ export function validateConfigArtifact(config: any): {
 				}
 
 				// Check required environments
-				const environments = ['development', 'staging', 'production'];
+				const environments = ['development', 'beta', 'production'];
 				for (const env of environments) {
 					if (!(env in flag)) {
 						errors.push(`Flag "${key}" missing environment: ${env}`);
 					}
-				}
-			}
-		}
-	}
-
-	// Validate condition structure
-	if (config.cohorts) {
-		for (const [key, cohort] of Object.entries(config.cohorts)) {
-			if (cohort && typeof cohort === 'object') {
-				const c = cohort as any;
-				if (!c.name) {
-					errors.push(`Cohort "${key}" missing required field: name`);
-				}
-				if (!Array.isArray(c.conditions)) {
-					errors.push(`Cohort "${key}" conditions must be an array`);
-				} else {
-					// Validate each condition
-					c.conditions.forEach((condition: any, index: number) => {
-						const conditionErrors = validateCondition(condition);
-						conditionErrors.forEach((error) => {
-							errors.push(`Cohort "${key}" condition ${index}: ${error}`);
-						});
-					});
 				}
 			}
 		}
@@ -311,10 +271,11 @@ function validateCondition(condition: any): string[] {
 	const validTypes = [
 		'app_version',
 		'os_version',
+		'build_number',
 		'platform',
 		'device_model',
 		'region',
-		'cohort',
+		'language',
 		'custom_attribute',
 	];
 
@@ -370,25 +331,6 @@ export function validateNamingRules(config: any): string[] {
 			} else if (key.length > 64) {
 				errors.push(
 					`Flag key "${key}" violates naming rules: cannot exceed 64 characters`,
-				);
-			}
-		}
-	}
-
-	// Validate cohort keys
-	if (config.cohorts) {
-		for (const key of Object.keys(config.cohorts)) {
-			if (!keyPattern.test(key)) {
-				errors.push(
-					`Cohort key "${key}" violates naming rules: must contain only lowercase letters and underscores`,
-				);
-			} else if (!noLeadingTrailing.test(key)) {
-				errors.push(
-					`Cohort key "${key}" violates naming rules: cannot start or end with underscore`,
-				);
-			} else if (key.length > 64) {
-				errors.push(
-					`Cohort key "${key}" violates naming rules: cannot exceed 64 characters`,
 				);
 			}
 		}

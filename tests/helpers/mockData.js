@@ -52,35 +52,10 @@ class MockDataHelper {
 			archivedAt: null,
 			defaultValues: overrides.defaultValues || {
 				development: true,
-				staging: true,
+				beta: true,
 				production: false,
 			},
 			variants: overrides.variants || {},
-			appId,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			...overrides,
-		};
-	}
-
-	/**
-	 * Generate mock cohort data
-	 */
-	static createMockCohort(appId, overrides = {}) {
-		const key = overrides.key || faker.lorem.slug(2).replace('-', '_');
-
-		return {
-			id: faker.string.uuid(),
-			key,
-			name: overrides.name || this.generateDisplayName(key),
-			description: faker.lorem.sentence(),
-			conditions: overrides.conditions || [
-				{
-					field: 'user_id',
-					operator: 'mod',
-					value: 10,
-				},
-			],
 			appId,
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -162,20 +137,6 @@ class MockDataHelper {
 					description: 'A test flag',
 				},
 			},
-			cohorts: {
-				test_cohort: {
-					key: 'test_cohort',
-					name: 'Test Cohort',
-					description: 'A test cohort',
-					conditions: [
-						{
-							field: 'user_id',
-							operator: 'mod',
-							value: 10,
-						},
-					],
-				},
-			},
 			rules: [
 				{
 					key: 'test_rule',
@@ -196,7 +157,6 @@ class MockDataHelper {
 			],
 			metadata: {
 				flagCount: 1,
-				cohortCount: 1,
 				ruleCount: 1,
 			},
 			...overrides,
@@ -248,13 +208,6 @@ class MockDataHelper {
 			}
 		}
 
-		if (overrides.cohorts) {
-			prisma.cohort.findMany.mockResolvedValue(overrides.cohorts);
-			if (overrides.cohorts.length > 0) {
-				prisma.cohort.findUnique.mockResolvedValue(overrides.cohorts[0]);
-			}
-		}
-
 		if (overrides.rules) {
 			prisma.rule.findMany.mockResolvedValue(overrides.rules);
 			if (overrides.rules.length > 0) {
@@ -280,10 +233,6 @@ class MockDataHelper {
 			return { id: faker.string.uuid(), ...args.data };
 		});
 
-		prisma.cohort.create.mockImplementation(async (args) => {
-			return { id: faker.string.uuid(), ...args.data };
-		});
-
 		prisma.rule.create.mockImplementation(async (args) => {
 			return { id: faker.string.uuid(), ...args.data };
 		});
@@ -301,10 +250,6 @@ class MockDataHelper {
 			return { id: args.where.id, ...args.data };
 		});
 
-		prisma.cohort.update.mockImplementation(async (args) => {
-			return { id: args.where.id, ...args.data };
-		});
-
 		prisma.rule.update.mockImplementation(async (args) => {
 			return { id: args.where.id, ...args.data };
 		});
@@ -312,7 +257,6 @@ class MockDataHelper {
 		// Mock count operations
 		prisma.app.count.mockResolvedValue(1);
 		prisma.flag.count.mockResolvedValue(0);
-		prisma.cohort.count.mockResolvedValue(0);
 		prisma.rule.count.mockResolvedValue(0);
 		prisma.publication.count.mockResolvedValue(0);
 		prisma.testRollout.count.mockResolvedValue(0);

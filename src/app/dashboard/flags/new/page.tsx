@@ -1,66 +1,22 @@
 'use client';
 
-import { Save } from '@mui/icons-material';
-import {
-	Alert,
-	Box,
-	Button,
-	Card,
-	CardContent,
-	Chip,
-	CircularProgress,
-	Divider,
-	FormControl,
-	InputLabel,
-	MenuItem,
-	Select,
-	Stack,
-	Tab,
-	Tabs,
-	TextField,
-	Typography,
-} from '@mui/material';
-import Link from 'next/link';
+import { Box } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { PageHeader } from '@/components';
-import FlagValueInput, {
-	getDefaultValueForType,
-	processValueForType,
-	validateValue,
-} from '@/components/features/flags/flag-value-input';
-import { createFlag } from '@/lib/api';
+import FlagForm, {
+	type FlagFormSubmit,
+} from '@/components/features/flags/flag-form';
+import { createFlag, fetchFlags } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
-import { normalizeKey, validateKey } from '@/lib/utils';
-
-const flagTypes = [
-	{ value: 'bool', label: 'Boolean' },
-	{ value: 'string', label: 'String' },
-	{ value: 'int', label: 'Integer' },
-	{ value: 'double', label: 'Double' },
-	{ value: 'date', label: 'Date' },
-	{ value: 'json', label: 'JSON' },
-];
 
 export default function NewFlagPage() {
 	const router = useRouter();
 	const { selectedApp } = useApp();
 	const { markChangesDetected } = useChanges();
-	const [displayName, setDisplayName] = useState('');
-	const [key, setKey] = useState('');
-	const [normalizedKey, setNormalizedKey] = useState('');
-	const [type, setType] = useState('bool');
-	const [defaultValues, setDefaultValues] = useState({
-		development: false,
-		staging: false,
-		production: false,
-	});
-	const [activeTab, setActiveTab] = useState(0);
-	const [description, setDescription] = useState('');
-	const [validationError, setValidationError] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
+	const [existingGroups, setExistingGroups] = useState<string[]>([]);
 
 	// Redirect if no app is selected
 	useEffect(() => {
@@ -69,93 +25,39 @@ export default function NewFlagPage() {
 		}
 	}, [selectedApp, router]);
 
-	const handleDisplayNameChange = (value: string) => {
-		setDisplayName(value);
-		const normalized = normalizeKey(value);
-		setKey(value);
-		setNormalizedKey(normalized);
-
-		const validation = validateKey(normalized);
-		setValidationError(
-			validation.valid ? null : validation.error || 'Invalid key',
-		);
-	};
-
-	const handleTypeChange = (newType: string) => {
-		setType(newType);
-		const newDefaultValue = getDefaultValueForType(newType as any);
-		setDefaultValues({
-			development: newDefaultValue,
-			staging: newDefaultValue,
-			production: newDefaultValue,
-		});
-	};
-
-	const handleEnvironmentValueChange = (value: any) => {
-		setDefaultValues({
-			development: value,
-			staging: value,
-			production: value,
-		});
-	};
-
-	const getCurrentEnvironment = () => {
-		const environments = ['development', 'staging', 'production'];
-		return environments[activeTab];
-	};
-
-	const getEnvironmentColor = (env: string) => {
-		switch (env) {
-			case 'development':
-				return 'info';
-			case 'staging':
-				return 'warning';
-			case 'production':
-				return 'success';
-			default:
-				return 'default';
-		}
-	};
-
-	const handleSave = async () => {
-		if (validationError || !selectedApp) {
+	// Load existing group names so the group field can autocomplete them.
+	useEffect(() => {
+		if (!selectedApp) {
 			return;
 		}
+		fetchFlags(selectedApp.id)
+			.then((flags) => {
+				const groups = [
+					...new Set(
+						flags
+							.map((f) => f.group?.trim())
+							.filter((g): g is string => !!g),
+					),
+				].sort((a, b) => a.localeCompare(b));
+				setExistingGroups(groups);
+			})
+			.catch(() => setExistingGroups([]));
+	}, [selectedApp]);
 
-		// Validate all environment values
-		const hasValidationErrors = ['development', 'staging', 'production'].some(
-			(env) => {
-				const value = defaultValues[env as keyof typeof defaultValues];
-				return !validateValue(value, type as any).isValid;
-			},
-		);
-		if (hasValidationErrors) {
-			return;
-		}
-
+	const handleSubmit = async (payload: FlagFormSubmit) => {
+		if (!selectedApp) {return;}
 		setSaving(true);
 		setSaveError(null);
-
 		try {
-			const processDefaultValues = () => {
-				const processed: any = {};
-				['development', 'staging', 'production'].forEach((env) => {
-					const value = defaultValues[env as keyof typeof defaultValues];
-					processed[env] = processValueForType(value, type as any);
-				});
-				return processed;
-			};
-
 			await createFlag({
 				appId: selectedApp.id,
-				key: normalizedKey,
-				displayName,
-				type,
-				defaultValues: processDefaultValues(),
-				description,
+				key: payload.key,
+				displayName: payload.displayName,
+				type: payload.type,
+				defaultValues: payload.defaultValues,
+				description: payload.description,
+				group: payload.group || null,
 			});
-
-			// Trigger change detection
 			markChangesDetected();
 			router.push('/dashboard/flags');
 		} catch (error) {
@@ -167,244 +69,27 @@ export default function NewFlagPage() {
 		}
 	};
 
-	const isValid =
-		!validationError &&
-		displayName &&
-		['development', 'staging', 'production'].every((env) => {
-			const value = defaultValues[env as keyof typeof defaultValues];
-			return validateValue(value, type as any).isValid;
-		}) &&
-		selectedApp;
-
 	return (
-		<Box>
-			<PageHeader
-				title="Create Feature Flag"
-				subtitle="Define a new feature flag with environment-specific default values"
-				backHref="/dashboard/flags"
-				backLabel="Back to Flags"
-			/>
-
-			{/* Error Alert */}
-			{saveError && (
-				<Alert severity="error" sx={{ mb: 3 }}>
-					{saveError}
-				</Alert>
-			)}
-
-			<Box
-				sx={{
-					display: 'flex',
-					gap: 3,
-					flexDirection: { xs: 'column', md: 'row' },
+		<Box sx={{ py: 1 }}>
+			<FlagForm
+				mode="create"
+				initial={{
+					displayName: '',
+					key: '',
+					type: 'bool',
+					description: '',
+					group: '',
+					defaultValues: {
+						development: false,
+						beta: false,
+						production: false,
+					},
 				}}
-			>
-				{/* Main Configuration */}
-				<Box sx={{ flex: '1 1 auto', maxWidth: { xs: '100%', md: '66.67%' } }}>
-					<Stack spacing={3}>
-						<Card>
-							<CardContent sx={{ p: 3 }}>
-								<Typography variant="h6" sx={{ mb: 2 }}>
-									Basic Configuration
-								</Typography>
-
-								<Stack spacing={3}>
-									{/* Display Name */}
-									<TextField
-										label="Display Name"
-										value={displayName}
-										onChange={(e) => handleDisplayNameChange(e.target.value)}
-										placeholder="e.g., Store / Use New Paywall Design"
-										helperText="Human-readable name that will appear in the dashboard"
-										fullWidth
-										required
-									/>
-
-									{/* Type Selection */}
-									<FormControl sx={{ maxWidth: 200 }}>
-										<InputLabel>Type</InputLabel>
-										<Select
-											value={type}
-											label="Type"
-											onChange={(e) => handleTypeChange(e.target.value)}
-										>
-											{flagTypes.map((flagType) => (
-												<MenuItem key={flagType.value} value={flagType.value}>
-													{flagType.label}
-												</MenuItem>
-											))}
-										</Select>
-									</FormControl>
-
-									<Box>
-										<FlagValueInput
-											flagType={type as any}
-											value={defaultValues.production}
-											onChange={(value) => handleEnvironmentValueChange(value)}
-											label="Default Value"
-											helperText="Value returned when no targeting rules match"
-											fullWidth
-											required
-										/>
-									</Box>
-
-									<Divider />
-
-									{/* Description */}
-									<TextField
-										label="Description"
-										value={description}
-										onChange={(e) => setDescription(e.target.value)}
-										placeholder="Describe what this flag controls and when it should be used"
-										multiline
-										rows={3}
-										fullWidth
-									/>
-								</Stack>
-							</CardContent>
-						</Card>
-					</Stack>
-				</Box>
-
-				{/* Preview & Actions */}
-				<Box sx={{ flex: '0 0 auto', width: { xs: '100%', md: '33.33%' } }}>
-					<Box sx={{ position: 'sticky', top: 24 }}>
-						<Stack spacing={3}>
-							<Card>
-								<CardContent
-									sx={{
-										p: 3,
-										maxHeight: 'calc(100vh - 100px)',
-										overflow: 'auto',
-									}}
-								>
-									<Typography variant="h6" sx={{ mb: 2 }}>
-										Preview
-									</Typography>
-									<Typography
-										variant="body2"
-										color="text.secondary"
-										sx={{ mb: 3 }}
-									>
-										How this flag will appear in your configuration
-									</Typography>
-
-									{displayName ? (
-										<Stack spacing={2}>
-											<Box>
-												<Typography variant="caption" color="text.secondary">
-													Display Name
-												</Typography>
-												<Typography variant="body1" sx={{ fontWeight: 500 }}>
-													{displayName}
-												</Typography>
-											</Box>
-
-											<Box>
-												<Typography variant="caption" color="text.secondary">
-													Auto-generated Key
-												</Typography>
-												<Box
-													sx={{
-														fontFamily: 'monospace',
-														fontSize: '0.875rem',
-														bgcolor: 'grey.100',
-														p: 1,
-														borderRadius: 1,
-														mt: 0.5,
-													}}
-												>
-													{normalizedKey}
-												</Box>
-											</Box>
-
-											<Box>
-												<Typography variant="caption" color="text.secondary">
-													JSON Configuration (Environment-First)
-												</Typography>
-												<Box
-													component="pre"
-													sx={{
-														fontFamily: 'monospace',
-														fontSize: '0.75rem',
-														bgcolor: 'grey.100',
-														p: 1.5,
-														borderRadius: 1,
-														mt: 0.5,
-														overflow: 'auto',
-														whiteSpace: 'pre-wrap',
-													}}
-												>
-													{JSON.stringify(
-														{
-															[normalizedKey]: {
-																type,
-																defaultValues: (() => {
-																	const processed: any = {};
-																	[
-																		'development',
-																		'staging',
-																		'production',
-																	].forEach((env) => {
-																		const value =
-																			defaultValues[
-																				env as keyof typeof defaultValues
-																			];
-																		processed[env] = processValueForType(
-																			value,
-																			type as any,
-																		);
-																	});
-																	return processed;
-																})(),
-																variants: {
-																	development: [],
-																	staging: [],
-																	production: [],
-																},
-																...(description && { description }),
-															},
-														},
-														null,
-														2,
-													)}
-												</Box>
-											</Box>
-										</Stack>
-									) : (
-										<Box sx={{ textAlign: 'center', py: 4 }}>
-											<Typography variant="body2" color="text.secondary">
-												Enter a flag name to see preview
-											</Typography>
-										</Box>
-									)}
-								</CardContent>
-							</Card>
-
-							{/* Actions */}
-							<Stack spacing={2}>
-								<Button
-									variant="contained"
-									startIcon={saving ? <CircularProgress size={20} /> : <Save />}
-									onClick={handleSave}
-									disabled={!isValid || saving}
-									fullWidth
-								>
-									{saving ? 'Creating...' : 'Create Flag'}
-								</Button>
-								<Button
-									variant="outlined"
-									component={Link}
-									href="/dashboard/flags"
-									fullWidth
-								>
-									Cancel
-								</Button>
-							</Stack>
-						</Stack>
-					</Box>
-				</Box>
-			</Box>
+				saving={saving}
+				saveError={saveError}
+				existingGroups={existingGroups}
+				onSubmit={handleSubmit}
+			/>
 		</Box>
 	);
 }

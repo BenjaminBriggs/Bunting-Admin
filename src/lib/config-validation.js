@@ -6,7 +6,7 @@
  */
 
 const VALID_FLAG_TYPES = ['bool', 'string', 'int', 'double', 'date', 'json'];
-const ENVIRONMENTS = ['development', 'staging', 'production'];
+const ENVIRONMENTS = ['development', 'beta', 'production'];
 
 /**
  * Validates a complete configuration object for errors and warnings.
@@ -79,61 +79,6 @@ function validateConfig(config) {
 							flagKey: key,
 						});
 					}
-
-					// Check for cohort references
-					variant.conditions?.forEach((condition) => {
-						if (
-							condition.type === 'cohort' &&
-							condition.values &&
-							Array.isArray(condition.values)
-						) {
-							condition.values.forEach((cohortKey) => {
-								if (!config.cohorts[cohortKey]) {
-									errors.push({
-										type: 'missing_cohort_reference',
-										message: `Flag "${key}" (${env}) references missing cohort "${cohortKey}"`,
-										flagKey: key,
-									});
-								}
-							});
-						}
-					});
-				});
-			}
-		});
-	});
-
-	// Validate cohorts (schema v2 - rule-based)
-	Object.entries(config.cohorts || {}).forEach(([key, cohort]) => {
-		// Check that cohort has conditions
-		if (
-			!cohort.conditions ||
-			!Array.isArray(cohort.conditions) ||
-			cohort.conditions.length === 0
-		) {
-			warnings.push({
-				type: 'empty_cohort',
-				message: `Cohort "${key}" has no conditions`,
-				cohortKey: key,
-			});
-		}
-
-		// Validate cohort conditions
-		cohort.conditions?.forEach((condition, conditionIndex) => {
-			if (!condition.type) {
-				errors.push({
-					type: 'invalid_condition',
-					message: `Condition ${conditionIndex + 1} in cohort "${key}" is missing a type`,
-					cohortKey: key,
-				});
-			}
-
-			// Prevent circular references - cohorts should not reference other cohorts
-			if (condition.type === 'cohort') {
-				errors.push({
-					type: 'circular_cohort_reference',
-					message: `Cohort "${key}" cannot reference other cohorts (condition ${conditionIndex + 1})`,
-					cohortKey: key,
 				});
 			}
 		});

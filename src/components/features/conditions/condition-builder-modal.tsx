@@ -25,7 +25,6 @@ import {
 	conditionTemplates,
 	operatorLabels,
 } from '@/components/features/rules/rule-templates';
-import { generateId } from '@/lib/utils';
 import type {
 	RuleCondition,
 	RuleConditionType,
@@ -49,10 +48,9 @@ export function ConditionBuilderModal({
 	existingCondition,
 	contextType,
 }: ConditionBuilderModalProps) {
-	const { cohorts, loading, error, config } = useConditionContext(contextType);
+	const { loading, error, config } = useConditionContext(contextType);
 
 	const [condition, setCondition] = useState<RuleCondition>({
-		id: generateId(),
 		type: 'app_version',
 		operator: 'in',
 		values: [],
@@ -69,7 +67,6 @@ export function ConditionBuilderModal({
 			} else {
 				// Creating new condition - use static default
 				setCondition({
-					id: generateId(),
 					type: 'app_version',
 					operator: 'in',
 					values: [],
@@ -173,16 +170,6 @@ export function ConditionBuilderModal({
 			errors.push('At least one value is required');
 		}
 
-		// Type-specific validation
-		if (condition.type === 'cohort' && condition.values.length > 0) {
-			const invalidCohorts = condition.values.filter(
-				(value) => !cohorts.some((cohort) => cohort.key === value),
-			);
-			if (invalidCohorts.length > 0) {
-				errors.push(`Invalid cohort(s): ${invalidCohorts.join(', ')}`);
-			}
-		}
-
 		setValidationErrors(errors);
 		return errors.length === 0;
 	};
@@ -278,36 +265,7 @@ export function ConditionBuilderModal({
 							Values
 						</Typography>
 
-						{template.valueType === 'cohort' ? (
-							<Autocomplete
-								multiple
-								loading={loading}
-								options={cohorts.map((c) => ({ value: c.key, label: c.name }))}
-								value={cohorts
-									.map((c) => ({ value: c.key, label: c.name }))
-									.filter((cohort) => condition.values.includes(cohort.value))}
-								onChange={(_, newValue) => {
-									handleValuesChange(newValue.map((item) => item.value));
-								}}
-								renderInput={(params) => (
-									<TextField
-										{...params}
-										label="Select Cohorts"
-										placeholder="Choose cohorts"
-									/>
-								)}
-								renderTags={(value, getTagProps) =>
-									value.map((option, index) => (
-										<Chip
-											variant="outlined"
-											label={option.label}
-											{...getTagProps({ index })}
-											key={option.value}
-										/>
-									))
-								}
-							/>
-						) : template.valueType === 'select' ? (
+						{template.valueType === 'select' ? (
 							<Autocomplete
 								multiple
 								options={template.options || []}

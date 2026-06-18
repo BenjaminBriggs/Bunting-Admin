@@ -6,7 +6,6 @@ export interface ConfigArtifact {
 	config_version: string;
 	published_at: string;
 	app_identifier: string;
-	cohorts: Record<string, Cohort>;
 	flags: Record<string, EnvironmentFlag>;
 	tests: Record<string, Test>;
 	rollouts: Record<string, Rollout>;
@@ -16,7 +15,7 @@ export interface ConfigArtifact {
 export interface EnvironmentFlag {
 	type: FlagType;
 	development: EnvironmentFlagConfig;
-	staging: EnvironmentFlagConfig;
+	beta: EnvironmentFlagConfig;
 	production: EnvironmentFlagConfig;
 	description?: string;
 	archived?: boolean;
@@ -26,13 +25,6 @@ export interface EnvironmentFlag {
 export interface EnvironmentFlagConfig {
 	default: FlagValue;
 	variants?: FlagVariant[];
-}
-
-// Cohorts are now pure condition groups (for database/UI)
-export interface Cohort {
-	name: string;
-	description?: string;
-	conditions: Condition[];
 }
 
 // JSON Spec compliant variant system
@@ -53,16 +45,16 @@ export interface FlagVariant {
 }
 
 export type FlagType =
-	| 'boolean'
+	| 'bool'
 	| 'string'
-	| 'integer'
+	| 'int'
 	| 'double'
 	| 'date'
 	| 'json';
 
 export type FlagValue = boolean | string | number | object;
 
-export type Environment = 'development' | 'staging' | 'production';
+export type Environment = 'development' | 'beta' | 'production';
 
 export type Platform = 'iOS' | 'iPadOS' | 'macOS' | 'watchOS' | 'tvOS';
 
@@ -74,8 +66,7 @@ export type ConditionType =
 	| 'platform'
 	| 'device_model'
 	| 'region'
-	| 'locale'
-	| 'cohort'
+	| 'language'
 	| 'custom_attribute';
 
 export type ConditionOperator =
@@ -91,7 +82,9 @@ export type ConditionOperator =
 	| 'custom'; // for custom_attribute type only
 
 export interface Condition {
-	id: string;
+	// Optional client-side handle only (React keys / legacy condition editors). It is NOT
+	// part of evaluation and is not written into the published config artifact.
+	id?: string;
 	type: ConditionType;
 	operator: ConditionOperator;
 	// For 'between': [min, max]; for 'in'/'not_in': list of values;
@@ -131,8 +124,7 @@ export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
 	platform: ['in', 'not_in'],
 	device_model: ['in', 'not_in'],
 	region: ['in', 'not_in'],
-	locale: ['equals', 'in', 'not_in'], // 'equals'=exact, 'in'/'not_in'=prefix match
-	cohort: ['in', 'not_in'],
+	language: ['in', 'not_in'],
 	custom_attribute: ['custom'],
 };
 
@@ -205,7 +197,7 @@ export interface TestVariant {
 	percentage: number;
 	values: {
 		development: FlagValue;
-		staging: FlagValue;
+		beta: FlagValue;
 		production: FlagValue;
 	};
 }
@@ -216,7 +208,7 @@ export interface FlagAssignment {
 	values:
 		| {
 				development: FlagValue;
-				staging: FlagValue;
+				beta: FlagValue;
 				production: FlagValue;
 		  }
 		| Record<
@@ -224,7 +216,7 @@ export interface FlagAssignment {
 				{
 					// For tests with variants
 					development: FlagValue;
-					staging: FlagValue;
+					beta: FlagValue;
 					production: FlagValue;
 				}
 		  >;

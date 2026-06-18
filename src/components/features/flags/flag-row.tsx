@@ -1,20 +1,12 @@
 'use client';
 
-import {
-	Archive,
-	ChevronRight,
-	Delete,
-	ExpandMore,
-	MoreVert,
-} from '@mui/icons-material';
+import { Archive, Delete } from '@mui/icons-material';
 import {
 	Box,
-	Chip,
-	Grid,
 	IconButton,
 	Menu,
 	MenuItem,
-	Paper,
+	Tooltip,
 	Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -27,19 +19,33 @@ import {
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
 import { formatTimestamp } from '@/lib/utils';
+import { envColors, ink, surface } from '@/theme/designTokens';
 import type {
 	ConditionalVariant,
 	DBFlag,
 	DBTestRollout,
 	Environment,
 } from '@/types';
-import { getEnvironmentBandColors } from '../../ui/environment-chips';
 import { VariantCreatorModal } from '../conditions';
 import DefaultValueEditModal from './default-value-edit-modal';
 import EnvironmentColumn from './environment-column';
-import { formatValueForDisplay } from './flag-value-input';
 import FlagAssignmentEditModal from './flag-assignment-edit-modal';
+import { formatValueForDisplay } from './flag-value-input';
 import TestRolloutAssignmentModal from './test-rollout-assignment-modal';
+
+function Ms({ name, sx }: { name: string; sx?: any }) {
+	return (
+		<Box component="span" className="ms" sx={sx}>
+			{name}
+		</Box>
+	);
+}
+
+const ENV_SUMMARY: Array<{ env: Environment; short: string }> = [
+	{ env: 'production', short: 'PROD' },
+	{ env: 'beta', short: 'BETA' },
+	{ env: 'development', short: 'DEV' },
+];
 
 interface FlagRowProps {
 	flag: DBFlag;
@@ -266,9 +272,6 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			case 'region':
 				return `${formatOperator(operator)} ${values.join(', ')}`;
 
-			case 'cohort':
-				return `in ${values.join(', ')}`;
-
 			default:
 				return `${formatConditionType(type)} ${formatOperator(operator)} ${values.join(', ')}`;
 		}
@@ -281,7 +284,6 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			os_version: 'OS',
 			platform: 'platform',
 			region: 'region',
-			cohort: 'cohort',
 		};
 		return typeMap[type] || type;
 	};
@@ -446,15 +448,20 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 	};
 
 	const formatValue = (value: any): string =>
-		formatValueForDisplay(value, flagData.type as any);
+		formatValueForDisplay(value, flagData.type);
 
 	return (
-		<Paper
-			variant="outlined"
+		<Box
 			sx={{
-				mb: 2,
+				bgcolor: archived ? '#FBF8F1' : '#fff',
+				border: '1.5px solid',
+				borderColor: expanded ? '#E9E0CF' : '#EAE2D2',
+				borderRadius: expanded ? '18px' : '16px',
+				boxShadow: expanded ? '0 8px 26px rgba(40,33,20,.07)' : 'none',
 				overflow: 'hidden',
-				opacity: archived ? 0.6 : 1,
+				opacity: archived ? 0.9 : 1,
+				transition: 'box-shadow .15s ease, border-color .15s ease',
+				'&:hover': { borderColor: expanded ? '#E9E0CF' : '#E4DBC8' },
 			}}
 		>
 			{/* Flag header — click to expand/collapse */}
@@ -463,30 +470,66 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				sx={{
 					display: 'flex',
 					alignItems: 'center',
-					gap: 2,
-					p: 2.5,
+					gap: expanded ? 1.875 : 2,
+					p: expanded ? '18px 20px' : '17px 20px',
 					cursor: 'pointer',
 					...(expanded && {
-						borderBottom: '1px solid',
-						borderColor: 'divider',
+						borderBottom: '1px solid #F1EBDD',
 					}),
 				}}
 			>
-				<Box sx={{ display: 'flex', color: 'text.disabled' }}>
-					{expanded ? <ExpandMore /> : <ChevronRight />}
-				</Box>
+				<Ms
+					name={expanded ? 'expand_more' : 'chevron_right'}
+					sx={{ fontSize: 24, color: expanded ? '#F6A444' : '#C2BAA8' }}
+				/>
 
 				<Box sx={{ flex: 1, minWidth: 0 }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-						<Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+						<Typography
+							sx={{
+								font: `700 ${expanded ? 19 : 18}px 'Baloo 2'`,
+								color: archived ? '#7E776A' : ink.primary,
+							}}
+						>
 							{flagData.displayName}
 						</Typography>
-						{archived && <Chip label="Archived" size="small" color="warning" />}
+						<Box
+							sx={{
+								font: "600 11px 'JetBrains Mono'",
+								color: ink.soft,
+								bgcolor: surface.token,
+								borderRadius: '7px',
+								px: 1,
+								py: 0.375,
+							}}
+						>
+							{String(flagData.type).toUpperCase()}
+						</Box>
+						{archived && (
+							<Box
+								sx={{
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: 0.625,
+									font: "700 10px 'JetBrains Mono'",
+									color: '#9A6F1C',
+									bgcolor: '#FCEFD2',
+									borderRadius: '7px',
+									px: 1,
+									py: 0.375,
+								}}
+							>
+								<Ms name="inventory_2" sx={{ fontSize: 13 }} />
+								ARCHIVED
+							</Box>
+						)}
 					</Box>
 					<Typography
-						variant="body2"
-						color="text.secondary"
-						sx={{ fontFamily: 'monospace', mt: 0.5 }}
+						sx={{
+							font: "500 12px 'JetBrains Mono'",
+							color: ink.muted,
+							mt: 0.5,
+						}}
 					>
 						{flagData.key}
 						{expanded && ` · updated ${formatTimestamp(flagData.updatedAt)}`}
@@ -503,57 +546,87 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 							flexShrink: 0,
 						}}
 					>
-						{(['production', 'staging', 'development'] as Environment[]).map(
-							(env) => {
-								const band = getEnvironmentBandColors(env);
-								const rollout = getActiveRollouts(env)[0];
-								return (
+						{ENV_SUMMARY.map(({ env, short }) => {
+							const c = envColors[env];
+							const rollout = getActiveRollouts(env)[0];
+							const test = getActiveTests(env)[0];
+							const variantCount = getEnvironmentVariants(env).length;
+
+							// Env-tinted marker: icon (+ optional label), explained on hover.
+							const marker = (
+								key: string,
+								icon: string,
+								label: string,
+								title: string,
+							) => (
+								<Tooltip key={key} title={title} arrow>
 									<Box
-										key={env}
-										sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+										component="span"
+										sx={{
+											display: 'inline-flex',
+											alignItems: 'center',
+											gap: 0.375,
+											bgcolor: c.headerBg,
+											color: c.text,
+											border: `1px solid ${c.border}`,
+											borderRadius: '6px',
+											px: 0.625,
+											py: 0.25,
+											font: "700 9px 'JetBrains Mono'",
+											letterSpacing: '.02em',
+											cursor: 'default',
+										}}
 									>
-										<Box
-											sx={{
-												width: 9,
-												height: 9,
-												borderRadius: '50%',
-												bgcolor: band.dot,
-											}}
-										/>
-										<Typography
-											sx={{
-												fontFamily: 'monospace',
-												fontWeight: 700,
-												fontSize: 10,
-												color: 'text.secondary',
-											}}
-										>
-											{band.short}
-										</Typography>
-										{rollout ? (
-											<Box
-												sx={{
-													fontFamily: 'monospace',
-													fontWeight: 700,
-													fontSize: 10,
-													color: band.text,
-													bgcolor: band.bg,
-													borderRadius: 1,
-													px: 0.75,
-													py: 0.25,
-												}}
-											>
-												rollout {rollout.percentage}%
-											</Box>
-										) : (
-											<Typography sx={{ fontWeight: 700 }}>
-												{formatValue(flagData.defaultValues[env])}
-											</Typography>
-										)}
+										<Ms name={icon} sx={{ fontSize: 12 }} />
+										{label}
 									</Box>
-								);
-							},
-						)}
+								</Tooltip>
+							);
+
+							return (
+								<Box
+									key={env}
+									sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+								>
+									<Box
+										sx={{
+											width: 9,
+											height: 9,
+											borderRadius: '50%',
+											bgcolor: c.dot,
+										}}
+									/>
+									<Typography
+										sx={{ font: "700 10px 'JetBrains Mono'", color: '#8B8472' }}
+									>
+										{short}
+									</Typography>
+									{/* Baseline default value is always shown … */}
+									<Typography
+										sx={{ font: "600 13px 'JetBrains Mono'", color: ink.primary }}
+									>
+										{formatValue(flagData.defaultValues[env])}
+									</Typography>
+									{/* … with markers when the env is overridden. */}
+									{variantCount > 0 &&
+										marker(
+											'v',
+											'call_split',
+											String(variantCount),
+											`${variantCount} conditional variant${variantCount === 1 ? '' : 's'} override the default`,
+										)}
+									{rollout &&
+										marker(
+											'r',
+											'rocket_launch',
+											`${rollout.percentage}%`,
+											`Rollout “${rollout.name}” serving to ${rollout.percentage}% of users`,
+										)}
+									{test &&
+										marker('t', 'science', 'A/B', `In A/B test “${test.name}”`)}
+								</Box>
+							);
+						})}
 					</Box>
 				)}
 
@@ -563,8 +636,9 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 						e.stopPropagation();
 						setMenuAnchor(e.currentTarget);
 					}}
+					sx={{ color: ink.muted }}
 				>
-					<MoreVert />
+					<Ms name="more_vert" sx={{ fontSize: 22 }} />
 				</IconButton>
 			</Box>
 
@@ -572,48 +646,44 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			{expanded && (
 				<Box
 					sx={{
-						bgcolor: 'action.hover',
+						display: 'grid',
+						gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+						bgcolor: '#FCFAF3',
 					}}
 				>
-					<Grid container>
-						{(['production', 'staging', 'development'] as Environment[]).map(
-							(env, index) => (
-								<Grid
-									size={{ xs: 12, md: 4 }}
-									key={env}
-									sx={
-										index > 0
-											? {
-													borderColor: 'divider',
-													borderTop: { xs: '1px solid', md: 'none' },
-													borderLeft: { xs: 'none', md: '1px solid' },
-												}
-											: undefined
+					{(['production', 'beta', 'development'] as Environment[]).map(
+						(env, index) => (
+							<Box
+								key={env}
+								sx={
+									index > 0
+										? {
+												borderTop: { xs: '1px solid #F1EBDD', md: 'none' },
+												borderLeft: { xs: 'none', md: '1px solid #F1EBDD' },
+											}
+										: undefined
+								}
+							>
+								<EnvironmentColumn
+									environment={env}
+									flagId={flagData.id}
+									flagType={flagData.type}
+									defaultValue={flagData.defaultValues[env]}
+									variants={getEnvironmentVariants(env)}
+									activeTests={getActiveTests(env) as any}
+									activeRollouts={getActiveRollouts(env)}
+									onVariantAdd={() => handleVariantAdd(env)}
+									onVariantEdit={(variant) => handleVariantEdit(variant, env)}
+									onVariantDelete={(variant) => handleVariantDelete(variant, env)}
+									onTestRolloutAdd={() => handleTestRolloutAdd(env)}
+									onTestRolloutEdit={(type, id) =>
+										handleTestRolloutEdit(type, id, env)
 									}
-								>
-									<EnvironmentColumn
-										environment={env}
-										flagId={flagData.id}
-										flagType={flagData.type}
-										defaultValue={flagData.defaultValues[env]}
-										variants={getEnvironmentVariants(env)}
-										activeTests={getActiveTests(env) as any}
-										activeRollouts={getActiveRollouts(env)}
-										onVariantAdd={() => handleVariantAdd(env)}
-										onVariantEdit={(variant) => handleVariantEdit(variant, env)}
-										onVariantDelete={(variant) =>
-											handleVariantDelete(variant, env)
-										}
-										onTestRolloutAdd={() => handleTestRolloutAdd(env)}
-										onTestRolloutEdit={(type, id) =>
-											handleTestRolloutEdit(type, id, env)
-										}
-										onDefaultValueEdit={() => handleDefaultValueEdit(env)}
-									/>
-								</Grid>
-							),
-						)}
-					</Grid>
+									onDefaultValueEdit={() => handleDefaultValueEdit(env)}
+								/>
+							</Box>
+						),
+					)}
 				</Box>
 			)}
 
@@ -683,6 +753,6 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 					environment={selectedEnvironment}
 				/>
 			)}
-		</Paper>
+		</Box>
 	);
 }

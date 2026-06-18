@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
 			appId,
 			name,
 			description,
+			group,
 			type,
 			variants,
 			percentage,
@@ -80,6 +81,7 @@ export async function POST(request: NextRequest) {
 			key,
 			name,
 			description,
+			group: group ?? null,
 			type,
 			salt,
 			conditions: conditions || [],
@@ -93,7 +95,7 @@ export async function POST(request: NextRequest) {
 			data.percentage = percentage;
 			data.rolloutValues = {
 				development: null,
-				staging: null,
+				beta: null,
 				production: null,
 			};
 		}
