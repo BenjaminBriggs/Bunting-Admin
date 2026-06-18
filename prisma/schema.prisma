@@ -12,19 +12,18 @@ datasource db {
 }
 
 model App {
-  id           String   @id @default(cuid())
-  name         String
-  identifier   String   @unique // User-defined app identifier
-  artifactUrl  String   @map("artifact_url")
-  publicKeys   Json     @map("public_keys") // Array of {kid, pem}
-  fetchPolicy  Json     @map("fetch_policy") // {min_interval_seconds, hard_ttl_days}
-  storageConfig Json    @map("storage_config") // {bucket, region, endpoint?, accessKeyId?, secretAccessKey?}
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  name          String
+  identifier    String   @unique // User-defined app identifier
+  artifactUrl   String   @map("artifact_url")
+  publicKeys    Json     @map("public_keys") // Array of {kid, pem}
+  fetchPolicy   Json     @map("fetch_policy") // {min_interval_seconds, hard_ttl_days}
+  storageConfig Json     @map("storage_config") // {bucket, region, endpoint?, accessKeyId?, secretAccessKey?}
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relations
   flags        Flag[]
-  cohorts      Cohort[]
   testRollouts TestRollout[]
   auditLogs    AuditLog[]
   rules        Rule[]
@@ -35,19 +34,20 @@ model App {
 }
 
 model Flag {
-  id          String   @id @default(cuid())
-  key         String   // Normalized snake_case key
-  displayName String   @map("display_name") // Generated from key
+  id          String    @id @default(cuid())
+  key         String // Normalized snake_case key
+  displayName String    @map("display_name") // Generated from key
   type        FlagType
   description String?
-  archived    Boolean  @default(false)
+  group       String? // Admin-only grouping label; not part of the published config
+  archived    Boolean   @default(false)
   archivedAt  DateTime? @map("archived_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   // Default values for each environment (set at creation)
   defaultValues Json @map("default_values") // {development: any, staging: any, production: any}
-  
+
   // Conditional variants per environment
   variants Json @default("{}") @map("variants") // {development: ConditionalVariant[], staging: ConditionalVariant[], production: ConditionalVariant[]}
 
@@ -59,46 +59,30 @@ model Flag {
   @@map("flags")
 }
 
-model Cohort {
-  id         String   @id @default(cuid())
-  key        String   // Cohort identifier key
-  name       String   // Display name
-  description String?
-  conditions Json     @default("[]") // Array of condition objects (no cohort conditions allowed)
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  appId String @map("app_id")
-  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
-
-  @@unique([appId, key]) // Unique cohort keys per app
-  @@map("cohorts")
-}
-
 model TestRollout {
-  id          String   @id @default(cuid())
-  key         String   // Identifier key
-  name        String   // Display name
+  id          String          @id @default(cuid())
+  key         String // Identifier key
+  name        String // Display name
   description String?
   type        TestRolloutType
-  salt        String   // For consistent user bucketing
-  conditions  Json     @default("[]") // Array of condition objects for entry requirements
-  
+  group       String? // Admin-only grouping label; not part of the published config
+  salt        String // For consistent user bucketing
+  conditions  Json            @default("[]") // Array of condition objects for entry requirements
+
   // For tests: multiple variants with traffic split
-  variants    Json?    // {variantName: {percentage: number, values: {dev: any, staging: any, prod: any}}}
-  
+  variants Json? // {variantName: {percentage: number, values: {dev: any, staging: any, prod: any}}}
+
   // For rollouts: single percentage and values
-  percentage  Int?     // 0-100 for rollouts
-  rolloutValues Json?  // {development: any, staging: any, production: any}
-  
+  percentage    Int? // 0-100 for rollouts
+  rolloutValues Json? // {development: any, staging: any, production: any}
+
   // Flags affected by this test/rollout
-  flagIds     Json     @default("[]") // Array of flag IDs
-  
-  archived    Boolean  @default(false)
-  archivedAt  DateTime? @map("archived_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  flagIds Json @default("[]") // Array of flag IDs
+
+  archived   Boolean   @default(false)
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   // Relations
   appId String @map("app_id")
@@ -140,12 +124,12 @@ enum TestRolloutType {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  name        String?
-  image       String?  // Profile image from OAuth provider
-  role        UserRole @default(DEVELOPER)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  image        String? // Profile image from OAuth provider
+  role         UserRole @default(DEVELOPER)
+  createdAt    DateTime @default(now()) @map("created_at")
   lastActiveAt DateTime @default(now()) @map("last_active_at")
 
   // Relations
@@ -157,8 +141,8 @@ model User {
 model AccessList {
   id        String     @id @default(cuid())
   type      AccessType // EMAIL or DOMAIN
-  value     String     // email address or @domain.com
-  role      UserRole   // Role to assign when user joins
+  value     String // email address or @domain.com
+  role      UserRole // Role to assign when user joins
   createdAt DateTime   @default(now()) @map("created_at")
 
   // Relations
@@ -181,17 +165,17 @@ enum AccessType {
 
 // Additional models for test suite
 model Rule {
-  id          String   @id @default(cuid())
-  key         String   // Rule identifier key
-  name        String   // Display name
-  description String?
-  conditions  Json     @default("[]") // Array of condition objects
-  flagOverrides Json   @default("{}") // Flag overrides object
-  priority    Int      @default(0)
-  environment String   @default("development")
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  key           String // Rule identifier key
+  name          String // Display name
+  description   String?
+  conditions    Json     @default("[]") // Array of condition objects
+  flagOverrides Json     @default("{}") // Flag overrides object
+  priority      Int      @default(0)
+  environment   String   @default("development")
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relations
   appId String @map("app_id")
@@ -203,14 +187,14 @@ model Rule {
 
 model Publication {
   id                String   @id @default(cuid())
-  version           String   // YYYY-MM-DD.N format
-  environment       String   // development, staging, production
-  config            Json     // Generated configuration
-  configSize        Int      // Size in bytes
-  signature         String   // JWS signature
+  version           String // YYYY-MM-DD.N format
+  environment       String // development, staging, production
+  config            Json // Generated configuration
+  configSize        Int // Size in bytes
+  signature         String // JWS signature
   detachedSignature String   @map("detached_signature") // Detached signature
   keyId             String   @map("key_id") // Signing key ID
-  algorithm         String   // Signing algorithm
+  algorithm         String // Signing algorithm
   publishedAt       DateTime @map("published_at")
   publishedBy       String?  @map("published_by") // User identifier
   status            String   @default("published")
@@ -228,8 +212,8 @@ model SigningKey {
   id         String   @id @default(cuid())
   kid        String   @unique // Key ID for JWS header
   privateKey String   @map("private_key") // RSA private key in PEM format
-  publicKey  String   @map("public_key")  // RSA public key in PEM format
-  algorithm  String   @default("RS256")   // Signing algorithm
+  publicKey  String   @map("public_key") // RSA public key in PEM format
+  algorithm  String   @default("RS256") // Signing algorithm
   isActive   Boolean  @default(true) @map("is_active") // Whether this key is currently used for signing
   createdAt  DateTime @default(now()) @map("created_at")
 

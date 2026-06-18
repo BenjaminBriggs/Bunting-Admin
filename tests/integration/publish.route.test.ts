@@ -12,7 +12,9 @@ import { server } from '../msw/server';
 //   DATABASE_URL=... S3_ENDPOINT=http://localhost:9000 S3_ACCESS_KEY_ID=admin \
 //   S3_SECRET_ACCESS_KEY=admin123 S3_BUCKET=bunting-configs S3_REGION=us-east-1 \
 //   SIGNING_KEY_SECRET=dev AUTH_MODE=proxy pnpm exec jest tests/integration/publish.route.test.ts
-const run = process.env.S3_ENDPOINT ? describe : describe.skip;
+const hasSigningEnv =
+	process.env.SIGNING_KEY_SECRET || process.env.SIGNING_KEY_KMS_KEY_ID;
+const run = process.env.S3_ENDPOINT && hasSigningEnv ? describe : describe.skip;
 
 async function s3Text(key: string): Promise<string> {
 	const res = await getS3Client().send(

@@ -40,7 +40,7 @@
 		"docker:up": "docker-compose up -d",
 		"docker:down": "docker-compose down",
 		"docker:logs": "docker-compose logs -f",
-		"setup": "pnpm run docker:up && pnpm run setup:wait && pnpm run db:deploy",
+		"setup": "pnpm run docker:up && pnpm run setup:wait && pnpm run db:push",
 		"setup:wait": "echo 'Waiting for services to be ready...' && sleep 10 && docker wait bunting-minio-init || echo 'MinIO initialization complete'"
 	},
 	"dependencies": {
