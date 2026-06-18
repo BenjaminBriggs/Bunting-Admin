@@ -34,6 +34,25 @@ interface TestRolloutAssignmentModalProps {
 	onComplete?: () => void;
 }
 
+type Segment = 'rollout' | 'test';
+
+// Segment accent: rollouts read green, tests read amber. These borrow the fixed
+// production / development environment colours so the modal stays in the system
+// palette — the accent communicates the *mode*, while the subtitle keeps the
+// actual environment identity.
+const SEGMENT_ACCENT: Record<Segment, { accent: string; tint: string; icon: string }> = {
+	rollout: {
+		accent: envColors.production.text,
+		tint: envColors.production.headerBg,
+		icon: 'rocket_launch',
+	},
+	test: {
+		accent: envColors.development.text,
+		tint: envColors.development.headerBg,
+		icon: 'science',
+	},
+};
+
 // Group swatch palette (matches the Test form / Tests card). Control reads soft + last.
 const PALETTE = ['#F6A444', '#54C9C0', '#F47C5D', '#82C868', '#D8CFBC'];
 const CONTROL_COLOR = '#D8CFBC';
@@ -75,6 +94,7 @@ export default function TestRolloutAssignmentModal({
 }: TestRolloutAssignmentModalProps) {
 	const router = useRouter();
 	const { selectedApp } = useApp();
+	const [segment, setSegment] = useState<Segment>('rollout');
 	const [tests, setTests] = useState<DBTestRollout[]>([]);
 	const [rollouts, setRollouts] = useState<DBTestRollout[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -87,6 +107,8 @@ export default function TestRolloutAssignmentModal({
 	const [error, setError] = useState<string | null>(null);
 
 	const env = envColors[environment] ?? envColors.production;
+	const { accent, tint, icon: segIcon } = SEGMENT_ACCENT[segment];
+	const isRollout = segment === 'rollout';
 
 	useEffect(() => {
 		const load = async () => {
@@ -116,13 +138,19 @@ export default function TestRolloutAssignmentModal({
 		load();
 	}, [open, selectedApp]);
 
-	const allOptions = useMemo(
-		() => [...rollouts, ...tests],
-		[rollouts, tests],
-	);
-	const selected = allOptions.find((o) => o.id === selectedId) || null;
-	const selectedIsTest = selected?.type === 'TEST';
-	const selectedIsRollout = selected?.type === 'ROLLOUT';
+	// Only the items belonging to the active segment are shown / selectable.
+	const options = isRollout ? rollouts : tests;
+	const selected = options.find((o) => o.id === selectedId) || null;
+	const isEmpty = !dataLoading && options.length === 0;
+
+	const switchSegment = (next: Segment) => {
+		if (next === segment) {
+			return;
+		}
+		setSegment(next);
+		setSelectedId(null);
+		setError(null);
+	};
 
 	// Group names for the selected test, Control last.
 	const selectedGroups = useMemo(() => {
@@ -149,23 +177,24 @@ export default function TestRolloutAssignmentModal({
 		}
 	};
 
-	const handleCreateNew = (type: 'test' | 'rollout') => {
-		const path =
-			type === 'test' ? '/dashboard/tests/new' : '/dashboard/rollouts/new';
+	const handleCreateNew = () => {
+		const path = isRollout
+			? '/dashboard/rollouts/new'
+			: '/dashboard/tests/new';
 		onClose();
 		router.push(`${path}?flagId=${flagId}`);
 	};
 
 	const valuesValid = (() => {
-		if (selectedIsRollout) {
+		if (!selected) {
+			return false;
+		}
+		if (selected.type === 'ROLLOUT') {
 			return validateValue(servedValue, flagType as any).isValid;
 		}
-		if (selectedIsTest) {
-			return selectedGroups.every(
-				(g) => validateValue(groupValues[g], flagType as any).isValid,
-			);
-		}
-		return false;
+		return selectedGroups.every(
+			(g) => validateValue(groupValues[g], flagType as any).isValid,
+		);
 	})();
 
 	const canAdd = Boolean(selected) && valuesValid && !saving;
@@ -232,16 +261,23 @@ export default function TestRolloutAssignmentModal({
 		}
 	};
 
-	const confirmLabel = selectedIsRollout
-		? 'Add rollout'
-		: selectedIsTest
-			? 'Add test'
-			: 'Add to flag';
-	const headerIcon = selectedIsTest ? 'science' : 'rocket_launch';
 	const defaultDisplay =
 		flagType === 'json'
 			? '{ … }'
 			: String(getDefaultValueForType(flagType as any));
+
+	const confirmLabel = isEmpty
+		? isRollout
+			? 'Create a rollout'
+			: 'Create a test'
+		: isRollout
+			? 'Add rollout'
+			: 'Add test';
+
+	const segTabs: Array<{ value: Segment; label: string }> = [
+		{ value: 'rollout', label: 'Rollouts' },
+		{ value: 'test', label: 'Tests' },
+	];
 
 	return (
 		<Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -251,8 +287,7 @@ export default function TestRolloutAssignmentModal({
 					display: 'flex',
 					alignItems: 'center',
 					gap: 1.5,
-					p: '18px 22px',
-					borderBottom: '1px solid #F1EBDD',
+					p: '18px 22px 16px',
 				}}
 			>
 				<Box
@@ -260,21 +295,18 @@ export default function TestRolloutAssignmentModal({
 						width: 40,
 						height: 40,
 						borderRadius: '11px',
-						bgcolor: env.headerBg,
+						bgcolor: tint,
 						display: 'flex',
 						alignItems: 'center',
 						justifyContent: 'center',
+						transition: 'background .14s ease',
 					}}
 				>
-					<Ms name={headerIcon} sx={{ fontSize: 22, color: env.text }} />
+					<Ms name={segIcon} sx={{ fontSize: 22, color: accent }} />
 				</Box>
 				<Box sx={{ flex: 1 }}>
 					<Typography variant="h6" sx={{ fontSize: 17 }}>
-						{selectedIsRollout
-							? 'Add to a rollout'
-							: selectedIsTest
-								? 'Add to a test'
-								: 'Add to a test or rollout'}
+						{isRollout ? 'Add to a rollout' : 'Add to a test'}
 					</Typography>
 					<Typography sx={{ fontWeight: 600, fontSize: 11, color: ink.muted }}>
 						{flagName} ·{' '}
@@ -288,12 +320,64 @@ export default function TestRolloutAssignmentModal({
 				</IconButton>
 			</Box>
 
-			<DialogContent sx={{ p: '20px 22px' }}>
-				<Stack spacing={2.5}>
+			{/* segmented control */}
+			<Box sx={{ px: '22px', pb: '16px' }}>
+				<Box
+					sx={{
+						display: 'flex',
+						gap: '5px',
+						bgcolor: '#F4F1E9',
+						borderRadius: '12px',
+						p: '5px',
+					}}
+				>
+					{segTabs.map(({ value, label }) => {
+						const active = segment === value;
+						return (
+							<Box
+								key={value}
+								onClick={() => switchSegment(value)}
+								sx={{
+									flex: 1,
+									display: 'inline-flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									gap: 0.875,
+									fontFamily: 'var(--font-nunito)',
+									fontWeight: 700,
+									fontSize: 13,
+									borderRadius: '9px',
+									py: '9px',
+									cursor: 'pointer',
+									transition: 'all .14s ease',
+									bgcolor: active ? '#fff' : 'transparent',
+									color: active ? ink.primary : '#8B8472',
+									boxShadow: active
+										? '0 1px 3px rgba(40,33,20,.14)'
+										: 'none',
+								}}
+							>
+								<Ms name={SEGMENT_ACCENT[value].icon} sx={{ fontSize: 18 }} />
+								{label}
+							</Box>
+						);
+					})}
+				</Box>
+			</Box>
+
+			<DialogContent sx={{ p: '0 22px 4px' }}>
+				<Stack spacing={2}>
 					{error && <Alert severity="error">{error}</Alert>}
 
 					{dataLoading && (
-						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 2 }}>
+						<Box
+							sx={{
+								display: 'flex',
+								alignItems: 'center',
+								justifyContent: 'center',
+								py: 2,
+							}}
+						>
 							<CircularProgress size={20} sx={{ mr: 1.5 }} />
 							<Typography sx={{ fontWeight: 600, color: ink.soft }}>
 								Loading…
@@ -301,17 +385,108 @@ export default function TestRolloutAssignmentModal({
 						</Box>
 					)}
 
-					{/* pick an entity */}
-					{!dataLoading && (
-						<Box>
-							<Label>Select a test or rollout</Label>
-							{allOptions.length === 0 ? (
-								<Typography sx={{ fontWeight: 600, fontSize: 12, color: ink.muted, mt: 1 }}>
-									No active tests or rollouts yet — create one below.
+					{/* empty state */}
+					{isEmpty && (
+						<Box
+							sx={{
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
+								textAlign: 'center',
+								p: '30px 16px 22px',
+							}}
+						>
+							<Box
+								sx={{
+									width: 64,
+									height: 64,
+									borderRadius: '18px',
+									bgcolor: tint,
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+									mb: 2.25,
+								}}
+							>
+								<Ms name={segIcon} sx={{ fontSize: 33, color: accent }} />
+							</Box>
+							<Typography variant="h6" sx={{ fontSize: 19 }}>
+								{isRollout ? 'No rollouts yet' : 'No tests yet'}
+							</Typography>
+							<Typography
+								sx={{
+									fontWeight: 600,
+									fontSize: 13,
+									lineHeight: 1.6,
+									color: '#8B8472',
+									mt: 0.875,
+									maxWidth: 340,
+								}}
+							>
+								{isRollout
+									? 'There are no rollouts to attach this flag to. Create one first — then come back and assign.'
+									: 'There are no tests to attach this flag to. Create one first — then come back and assign.'}
+							</Typography>
+							<Button
+								onClick={handleCreateNew}
+								startIcon={<Ms name="add" sx={{ fontSize: 18 }} />}
+								sx={{
+									mt: 2.5,
+									bgcolor: accent,
+									color: '#fff',
+									borderRadius: '12px',
+									px: 2.5,
+									py: 1.375,
+									fontWeight: 700,
+									boxShadow: 'none',
+									'&:hover': { bgcolor: accent, opacity: 0.9, boxShadow: 'none' },
+								}}
+							>
+								{isRollout ? 'Create a new rollout' : 'Create a new test'}
+							</Button>
+							<Typography
+								sx={{ fontWeight: 600, fontSize: 11, color: ink.faint, mt: 1.5 }}
+							>
+								It’ll open with this flag pre-selected.
+							</Typography>
+						</Box>
+					)}
+
+					{/* list state */}
+					{!dataLoading && !isEmpty && (
+						<>
+							{/* info banner */}
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 1.25,
+									bgcolor: '#E4F1EE',
+									border: '1px solid #CFE5E0',
+									borderRadius: '11px',
+									p: '11px 13px',
+								}}
+							>
+								<Ms name="info" sx={{ fontSize: 19, color: '#3E8E84' }} />
+								<Typography
+									sx={{
+										fontWeight: 600,
+										fontSize: 12,
+										lineHeight: 1.5,
+										color: '#46615C',
+									}}
+								>
+									{isRollout
+										? 'Pick a rollout, then choose the value its rolled-out users receive for this flag.'
+										: 'Pick a test, then set the value each group serves for this flag.'}
 								</Typography>
-							) : (
-								<Stack spacing={1} sx={{ mt: 1 }}>
-									{allOptions.map((o) => {
+							</Box>
+
+							{/* pick an entity */}
+							<Box>
+								<Label>{isRollout ? 'Rollout' : 'Test'}</Label>
+								<Stack spacing={1} sx={{ mt: 1.25 }}>
+									{options.map((o) => {
 										const on = o.id === selectedId;
 										return (
 											<Box
@@ -326,7 +501,8 @@ export default function TestRolloutAssignmentModal({
 													borderRadius: '11px',
 													p: '11px 13px',
 													cursor: 'pointer',
-													transition: 'border-color .12s ease, background .12s ease',
+													transition:
+														'border-color .12s ease, background .12s ease',
 												}}
 											>
 												<Box
@@ -340,18 +516,36 @@ export default function TestRolloutAssignmentModal({
 														flexShrink: 0,
 													}}
 												/>
-												<Ms
-													name={o.type === 'TEST' ? 'science' : 'rocket_launch'}
-													sx={{ fontSize: 19, color: '#B4AC9A' }}
-												/>
+												<Box
+													sx={{
+														width: 30,
+														height: 30,
+														borderRadius: '8px',
+														bgcolor: tint,
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														flexShrink: 0,
+													}}
+												>
+													<Ms name={segIcon} sx={{ fontSize: 17, color: accent }} />
+												</Box>
 												<Box sx={{ flex: 1, minWidth: 0 }}>
 													<Typography
-														sx={{ fontWeight: 700, fontSize: 13, color: on ? ink.primary : '#3A352C' }}
+														sx={{
+															fontWeight: 700,
+															fontSize: 13,
+															color: on ? ink.primary : '#3A352C',
+														}}
 													>
 														{o.name}
 													</Typography>
 													<Typography
-														sx={{ fontFamily: monoFontFamily, fontSize: 10, color: ink.muted }}
+														sx={{
+															fontFamily: monoFontFamily,
+															fontSize: 10,
+															color: ink.muted,
+														}}
 													>
 														{o.key}
 														{o.type === 'ROLLOUT'
@@ -364,10 +558,10 @@ export default function TestRolloutAssignmentModal({
 														fontFamily: monoFontFamily,
 														fontWeight: 700,
 														fontSize: 9,
-														color: ink.soft,
-														bgcolor: surface.token,
-														borderRadius: '5px',
-														px: 0.875,
+														color: accent,
+														bgcolor: tint,
+														borderRadius: '6px',
+														px: 1,
 														py: 0.375,
 													}}
 												>
@@ -376,135 +570,175 @@ export default function TestRolloutAssignmentModal({
 											</Box>
 										);
 									})}
-								</Stack>
-							)}
-						</Box>
-					)}
 
-					{/* ROLLOUT: served value */}
-					{selectedIsRollout && (
-						<Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.125 }}>
-								<Label>Serve to rolled-out users</Label>
-								<Typography sx={{ ml: 'auto', fontWeight: 600, fontSize: 11, color: '#B4AC9A' }}>
-									everyone else gets{' '}
-									<Box component="span" sx={{ fontFamily: monoFontFamily, color: ink.soft }}>
-										{defaultDisplay}
-									</Box>
-								</Typography>
-							</Box>
-							<FlagValueInput
-								flagType={flagType as any}
-								value={servedValue}
-								onChange={setServedValue}
-								fullWidth
-							/>
-						</Box>
-					)}
-
-					{/* TEST: value per group */}
-					{selectedIsTest && (
-						<Box>
-							<Box sx={{ mb: 1.125 }}>
-								<Label>Value per group</Label>
-							</Box>
-							<Stack spacing={1}>
-								{selectedGroups.map((g) => {
-									const idx = Object.keys(selected?.variants || {}).indexOf(g);
-									const color = isControl(g)
-										? CONTROL_COLOR
-										: PALETTE[(idx < 0 ? 0 : idx) % PALETTE.length];
-									return (
+									{/* inline create row */}
+									<Box
+										onClick={handleCreateNew}
+										sx={{
+											display: 'flex',
+											alignItems: 'center',
+											gap: 1.375,
+											border: '1.5px dashed #E2D9C6',
+											borderRadius: '11px',
+											p: '11px 13px',
+											cursor: 'pointer',
+											transition:
+												'background .12s ease, border-color .12s ease',
+											'&:hover': {
+												bgcolor: '#FCFAF3',
+												borderColor: '#D8CFB8',
+											},
+										}}
+									>
 										<Box
-											key={g}
 											sx={{
+												width: 30,
+												height: 30,
+												borderRadius: '8px',
+												bgcolor: '#F4ECDC',
 												display: 'flex',
 												alignItems: 'center',
-												gap: 1.25,
-												border: `1px solid ${surface.border}`,
-												borderRadius: '10px',
-												p: '10px 12px',
+												justifyContent: 'center',
+												flexShrink: 0,
+												ml: '30px',
 											}}
 										>
-											<Box sx={{ width: 9, height: 9, borderRadius: '3px', bgcolor: color, flexShrink: 0 }} />
-											<Typography
-												sx={{
-													flex: 1,
-													fontWeight: 700,
-													fontSize: 13,
-													color: isControl(g) ? '#8B8472' : ink.primary,
-												}}
-											>
-												{g}
-											</Typography>
-											<FlagValueInput
-												flagType={flagType as any}
-												value={groupValues[g]}
-												onChange={(v) =>
-													setGroupValues((prev) => ({ ...prev, [g]: v }))
-												}
-												fullWidth={false}
-												size="small"
-											/>
+											<Ms name="add" sx={{ fontSize: 18, color: '#9A6F1C' }} />
 										</Box>
-									);
-								})}
-							</Stack>
-						</Box>
+										<Typography
+											sx={{ fontWeight: 700, fontSize: 13, color: '#3A352C' }}
+										>
+											{isRollout ? 'Create a new rollout' : 'Create a new test'}
+										</Typography>
+										<Typography
+											sx={{
+												ml: 'auto',
+												fontWeight: 600,
+												fontSize: 10,
+												color: ink.faint,
+											}}
+										>
+											opens with this flag pre-selected
+										</Typography>
+									</Box>
+								</Stack>
+							</Box>
+
+							{/* ROLLOUT: served value */}
+							{selected?.type === 'ROLLOUT' && (
+								<Box>
+									<Box
+										sx={{
+											display: 'flex',
+											alignItems: 'center',
+											gap: 1,
+											mb: 1.125,
+										}}
+									>
+										<Label>Serve to rolled-out users</Label>
+										<Typography
+											sx={{
+												ml: 'auto',
+												fontWeight: 600,
+												fontSize: 11,
+												color: ink.faint,
+											}}
+										>
+											everyone else gets{' '}
+											<Box
+												component="span"
+												sx={{ fontFamily: monoFontFamily, color: ink.soft }}
+											>
+												{defaultDisplay}
+											</Box>
+										</Typography>
+									</Box>
+									<FlagValueInput
+										flagType={flagType as any}
+										value={servedValue}
+										onChange={setServedValue}
+										fullWidth
+									/>
+								</Box>
+							)}
+
+							{/* TEST: value per group */}
+							{selected?.type === 'TEST' && (
+								<Box>
+									<Box sx={{ mb: 1.125 }}>
+										<Label>Value per group</Label>
+									</Box>
+									<Stack spacing={1}>
+										{selectedGroups.map((g) => {
+											const idx = Object.keys(selected?.variants || {}).indexOf(g);
+											const color = isControl(g)
+												? CONTROL_COLOR
+												: PALETTE[(idx < 0 ? 0 : idx) % PALETTE.length];
+											return (
+												<Box
+													key={g}
+													sx={{
+														display: 'flex',
+														alignItems: 'center',
+														gap: 1.25,
+														border: `1px solid ${surface.border}`,
+														borderRadius: '10px',
+														p: '10px 12px',
+													}}
+												>
+													<Box
+														sx={{
+															width: 9,
+															height: 9,
+															borderRadius: '3px',
+															bgcolor: color,
+															flexShrink: 0,
+														}}
+													/>
+													<Typography
+														sx={{
+															flex: 1,
+															fontWeight: 700,
+															fontSize: 13,
+															color: isControl(g) ? '#8B8472' : ink.primary,
+														}}
+													>
+														{g}
+													</Typography>
+													<FlagValueInput
+														flagType={flagType as any}
+														value={groupValues[g]}
+														onChange={(v) =>
+															setGroupValues((prev) => ({ ...prev, [g]: v }))
+														}
+														fullWidth={false}
+														size="small"
+													/>
+												</Box>
+											);
+										})}
+									</Stack>
+								</Box>
+							)}
+						</>
 					)}
-
-					<Box sx={{ height: '1px', bgcolor: '#F1EBDD' }} />
-
-					{/* Create new */}
-					<Box>
-						<Label>Or create new</Label>
-						<Stack direction="row" spacing={2} sx={{ mt: 1 }}>
-							<Button
-								onClick={() => handleCreateNew('test')}
-								startIcon={<Ms name="science" sx={{ fontSize: 19 }} />}
-								sx={{
-									flex: 1,
-									bgcolor: '#fff',
-									border: '1.5px solid #E2D9C6',
-									color: '#3A352C',
-									borderRadius: '11px',
-									py: 1.25,
-									fontWeight: 700,
-									'&:hover': { borderColor: '#D8CFBC', bgcolor: surface.hover },
-								}}
-							>
-								Create A/B Test
-							</Button>
-							<Button
-								onClick={() => handleCreateNew('rollout')}
-								startIcon={<Ms name="rocket_launch" sx={{ fontSize: 19 }} />}
-								sx={{
-									flex: 1,
-									bgcolor: '#fff',
-									border: '1.5px solid #E2D9C6',
-									color: '#3A352C',
-									borderRadius: '11px',
-									py: 1.25,
-									fontWeight: 700,
-									'&:hover': { borderColor: '#D8CFBC', bgcolor: surface.hover },
-								}}
-							>
-								Create Rollout
-							</Button>
-						</Stack>
-					</Box>
 				</Stack>
 			</DialogContent>
 
 			<DialogActions
-				sx={{ p: '15px 22px', bgcolor: '#FCFAF3', borderTop: '1px solid #F1EBDD' }}
+				sx={{
+					p: '15px 22px',
+					bgcolor: '#FCFAF3',
+					borderTop: '1px solid #F1EBDD',
+					mt: 1.75,
+				}}
 			>
 				<Button variant="outlined" onClick={onClose}>
 					Cancel
 				</Button>
 				<Button
 					onClick={handleAdd}
-					disabled={!canAdd}
+					disabled={isEmpty || !canAdd}
 					startIcon={
 						saving ? (
 							<CircularProgress size={18} sx={{ color: '#fff' }} />
@@ -513,14 +747,14 @@ export default function TestRolloutAssignmentModal({
 						)
 					}
 					sx={{
-						bgcolor: env.text,
+						bgcolor: accent,
 						color: '#fff',
 						borderRadius: '11px',
 						px: 2.5,
 						py: 1.25,
 						fontWeight: 700,
 						boxShadow: 'none',
-						'&:hover': { bgcolor: env.text, opacity: 0.9, boxShadow: 'none' },
+						'&:hover': { bgcolor: accent, opacity: 0.9, boxShadow: 'none' },
 						'&.Mui-disabled': { bgcolor: '#C2BAA8', color: '#fff', opacity: 0.55 },
 					}}
 				>

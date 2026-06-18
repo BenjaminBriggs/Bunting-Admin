@@ -156,6 +156,24 @@ export async function POST(request: NextRequest) {
 			},
 		});
 
+		// Stamp lifecycle tracking on every flag that made it into this artifact.
+		// firstPublishedAt is set once (drives never-published → delete-direct);
+		// lastPublishedAt advances every publish — for archived flags this pushes it
+		// past archivedAt, which is what unlocks deletion. Archived flags are in the
+		// artifact (marked deprecated), so they're stamped too.
+		const publishedKeys = Object.keys(publishedConfig.flags || {});
+		if (publishedKeys.length > 0) {
+			const now = new Date();
+			await prisma.flag.updateMany({
+				where: { appId, key: { in: publishedKeys } },
+				data: { lastPublishedAt: now },
+			});
+			await prisma.flag.updateMany({
+				where: { appId, key: { in: publishedKeys }, firstPublishedAt: null },
+				data: { firstPublishedAt: now },
+			});
+		}
+
 		return NextResponse.json({
 			version,
 			publishedAt: publishedConfig.published_at,
