@@ -16,15 +16,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Bunting
 - **RBAC** — `ADMIN` and `DEVELOPER` roles. First user to sign in is automatically promoted to admin. Access list supports per-email and per-domain role assignment.
 - **Signing-key encryption at rest** — Private keys stored encrypted in Postgres using either AWS KMS (`SIGNING_KEY_KMS_KEY_ID`) or local AES-256-GCM (`SIGNING_KEY_SECRET`). Legacy plaintext rows accepted transparently.
 - **Detached JWS signing** — Publish pipeline signs the exact bytes of `config.json` with RS256 and uploads a companion `config.json.sig` for SDK signature verification.
-- **Multi-environment flags** — Flags carry independent default values and conditional variants per environment (development / staging / production).
+- **Multi-environment flags** — Flags carry independent default values and conditional variants per environment (development / beta / production).
 - **A/B tests** — Multi-variant tests with traffic percentage splitting and per-variant flag value overrides.
 - **Gradual rollouts** — Percentage-based rollouts with interactive sliders and real-time updates.
-- **Rule-based cohorts** — Reusable condition groups (platform, app version, region, locale, custom attributes, etc.) referenced by flag variants and tests.
 - **Publishing pipeline** — Change tracking, validation (blocking errors + warnings), versioned config uploads (`YYYY-MM-DD.N`), and audit log.
 - **S3 / S3-compatible storage** — Single global bucket model with CDN base URL derivation. IAM role credentials used in production; explicit keys for local MinIO.
 - **SDK bootstrap plist** — Downloadable `BuntingConfig.plist` per app with CDN URL, public keys, and fetch policy for the Swift SDK.
 - **Docker Compose dev stack** — Postgres 17, MinIO, Dex OIDC container, and the app with hot reload. `npm run docker:up` starts everything.
-- **Prisma schema** — `App`, `Flag`, `Cohort`, `TestRollout`, `AuditLog`, `SigningKey`, `Publication`, `User`, `AccessList`.
+- **Prisma schema** — `App`, `Flag`, `TestRollout`, `AuditLog`, `SigningKey`, `Publication`, `User`, `AccessList`.
 - **Test suite** — Unit, integration, UI, and Playwright e2e layers. Jest with `--selectProjects` for targeted runs.
 - **Operator docs** — `docs/production-deployment.md`, `docs/security.md`, `docs/testing.md`, `docs/troubleshooting.md`.
 

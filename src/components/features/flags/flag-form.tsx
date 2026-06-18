@@ -135,7 +135,9 @@ export default function FlagForm({
 		initial.defaultValues,
 	);
 
-	const keyText = normalizeKey(displayName) || (isEdit ? initial.key : '');
+	// The key is immutable once a flag exists: editing the display name must not
+	// rename it. In create mode the key is still derived from the display name.
+	const keyText = isEdit ? initial.key : normalizeKey(displayName) || '';
 	const keyValidation = validateKey(keyText);
 	const keyChanged = isEdit && keyText !== initial.key && keyText.length > 0;
 	const keyAvailable = !isEdit ? keyText.length > 0 : keyChanged;
@@ -393,39 +395,74 @@ export default function FlagForm({
 					<Box sx={{ mt: 3 }}>
 						<Label>Type</Label>
 					</Box>
-					<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, mt: 1.125 }}>
-						{TYPES.map((t) => {
-							const on = type === t.value;
-							return (
-								<Box
-									key={t.value}
-									onClick={() => setTypeAndReset(t.value)}
-									sx={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: 1,
-										border: `1.5px solid ${on ? ink.primary : surface.borderStrong}`,
-										bgcolor: on ? '#FBEDC6' : '#fff',
-										borderRadius: '11px',
-										p: '11px 12px',
-										cursor: 'pointer',
-										transition: 'all .12s ease',
-									}}
-								>
-									<Ms name={t.glyph} sx={{ fontSize: 19, color: on ? ink.primary : ink.muted }} />
-									<Typography sx={{ fontWeight: 700, fontSize: 13, color: on ? ink.primary : ink.soft }}>
-										{t.label}
-									</Typography>
-								</Box>
-							);
-						})}
-					</Box>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625, mt: 1, color: '#B4AC9A' }}>
-						<Ms name="info" sx={{ fontSize: 14 }} />
-						<Typography sx={{ fontWeight: 600, fontSize: 11 }}>
-							Changing type resets the default values.
-						</Typography>
-					</Box>
+					{isEdit ? (
+						// Type is immutable once a flag exists — changing it would
+						// invalidate stored values and any client codegen. Show it read-only.
+						<>
+							<Box
+								sx={{
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: 1,
+									border: `1.5px solid ${surface.borderStrong}`,
+									bgcolor: surface.token,
+									borderRadius: '11px',
+									p: '11px 12px',
+									mt: 1.125,
+								}}
+							>
+								<Ms
+									name={TYPES.find((t) => t.value === type)?.glyph ?? 'category'}
+									sx={{ fontSize: 19, color: ink.soft }}
+								/>
+								<Typography sx={{ fontWeight: 700, fontSize: 13, color: ink.soft }}>
+									{TYPES.find((t) => t.value === type)?.label ?? type}
+								</Typography>
+							</Box>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625, mt: 1, color: '#B4AC9A' }}>
+								<Ms name="lock" sx={{ fontSize: 14 }} />
+								<Typography sx={{ fontWeight: 600, fontSize: 11 }}>
+									Type can&rsquo;t be changed after a flag is created.
+								</Typography>
+							</Box>
+						</>
+					) : (
+						<>
+							<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, mt: 1.125 }}>
+								{TYPES.map((t) => {
+									const on = type === t.value;
+									return (
+										<Box
+											key={t.value}
+											onClick={() => setTypeAndReset(t.value)}
+											sx={{
+												display: 'flex',
+												alignItems: 'center',
+												gap: 1,
+												border: `1.5px solid ${on ? ink.primary : surface.borderStrong}`,
+												bgcolor: on ? '#FBEDC6' : '#fff',
+												borderRadius: '11px',
+												p: '11px 12px',
+												cursor: 'pointer',
+												transition: 'all .12s ease',
+											}}
+										>
+											<Ms name={t.glyph} sx={{ fontSize: 19, color: on ? ink.primary : ink.muted }} />
+											<Typography sx={{ fontWeight: 700, fontSize: 13, color: on ? ink.primary : ink.soft }}>
+												{t.label}
+											</Typography>
+										</Box>
+									);
+								})}
+							</Box>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625, mt: 1, color: '#B4AC9A' }}>
+								<Ms name="info" sx={{ fontSize: 14 }} />
+								<Typography sx={{ fontWeight: 600, fontSize: 11 }}>
+									Changing type resets the default values.
+								</Typography>
+							</Box>
+						</>
+					)}
 
 					{/* per-env defaults */}
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3, mb: 1.25 }}>

@@ -19,6 +19,7 @@ import {
 	getConfigChanges,
 	hasConfigChanges,
 } from '@/lib/config-comparison';
+import { diffJson } from '@/lib/json-diff';
 import { ink, monoFontFamily, surface, technicalButtonSx } from '@/theme/designTokens';
 
 function Ms({ name, sx }: { name: string; sx?: any }) {
@@ -99,6 +100,10 @@ export default function PublishPage() {
 	const [changes, setChanges] = useState<ConfigChange[]>([]);
 	const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>([]);
 	const [hasChangesDetected, setHasChangesDetected] = useState(false);
+	// Raw configs kept for the technical (JSON) diff view.
+	const [currentConfig, setCurrentConfig] = useState<unknown>(null);
+	const [publishedConfig, setPublishedConfig] = useState<unknown>(null);
+	const [showRawDiff, setShowRawDiff] = useState(false);
 
 	const errorCount = validation?.errors.length ?? 0;
 	const warningCount = validation?.warnings.length ?? 0;
@@ -129,6 +134,8 @@ export default function PublishPage() {
 
 				setValidation(validationResult);
 				setPublishHistory(historyResult);
+				setCurrentConfig(currentConfig);
+				setPublishedConfig(publishedConfigResult.config);
 
 				const configChanges = getConfigChanges(
 					currentConfig,
@@ -478,6 +485,75 @@ export default function PublishPage() {
 								</Box>
 							)}
 						</Box>
+
+						{/* raw JSON diff (technical view) */}
+						{hasChangesDetected && (
+							<Box sx={{ ...cardSx, p: '20px 22px' }}>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<Ms name="data_object" sx={{ fontSize: 18, color: '#7E776A' }} />
+									<Typography sx={{ font: "800 16px 'Baloo 2'" }}>Raw diff</Typography>
+									<Typography
+										sx={{ font: `600 11px ${monoFontFamily}`, color: ink.muted }}
+									>
+										published → current
+									</Typography>
+									<Box
+										component="button"
+										onClick={() => setShowRawDiff((v) => !v)}
+										sx={{ ml: 'auto', ...technicalButtonSx(), border: 'none', cursor: 'pointer' }}
+									>
+										{showRawDiff ? 'Hide' : 'Show'} diff
+									</Box>
+								</Box>
+								{showRawDiff && (
+									<Box
+										sx={{
+											mt: 1.75,
+											overflow: 'auto',
+											maxHeight: 460,
+											borderRadius: '10px',
+											border: `1px solid ${surface.border}`,
+											bgcolor: '#FCFAF3',
+											py: 1,
+											fontFamily: monoFontFamily,
+											fontSize: 12,
+											lineHeight: 1.55,
+										}}
+									>
+										{diffJson(publishedConfig ?? undefined, currentConfig).map((line, idx) => {
+											const isAdd = line.kind === 'add';
+											const isDel = line.kind === 'del';
+											return (
+												<Box
+													key={idx}
+													sx={{
+														display: 'flex',
+														px: 1.5,
+														whiteSpace: 'pre-wrap',
+														wordBreak: 'break-word',
+														bgcolor: isAdd ? '#E9F4E0' : isDel ? '#FBEAE5' : 'transparent',
+														color: isAdd ? '#2F5E22' : isDel ? '#7A2E20' : ink.soft,
+													}}
+												>
+													<Box
+														component="span"
+														sx={{
+															width: 14,
+															flexShrink: 0,
+															userSelect: 'none',
+															color: isAdd ? '#3F7A2D' : isDel ? '#C8503C' : '#C2BAA8',
+														}}
+													>
+														{isAdd ? '+' : isDel ? '-' : ' '}
+													</Box>
+													<Box component="span">{line.text || ' '}</Box>
+												</Box>
+											);
+										})}
+									</Box>
+								)}
+							</Box>
+						)}
 
 						{/* changelog */}
 						{hasChangesDetected && (

@@ -20,6 +20,7 @@ import {
 	updateRolloutPercentage,
 } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
+import { useChanges } from '@/lib/changes-context';
 import { danger, ink, monoFontFamily, surface } from '@/theme/designTokens';
 import {
 	groupByGroup,
@@ -38,6 +39,7 @@ function Ms({ name, sx }: { name: string; sx?: any }) {
 
 export default function RolloutsPage() {
 	const { selectedApp } = useApp();
+	const { markChangesDetected } = useChanges();
 	const [rollouts, setRollouts] = useState<TestRollout[]>([]);
 	// flagIds store flag ids; resolve them to human labels for the affected-flags chips.
 	const [flagLabels, setFlagLabels] = useState<Record<string, string>>({});
@@ -104,6 +106,7 @@ export default function RolloutsPage() {
 			setRollouts((prev) =>
 				prev.map((r) => (r.id === rolloutId ? updated : r)),
 			);
+			markChangesDetected();
 		} catch (err) {
 			console.error('Failed to update rollout percentage:', err);
 		} finally {
@@ -125,6 +128,7 @@ export default function RolloutsPage() {
 			setRollouts((prev) =>
 				prev.map((r) => (r.id === rolloutId ? updated : r)),
 			);
+			markChangesDetected();
 		} catch (err) {
 			console.error('Failed to archive rollout:', err);
 		}

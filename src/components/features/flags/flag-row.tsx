@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, Delete } from '@mui/icons-material';
+import { Archive, Delete, Edit } from '@mui/icons-material';
 import {
 	Box,
 	IconButton,
@@ -9,6 +9,7 @@ import {
 	Tooltip,
 	Typography,
 } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
 	archiveFlag,
@@ -27,7 +28,6 @@ import type {
 	Environment,
 } from '@/types';
 import { VariantCreatorModal } from '../conditions';
-import DefaultValueEditModal from './default-value-edit-modal';
 import EnvironmentColumn from './environment-column';
 import FlagAssignmentEditModal from './flag-assignment-edit-modal';
 import { formatValueForDisplay } from './flag-value-input';
@@ -53,6 +53,7 @@ interface FlagRowProps {
 }
 
 export default function FlagRow({ flag, archived = false }: FlagRowProps) {
+	const router = useRouter();
 	const { markChangesDetected } = useChanges();
 	const { selectedApp } = useApp();
 	const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
@@ -69,7 +70,6 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 	// Modal states
 	const [variantModalOpen, setVariantModalOpen] = useState(false);
 	const [testRolloutModalOpen, setTestRolloutModalOpen] = useState(false);
-	const [defaultValueModalOpen, setDefaultValueModalOpen] = useState(false);
 	const [assignmentEditModalOpen, setAssignmentEditModalOpen] = useState(false);
 	const [selectedEnvironment, setSelectedEnvironment] =
 		useState<Environment>('development');
@@ -397,23 +397,10 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 		setEditingItem(null);
 	};
 
-	const handleDefaultValueEdit = (environment: Environment) => {
-		setSelectedEnvironment(environment);
-		setDefaultValueModalOpen(true);
-	};
-
-	const handleDefaultValueSave = async (newValue: any) => {
-		// Update local state
-		setFlagData((prev) => ({
-			...prev,
-			defaultValues: {
-				...prev.defaultValues,
-				[selectedEnvironment]: newValue,
-			},
-		}));
-
-		// Trigger change detection
-		markChangesDetected();
+	// Editing a default value opens the full flag editor (all environments + group),
+	// not a single-environment modal.
+	const handleDefaultValueEdit = () => {
+		router.push(`/dashboard/flags/${flagData.id}/edit`);
 	};
 
 	const handleArchive = async () => {
@@ -679,7 +666,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 									onTestRolloutEdit={(type, id) =>
 										handleTestRolloutEdit(type, id, env)
 									}
-									onDefaultValueEdit={() => handleDefaultValueEdit(env)}
+									onDefaultValueEdit={handleDefaultValueEdit}
 								/>
 							</Box>
 						),
@@ -693,6 +680,15 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				open={Boolean(menuAnchor)}
 				onClose={() => setMenuAnchor(null)}
 			>
+				<MenuItem
+					onClick={() => {
+						setMenuAnchor(null);
+						router.push(`/dashboard/flags/${flagData.id}/edit`);
+					}}
+				>
+					<Edit sx={{ mr: 1 }} />
+					Edit
+				</MenuItem>
 				<MenuItem onClick={handleArchive}>
 					<Archive sx={{ mr: 1 }} />
 					{archived ? 'Unarchive' : 'Archive'}
@@ -724,19 +720,6 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				flagName={flagData.displayName}
 				flagType={flagData.type}
 				onComplete={handleTestRolloutAssignmentComplete}
-			/>
-
-			{/* Default Value Edit Modal */}
-			<DefaultValueEditModal
-				open={defaultValueModalOpen}
-				onClose={() => setDefaultValueModalOpen(false)}
-				onSave={handleDefaultValueSave}
-				environment={selectedEnvironment}
-				flagId={flagData.id}
-				flagType={flagData.type}
-				currentValue={flagData.defaultValues[selectedEnvironment]}
-				flagName={flagData.displayName}
-				allDefaultValues={flagData.defaultValues}
 			/>
 
 			{/* Flag Assignment Edit Modal */}
