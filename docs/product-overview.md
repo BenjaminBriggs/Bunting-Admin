@@ -4,9 +4,9 @@ Bunting Admin is a feature flag dashboard tailored for Apple platform apps, with
 
 ## Core Capabilities
 
-- **Environment-first flags**: Maintain separate values for development, staging, and production.
+- **Environment-first flags**: Maintain separate values for development, beta, and production.
 - **Type-safe variants**: Supports boolean, numeric, string, date, and JSON payloads.
-- **Rule-based overrides**: Target cohorts with AND/OR logic and environment awareness.
+- **Rule-based overrides**: Target users with AND/OR logic and environment awareness.
 - **Gradual rollouts**: Control rollout percentages in real time for any flag or experiment.
 - **Multi-app workspace**: Manage multiple applications from a single interface with quick context switching.
 - **Secure auth**: OAuth (Google, GitHub, Microsoft) and email magic links plus role-based access control.
@@ -25,7 +25,6 @@ Bunting Admin is a feature flag dashboard tailored for Apple platform apps, with
 - **Feature Flags**: Create, edit, and audit flags with support for conditional variants.
 - **A/B Tests**: Configure multi-variant experiments and manage their lifecycle (draft → running → complete/archive).
 - **Rollouts**: Gradually expose features with precise traffic percentages.
-- **Cohorts**: Build reusable targeting rules for segments like app version, locale, or subscription tier.
 - **Releases**: Review pending changes, validate configuration, and publish to storage.
 - **Settings**: Manage apps, environment credentials, team members, and SDK integration details.
 

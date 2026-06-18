@@ -127,6 +127,10 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 - Subsequent users get `DEVELOPER` unless their email or `@domain` appears in the `AccessList` table with an explicit role.
 - Admins can manage the access list under Settings → Team in the dashboard.
 
+### API authorization coverage (known gap)
+
+Role enforcement is **not yet applied uniformly**. Only the `/api/users` and `/api/access-list` routes currently call `auth()` and require `ADMIN`. The remaining API routes — `apps`, `flags`, `tests`, `rollouts`, `config`, `bootstrap`, and `keys` (25 of 27 route handlers) — do not check the session and are effectively unauthenticated at the application layer. Until this is fixed, the admin must be protected at the network layer (reverse proxy, IAP, or private network); do not expose it directly to the public internet. Adding an `auth()` gate to every mutating route is required before public deployment.
+
 ---
 
 ## Input validation

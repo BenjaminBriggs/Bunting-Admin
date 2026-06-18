@@ -57,3 +57,6 @@ Thumbs.db
 
 # Working design specs / plans (temporary, not repo artifacts)
 docs/superpowers/
+
+# Claude Code local-only notes (references the out-of-repo Bunting parent docs)
+CLAUDE.local.md

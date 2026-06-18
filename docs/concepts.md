@@ -16,23 +16,17 @@ This gives you:
 
 ---
 
-## Flags, cohorts, tests, and rollouts
+## Flags, tests, and rollouts
 
-These four concepts map to the four top-level collections in the config artifact.
+These three concepts map to the three top-level collections in the config artifact.
 
 ### Flags
 
 A **flag** is a typed key with a default value and an optional list of variant rules. Types are: `boolean`, `string`, `integer`, `double`, `date`, and `json`.
 
-Every flag defines separate defaults for `development`, `staging`, and `production`. This is the environment-first model: a flag never has a single global default; it always has three.
+Every flag defines separate defaults for `development`, `beta`, and `production`. This is the environment-first model: a flag never has a single global default; it always has three.
 
 Flag keys use `lowercase_snake_case` with optional namespace prefixes: `store/use_new_paywall_design`.
-
-### Cohorts
-
-A **cohort** is a named group of users defined by conditions — for example, "iOS users in the EU on app version ≥ 2.0". Cohorts are defined once and referenced from flag variants or test entry conditions.
-
-Cohorts do not have a percentage or salt. They are pure rule sets. Percentage-based splitting belongs to rollouts and tests.
 
 ### Tests (A/B experiments)
 
@@ -48,11 +42,11 @@ Both tests and rollouts use a `salt` field to ensure independent bucketing: two 
 
 ## The environment-first model
 
-Every flag carries separate defaults for `development`, `staging`, and `production`. Variants are also per-environment. This means:
+Every flag carries separate defaults for `development`, `beta`, and `production`. Variants are also per-environment. This means:
 
 - A flag can be `true` in development by default (safe to develop against) and `false` in production (dark feature).
-- A rollout can be active in staging at 100% while still at 0% in production.
-- The SDK selects the environment at launch (`Bunting.configure(for: .production)`) and the rest is automatic.
+- A rollout can be active in beta at 100% while still at 0% in production.
+- The SDK selects the environment at launch (`Bunting.configure(environment: .production)`) and the rest is automatic.
 
 The admin publishes one artifact per app-environment pair. Each publish is independently versioned.
 
@@ -72,11 +66,11 @@ flowchart LR
     G -- fail --> I([Use cached\nor seed])
 ```
 
-**Authoring:** Flag changes, new cohorts, A/B tests, and rollout adjustments are made in the admin UI and persisted to the database. Nothing is live until you publish.
+**Authoring:** Flag changes, A/B tests, and rollout adjustments are made in the admin UI and persisted to the database. Nothing is live until you publish.
 
 **Validation:** Before generating the artifact, the admin runs a validation pass:
 
-- Blocking errors: invalid JSON, missing environment defaults, cohort references that don't exist, invalid flag keys.
+- Blocking errors: invalid JSON, missing environment defaults, invalid flag keys.
 - Warnings (non-blocking): unreachable rules due to ordering, long descriptions.
 
 **Versioning:** Each publish increments the `config_version` in `YYYY-MM-DD.N` format (e.g. `2025-09-23.3` is the third publish on that date). Historical versions are stored at `/versions/<config_version>.json`.
@@ -106,7 +100,7 @@ The salt is generated randomly by the admin when a test or rollout is created an
 
 Using different salts across tests means a user who is in the "control" group for one experiment has an independent, uncorrelated assignment for another.
 
-> **Admin vs. SDK note:** The admin's `src/lib/bucketing.ts` implements a 32-bit variant (first 8 hex characters of the hash, parsed as a 32-bit integer). The SDK specification calls for the 64-bit form above. Both produce a uniform 1–100 distribution; the difference is negligible in practice. Future admin versions will align to the 64-bit canonical form.
+> **⚠️ Known bug — admin/SDK bucketing mismatch.** The admin's `src/lib/bucketing.ts` parses only the first 8 hex characters (first 4 bytes) of the hash as a 32-bit integer, while the SDK and the artifact spec use the first 8 bytes as a 64-bit integer. They read different bytes, so they assign the **same user to different buckets** for the same `(salt, localId)` — admin previews do not match real SDK assignment. This is a bug to fix in the admin (align to the 64-bit canonical form), not a documentation choice.
 
 ---
 
@@ -127,11 +121,9 @@ Using different salts across tests means a user who is in the "control" group fo
 One Bunting Admin installation can manage multiple apps. Each app has:
 
 - Its own `app_identifier` (user-defined, independent of bundle ID).
-- Its own set of flags, cohorts, tests, and rollouts.
+- Its own set of flags, tests, and rollouts.
 - Its own signing keys and CDN artifact URL.
 - Its own publish history (audit log).
-
-Cohorts are scoped to an app. Sharing a cohort definition across apps requires duplicating it in each app's cohort list — a deliberate design decision to keep artifacts self-contained.
 
 ---
 
@@ -154,12 +146,11 @@ Cohorts are scoped to an app. Sharing a cohort definition across apps requires d
 | **flag**            | A typed feature toggle. Identified by a `flag_key`. Has per-environment defaults and optional variant rules.                                     |
 | **variant**         | A rule that may override a flag's default for a matching user. Has a `type` (`conditional`, `test`, or `rollout`), an `order`, and a `value`.    |
 | **condition**       | A single predicate evaluated against user/device attributes (e.g. `platform in [iOS]`, `os_version >= 18.0`).                                    |
-| **cohort**          | A named group of users defined by one or more conditions. Referenced by flag variants or test entry conditions.                                  |
 | **test**            | A named A/B experiment. Uses deterministic bucketing to assign users to named groups with configured traffic splits.                             |
 | **rollout**         | A percentage-based gradual release. Users with `bucket <= percentage` receive the rollout value.                                                 |
 | **salt**            | A random string assigned at creation to a test or rollout. Combined with the user's UUID to produce their bucket. Immutable after first publish. |
 | **bucket**          | An integer 1–100 assigned to a user for a given test or rollout via the SHA-256 bucketing algorithm.                                             |
-| **environment**     | One of `development`, `staging`, or `production`. Flags carry separate defaults and variants per environment.                                    |
+| **environment**     | One of `development`, `beta`, or `production`. Flags carry separate defaults and variants per environment.                                    |
 | **config artifact** | The signed JSON file (`config.json`) generated by the admin and consumed by the SDK.                                                             |
 | **config_version**  | Publish identifier in `YYYY-MM-DD.N` format. Increments monotonically.                                                                           |
 | **seed**            | A snapshot of the config artifact bundled inside the app at build time. Used as last-resort fallback.                                            |

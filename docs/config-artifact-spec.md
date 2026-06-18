@@ -8,7 +8,7 @@ This document is the canonical contract between Bunting Admin and the Bunting SD
 
 ```json
 {
-	"schema_version": 2,
+	"schema_version": 1,
 	"config_version": "2025-09-23.3",
 	"published_at": "2025-09-23T10:44:04.796Z",
 	"app_identifier": "com.example.myapp"
@@ -17,18 +17,18 @@ This document is the canonical contract between Bunting Admin and the Bunting SD
 
 | Field            | Type              | Description                                                                           |
 | ---------------- | ----------------- | ------------------------------------------------------------------------------------- |
-| `schema_version` | integer           | Schema version. Currently `2`.                                                        |
+| `schema_version` | integer           | Schema version. Currently `1`.                                                        |
 | `config_version` | string            | Monotonically increasing publish identifier: `YYYY-MM-DD.N` (N starts at 1 each day). |
 | `published_at`   | string (ISO 8601) | UTC timestamp of when the admin published this config.                                |
 | `app_identifier` | string            | User-defined identifier for the application. Independent of bundle ID.                |
 
-The artifact always contains four top-level collections: `cohorts`, `flags`, `tests`, `rollouts`. All may be empty objects but must be present.
+The artifact always contains three top-level collections: `flags`, `tests`, `rollouts`. All may be empty objects but must be present.
 
 ---
 
 ## Naming rules
 
-All identifiers (`flags`, `tests`, `rollouts`, `cohort` keys) must match:
+All identifiers (`flags`, `tests`, `rollouts` keys) must match:
 
 ```
 ^[a-z_]+$
@@ -45,7 +45,7 @@ Examples: `new_picker_enabled`, `button_color_test`, `beta_users`, `store/use_ne
 
 ## Flags
 
-Each flag has a `type`, an optional `description`, and an `environment` object for each of `development`, `staging`, and `production`.
+Each flag has a `type`, an optional `description`, and an `environment` object for each of `development`, `beta`, and `production`.
 
 Supported types: `boolean`, `string`, `integer`, `double`, `date`, `json`.
 
@@ -61,7 +61,7 @@ Supported types: `boolean`, `string`, `integer`, `double`, `date`, `json`.
       "default": true,
       "variants": []
     },
-    "staging": {
+    "beta": {
       "default": false,
       "variants": []
     },
@@ -148,7 +148,7 @@ References a named rollout. Returns `value` if the user's bucket falls within th
 
 ## Conditions
 
-Conditions appear inside `conditional` variant objects and inside `cohort` definitions.
+Conditions appear inside `conditional` variant objects.
 
 ```json
 {
@@ -174,7 +174,7 @@ Operators: `equals`, `does_not_equals`, `between`, `greater_than_or_equal`, `gre
 }
 ```
 
-**List conditions** (`platform`, `device_model`, `region`, `locale`, `cohort`):
+**List conditions** (`platform`, `device_model`, `region`, `locale`):
 
 Operators: `in`, `not_in`
 
@@ -183,17 +183,6 @@ Operators: `in`, `not_in`
 	"id": "platform-apple",
 	"type": "platform",
 	"values": ["iOS", "macOS"],
-	"operator": "in"
-}
-```
-
-**Cohort condition** (references a named cohort):
-
-```json
-{
-	"id": "cohort-beta",
-	"type": "cohort",
-	"values": ["beta_users"],
 	"operator": "in"
 }
 ```
@@ -210,31 +199,6 @@ Operators: `in`, `not_in`
 ```
 
 `values[0]` is the attribute name passed to the SDK's custom attribute resolver.
-
----
-
-## Cohorts
-
-Named groups defined by conditions. Shared across all flags in the app.
-
-```json
-"cohorts": {
-  "beta_users": {
-    "name": "Beta users",
-    "description": "Users enrolled in beta",
-    "conditions": [
-      {
-        "id": "platform-ios",
-        "type": "platform",
-        "values": ["iOS"],
-        "operator": "in"
-      }
-    ]
-  }
-}
-```
-
-Cohort conditions must not reference other cohorts (no circular references).
 
 ---
 
@@ -310,7 +274,7 @@ Example: `btn_color_v1:550e8400-e29b-41d4-a716-446655440000`
 3. Take the first 8 bytes of the digest and interpret them as an unsigned big-endian 64-bit integer.
 4. `bucket = (int_value % 100) + 1` — result is an integer from 1 to 100 inclusive.
 
-> **Note on admin implementation:** `src/lib/bucketing.ts` uses the first 4 bytes (8 hex chars parsed as a 32-bit integer) instead of the canonical 8-byte/64-bit algorithm above. The distribution difference is negligible in practice, but SDK implementations should follow the 8-byte canonical form for cross-platform consistency.
+> **⚠️ Known bug — admin implementation diverges.** `src/lib/bucketing.ts` uses the first 4 bytes (8 hex chars parsed as a 32-bit integer) instead of the canonical 8-byte/64-bit algorithm above. Because it reads different bytes of the hash, it assigns the **same user to a different bucket** than the SDK does for the same `(salt, localId)`. The 8-byte/64-bit form here is canonical; the admin must be fixed to match it. Until then, admin-side bucket previews are not authoritative for real SDK behavior.
 
 **Salts are immutable.** Once a test or rollout is published, its `salt` must never change — doing so remaps all users and breaks experiment continuity. The admin generates salts randomly at creation time.
 
@@ -406,7 +370,6 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 		"config_version",
 		"published_at",
 		"app_identifier",
-		"cohorts",
 		"flags",
 		"tests",
 		"rollouts"
@@ -416,26 +379,11 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 		"config_version": { "type": "string" },
 		"published_at": { "type": "string", "format": "date-time" },
 		"app_identifier": { "type": "string" },
-		"cohorts": {
-			"type": "object",
-			"additionalProperties": {
-				"type": "object",
-				"required": ["name", "conditions"],
-				"properties": {
-					"name": { "type": "string" },
-					"description": { "type": "string" },
-					"conditions": {
-						"type": "array",
-						"items": { "$ref": "#/definitions/condition" }
-					}
-				}
-			}
-		},
 		"flags": {
 			"type": "object",
 			"additionalProperties": {
 				"type": "object",
-				"required": ["type", "development", "staging", "production"],
+				"required": ["type", "development", "beta", "production"],
 				"properties": {
 					"type": {
 						"type": "string",
@@ -443,7 +391,7 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 					},
 					"description": { "type": "string" },
 					"development": { "$ref": "#/definitions/environment" },
-					"staging": { "$ref": "#/definitions/environment" },
+					"beta": { "$ref": "#/definitions/environment" },
 					"production": { "$ref": "#/definitions/environment" }
 				}
 			}
@@ -533,7 +481,7 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 
 ## Flag evaluation reference (SDK behaviour)
 
-1. Select the environment object matching the current runtime environment (`development`, `staging`, or `production`).
+1. Select the environment object matching the current runtime environment (`development`, `beta`, or `production`).
 2. Sort `variants` by `order` ascending.
 3. For each variant:
    - `conditional`: evaluate all `conditions`; if all pass, return `value`.
@@ -547,32 +495,17 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 
 ```json
 {
-	"schema_version": 2,
+	"schema_version": 1,
 	"config_version": "2025-09-15.1",
 	"published_at": "2025-09-15T14:05:00Z",
 	"app_identifier": "com.example.myapp",
-
-	"cohorts": {
-		"beta_users": {
-			"name": "Beta users",
-			"description": "Users on iOS or macOS",
-			"conditions": [
-				{
-					"id": "platform-apple",
-					"type": "platform",
-					"values": ["iOS", "macOS"],
-					"operator": "in"
-				}
-			]
-		}
-	},
 
 	"flags": {
 		"store/use_new_paywall_design": {
 			"type": "boolean",
 			"description": "Enables the redesigned paywall screen",
 			"development": { "default": true, "variants": [] },
-			"staging": { "default": false, "variants": [] },
+			"beta": { "default": false, "variants": [] },
 			"production": {
 				"default": false,
 				"variants": [

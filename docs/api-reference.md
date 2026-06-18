@@ -16,7 +16,7 @@ Auth is handled by NextAuth.js (JWT session strategy, 14-day expiry). Supported 
 
 Most routes that enforce auth require the session user to have the `ADMIN` role; those routes are marked **Admin only** in each section. Routes that call `auth()` but perform no role check are marked **Authenticated**.
 
-> Note: The Apps, Flags, Tests, Rollouts, Cohorts, Test-Rollouts, Config, Bootstrap, and Keys endpoints do **not** currently call `auth()`. They are effectively unauthenticated in the current implementation. The Users and Access-list endpoints do enforce ADMIN auth.
+> Note: The Apps, Flags, Tests, Rollouts, Test-Rollouts, Config, Bootstrap, and Keys endpoints do **not** currently call `auth()`. They are effectively unauthenticated in the current implementation. The Users and Access-list endpoints do enforce ADMIN auth.
 
 ---
 
@@ -51,7 +51,7 @@ List all apps, ordered by name.
 
 **Response 200**
 
-Array of `App` objects, each including a `_count` of related `flags`, `cohorts`, and `testRollouts`.
+Array of `App` objects, each including a `_count` of related `flags` and `testRollouts`.
 
 | Field                     | Type                                                    | Notes                                               |
 | ------------------------- | ------------------------------------------------------- | --------------------------------------------------- |
@@ -64,7 +64,6 @@ Array of `App` objects, each including a `_count` of related `flags`, `cohorts`,
 | `storageConfig`           | object                                                  | internal, not used for routing                      |
 | `createdAt` / `updatedAt` | ISO8601 string                                          |                                                     |
 | `_count.flags`            | number                                                  |                                                     |
-| `_count.cohorts`          | number                                                  |                                                     |
 | `_count.testRollouts`     | number                                                  |                                                     |
 
 ---
@@ -92,7 +91,7 @@ Create a new app and publish an initial empty config to S3.
 
 Get a single app by database ID.
 
-**Response 200** — `App` object with `_count` of `flags` and `cohorts`.
+**Response 200** — `App` object with `_count` of `flags`.
 
 **Errors:** `404` if not found.
 
@@ -121,7 +120,7 @@ Changing `identifier` re-derives `artifactUrl` automatically.
 
 ### `DELETE /api/apps/[id]`
 
-Delete an app. Cascades to all flags, cohorts, test-rollouts, and audit logs.
+Delete an app. Cascades to all flags, test-rollouts, and audit logs.
 
 **Response 200**
 
@@ -152,8 +151,8 @@ List all flags for an app, ordered by `updatedAt` descending. Includes `app.name
 | `description`             | string?                                                                                                |                                       |
 | `archived`                | boolean                                                                                                |                                       |
 | `archivedAt`              | string?                                                                                                | ISO8601                               |
-| `defaultValues`           | `{development: any, staging: any, production: any}`                                                    |                                       |
-| `variants`                | `{development: ConditionalVariant[], staging: ConditionalVariant[], production: ConditionalVariant[]}` |                                       |
+| `defaultValues`           | `{development: any, beta: any, production: any}`                                                    |                                       |
+| `variants`                | `{development: ConditionalVariant[], beta: ConditionalVariant[], production: ConditionalVariant[]}` |                                       |
 | `appId`                   | string                                                                                                 |                                       |
 | `createdAt` / `updatedAt` | ISO8601 string                                                                                         |                                       |
 
@@ -171,10 +170,10 @@ Create a flag.
 | `displayName`   | string                                                                  | yes                          |
 | `type`          | `"bool"` \| `"string"` \| `"int"` \| `"double"` \| `"date"` \| `"json"` | yes — lowercase wire format  |
 | `description`   | string                                                                  | no                           |
-| `defaultValues` | `{development: any, staging: any, production: any}`                     | yes                          |
+| `defaultValues` | `{development: any, beta: any, production: any}`                     | yes                          |
 | `appId`         | string                                                                  | yes                          |
 
-`variants` is initialized to `{development: [], staging: [], production: []}` by the server.
+`variants` is initialized to `{development: [], beta: [], production: []}` by the server.
 
 **Response 201** — created `Flag` object.
 
@@ -204,7 +203,7 @@ Update a flag. All fields are optional. Setting `archived: true` also sets `arch
 | `displayName`   | string?                                                                  |
 | `type`          | `"bool"` \| `"string"` \| `"int"` \| `"double"` \| `"date"` \| `"json"`? |
 | `description`   | string \| null?                                                          |
-| `defaultValues` | `{development: any, staging: any, production: any}`?                     |
+| `defaultValues` | `{development: any, beta: any, production: any}`?                     |
 | `variants`      | `Record<string, unknown[]>`? — env-keyed array                           |
 | `archived`      | boolean?                                                                 |
 
@@ -259,7 +258,7 @@ Create an A/B test.
 | `variantNames` | `string[]`    | required — length must equal `variantCount`, no empty names  |
 | `appId`        | string        | required                                                     |
 
-A `salt` is generated server-side. `variants` is built as `{ [name]: { percentage, values: { development: null, staging: null, production: null } } }`. `flagIds` starts as `[]`.
+A `salt` is generated server-side. `variants` is built as `{ [name]: { percentage, values: { development: null, beta: null, production: null } } }`. `flagIds` starts as `[]`.
 
 **Response 201** — created `TestRollout` object.
 
@@ -342,7 +341,7 @@ Create a gradual rollout.
 | `percentage`  | integer 0–100 | required                 |
 | `appId`       | string        | required                 |
 
-A `salt` is generated server-side. `rolloutValues` initializes to `{development: null, staging: null, production: null}`. `flagIds` starts as `[]`.
+A `salt` is generated server-side. `rolloutValues` initializes to `{development: null, beta: null, production: null}`. `flagIds` starts as `[]`.
 
 **Response 201** — created `TestRollout` object.
 
@@ -373,7 +372,7 @@ Update a rollout.
 | `description`   | string \| null?                                  |
 | `conditions`    | `Condition[]`?                                   |
 | `percentage`    | integer 0–100?                                   |
-| `rolloutValues` | partial `{development?, staging?, production?}`? |
+| `rolloutValues` | partial `{development?, beta?, production?}`? |
 | `flagIds`       | `string[]`?                                      |
 | `archived`      | boolean?                                         |
 
@@ -404,93 +403,6 @@ Update only the rollout percentage. Lighter than a full PUT for slider interacti
 ### `DELETE /api/rollouts/[id]`
 
 Delete a rollout. Only matches records with `type = "ROLLOUT"`.
-
-**Response 200**
-
-```json
-{ "success": true }
-```
-
-**Errors:** `404` if not found.
-
----
-
-## Cohorts
-
-### `GET /api/cohorts?appId=<id>`
-
-List all cohorts for an app, ordered by name. Includes `app.name` and `app.identifier`.
-
-**Query params:** `appId` (required)
-
-**Response 200** — array of `Cohort` objects.
-
-| Field                     | Type           | Notes                               |
-| ------------------------- | -------------- | ----------------------------------- |
-| `id`                      | string         | cuid                                |
-| `key`                     | string         | unique per app                      |
-| `name`                    | string         |                                     |
-| `description`             | string?        |                                     |
-| `conditions`              | `Condition[]`  | no `cohort`-type conditions allowed |
-| `appId`                   | string         |                                     |
-| `createdAt` / `updatedAt` | ISO8601 string |                                     |
-
----
-
-### `POST /api/cohorts`
-
-Create a cohort.
-
-**Request body** (Zod-validated via `createCohortSchema`)
-
-| Field         | Type          | Notes                                                                       |
-| ------------- | ------------- | --------------------------------------------------------------------------- |
-| `key`         | string        | required, unique per app                                                    |
-| `name`        | string        | required                                                                    |
-| `description` | string        | optional                                                                    |
-| `conditions`  | `Condition[]` | required — must not contain `type: "cohort"` (prevents circular references) |
-| `appId`       | string        | required                                                                    |
-
-**Response 201** — created `Cohort` object.
-
-**Errors:** `400` if conditions reference another cohort, `409` if key already exists for this app.
-
----
-
-### `GET /api/cohorts/[id]`
-
-Get a single cohort.
-
-**Response 200** — `Cohort` object.
-
-**Errors:** `404` if not found.
-
----
-
-### `PUT /api/cohorts/[id]`
-
-Update a cohort.
-
-**Request body** (Zod-validated via `updateCohortSchema`)
-
-| Field         | Type            |
-| ------------- | --------------- |
-| `key`         | string?         |
-| `name`        | string?         |
-| `description` | string \| null? |
-| `conditions`  | `Condition[]`?  |
-
-Cohort-type conditions are rejected if `conditions` is present.
-
-**Response 200** — updated `Cohort` object.
-
-**Errors:** `400` circular cohort reference, `404` not found.
-
----
-
-### `DELETE /api/cohorts/[id]`
-
-Delete a cohort.
 
 **Response 200**
 
@@ -622,16 +534,14 @@ Validate the current database state for an app without publishing.
 		{
 			"type": "string",
 			"message": "string",
-			"flagKey": "string?",
-			"cohortKey": "string?"
+			"flagKey": "string?"
 		}
 	],
 	"warnings": [
 		{
 			"type": "string",
 			"message": "string",
-			"flagKey": "string?",
-			"cohortKey": "string?"
+			"flagKey": "string?"
 		}
 	]
 }
@@ -754,8 +664,7 @@ Fetch the publish history for an app.
 | `publishedBy` | string                                                                                           |
 | `changelog`   | string                                                                                           |
 | `flagCount`   | number                                                                                           |
-| `cohortCount` | number                                                                                           |
-| `changes`     | `{type: "flag"\|"cohort", action: "added"\|"modified"\|"removed", key: string, name: string}[]?` |
+| `changes`     | `{type: "flag", action: "added"\|"modified"\|"removed", key: string, name: string}[]?`           |
 
 ---
 
@@ -1082,12 +991,12 @@ Validate a JWS signature. **Development/test utility.**
 
 ### Condition
 
-Used in flags (variants), cohorts, tests, and rollouts.
+Used in flags (variants), tests, and rollouts.
 
 ```json
 {
   "id": "string",
-  "type": "app_version" | "os_version" | "build_number" | "platform" | "device_model" | "region" | "locale" | "cohort" | "custom_attribute",
+  "type": "app_version" | "os_version" | "build_number" | "platform" | "device_model" | "region" | "locale" | "custom_attribute",
   "operator": "equals" | "does_not_equals" | "in" | "not_in" | "greater_than" | "less_than" | "greater_than_or_equal" | "less_than_or_equal" | "between" | "custom",
   "values": ["string"]
 }
