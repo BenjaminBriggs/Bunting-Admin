@@ -127,6 +127,8 @@ export default function FlagForm({
 	cancelHref = '/dashboard/flags',
 }: FlagFormProps) {
 	const isEdit = mode === 'edit';
+	// Archived flags are frozen — read-only until unarchived (server enforces too).
+	const locked = isEdit && (initial.archived ?? false);
 	const [displayName, setDisplayName] = useState(initial.displayName);
 	const [type, setType] = useState(initial.type);
 	const [description, setDescription] = useState(initial.description);
@@ -297,6 +299,20 @@ export default function FlagForm({
 						boxShadow: '0 1px 2px rgba(40,33,20,.03)',
 					}}
 				>
+					{/* Inputs are frozen while archived: a disabled fieldset blocks the form
+					    controls and pointer-events:none also covers the click-based toggles. */}
+					<Box
+						component="fieldset"
+						disabled={locked}
+						sx={{
+							border: 0,
+							p: 0,
+							m: 0,
+							minWidth: 0,
+							pointerEvents: locked ? 'none' : 'auto',
+							opacity: locked ? 0.6 : 1,
+						}}
+					>
 					{/* display name */}
 					<Label>
 						Display name <Box component="span" sx={{ color: '#C8503C' }}>*</Box>
@@ -587,6 +603,7 @@ export default function FlagForm({
 						))}
 					</Box>
 
+					</Box>
 					{/* footer */}
 					<Box
 						sx={{
@@ -599,16 +616,18 @@ export default function FlagForm({
 						}}
 					>
 						<Button variant="outlined" component={Link} href={cancelHref}>
-							Cancel
+							{locked ? 'Back' : 'Cancel'}
 						</Button>
-						<Button
-							onClick={handleSubmit}
-							disabled={!canSubmit}
-							startIcon={<Ms name={isEdit ? 'check' : 'add'} sx={{ fontSize: 18 }} />}
-							sx={technicalButtonSx({ disabled: !canSubmit })}
-						>
-							{isEdit ? 'Save changes' : 'Create flag'}
-						</Button>
+						{!locked && (
+							<Button
+								onClick={handleSubmit}
+								disabled={!canSubmit}
+								startIcon={<Ms name={isEdit ? 'check' : 'add'} sx={{ fontSize: 18 }} />}
+								sx={technicalButtonSx({ disabled: !canSubmit })}
+							>
+								{isEdit ? 'Save changes' : 'Create flag'}
+							</Button>
+						)}
 					</Box>
 				</Box>
 

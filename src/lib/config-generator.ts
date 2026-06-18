@@ -38,8 +38,9 @@ export async function generateConfigFromDb(
 	const app = await prisma.app.findUnique({
 		where: { id: appId },
 		include: {
+			// Archived flags stay in the artifact marked `deprecated` (see below) so
+			// SDK consumers get a deprecation signal before the flag is deleted.
 			flags: {
-				where: { archived: false },
 				orderBy: { key: 'asc' },
 			},
 			testRollouts: {
@@ -129,6 +130,12 @@ export async function generateConfigFromDb(
 				variants: productionVariants,
 			},
 		};
+
+		// Archived flags ship with a deprecation marker; the SDK codegen emits
+		// @available(*, deprecated) and the runtime fires a delegate on read.
+		if (flag.archived) {
+			flags[flag.key].deprecated = true;
+		}
 	});
 
 	// Transform tests and rollouts per JSON Spec

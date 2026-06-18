@@ -44,7 +44,11 @@ export interface DBFlag {
 		production: ConditionalVariant[];
 	};
 	archived: boolean;
-	archivedAt?: string;
+	archivedAt?: string | null;
+	/** Set once the flag first appears in a published artifact; null = never released. */
+	firstPublishedAt?: string | null;
+	/** Advanced on every publish that includes the flag. */
+	lastPublishedAt?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	appId: string;

@@ -42,6 +42,12 @@ model Flag {
   group       String? // Admin-only grouping label; not part of the published config
   archived    Boolean   @default(false)
   archivedAt  DateTime? @map("archived_at")
+  // Lifecycle tracking. firstPublishedAt is null until the flag first appears in a
+  // published artifact (never-published flags delete directly); lastPublishedAt is
+  // stamped on every publish that includes the flag. A flag is only deletable after
+  // a release while archived, i.e. lastPublishedAt > archivedAt.
+  firstPublishedAt DateTime? @map("first_published_at")
+  lastPublishedAt  DateTime? @map("last_published_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 

@@ -20,6 +20,9 @@ export interface EnvironmentFlag {
 	description?: string;
 	archived?: boolean;
 	archived_at?: string;
+	// Present and true when the flag is archived: it remains in the artifact so
+	// clients still resolve it, but SDK codegen marks the accessor deprecated.
+	deprecated?: boolean;
 }
 
 export interface EnvironmentFlagConfig {

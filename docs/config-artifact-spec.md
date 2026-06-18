@@ -45,12 +45,13 @@ Examples: `new_picker_enabled`, `button_color_test`, `beta_users`, `store/use_ne
 
 ## Flags
 
-Each flag has a `type`, an optional `description`, and an `environment` object for each of `development`, `beta`, and `production`.
+Each flag has a `type`, an optional `description`, an optional `deprecated` flag, and an `environment` object for each of `development`, `beta`, and `production`.
 
 Supported types: `boolean`, `string`, `integer`, `double`, `date`, `json`.
 
 - `date` values use ISO 8601 date strings (`YYYY-MM-DD`).
 - `json` values are embedded JSON objects (not strings); the SDK exposes them as `Data`.
+- `deprecated` (boolean, optional): present and `true` when the flag is archived. The flag is still served so existing clients keep resolving it, but the SDK codegen marks the generated accessor `@available(*, deprecated)` and the runtime fires `didReadDeprecatedFlag(flagKey:)` on read. Omitted (treated as `false`) for active flags.
 
 ```json
 "flags": {

@@ -1,6 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import {
+	canDelete,
+	DELETE_BLOCK_MESSAGE,
+	deleteBlockReason,
+	isPublished,
+} from '@/lib/flag-lifecycle';
 import { updateFlagSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/flags/[id] - Get a specific flag
@@ -45,6 +51,36 @@ export async function PUT(
 		const updateData: Record<string, any> = updateFlagSchema.parse(
 			await request.json(),
 		);
+
+		const existing = await prisma.flag.findUnique({ where: { id } });
+		if (!existing) {
+			return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
+		}
+
+		const fieldKeys = Object.keys(updateData).filter((k) => k !== 'archived');
+
+		// Archived flags are frozen: the only permitted change is unarchiving.
+		if (existing.archived && fieldKeys.length > 0) {
+			return NextResponse.json(
+				{
+					error:
+						'This flag is archived and locked. Unarchive it before editing.',
+				},
+				{ status: 409 },
+			);
+		}
+
+		// Archiving is only meaningful once a flag has shipped. A never-published
+		// flag should be deleted instead (clean removal, as if it never existed).
+		if (updateData.archived === true && !isPublished(existing)) {
+			return NextResponse.json(
+				{
+					error:
+						'This flag has never been released, so it can be deleted directly instead of archived.',
+				},
+				{ status: 409 },
+			);
+		}
 
 		// Handle archiving
 		if (updateData.archived !== undefined && updateData.archived) {
@@ -100,6 +136,21 @@ export async function DELETE(
 ) {
 	const { id } = await params;
 	try {
+		const existing = await prisma.flag.findUnique({ where: { id } });
+		if (!existing) {
+			return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
+		}
+
+		// Enforce the lifecycle: never-published flags delete directly; published
+		// flags must be archived and released at least once while archived.
+		if (!canDelete(existing)) {
+			const reason = deleteBlockReason(existing);
+			return NextResponse.json(
+				{ error: reason ? DELETE_BLOCK_MESSAGE[reason] : 'Cannot delete flag' },
+				{ status: 409 },
+			);
+		}
+
 		await prisma.flag.delete({
 			where: { id },
 		});

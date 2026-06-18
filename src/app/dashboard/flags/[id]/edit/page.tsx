@@ -149,8 +149,9 @@ export default function EditFlagPage() {
 		<Box sx={{ py: 1 }}>
 			{flag.archived && (
 				<Alert severity="warning" sx={{ maxWidth: 920, mx: 'auto', mb: 2 }}>
-					This flag is archived and will not be included in published
-					configurations.
+					This flag is archived and locked. It is still published, marked
+					deprecated so SDK consumers get a warning, and can be deleted once the
+					archived state has been released. Unarchive it to edit.
 				</Alert>
 			)}
 			<FlagForm

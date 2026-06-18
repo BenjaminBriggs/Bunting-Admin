@@ -129,13 +129,28 @@ One Bunting Admin installation can manage multiple apps. Each app has:
 
 ## Flag lifecycle
 
-`Active → Archived → Deleted`
+A flag's removal path depends on whether it has ever been published:
 
-**Active:** Normal operation. Included in the published artifact.
+- **Never published** → delete directly. The flag has never appeared in a release,
+  so no client has seen it; deleting removes it as if it never existed. Such a flag
+  **cannot** be archived.
+- **Published** → must be archived, released at least once while archived, then
+  deleted: `Active → Archived → (publish) → Deleted`.
 
-**Archived:** No further edits allowed. Still included in the artifact with a deprecation marker. The Swift SDK codegen emits `@available(*, deprecated, message: "Flag archived")` for archived flags. At runtime, if a fetched config contains archived flags that the host app still reads, the SDK fires `didDetectArchivedOrMissingFlags`.
+**Active:** Normal operation. Editable; included in the published artifact.
 
-**Deleted:** Removed from the artifact. Apps that read this flag fall back to the bundled seed value for that key.
+**Archived:** Edits are locked (unarchive to edit again). The flag **stays in the
+artifact** with `deprecated: true` so existing clients keep resolving it. The Swift
+SDK codegen emits `@available(*, deprecated, message: "Flag archived")` for the
+generated accessor, and at runtime the SDK fires
+`didReadDeprecatedFlag(flagKey:)` the first time a deprecated flag is read. Archiving
+is only allowed for a flag that has been published; a never-published flag is deleted
+instead.
+
+**Deleted:** Removed from the artifact. Only allowed once the flag has been released
+at least once in its archived (deprecated) state — so clients received the
+deprecation signal before the flag disappears. After deletion, apps that still read
+the key fall back to last-known-good cache → bundled seed → code default.
 
 ---
 

@@ -172,7 +172,8 @@ export async function deleteFlag(id: string): Promise<void> {
 		method: 'DELETE',
 	});
 	if (!response.ok) {
-		throw new Error('Failed to delete flag');
+		const error = await response.json().catch(() => ({}));
+		throw new Error(error.error || 'Failed to delete flag');
 	}
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Archive, Delete, Edit } from '@mui/icons-material';
+import { Archive, Delete, Edit, Unarchive } from '@mui/icons-material';
 import {
 	Box,
 	IconButton,
@@ -19,6 +19,11 @@ import {
 } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
+import {
+	DELETE_BLOCK_MESSAGE,
+	deleteBlockReason,
+	isPublished,
+} from '@/lib/flag-lifecycle';
 import { formatTimestamp } from '@/lib/utils';
 import { envColors, ink, surface } from '@/theme/designTokens';
 import type {
@@ -59,6 +64,18 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 	const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 	const [expanded, setExpanded] = useState(false);
 	const [flagData, setFlagData] = useState<DBFlag>(flag);
+
+	// Lifecycle affordances, derived from the live flag (server enforces the same
+	// rules via @/lib/flag-lifecycle).
+	const lifecycle = {
+		archived: flagData.archived,
+		archivedAt: flagData.archivedAt ?? null,
+		firstPublishedAt: flagData.firstPublishedAt ?? null,
+		lastPublishedAt: flagData.lastPublishedAt ?? null,
+	};
+	const published = isPublished(lifecycle);
+	const blockReason = deleteBlockReason(lifecycle);
+	const deletable = blockReason === null;
 	const [testsAndRollouts, setTestsAndRollouts] = useState<{
 		tests: DBTestRollout[];
 		rollouts: DBTestRollout[];
@@ -405,12 +422,17 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 
 	const handleArchive = async () => {
 		try {
-			const updatedFlag = await archiveFlag(flagData.id, !archived);
+			const updatedFlag = await archiveFlag(flagData.id, !flagData.archived);
 			setFlagData(updatedFlag);
 			markChangesDetected();
 			setMenuAnchor(null);
 		} catch (error) {
 			console.error('Failed to archive/unarchive flag:', error);
+			alert(
+				error instanceof Error
+					? error.message
+					: 'Failed to update flag. Please try again.',
+			);
 		}
 	};
 
@@ -430,7 +452,11 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			window.location.reload(); // Quick solution - ideally parent should handle this
 		} catch (error) {
 			console.error('Failed to delete flag:', error);
-			alert('Failed to delete flag. Please try again.');
+			alert(
+				error instanceof Error
+					? error.message
+					: 'Failed to delete flag. Please try again.',
+			);
 		}
 	};
 
@@ -687,16 +713,43 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 					}}
 				>
 					<Edit sx={{ mr: 1 }} />
-					Edit
+					{flagData.archived ? 'View' : 'Edit'}
 				</MenuItem>
-				<MenuItem onClick={handleArchive}>
-					<Archive sx={{ mr: 1 }} />
-					{archived ? 'Unarchive' : 'Archive'}
-				</MenuItem>
-				<MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-					<Delete sx={{ mr: 1 }} />
-					Delete
-				</MenuItem>
+				{/* Archive is only offered for a published, active flag. A never-published
+				    flag skips straight to Delete; an archived flag offers Unarchive. */}
+				{flagData.archived ? (
+					<MenuItem onClick={handleArchive}>
+						<Unarchive sx={{ mr: 1 }} />
+						Unarchive
+					</MenuItem>
+				) : (
+					published && (
+						<MenuItem onClick={handleArchive}>
+							<Archive sx={{ mr: 1 }} />
+							Archive
+						</MenuItem>
+					)
+				)}
+				{deletable ? (
+					<MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+						<Delete sx={{ mr: 1 }} />
+						Delete
+					</MenuItem>
+				) : (
+					<Tooltip
+						title={blockReason ? DELETE_BLOCK_MESSAGE[blockReason] : ''}
+						arrow
+						placement="left"
+					>
+						{/* span wrapper so the tooltip works on a disabled item */}
+						<span>
+							<MenuItem disabled sx={{ color: 'error.main' }}>
+								<Delete sx={{ mr: 1 }} />
+								Delete
+							</MenuItem>
+						</span>
+					</Tooltip>
+				)}
 			</Menu>
 
 			{/* Variant Creator Modal */}
