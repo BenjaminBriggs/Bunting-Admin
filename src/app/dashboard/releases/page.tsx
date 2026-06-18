@@ -1,6 +1,12 @@
 'use client';
 
-import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Typography,
+} from '@mui/material';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {

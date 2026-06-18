@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
 	archiveTestRollout,
+	fetchFlags,
 	fetchRollouts,
 	type TestRollout,
 	updateRolloutPercentage,
@@ -38,6 +39,8 @@ function Ms({ name, sx }: { name: string; sx?: any }) {
 export default function RolloutsPage() {
 	const { selectedApp } = useApp();
 	const [rollouts, setRollouts] = useState<TestRollout[]>([]);
+	// flagIds store flag ids; resolve them to human labels for the affected-flags chips.
+	const [flagLabels, setFlagLabels] = useState<Record<string, string>>({});
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [searchTerm, setSearchTerm] = useState('');
@@ -57,8 +60,16 @@ export default function RolloutsPage() {
 			}
 			try {
 				setLoading(true);
-				const rolloutsData = await fetchRollouts(selectedApp.id);
+				const [rolloutsData, flagsData] = await Promise.all([
+					fetchRollouts(selectedApp.id),
+					fetchFlags(selectedApp.id),
+				]);
 				setRollouts(rolloutsData);
+				setFlagLabels(
+					Object.fromEntries(
+						flagsData.map((f) => [f.id, f.displayName || f.key]),
+					),
+				);
 			} catch (err) {
 				setError(
 					err instanceof Error ? err.message : 'Failed to load rollouts',
@@ -229,7 +240,7 @@ export default function RolloutsPage() {
 								}}
 							>
 								<Ms name="flag" sx={{ fontSize: 14, color: '#B4AC9A' }} />
-								{flagId}
+								{flagLabels[flagId] ?? flagId}
 							</Box>
 						))}
 					</Box>

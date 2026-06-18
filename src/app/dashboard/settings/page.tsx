@@ -1,6 +1,7 @@
 'use client';
 
 import {
+	Alert,
 	Box,
 	Button,
 	CircularProgress,
@@ -10,13 +11,24 @@ import {
 	DialogContentText,
 	DialogTitle,
 	Stack,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableRow,
 	TextField,
 	Typography,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
-import { type App, fetchApps, updateApp } from '@/lib/api';
+import {
+	type App,
+	type DecodedFingerprintResponse,
+	decodeFingerprint,
+	fetchApps,
+	updateApp,
+} from '@/lib/api';
 import {
 	codeSurface,
 	ink,
@@ -64,7 +76,9 @@ export default function SettingsPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [selectedApp, setSelectedApp] = useState<App | null>(null);
-	const [tab, setTab] = useState<'settings' | 'sdk'>('settings');
+	const [tab, setTab] = useState<'settings' | 'sdk' | 'fingerprint'>(
+		'settings',
+	);
 	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 	const [appToDelete, setAppToDelete] = useState<App | null>(null);
 	const [editMode, setEditMode] = useState(false);
@@ -75,6 +89,43 @@ export default function SettingsPage() {
 		minIntervalHours: number;
 		hardTtlDays: number;
 	}>({ name: '', minIntervalHours: 6, hardTtlDays: 7 });
+
+	const [fpCode, setFpCode] = useState('');
+	const [fpResult, setFpResult] = useState<DecodedFingerprintResponse | null>(
+		null,
+	);
+	const [fpError, setFpError] = useState<string | null>(null);
+	const [fpLoading, setFpLoading] = useState(false);
+
+	const handleDecode = async () => {
+		if (!selectedApp || !fpCode.trim()) {
+			return;
+		}
+		try {
+			setFpLoading(true);
+			setFpError(null);
+			setFpResult(null);
+			setFpResult(await decodeFingerprint(selectedApp.id, fpCode.trim()));
+		} catch (err) {
+			setFpError(
+				err instanceof Error ? err.message : 'Failed to decode fingerprint',
+			);
+		} finally {
+			setFpLoading(false);
+		}
+	};
+
+	const formatValue = (value: unknown): string =>
+		typeof value === 'string' ? value : JSON.stringify(value);
+
+	const formatFpDate = (dateString: string) =>
+		new Date(dateString).toLocaleString('en-US', {
+			year: 'numeric',
+			month: 'short',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+		});
 
 	useEffect(() => {
 		const loadApps = async () => {
@@ -296,6 +347,13 @@ export default function SettingsPage() {
 						<Box sx={tabSx(tab === 'sdk')} onClick={() => setTab('sdk')}>
 							SDK Integration
 							<Ms name="terminal" sx={{ fontSize: 17 }} />
+						</Box>
+						<Box
+							sx={tabSx(tab === 'fingerprint')}
+							onClick={() => setTab('fingerprint')}
+						>
+							Decode Fingerprint
+							<Ms name="fingerprint" sx={{ fontSize: 17 }} />
 						</Box>
 					</Box>
 
@@ -584,6 +642,93 @@ let metering = bunting.bool("metering_enabled", default: false)`}
 									Full platform guides (Swift, Kotlin, TypeScript) and the caching model live in the{' '}
 									<Box component="span" sx={{ fontWeight: 700, color: ink.primary }}>SDK docs</Box>. Values are evaluated on-device from the cached config — no network call per read.
 								</Box>
+							</Box>
+						</Stack>
+					)}
+
+					{tab === 'fingerprint' && (
+						<Stack spacing={2} sx={{ mt: 3 }}>
+							<Box sx={cardSx}>
+								<Typography sx={sectionTitleSx}>
+									Decode client fingerprint
+								</Typography>
+								<Typography
+									sx={{ fontWeight: 600, fontSize: 12, color: '#8B8472', mt: 0.5 }}
+								>
+									Paste a code like <code>2026-06-17.2.1A46</code> to see exactly
+									what this client resolves every flag to.
+								</Typography>
+								<Box sx={{ display: 'flex', gap: 1.5, mt: 2, flexWrap: 'wrap' }}>
+									<TextField
+										value={fpCode}
+										onChange={(e) => setFpCode(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === 'Enter') {
+												handleDecode();
+											}
+										}}
+										placeholder="2026-06-17.2.1A46"
+										size="small"
+										sx={{
+											flex: 1,
+											minWidth: 280,
+											'& input': { fontFamily: monoFontFamily },
+										}}
+									/>
+									<Button
+										onClick={handleDecode}
+										disabled={fpLoading || !fpCode.trim()}
+										sx={technicalButtonSx({ accent: true })}
+									>
+										{fpLoading ? 'Decoding…' : 'Decode'}
+									</Button>
+								</Box>
+
+								{fpError && (
+									<Alert severity="error" sx={{ mt: 2 }}>
+										{fpError}
+									</Alert>
+								)}
+
+								{fpResult && (
+									<Box sx={{ mt: 2 }}>
+										<Typography
+											sx={{
+												fontFamily: monoFontFamily,
+												fontSize: 12,
+												color: ink.soft,
+												mb: 1,
+											}}
+										>
+											{fpResult.version} · env {fpResult.env} · published{' '}
+											{formatFpDate(fpResult.publishedAt)}
+										</Typography>
+										<Table size="small">
+											<TableHead>
+												<TableRow>
+													<TableCell>Flag</TableCell>
+													<TableCell>Type</TableCell>
+													<TableCell>Value</TableCell>
+												</TableRow>
+											</TableHead>
+											<TableBody>
+												{Object.entries(fpResult.flags).map(([key, flag]) => (
+													<TableRow key={key}>
+														<TableCell sx={{ fontFamily: monoFontFamily }}>
+															{key}
+														</TableCell>
+														<TableCell sx={{ color: ink.muted }}>
+															{flag.type}
+														</TableCell>
+														<TableCell sx={{ fontFamily: monoFontFamily }}>
+															{formatValue(flag.value)}
+														</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									</Box>
+								)}
 							</Box>
 						</Stack>
 					)}

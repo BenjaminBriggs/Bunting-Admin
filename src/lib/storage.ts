@@ -79,3 +79,20 @@ export function getConfigBucket(): string {
 	}
 	return bucket;
 }
+
+/** S3 key for the latest config the SDK fetches (overwritten each publish). */
+export function latestConfigKey(appIdentifier: string): string {
+	return `${appIdentifier}/config.json`;
+}
+
+/**
+ * S3 key for the immutable per-version archive written at publish time. Lets the
+ * admin fetch the exact bytes of any historical version (e.g. to decode a
+ * client fingerprint), since `config.json` is overwritten in place.
+ */
+export function versionedConfigKey(
+	appIdentifier: string,
+	version: string,
+): string {
+	return `${appIdentifier}/config-${version}.json`;
+}

@@ -10,7 +10,12 @@ import { generateRSAKeyPair } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
 import { signConfigDetached } from '@/lib/jws-signer';
 import { storePrivateKey } from '@/lib/key-protection';
-import { getConfigBucket, getS3Client } from '@/lib/storage';
+import {
+	getConfigBucket,
+	getS3Client,
+	latestConfigKey,
+	versionedConfigKey,
+} from '@/lib/storage';
 import { computeNextVersion } from '@/lib/versioning';
 
 const publishConfigSchema = z.object({
@@ -80,7 +85,7 @@ export async function POST(request: NextRequest) {
 		const configContent = JSON.stringify(publishedConfig, null, 2);
 		const signingResult = await signConfigDetached(appId, configContent);
 
-		const configKey = `${appIdentifier}/config.json`;
+		const configKey = latestConfigKey(appIdentifier);
 		const signatureKey = `${appIdentifier}/config.json.sig`;
 
 		// Upload the signature FIRST, then config.json. The SDK keys on config.json
@@ -111,6 +116,29 @@ export async function POST(request: NextRequest) {
 				},
 			}),
 		);
+
+		// Also write an immutable per-version archive. `config.json` is overwritten
+		// every publish, so this is the only addressable copy of this exact version
+		// — used by the fingerprint decoder to resolve a client's flags. Best-effort:
+		// a failure here must not fail the publish (the live config is already up).
+		try {
+			await s3Client.send(
+				new PutObjectCommand({
+					Bucket: bucketName,
+					Key: versionedConfigKey(appIdentifier, version),
+					Body: configContent,
+					ContentType: 'application/json',
+					CacheControl: 'public, max-age=31536000, immutable',
+					Metadata: {
+						'x-bunting-key-id': signingResult.keyId,
+						'x-bunting-algorithm': signingResult.algorithm,
+						'x-bunting-version': version,
+					},
+				}),
+			);
+		} catch (archiveError) {
+			console.error('Failed to write versioned config archive:', archiveError);
+		}
 
 		// Finalize the reserved audit row now that the upload succeeded.
 		const configChanges = getConfigChanges(baseConfig, previousConfig.config);

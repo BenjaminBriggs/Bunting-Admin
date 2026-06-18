@@ -200,5 +200,28 @@ describe('validation-schemas', () => {
 				true,
 			);
 		});
+
+		// Rollouts are created with all-null env slots and config-generator skips
+		// null envs, so the update path must accept null rolloutValues. Regression
+		// for the 400 when adding a flag to an existing rollout.
+		it('accepts null and per-flag rolloutValues envs', () => {
+			expect(
+				updateRolloutSchema.safeParse({
+					rolloutValues: { development: null, beta: null, production: null },
+					flagIds: ['flag-1'],
+				}).success,
+			).toBe(true);
+
+			expect(
+				updateRolloutSchema.safeParse({
+					rolloutValues: {
+						development: null,
+						beta: null,
+						production: { 'flag-1': true },
+					},
+					flagIds: ['flag-1'],
+				}).success,
+			).toBe(true);
+		});
 	});
 });

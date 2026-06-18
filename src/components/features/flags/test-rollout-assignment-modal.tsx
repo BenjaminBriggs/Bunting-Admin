@@ -193,7 +193,8 @@ export default function TestRolloutAssignmentModal({
 					body: JSON.stringify({ rolloutValues, flagIds }),
 				});
 				if (!res.ok) {
-					throw new Error(`Failed to update rollout ${selected.name}`);
+					const text = await res.text();
+					throw new Error(`Failed to update rollout ${selected.name}: ${text}`);
 				}
 			} else {
 				const variants: any = { ...(selected.variants || {}) };

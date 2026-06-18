@@ -4,6 +4,16 @@ import type { ConfigArtifact, Rollout, Test } from '@/types';
 import { Environment } from '@/types';
 const { normalizeFlagType } = require('@/lib/config-validation');
 
+// Thrown when a config operation targets an app that no longer exists. This is an
+// expected condition (e.g. an empty DB, or a stale client selection), not a server
+// fault — routes map it to a 404, not a 500.
+export class AppNotFoundError extends Error {
+	constructor(appId: string) {
+		super(`App not found: ${appId}`);
+		this.name = 'AppNotFoundError';
+	}
+}
+
 // Bridge legacy conditions that stored custom_attribute name in `attribute` field.
 // SDK reads values[0] as the attribute name — migrate on the fly until DB is updated.
 function normalizeCondition(condition: any): any {
@@ -40,7 +50,7 @@ export async function generateConfigFromDb(
 	});
 
 	if (!app) {
-		throw new Error('App not found');
+		throw new AppNotFoundError(appId);
 	}
 
 	// Transform flags with environment-specific values

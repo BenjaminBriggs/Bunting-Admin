@@ -43,7 +43,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 	const router = useRouter();
 	const { data: session } = useSession();
 	const { hasChanges, getChangeCount } = useChanges();
-	const { apps, selectedApp, setSelectedApp } = useApp();
+	const { apps, selectedApp, setSelectedApp, loading } = useApp();
+
+	// No apps (empty/recreated DB, or every app deleted) → there is nothing to
+	// manage on any dashboard route. Funnel the operator to create their first app
+	// instead of rendering app-scoped pages that would error.
+	useEffect(() => {
+		if (!loading && apps.length === 0) {
+			router.replace('/setup/app');
+		}
+	}, [loading, apps.length, router]);
 
 	const [appMenuAnchor, setAppMenuAnchor] = useState<null | HTMLElement>(null);
 	const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(

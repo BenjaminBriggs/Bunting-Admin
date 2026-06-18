@@ -31,6 +31,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			setError(null);
 			const appsData = await fetchApps();
 			setApps(appsData);
+			// Reconcile the current selection against the fresh list: re-point it to
+			// the up-to-date object, or clear it if the app no longer exists (e.g. the
+			// DB was recreated under a running tab, or the app was deleted). Auto-select
+			// then picks apps[0] when any remain.
+			setSelectedAppState((prev) =>
+				prev ? (appsData.find((a) => a.id === prev.id) ?? null) : null,
+			);
 		} catch (err) {
 			console.error('Error loading apps:', err);
 			setError(

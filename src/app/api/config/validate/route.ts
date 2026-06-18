@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { generateConfigFromDb } from '@/lib/config-generator';
+import { AppNotFoundError, generateConfigFromDb } from '@/lib/config-generator';
 import { validateConfig } from '@/lib/config-validation';
 
 const validateConfigSchema = z.object({
@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
 				{ error: 'Invalid request data', details: error.issues },
 				{ status: 400 },
 			);
+		}
+
+		// A missing app is an expected condition (empty DB / stale client selection),
+		// not a server fault. Return 404 without logging a stack trace.
+		if (error instanceof AppNotFoundError) {
+			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
 		console.error('Error validating config:', error);

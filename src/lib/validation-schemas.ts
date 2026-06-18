@@ -70,6 +70,19 @@ const envValuesSchema = z.object({
 	production: flagValueSchema,
 });
 
+// rolloutValues mirrors envValuesSchema's keys but each env is NULLABLE and holds
+// per-flag overrides, not a single flag value. Rollouts are created with all-null
+// env slots (see /api/rollouts POST), and config-generator skips null envs — so
+// the update path must accept null. Distinct from flag defaultValues, where null
+// is not allowed.
+const rolloutValuesSchema = z
+	.object({
+		development: flagValueSchema.nullable(),
+		beta: flagValueSchema.nullable(),
+		production: flagValueSchema.nullable(),
+	})
+	.partial();
+
 const id = z.string().min(1);
 
 // --- Create schemas ----------------------------------------------------------
@@ -165,7 +178,7 @@ export const updateRolloutSchema = z.object({
 	description: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
 	percentage: z.number().min(0).max(100).optional(),
-	rolloutValues: envValuesSchema.partial().optional(),
+	rolloutValues: rolloutValuesSchema.optional(),
 	flagIds: z.array(z.string()).optional(),
 	archived: z.boolean().optional(),
 });

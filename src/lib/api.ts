@@ -177,6 +177,17 @@ export async function deleteFlag(id: string): Promise<void> {
 }
 
 // Config API
+
+// Thrown when an app-scoped config request 404s — the selected app no longer
+// exists (empty DB, recreated DB, or deleted app). Callers treat this as a signal
+// to reconcile the app list rather than a hard error to surface.
+export class AppNotFoundError extends Error {
+	constructor() {
+		super('App not found');
+		this.name = 'AppNotFoundError';
+	}
+}
+
 export async function generateCurrentConfig(
 	appId: string,
 ): Promise<ConfigArtifact> {
@@ -185,6 +196,9 @@ export async function generateCurrentConfig(
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ appId }),
 	});
+	if (response.status === 404) {
+		throw new AppNotFoundError();
+	}
 	if (!response.ok) {
 		const error = await response.json();
 		// Surface the server's `details` (the real cause) — not just the generic message.
@@ -235,6 +249,9 @@ export async function validateConfig(appId: string): Promise<ValidationResult> {
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ appId }),
 	});
+	if (response.status === 404) {
+		throw new AppNotFoundError();
+	}
 	if (!response.ok) {
 		const error = await response.json();
 		throw new Error(error.error || 'Failed to validate configuration');
@@ -287,6 +304,33 @@ export async function getPublishHistory(
 	if (!response.ok) {
 		const error = await response.json();
 		throw new Error(error.error || 'Failed to fetch publish history');
+	}
+	return response.json();
+}
+
+export interface DecodedFingerprintResponse {
+	version: string;
+	env: 'development' | 'beta' | 'production';
+	publishedAt: string;
+	appIdentifier: string;
+	flags: Record<
+		string,
+		{ type: string; value: unknown; reason: string }
+	>;
+}
+
+export async function decodeFingerprint(
+	appId: string,
+	code: string,
+): Promise<DecodedFingerprintResponse> {
+	const response = await fetch('/api/config/decode', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ appId, code }),
+	});
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.error || 'Failed to decode fingerprint');
 	}
 	return response.json();
 }

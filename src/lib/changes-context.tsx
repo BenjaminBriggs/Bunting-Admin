@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { generateCurrentConfig, getPublishedConfig } from './api';
+import { AppNotFoundError, generateCurrentConfig, getPublishedConfig } from './api';
 import { useApp } from './app-context';
 import type { ConfigChange } from './config-comparison';
 import { getConfigChanges, hasConfigChanges } from './config-comparison';
@@ -21,7 +21,7 @@ interface ChangesContextType {
 const ChangesContext = createContext<ChangesContextType | undefined>(undefined);
 
 export function ChangesProvider({ children }: { children: ReactNode }) {
-	const { selectedApp } = useApp();
+	const { selectedApp, refreshApps } = useApp();
 	const [hasChanges, setHasChanges] = useState(false);
 	const [changes, setChanges] = useState<ConfigChange[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -56,6 +56,15 @@ export function ChangesProvider({ children }: { children: ReactNode }) {
 			setHasChanges(hasChangesDetected);
 			setChanges(detectedChanges);
 		} catch (err) {
+			// The selected app vanished (empty/recreated DB, deleted app). Don't
+			// surface an error — reconcile the app list, which clears the stale
+			// selection and lets the dashboard route the operator to setup.
+			if (err instanceof AppNotFoundError) {
+				setHasChanges(false);
+				setChanges([]);
+				void refreshApps();
+				return;
+			}
 			console.error('Error checking for changes:', err);
 			setError(
 				err instanceof Error ? err.message : 'Failed to check for changes',
