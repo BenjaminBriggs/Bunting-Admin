@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { escapeXml } from '@/lib/xml';
 
 /**
  * Generate BuntingConfig.plist for iOS/macOS SDK
@@ -106,16 +107,16 @@ export async function GET(request: NextRequest) {
 <plist version="1.0">
 <dict>
 \t<key>endpoint_url</key>
-\t<string>${app.artifactUrl}</string>
+\t<string>${escapeXml(app.artifactUrl)}</string>
 \t<key>public_keys</key>
 \t<array>
 ${publicKeysArray
 	.map(
 		(key) => `\t\t<dict>
 \t\t\t<key>kid</key>
-\t\t\t<string>${key.kid}</string>
+\t\t\t<string>${escapeXml(key.kid)}</string>
 \t\t\t<key>pem</key>
-\t\t\t<string>${key.pem}</string>
+\t\t\t<string>${escapeXml(key.pem)}</string>
 \t\t</dict>`,
 	)
 	.join('\n')}
