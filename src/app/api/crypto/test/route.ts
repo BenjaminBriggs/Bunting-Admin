@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { requireAdmin } from '@/lib/authz';
 import {
 	cleanupTestApp,
 	createTestApp,
@@ -11,9 +12,32 @@ import {
 	validateJWSFormat,
 } from '@/lib/crypto-test-utils';
 
+/**
+ * Guard the diagnostic endpoint: it does not exist in production (it mutates the
+ * real DB with throwaway apps/keys), and is ADMIN-only elsewhere. Returns null
+ * when the request may proceed, or a NextResponse to return directly.
+ */
+async function guardDiagnostic(
+	request: NextRequest,
+): Promise<NextResponse | null> {
+	if (process.env.NODE_ENV === 'production') {
+		return NextResponse.json({ error: 'Not found' }, { status: 404 });
+	}
+	const authz = await requireAdmin(request.headers);
+	if (authz instanceof NextResponse) {
+		return authz;
+	}
+	return null;
+}
+
 // GET /api/crypto/test - Run comprehensive crypto tests
 export async function GET(request: NextRequest) {
 	try {
+		const guard = await guardDiagnostic(request);
+		if (guard) {
+			return guard;
+		}
+
 		const { searchParams } = new URL(request.url);
 		const testType = searchParams.get('type') || 'full';
 
@@ -95,7 +119,6 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json(
 			{
 				error: 'Crypto test failed',
-				details: error instanceof Error ? error.message : 'Unknown error',
 				timestamp: new Date().toISOString(),
 			},
 			{ status: 500 },
@@ -106,6 +129,11 @@ export async function GET(request: NextRequest) {
 // POST /api/crypto/test - Test JWS validation with provided signature
 export async function POST(request: NextRequest) {
 	try {
+		const guard = await guardDiagnostic(request);
+		if (guard) {
+			return guard;
+		}
+
 		const body = await request.json();
 		const { jws, appId, configJson } = body;
 
@@ -165,7 +193,6 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(
 			{
 				error: 'JWS validation test failed',
-				details: error instanceof Error ? error.message : 'Unknown error',
 				timestamp: new Date().toISOString(),
 			},
 			{ status: 500 },
