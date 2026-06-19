@@ -59,10 +59,7 @@ export async function POST(request: NextRequest) {
 
 		console.error('Error downloading config:', error);
 		return NextResponse.json(
-			{
-				error: 'Failed to download configuration',
-				details: error instanceof Error ? error.message : 'Unknown error',
-			},
+			{ error: 'Failed to download configuration' },
 			{ status: 500 },
 		);
 	}

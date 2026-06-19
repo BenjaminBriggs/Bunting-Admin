@@ -58,10 +58,7 @@ export async function POST(request: NextRequest) {
 
 			console.error('S3 error:', s3Error);
 			return NextResponse.json(
-				{
-					error: 'Failed to fetch published config from S3',
-					details: s3Error.message,
-				},
+				{ error: 'Failed to fetch published config from S3' },
 				{ status: 500 },
 			);
 		}

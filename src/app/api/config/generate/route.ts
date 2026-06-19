@@ -31,10 +31,7 @@ export async function POST(request: NextRequest) {
 
 		console.error('Error generating config:', error);
 		return NextResponse.json(
-			{
-				error: 'Failed to generate config',
-				details: error instanceof Error ? error.message : 'Unknown error',
-			},
+			{ error: 'Failed to generate config' },
 			{ status: 500 },
 		);
 	}

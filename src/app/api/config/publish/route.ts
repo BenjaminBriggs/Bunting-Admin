@@ -194,10 +194,7 @@ export async function POST(request: NextRequest) {
 
 		console.error('Error publishing config:', error);
 		return NextResponse.json(
-			{
-				error: 'Failed to publish configuration',
-				details: error instanceof Error ? error.message : 'Unknown error',
-			},
+			{ error: 'Failed to publish configuration' },
 			{ status: 500 },
 		);
 	}
