@@ -1,8 +1,20 @@
+import { normalizeFlagType } from '@/lib/config-validation';
 import { prisma } from '@/lib/db';
 import { validateIdentifierKey } from '@/lib/validation';
-import type { ConfigArtifact, Rollout, Test } from '@/types';
-import { Environment } from '@/types';
-const { normalizeFlagType } = require('@/lib/config-validation');
+import type {
+	Condition,
+	ConfigArtifact,
+	Environment,
+	EnvironmentFlag,
+	FlagType,
+	FlagValue,
+	FlagVariant,
+	Rollout,
+	Test,
+	TestGroup,
+} from '@/types';
+
+const ENVIRONMENTS: Environment[] = ['development', 'beta', 'production'];
 
 // Thrown when a config operation targets an app that no longer exists. This is an
 // expected condition (e.g. an empty DB, or a stale client selection), not a server
@@ -14,21 +26,72 @@ export class AppNotFoundError extends Error {
 	}
 }
 
+// --- Stored JSON shapes (how flag/test/rollout config is persisted in Postgres
+// JSON columns). These are cast at the boundary and then handled with real types.
+type StoredCondition = Record<string, unknown>;
+
+interface StoredConditionalVariant {
+	order?: number;
+	value?: FlagValue;
+	conditions?: StoredCondition[];
+}
+
+interface StoredVariantsByEnv {
+	development?: StoredConditionalVariant[];
+	beta?: StoredConditionalVariant[];
+	production?: StoredConditionalVariant[];
+}
+
+type StoredDefaults = Record<Environment, FlagValue>;
+
+// A stored value is either a direct FlagValue or a per-flag map { flagId: value }.
+type StoredAssignedValue = FlagValue | Record<string, FlagValue> | null;
+
+interface StoredTestVariant {
+	percentage?: number;
+	values?: Partial<Record<Environment, StoredAssignedValue>>;
+}
+
+type StoredTestVariants = Record<string, StoredTestVariant>;
+type StoredRolloutValues = Partial<Record<Environment, StoredAssignedValue>>;
+
 // Bridge legacy conditions that stored custom_attribute name in `attribute` field.
 // SDK reads values[0] as the attribute name — migrate on the fly until DB is updated.
-function normalizeCondition(condition: any): any {
+function normalizeCondition(condition: StoredCondition): Condition {
 	// Strip the legacy `id` field — it was only ever a React UI key and must not
 	// appear in the published artifact (older DB rows may still carry it).
-	const { id, ...rest } = condition;
+	const { id: _id, ...rest } = condition;
 	if (
 		rest.type === 'custom_attribute' &&
-		rest.attribute &&
-		(!rest.values || rest.values.length === 0)
+		typeof rest.attribute === 'string' &&
+		(!Array.isArray(rest.values) || rest.values.length === 0)
 	) {
 		const { attribute, ...clean } = rest;
-		return { ...clean, values: [attribute] };
+		return { ...clean, values: [attribute] } as unknown as Condition;
 	}
-	return rest;
+	return rest as unknown as Condition;
+}
+
+// Resolve a stored assigned value to this flag's value: a per-flag map yields the
+// flag-specific entry (undefined if absent → caller skips), a primitive is used
+// directly, an array/object without the flag id yields undefined.
+function resolveFlagSpecificValue(
+	stored: StoredAssignedValue | undefined,
+	flagId: string,
+): FlagValue | undefined {
+	if (stored === null || stored === undefined) {
+		return undefined;
+	}
+	if (typeof stored === 'object') {
+		return (stored as Record<string, FlagValue>)[flagId];
+	}
+	return stored;
+}
+
+function highestOrder(variants: FlagVariant[]): number {
+	return variants.length > 0
+		? Math.max(...variants.map((v) => v.order))
+		: 0;
 }
 
 export async function generateConfigFromDb(
@@ -55,8 +118,8 @@ export async function generateConfigFromDb(
 	}
 
 	// Transform flags with environment-specific values
-	const flags: Record<string, any> = {};
-	app.flags.forEach((flag: any) => {
+	const flags: Record<string, EnvironmentFlag> = {};
+	app.flags.forEach((flag) => {
 		// Validate flag structure
 		if (!flag.defaultValues || typeof flag.defaultValues !== 'object') {
 			throw new Error(
@@ -66,9 +129,9 @@ export async function generateConfigFromDb(
 			);
 		}
 
-		const environments = ['development', 'beta', 'production'];
-		for (const env of environments) {
-			if (!(env in flag.defaultValues)) {
+		const defaults = flag.defaultValues as unknown as StoredDefaults;
+		for (const env of ENVIRONMENTS) {
+			if (!(env in defaults)) {
 				throw new Error(
 					`Flag "${flag.key}" is missing default value for environment "${env}". ` +
 						`Current defaultValues: ${JSON.stringify(flag.defaultValues)}. ` +
@@ -84,50 +147,33 @@ export async function generateConfigFromDb(
 		}
 
 		// Normalize Prisma enum to lowercase (Prisma returns 'BOOL', we want 'bool')
-		const jsonSpecType = normalizeFlagType(flag.type);
+		const jsonSpecType = normalizeFlagType(flag.type) as FlagType;
 
-		// Start with conditional variants from the flag itself
-		const developmentVariants = (flag.variants.development || []).map(
-			(variant: any) => ({
+		const storedVariants = (flag.variants ?? {}) as unknown as StoredVariantsByEnv;
+		const conditionalVariants = (
+			list: StoredConditionalVariant[] | undefined,
+		): FlagVariant[] =>
+			(list ?? []).map((variant) => ({
 				type: 'conditional',
-				order: variant.order || 0,
+				order: variant.order ?? 0,
 				value: variant.value,
-				conditions: (variant.conditions || []).map(normalizeCondition),
-			}),
-		);
-
-		const betaVariants = (flag.variants.beta || []).map(
-			(variant: any) => ({
-				type: 'conditional',
-				order: variant.order || 0,
-				value: variant.value,
-				conditions: (variant.conditions || []).map(normalizeCondition),
-			}),
-		);
-
-		const productionVariants = (flag.variants.production || []).map(
-			(variant: any) => ({
-				type: 'conditional',
-				order: variant.order || 0,
-				value: variant.value,
-				conditions: (variant.conditions || []).map(normalizeCondition),
-			}),
-		);
+				conditions: (variant.conditions ?? []).map(normalizeCondition),
+			}));
 
 		flags[flag.key] = {
 			type: jsonSpecType,
-			description: flag.description || '',
+			description: flag.description ?? '',
 			development: {
-				default: flag.defaultValues.development,
-				variants: developmentVariants,
+				default: defaults.development,
+				variants: conditionalVariants(storedVariants.development),
 			},
 			beta: {
-				default: flag.defaultValues.beta,
-				variants: betaVariants,
+				default: defaults.beta,
+				variants: conditionalVariants(storedVariants.beta),
 			},
 			production: {
-				default: flag.defaultValues.production,
-				variants: productionVariants,
+				default: defaults.production,
+				variants: conditionalVariants(storedVariants.production),
 			},
 		};
 
@@ -142,7 +188,7 @@ export async function generateConfigFromDb(
 	const tests: Record<string, Test> = {};
 	const rollouts: Record<string, Rollout> = {};
 
-	app.testRollouts.forEach((testRollout: any) => {
+	app.testRollouts.forEach((testRollout) => {
 		// Validate test/rollout key per JSON Spec
 		const keyValidation = validateIdentifierKey(testRollout.key);
 		if (!keyValidation.valid) {
@@ -151,11 +197,16 @@ export async function generateConfigFromDb(
 			);
 		}
 
+		const conditions = (
+			(testRollout.conditions as StoredCondition[] | null) ?? []
+		).map(normalizeCondition);
+
 		if (testRollout.type === 'TEST') {
 			// Derive groups from variants — SDK needs groups to do deterministic bucketing
-			const variants = testRollout.variants || {};
-			const groups = Object.entries(variants).map(
-				([name, v]: [string, any]) => ({
+			const variants = (testRollout.variants ??
+				{}) as unknown as StoredTestVariants;
+			const groups: TestGroup[] = Object.entries(variants).map(
+				([name, v]) => ({
 					name,
 					percentage: v.percentage ?? 0,
 				}),
@@ -163,132 +214,103 @@ export async function generateConfigFromDb(
 
 			tests[testRollout.key] = {
 				name: testRollout.name,
-				description: testRollout.description,
+				description: testRollout.description ?? undefined,
 				type: 'test',
 				salt: testRollout.salt,
-				conditions: (testRollout.conditions || []).map(normalizeCondition),
+				conditions,
 				...(groups.length > 0 ? { groups } : {}),
 			};
 
 			// Add test variants to assigned flags
-			const assignedFlagIds = testRollout.flagIds || [];
-			assignedFlagIds.forEach((flagId: string) => {
+			const assignedFlagIds = (testRollout.flagIds as string[] | null) ?? [];
+			assignedFlagIds.forEach((flagId) => {
 				// Find the flag by ID
-				const flag = app.flags.find((f: any) => f.id === flagId);
-				if (flag && flags[flag.key]) {
-					const variants = testRollout.variants || {};
+				const flag = app.flags.find((f) => f.id === flagId);
+				if (!flag) {
+					return;
+				}
 
-					// Add test variant to each environment that has variant values
-					['development', 'beta', 'production'].forEach((env) => {
-						if (variants) {
-							// Calculate the highest current order to append test variants after conditional ones
-							const currentVariants = flags[flag.key][env].variants;
-							const highestOrder =
-								currentVariants.length > 0
-									? Math.max(...currentVariants.map((v: any) => v.order || 0))
-									: 0;
-
-							// For tests, we need to create variants based on the test variant definitions
-							// Note: Test values are stored per variant but we need flag-specific values
-							const testVariantValues: Record<string, any> = {};
-							Object.keys(variants).forEach((variantName: string) => {
-								const variantData = variants[variantName];
-								// The values structure is: { variantName: { percentage, values: { dev: ..., beta: ..., prod: ... } } }
-								// But we need to get the flag-specific value for this environment
-								if (variantData.values && variantData.values[env] !== null) {
-									// Check if this is the correct flag-specific value structure
-									const flagValue = variantData.values[env];
-									if (
-										typeof flagValue === 'object' &&
-										flagValue[flag.id] !== undefined
-									) {
-										// Flag-specific value exists
-										testVariantValues[variantName] = flagValue[flag.id];
-									} else if (typeof flagValue !== 'object') {
-										// Direct value (not flag-specific)
-										testVariantValues[variantName] = flagValue;
-									}
-									// If neither case matches, the test doesn't have values for this flag yet
-								}
-							});
-
-							// Only add test variant if we have actual values (not null)
-							if (Object.keys(testVariantValues).length > 0) {
-								flags[flag.key][env].variants.push({
-									type: 'test',
-									order: highestOrder + 10, // Ensure test variants come after conditionals
-									test: testRollout.key,
-									values: testVariantValues,
-								});
-							}
+				// Add test variant to each environment that has variant values
+				ENVIRONMENTS.forEach((env) => {
+					// For tests, build variants from the test variant definitions. Test
+					// values are stored per variant but we need flag-specific values.
+					const testVariantValues: Record<string, FlagValue> = {};
+					Object.keys(variants).forEach((variantName) => {
+						const variantData = variants[variantName];
+						const stored = variantData.values?.[env];
+						if (stored === null || stored === undefined) {
+							return;
+						}
+						const value = resolveFlagSpecificValue(stored, flag.id);
+						if (value !== undefined) {
+							testVariantValues[variantName] = value;
 						}
 					});
-				}
+
+					// Only add test variant if we have actual values (not null)
+					if (Object.keys(testVariantValues).length > 0) {
+						const currentVariants = flags[flag.key][env].variants ?? [];
+						currentVariants.push({
+							type: 'test',
+							order: highestOrder(currentVariants) + 10, // after conditionals
+							test: testRollout.key,
+							values: testVariantValues,
+						});
+						flags[flag.key][env].variants = currentVariants;
+					}
+				});
 			});
-		} else if (testRollout.type === 'ROLLOUT') {
+		} else {
 			rollouts[testRollout.key] = {
 				name: testRollout.name,
-				description: testRollout.description,
+				description: testRollout.description ?? undefined,
 				type: 'rollout',
 				salt: testRollout.salt,
-				conditions: (testRollout.conditions || []).map(normalizeCondition),
-				percentage: testRollout.percentage || 0,
+				conditions,
+				percentage: testRollout.percentage ?? 0,
 			};
 
 			// Add rollout variants to assigned flags
-			const assignedFlagIds = testRollout.flagIds || [];
-			assignedFlagIds.forEach((flagId: string) => {
+			const rolloutValues = testRollout.rolloutValues as StoredRolloutValues | null;
+			if (!rolloutValues) {
+				return;
+			}
+			const assignedFlagIds = (testRollout.flagIds as string[] | null) ?? [];
+			assignedFlagIds.forEach((flagId) => {
 				// Find the flag by ID
-				const flag = app.flags.find((f: any) => f.id === flagId);
-				if (flag && flags[flag.key] && testRollout.rolloutValues) {
-					// Add rollout variant to each environment
-					['development', 'beta', 'production'].forEach((env) => {
-						if (
-							testRollout.rolloutValues?.[env] !== null &&
-							testRollout.rolloutValues[env] !== undefined
-						) {
-							// Calculate the highest current order to append rollout variants after others
-							const currentVariants = flags[flag.key][env].variants;
-							const highestOrder =
-								currentVariants.length > 0
-									? Math.max(...currentVariants.map((v: any) => v.order || 0))
-									: 0;
-
-							// Extract the flag-specific rollout value
-							const rolloutValue = testRollout.rolloutValues[env];
-							let flagSpecificValue;
-
-							if (
-								typeof rolloutValue === 'object' &&
-								rolloutValue[flag.id] !== undefined
-							) {
-								// Flag-specific value exists
-								flagSpecificValue = rolloutValue[flag.id];
-							} else if (typeof rolloutValue !== 'object') {
-								// Direct value (not flag-specific)
-								flagSpecificValue = rolloutValue;
-							} else {
-								// No value for this flag, skip
-								return;
-							}
-
-							flags[flag.key][env].variants.push({
-								type: 'rollout',
-								order: highestOrder + 10, // Ensure rollout variants come after conditionals/tests
-								rollout: testRollout.key,
-								value: flagSpecificValue,
-							});
-						}
-					});
+				const flag = app.flags.find((f) => f.id === flagId);
+				if (!flag) {
+					return;
 				}
+
+				// Add rollout variant to each environment
+				ENVIRONMENTS.forEach((env) => {
+					const stored = rolloutValues[env];
+					if (stored === null || stored === undefined) {
+						return;
+					}
+					const value = resolveFlagSpecificValue(stored, flag.id);
+					if (value === undefined) {
+						return; // no value for this flag, skip
+					}
+
+					const currentVariants = flags[flag.key][env].variants ?? [];
+					currentVariants.push({
+						type: 'rollout',
+						order: highestOrder(currentVariants) + 10, // after conditionals/tests
+						rollout: testRollout.key,
+						value,
+					});
+					flags[flag.key][env].variants = currentVariants;
+				});
 			});
 		}
 	});
 
 	// Sort all variants by order
 	Object.keys(flags).forEach((flagKey) => {
-		['development', 'beta', 'production'].forEach((env) => {
-			flags[flagKey][env].variants.sort((a: any, b: any) => a.order - b.order);
+		ENVIRONMENTS.forEach((env) => {
+			flags[flagKey][env].variants?.sort((a, b) => a.order - b.order);
 		});
 	});
 
