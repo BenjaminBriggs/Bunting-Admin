@@ -2,6 +2,13 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+interface StoredDefaults {
+	development?: unknown;
+	beta?: unknown;
+	production?: unknown;
+	[key: string]: unknown;
+}
+
 async function checkAllFlags() {
 	console.log('🔍 Checking all flags for schema v2 compliance...');
 
@@ -20,7 +27,7 @@ async function checkAllFlags() {
 	let brokenCount = 0;
 
 	for (const flag of flags) {
-		const defaultValues = flag.defaultValues as any;
+		const defaultValues = flag.defaultValues as unknown as StoredDefaults;
 		const environments = ['development', 'beta', 'production'];
 		const missingEnvs = environments.filter((env) => !(env in defaultValues));
 
@@ -52,7 +59,7 @@ async function main() {
 }
 
 if (require.main === module) {
-	main();
+	void main();
 }
 
 export { checkAllFlags };

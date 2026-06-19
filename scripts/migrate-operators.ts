@@ -10,6 +10,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -18,12 +19,27 @@ const OPERATOR_MAP: Record<string, string> = {
 	not_equals: 'does_not_equals',
 };
 
-function migrateCondition(condition: any): {
-	condition: any;
+interface StoredCondition {
+	type?: string;
+	operator?: string;
+	attribute?: unknown;
+	values?: unknown[];
+	[key: string]: unknown;
+}
+
+interface StoredVariant {
+	conditions?: unknown;
+	[key: string]: unknown;
+}
+
+type StoredVariantsByEnv = Record<string, unknown>;
+
+function migrateCondition(condition: StoredCondition): {
+	condition: StoredCondition;
 	changed: boolean;
 } {
 	let changed = false;
-	let updated = { ...condition };
+	let updated: StoredCondition = { ...condition };
 
 	// Fix operator value
 	if (condition.operator && OPERATOR_MAP[condition.operator]) {
@@ -45,8 +61,8 @@ function migrateCondition(condition: any): {
 	return { condition: updated, changed };
 }
 
-function migrateConditionArray(conditions: any[]): {
-	conditions: any[];
+function migrateConditionArray(conditions: StoredCondition[]): {
+	conditions: StoredCondition[];
 	changed: boolean;
 } {
 	let anyChanged = false;
@@ -60,8 +76,8 @@ function migrateConditionArray(conditions: any[]): {
 	return { conditions: migrated, changed: anyChanged };
 }
 
-function migrateVariantsJson(variantsJson: any): {
-	variants: any;
+function migrateVariantsJson(variantsJson: unknown): {
+	variants: unknown;
 	changed: boolean;
 } {
 	if (!variantsJson || typeof variantsJson !== 'object') {
@@ -69,17 +85,18 @@ function migrateVariantsJson(variantsJson: any): {
 	}
 
 	let anyChanged = false;
-	const updated = { ...variantsJson };
+	const updated: StoredVariantsByEnv = { ...variantsJson };
 
 	for (const env of ['development', 'beta', 'production']) {
-		if (Array.isArray(updated[env])) {
-			updated[env] = updated[env].map((variant: any) => {
+		const envVariants = updated[env];
+		if (Array.isArray(envVariants)) {
+			updated[env] = (envVariants as StoredVariant[]).map((variant) => {
 				if (
 					Array.isArray(variant.conditions) &&
 					variant.conditions.length > 0
 				) {
 					const { conditions, changed } = migrateConditionArray(
-						variant.conditions,
+						variant.conditions as StoredCondition[],
 					);
 					if (changed) {
 						anyChanged = true;
@@ -101,7 +118,10 @@ async function migrateFlags() {
 	for (const flag of flags) {
 		const { variants, changed } = migrateVariantsJson(flag.variants);
 		if (changed) {
-			await prisma.flag.update({ where: { id: flag.id }, data: { variants } });
+			await prisma.flag.update({
+				where: { id: flag.id },
+				data: { variants: variants as Prisma.InputJsonValue },
+			});
 			updated++;
 		}
 	}
@@ -114,14 +134,14 @@ async function migrateTestRollouts() {
 	let updated = 0;
 
 	for (const tr of testRollouts) {
-		const conditions = Array.isArray(tr.conditions) ? tr.conditions : [];
-		const { conditions: migrated, changed } = migrateConditionArray(
-			conditions as any[],
-		);
+		const conditions: StoredCondition[] = Array.isArray(tr.conditions)
+			? (tr.conditions as unknown as StoredCondition[])
+			: [];
+		const { conditions: migrated, changed } = migrateConditionArray(conditions);
 		if (changed) {
 			await prisma.testRollout.update({
 				where: { id: tr.id },
-				data: { conditions: migrated },
+				data: { conditions: migrated as Prisma.InputJsonValue },
 			});
 			updated++;
 		}
