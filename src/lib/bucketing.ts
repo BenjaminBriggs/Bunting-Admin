@@ -24,12 +24,15 @@ export async function bucketFor(
 	// Create SHA256 hash
 	const hash = createHash('sha256').update(input, 'utf8').digest('hex');
 
-	// Take first 8 characters (32 bits) and convert to integer
-	const hashInt = parseInt(hash.substring(0, 8), 16);
+	// Take the first 8 bytes (16 hex chars) as a big-endian unsigned 64-bit
+	// integer, matching the SDK (Bucketing.swift) and ../docs/concepts.md
+	// §Deterministic Bucketing. A 32-bit read here diverges from the SDK for
+	// ~99% of users.
+	const value = BigInt(`0x${hash.substring(0, 16)}`);
 
 	// Map to 1-100 range using modulo
 	// Add 1 to ensure range is 1-100 instead of 0-99
-	const bucket = (hashInt % 100) + 1;
+	const bucket = Number(value % 100n) + 1;
 
 	return bucket;
 }

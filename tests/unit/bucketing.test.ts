@@ -16,8 +16,12 @@ describe('bucketFor', () => {
 	});
 
 	it('matches pinned regression vectors (algorithm must not drift from the SDK)', async () => {
-		expect(await bucketFor('test-salt', 'user-123')).toBe(82);
-		expect(await bucketFor('test-salt', 'user-456')).toBe(53);
+		// Authoritative parity vectors: the admin and SDK both take the first 8
+		// bytes of SHA-256(`salt:id`) as a big-endian uint64, so for an identical
+		// input string they MUST produce the same bucket. See ../docs/concepts.md
+		// §Deterministic Bucketing and bunting-sdk-swift Bucketing.swift.
+		expect(await bucketFor('test-salt', 'user-123')).toBe(27);
+		expect(await bucketFor('test-salt', 'user-456')).toBe(35);
 	});
 
 	it('different salts generally produce different buckets for the same id', async () => {
@@ -66,10 +70,10 @@ describe('assignVariant', () => {
 	});
 
 	it('returns null when the variant percentages do not cover the bucket', async () => {
-		// 'test-salt'/'user-123' => bucket 82, so a 30% single variant excludes it.
+		// 'test-salt'/'user-123' => bucket 27, so a 20% single variant excludes it.
 		expect(
 			await assignVariant('test-salt', 'user-123', [
-				{ name: 'a', percentage: 30 },
+				{ name: 'a', percentage: 20 },
 			]),
 		).toBeNull();
 	});
