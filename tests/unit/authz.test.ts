@@ -1,26 +1,28 @@
-type Identity = { email: string } | null;
 type Role = 'ADMIN' | 'DEVELOPER';
+type Identity = { email: string } | null;
+type Session = { user?: { email?: string | null; role?: string } } | null;
+type AuthConfig = { mode: 'oidc' | 'proxy' };
 
-const mockIdentityFromRequest = jest.fn<Promise<Identity>, [Headers]>();
-const mockFindUnique = jest.fn<Promise<{ role: Role } | null>, [unknown]>();
-const mockRoleFromAccessList = jest.fn<Promise<Role | null>, [string]>();
+const mockResolveAuthConfig = jest.fn<AuthConfig, []>();
+const mockAuth = jest.fn<Promise<Session>, []>();
+const mockIdentityFromHeaders = jest.fn<Promise<Identity>, [Headers, AuthConfig]>();
+const mockRoleFromAccessList = jest.fn<Promise<Role>, [string]>();
 
-jest.mock('@/lib/auth-session', () => ({
-	identityFromRequest: (headers: Headers): Promise<Identity> =>
-		mockIdentityFromRequest(headers),
+jest.mock('@/lib/auth-env', () => ({
+	resolveAuthConfig: (): AuthConfig => mockResolveAuthConfig(),
 }));
 
-jest.mock('@/lib/db', () => ({
-	db: {
-		user: {
-			findUnique: (args: unknown): Promise<{ role: Role } | null> =>
-				mockFindUnique(args),
-		},
-	},
+jest.mock('@/lib/auth', () => ({
+	auth: (): Promise<Session> => mockAuth(),
+}));
+
+jest.mock('@/lib/auth-session', () => ({
+	identityFromHeaders: (headers: Headers, config: AuthConfig): Promise<Identity> =>
+		mockIdentityFromHeaders(headers, config),
 }));
 
 jest.mock('@/lib/access-control', () => ({
-	getUserRoleFromAccessList: (email: string): Promise<Role | null> =>
+	getUserRoleFromAccessList: (email: string): Promise<Role> =>
 		mockRoleFromAccessList(email),
 }));
 
@@ -33,31 +35,48 @@ import { getRequestRole, requireAdmin } from '@/lib/authz';
 const headers = new Headers();
 
 beforeEach(() => {
-	mockIdentityFromRequest.mockReset();
-	mockFindUnique.mockReset();
+	mockResolveAuthConfig.mockReset();
+	mockAuth.mockReset();
+	mockIdentityFromHeaders.mockReset();
 	mockRoleFromAccessList.mockReset();
-	mockRoleFromAccessList.mockResolvedValue('DEVELOPER');
+	mockResolveAuthConfig.mockReturnValue({ mode: 'oidc' });
 });
 
-describe('getRequestRole', () => {
-	it('returns null when unauthenticated', async () => {
-		mockIdentityFromRequest.mockResolvedValue(null);
+describe('getRequestRole — oidc mode (session role)', () => {
+	it('returns null when there is no session', async () => {
+		mockAuth.mockResolvedValue(null);
 		expect(await getRequestRole(headers)).toBeNull();
-		expect(mockFindUnique).not.toHaveBeenCalled();
 	});
 
-	it('returns the role from the User table', async () => {
-		mockIdentityFromRequest.mockResolvedValue({ email: 'a@x.com' });
-		mockFindUnique.mockResolvedValue({ role: 'ADMIN' });
+	it('returns ADMIN straight off the session role', async () => {
+		mockAuth.mockResolvedValue({ user: { email: 'A@x.com', role: 'ADMIN' } });
 		expect(await getRequestRole(headers)).toEqual({
 			email: 'a@x.com',
 			role: 'ADMIN',
 		});
 	});
 
-	it('falls back to the access list when no User row exists (proxy mode)', async () => {
-		mockIdentityFromRequest.mockResolvedValue({ email: 'proxy@x.com' });
-		mockFindUnique.mockResolvedValue(null);
+	it('treats a missing/non-admin session role as DEVELOPER', async () => {
+		mockAuth.mockResolvedValue({ user: { email: 'dev@x.com' } });
+		expect(await getRequestRole(headers)).toEqual({
+			email: 'dev@x.com',
+			role: 'DEVELOPER',
+		});
+	});
+});
+
+describe('getRequestRole — proxy mode (access list)', () => {
+	beforeEach(() => {
+		mockResolveAuthConfig.mockReturnValue({ mode: 'proxy' });
+	});
+
+	it('returns null when the proxy provides no identity', async () => {
+		mockIdentityFromHeaders.mockResolvedValue(null);
+		expect(await getRequestRole(headers)).toBeNull();
+	});
+
+	it('resolves the role from the access list', async () => {
+		mockIdentityFromHeaders.mockResolvedValue({ email: 'proxy@x.com' });
 		mockRoleFromAccessList.mockResolvedValue('ADMIN');
 		expect(await getRequestRole(headers)).toEqual({
 			email: 'proxy@x.com',
@@ -65,37 +84,25 @@ describe('getRequestRole', () => {
 		});
 		expect(mockRoleFromAccessList).toHaveBeenCalledWith('proxy@x.com');
 	});
-
-	it('defaults to DEVELOPER when neither User nor access list matches', async () => {
-		mockIdentityFromRequest.mockResolvedValue({ email: 'ghost@x.com' });
-		mockFindUnique.mockResolvedValue(null);
-		mockRoleFromAccessList.mockResolvedValue('DEVELOPER');
-		expect(await getRequestRole(headers)).toEqual({
-			email: 'ghost@x.com',
-			role: 'DEVELOPER',
-		});
-	});
 });
 
 describe('requireAdmin', () => {
 	it('returns 401 when unauthenticated', async () => {
-		mockIdentityFromRequest.mockResolvedValue(null);
+		mockAuth.mockResolvedValue(null);
 		const result = await requireAdmin(headers);
 		expect(result).toBeInstanceOf(NextResponse);
 		expect((result as NextResponse).status).toBe(401);
 	});
 
 	it('returns 403 for a DEVELOPER', async () => {
-		mockIdentityFromRequest.mockResolvedValue({ email: 'dev@x.com' });
-		mockFindUnique.mockResolvedValue({ role: 'DEVELOPER' });
+		mockAuth.mockResolvedValue({ user: { email: 'dev@x.com', role: 'DEVELOPER' } });
 		const result = await requireAdmin(headers);
 		expect(result).toBeInstanceOf(NextResponse);
 		expect((result as NextResponse).status).toBe(403);
 	});
 
 	it('returns the identity for an ADMIN', async () => {
-		mockIdentityFromRequest.mockResolvedValue({ email: 'admin@x.com' });
-		mockFindUnique.mockResolvedValue({ role: 'ADMIN' });
+		mockAuth.mockResolvedValue({ user: { email: 'admin@x.com', role: 'ADMIN' } });
 		const result = await requireAdmin(headers);
 		expect(result).toEqual({ email: 'admin@x.com' });
 	});
