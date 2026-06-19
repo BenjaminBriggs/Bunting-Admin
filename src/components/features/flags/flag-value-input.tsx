@@ -1,9 +1,9 @@
 'use client';
 
-import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { Box, FormHelperText, TextField, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { codeSurface, ink, monoFontFamily, surface } from '@/theme/designTokens';
+import { ink, monoFontFamily, surface } from '@/theme/designTokens';
+import JsonChip from './json-chip';
 
 export type FlagType =
 	| 'bool'
@@ -315,55 +315,14 @@ export default function FlagValueInput({
 
 		return (
 			<Box sx={fullWidth ? { width: '100%' } : undefined}>
-				<Box
-					sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}
-				>
+				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
 					<FieldLabel label={label || 'JSON value'} />
-					<Box
-						sx={{
-							display: 'inline-flex',
-							alignItems: 'center',
-							gap: 0.5,
-							fontFamily: monoFontFamily,
-							fontWeight: 700,
-							fontSize: 10,
-							color: jsonError ? 'error.main' : 'success.main',
-							ml: 'auto',
-						}}
-					>
-						{jsonError ? (
-							<ErrorIcon sx={{ fontSize: 14 }} />
-						) : (
-							<CheckCircle sx={{ fontSize: 14 }} />
-						)}
-						{jsonError ? 'invalid' : 'valid'}
-					</Box>
 				</Box>
-				<TextField
-					multiline
-					minRows={4}
-					maxRows={12}
+				<JsonChip
 					value={stringValue}
-					onChange={(e) => handleJSONChange(e.target.value)}
-					placeholder={placeholder || '{}'}
-					fullWidth={fullWidth}
+					editable
+					onChange={handleJSONChange}
 					disabled={disabled}
-					autoFocus={autoFocus}
-					onKeyDown={onKeyDown}
-					sx={{
-						'& .MuiOutlinedInput-root': {
-							backgroundColor: codeSurface.bg,
-							borderRadius: '11px',
-							p: 1.75,
-						},
-						'& .MuiOutlinedInput-notchedOutline': { border: 'none' },
-						'& .MuiOutlinedInput-input': {
-							fontFamily: monoFontFamily,
-							fontSize: 12,
-							lineHeight: 1.7,
-							color: codeSurface.text,
-						},
-					}}
 				/>
 				{(jsonError || displayHelperText) && (
 					<FormHelperText error={Boolean(jsonError)} sx={{ mx: 0, mt: 0.75 }}>

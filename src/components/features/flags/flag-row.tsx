@@ -36,6 +36,7 @@ import { VariantCreatorModal } from '../conditions';
 import EnvironmentColumn from './environment-column';
 import FlagAssignmentEditModal from './flag-assignment-edit-modal';
 import { formatValueForDisplay } from './flag-value-input';
+import JsonChip from './json-chip';
 import TestRolloutAssignmentModal from './test-rollout-assignment-modal';
 
 function Ms({ name, sx }: { name: string; sx?: any }) {
@@ -633,9 +634,12 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 									</Tooltip>
 								);
 							} else {
+								const isJson = flagData.type.toLowerCase() === 'json';
 								const raw = formatValue(flagData.defaultValues[env]);
 								const shown = middleTruncate(raw);
-								const valueText = (
+								const valueText = isJson ? (
+									<JsonChip value={flagData.defaultValues[env]} size="small" />
+								) : (
 									<Typography
 										sx={{
 											font: "600 13px 'JetBrains Mono'",
@@ -648,7 +652,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 								);
 								value = (
 									<>
-										{shown !== raw ? (
+										{!isJson && shown !== raw ? (
 											<Tooltip title={raw} arrow>
 												{valueText}
 											</Tooltip>

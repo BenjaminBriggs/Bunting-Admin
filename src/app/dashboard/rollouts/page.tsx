@@ -22,6 +22,7 @@ import {
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
 import { danger, ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
+import { CardChips } from '@/components/features/test-rollouts/CardChips';
 import {
 	groupByGroup,
 	GroupHeader,
@@ -219,37 +220,6 @@ export default function RolloutsPage() {
 					</Box>
 				</Box>
 
-				{/* affected flags */}
-				{rollout.flagIds.length > 0 && (
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1.875 }}>
-						{rollout.flagIds.map((flagId) => (
-							<Box
-								key={flagId}
-								component={Link}
-								href="/dashboard/flags"
-								sx={{
-									display: 'inline-flex',
-									alignItems: 'center',
-									gap: 0.75,
-									font: "600 12px 'Nunito'",
-									color: '#3A352C',
-									bgcolor: '#FBF8F1',
-									border: '1px solid #ECE5D6',
-									borderRadius: '9px',
-									px: 1.25,
-									py: 0.625,
-									textDecoration: 'none',
-									transition: 'background .12s ease, border-color .12s ease',
-									'&:hover': { bgcolor: '#F4ECDC', borderColor: '#E0D6C2' },
-								}}
-							>
-								<Ms name="flag" sx={{ fontSize: 14, color: '#B4AC9A' }} />
-								{flagLabels[flagId] ?? flagId}
-							</Box>
-						))}
-					</Box>
-				)}
-
 				{/* percent control */}
 				<Box sx={{ mt: 2.25 }}>
 					<Box
@@ -324,6 +294,15 @@ export default function RolloutsPage() {
 						/>
 					</Box>
 				</Box>
+
+				<CardChips
+					conditions={rollout.conditions ?? []}
+					flags={rollout.flagIds.map((id) => ({
+						id,
+						name: flagLabels[id] ?? id,
+						href: '/dashboard/flags',
+					}))}
+				/>
 			</Box>
 		);
 	};

@@ -11,6 +11,7 @@ import {
 } from '@/theme/designTokens';
 import type { ConditionalVariant, Environment, FlagValue } from '@/types';
 import { formatValueForDisplay } from './flag-value-input';
+import JsonChip from './json-chip';
 
 interface EnvironmentColumnProps {
 	environment: Environment;
@@ -51,32 +52,29 @@ export default function EnvironmentColumn({
 	onTestRolloutEdit,
 	onDefaultValueEdit,
 }: EnvironmentColumnProps) {
+	const isJson = flagType.toLowerCase() === 'json';
+
 	const formatValue = (value: FlagValue): string => {
 		return formatValueForDisplay(value, flagType as any);
 	};
 
-	const getTestVariantValues = (test: any): string => {
-		const values: string[] = [];
+	// Raw per-variant values for this environment/flag (used to render JSON chips).
+	const getTestVariantRawValues = (test: any): any[] => {
+		const values: any[] = [];
 
 		if (test.variants && typeof test.variants === 'object') {
-			Object.entries(test.variants).forEach(
-				([variantName, variant]: [string, any]) => {
-					let displayValue = 'undefined';
-
-					// Check if the variant has values for this environment and flag
-					if (variant.values?.[environment]?.[flagId] !== undefined) {
-						displayValue = formatValueForDisplay(
-							variant.values[environment][flagId],
-							flagType as any,
-						);
-					}
-
-					values.push(displayValue);
-				},
-			);
+			Object.values(test.variants).forEach((variant: any) => {
+				values.push(variant.values?.[environment]?.[flagId]);
+			});
 		}
 
-		return values.join('/');
+		return values;
+	};
+
+	const getTestVariantValues = (test: any): string => {
+		return getTestVariantRawValues(test)
+			.map((v) => (v === undefined ? 'undefined' : formatValue(v)))
+			.join('/');
 	};
 
 	const formatVariantSummary = (variant: ConditionalVariant): string => {
@@ -280,9 +278,25 @@ export default function EnvironmentColumn({
 									borderRadius: '9px',
 									p: '8px 10px',
 									cursor: 'pointer',
+									display: 'flex',
+									alignItems: 'center',
+									flexWrap: 'wrap',
+									gap: 0.5,
 								}}
 							>
-								{test.name}: {getTestVariantValues(test)}
+								{test.name}:
+								{isJson ? (
+									getTestVariantRawValues(test).map((v, i) => (
+										<JsonChip
+											key={i}
+											value={v}
+											size="small"
+											onClick={() => onTestRolloutEdit('test', test.id)}
+										/>
+									))
+								) : (
+									<span>{getTestVariantValues(test)}</span>
+								)}
 							</Box>
 						))}
 					</Stack>
@@ -347,9 +361,17 @@ export default function EnvironmentColumn({
 									}}
 								>
 									if {formatVariantSummary(variant)} →{' '}
-									<Box component="span" sx={{ color: ink.primary }}>
-										{formatValue(variant.value)}
-									</Box>
+									{isJson ? (
+										<JsonChip
+											value={variant.value}
+											size="small"
+											onClick={() => onVariantEdit(variant)}
+										/>
+									) : (
+										<Box component="span" sx={{ color: ink.primary }}>
+											{formatValue(variant.value)}
+										</Box>
+									)}
 								</Box>
 								<IconButton
 									size="small"
@@ -377,20 +399,26 @@ export default function EnvironmentColumn({
 					>
 						Default
 					</Typography>
-					<Box
-						onClick={onDefaultValueEdit}
-						sx={{
-							fontFamily: monoFontFamily,
-							fontWeight: 600,
-							fontSize: 17,
-							color: ink.primary,
-							cursor: 'pointer',
-							display: 'inline-block',
-							'&:hover': { opacity: 0.7 },
-						}}
-					>
-						{formatValue(defaultValue)}
-					</Box>
+					{isJson ? (
+						<Box sx={{ display: 'inline-block' }}>
+							<JsonChip value={defaultValue} onClick={onDefaultValueEdit} />
+						</Box>
+					) : (
+						<Box
+							onClick={onDefaultValueEdit}
+							sx={{
+								fontFamily: monoFontFamily,
+								fontWeight: 600,
+								fontSize: 17,
+								color: ink.primary,
+								cursor: 'pointer',
+								display: 'inline-block',
+								'&:hover': { opacity: 0.7 },
+							}}
+						>
+							{formatValue(defaultValue)}
+						</Box>
+					)}
 				</Box>
 			</Box>
 		</Box>

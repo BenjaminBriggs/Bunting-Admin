@@ -15,6 +15,7 @@ import {
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
 import { ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
+import { CardChips } from '@/components/features/test-rollouts/CardChips';
 import {
 	groupByGroup,
 	GroupHeader,
@@ -147,11 +148,6 @@ export default function TestsPage() {
 		return [...treatments, ...controls];
 	};
 
-	const targetingLabel = (test: TestRollout): string => {
-		const count = Array.isArray(test.conditions) ? test.conditions.length : 0;
-		return count > 0 ? `${count} condition${count === 1 ? '' : 's'}` : 'all users';
-	};
-
 	const filtered = tests.filter(
 		(test) =>
 			test.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -214,7 +210,7 @@ export default function TestsPage() {
 								mt: 0.625,
 							}}
 						>
-							{test.key} · {isArchived ? 'completed' : targetingLabel(test)}
+							{isArchived ? `${test.key} · completed` : test.key}
 						</Typography>
 					</Box>
 					<Box
@@ -234,35 +230,6 @@ export default function TestsPage() {
 						<Ms name="more_vert" sx={{ fontSize: 22 }} />
 					</Box>
 				</Box>
-
-				{flagChips.length > 0 && (
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 1.875 }}>
-						{flagChips.map((chip) => (
-							<Box
-								key={chip.id}
-								component={Link}
-								href={`/dashboard/flags/${chip.id}/edit`}
-								sx={{
-									display: 'inline-flex',
-									alignItems: 'center',
-									gap: 0.75,
-									font: "600 12px 'Nunito'",
-									color: '#3A352C',
-									textDecoration: 'none',
-									bgcolor: '#FBF8F1',
-									border: '1px solid #ECE5D6',
-									borderRadius: '9px',
-									p: '5px 10px',
-									transition: 'background .12s ease, border-color .12s ease',
-									'&:hover': { bgcolor: '#F4ECDC', borderColor: '#E0D6C2' },
-								}}
-							>
-								<Ms name="flag" sx={{ fontSize: 14, color: '#B4AC9A' }} />
-								{chip.name}
-							</Box>
-						))}
-					</Box>
-				)}
 
 				{split.length > 0 && (
 					<Box sx={{ mt: 2.25 }}>
@@ -296,6 +263,14 @@ export default function TestsPage() {
 						</Box>
 					</Box>
 				)}
+
+				<CardChips
+					conditions={test.conditions ?? []}
+					flags={flagChips.map((c) => ({
+						...c,
+						href: `/dashboard/flags/${c.id}/edit`,
+					}))}
+				/>
 			</Box>
 		);
 	};

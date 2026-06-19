@@ -1,3 +1,4 @@
+import type { Condition } from '@/types/core';
 import type { ConditionTemplate } from '@/types/rules';
 
 /**
@@ -152,3 +153,48 @@ export const operatorLabels: Record<string, string> = {
 	between: 'is between',
 	custom: 'custom evaluation',
 };
+
+/**
+ * Short operator symbols used for compact condition chips (e.g. on dashboard cards).
+ * `equals` is intentionally blank — the type label + ":" already reads as equality.
+ */
+const compactOperatorSymbols: Record<string, string> = {
+	equals: '',
+	does_not_equals: '≠',
+	greater_than: '>',
+	less_than: '<',
+	greater_than_or_equal: '≥',
+	less_than_or_equal: '≤',
+};
+
+/**
+ * Compact, human-readable label for a single targeting condition, e.g.
+ * "Platform: iOS, macOS" or "App Version: ≥2.0.0". Used to show who a test/rollout
+ * affects at a glance.
+ */
+export function conditionLabel(condition: Condition): string {
+	const typeLabel =
+		conditionTemplates.find((t) => t.type === condition.type)?.label ??
+		condition.type;
+	const values = Array.isArray(condition.values) ? condition.values : [];
+
+	let valuePart: string;
+	switch (condition.operator) {
+		case 'between':
+			valuePart = `${values[0] ?? ''}–${values[1] ?? ''}`;
+			break;
+		case 'in':
+			valuePart = values.join(', ');
+			break;
+		case 'not_in':
+			valuePart = `not ${values.join(', ')}`;
+			break;
+		case 'custom':
+			valuePart = values[0] ?? '';
+			break;
+		default:
+			valuePart = `${compactOperatorSymbols[condition.operator] ?? ''}${values[0] ?? ''}`;
+	}
+
+	return valuePart ? `${typeLabel}: ${valuePart}` : typeLabel;
+}
