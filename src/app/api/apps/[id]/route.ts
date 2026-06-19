@@ -61,7 +61,7 @@ export async function PUT(
 	// Await params in Next.js 15
 	const { id } = await params;
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const validatedData = updateAppSchema.parse(body);
 
 		// Check if app exists

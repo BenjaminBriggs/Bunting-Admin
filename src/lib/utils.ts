@@ -2,7 +2,7 @@
 export function normalizeKey(input: string): string {
 	return input
 		.toLowerCase()
-		.replace(/[^a-z0-9\/\s]/g, '') // Remove special chars except / and spaces
+		.replace(/[^a-z0-9/\s]/g, '') // Remove special chars except / and spaces
 		.replace(/\s+/g, '_') // Replace spaces with underscores
 		.replace(/_{2,}/g, '_') // Collapse multiple underscores
 		.replace(/^_|_$/g, '') // Trim leading/trailing underscores

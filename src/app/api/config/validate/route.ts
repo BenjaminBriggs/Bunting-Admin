@@ -28,7 +28,7 @@ export interface ValidationWarning {
 // POST /api/config/validate - Validate current configuration
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId } = validateConfigSchema.parse(body);
 
 		// Generate current config

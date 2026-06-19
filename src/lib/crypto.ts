@@ -83,7 +83,7 @@ export function validatePublicKeyPEM(pem: string): boolean {
 		const publicKeyRegex =
 			/^-----BEGIN PUBLIC KEY-----[\s\S]*-----END PUBLIC KEY-----$/;
 		return publicKeyRegex.test(pem.trim());
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }
@@ -97,7 +97,7 @@ export function validatePrivateKeyPEM(pem: string): boolean {
 		const privateKeyRegex =
 			/^-----BEGIN PRIVATE KEY-----[\s\S]*-----END PRIVATE KEY-----$/;
 		return privateKeyRegex.test(pem.trim());
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }

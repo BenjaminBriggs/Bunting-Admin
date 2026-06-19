@@ -8,7 +8,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/authz';
-import { getConfigChanges } from '@/lib/config-comparison';
+import { type ConfigArtifact, getConfigChanges } from '@/lib/config-comparison';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 		}
 		const publishedBy = authz.email;
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId, changelog } = publishConfigSchema.parse(body);
 
 		const bucketName = getConfigBucket();
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
 
 			// Finalize the reserved audit row now that the upload succeeded.
 			const configChanges = getConfigChanges(baseConfig, previousConfig.config);
-			const flagCount = Object.keys(publishedConfig.flags ?? {}).length;
+			const flagCount = Object.keys(publishedConfig.flags).length;
 			const artifactSize = configContent.length;
 			await prisma.auditLog.update({
 				where: { id: reservation.auditId },
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
 		// lastPublishedAt advances every publish — for archived flags this pushes it
 		// past archivedAt, which is what unlocks deletion. Archived flags are in the
 		// artifact (marked deprecated), so they're stamped too.
-		const publishedKeys = Object.keys(publishedConfig.flags ?? {});
+		const publishedKeys = Object.keys(publishedConfig.flags);
 		if (publishedKeys.length > 0) {
 			const now = new Date();
 			await prisma.flag.updateMany({
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
 
 async function getPublishedConfigFromS3(
 	appIdentifier: string,
-): Promise<{ config: any | null }> {
+): Promise<{ config: ConfigArtifact | null }> {
 	const bucketName = getConfigBucket();
 
 	try {
@@ -274,10 +274,10 @@ async function getPublishedConfigFromS3(
 		}
 
 		const configContent = await response.Body.transformToString();
-		const config = JSON.parse(configContent);
+		const config = JSON.parse(configContent) as ConfigArtifact;
 
 		return { config };
-	} catch (error) {
+	} catch {
 		// Config doesn't exist yet or other error
 		return { config: null };
 	}

@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { generateSalt } from '@/lib/crypto';
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
 	}
 
 	try {
-		const whereClause: any = {
+		const whereClause: Prisma.TestRolloutWhereInput = {
 			appId,
 			archived: false,
 		};
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
 			.replace(/^[^a-z]/g, `${type.toLowerCase()}_`)
 			.substring(0, 50);
 
-		const data: any = {
+		const data: Prisma.TestRolloutUncheckedCreateInput = {
 			key,
 			name,
 			description,
@@ -90,8 +91,8 @@ export async function POST(request: NextRequest) {
 		};
 
 		if (type === 'TEST') {
-			data.variants = variants;
-		} else if (type === 'ROLLOUT') {
+			data.variants = variants as Prisma.InputJsonValue;
+		} else {
 			data.percentage = percentage;
 			data.rolloutValues = {
 				development: null,

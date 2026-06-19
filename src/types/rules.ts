@@ -1,8 +1,7 @@
 // Targeting Rules Types for Bunting Feature Flags
 // NOTE: These are legacy aliases - use types from core.ts for new code
 
-import type { Condition } from './core';
-import { ConditionOperator, ConditionType } from './core';
+import type { Condition, FlagValue } from './core';
 
 // Legacy aliases for backward compatibility
 export type RuleConditionType =
@@ -33,7 +32,7 @@ export interface TargetingRule {
 	enabled: boolean;
 	conditions: RuleCondition[];
 	conditionLogic: 'AND' | 'OR'; // How to combine multiple conditions
-	value: any; // The value to return when this rule matches
+	value: FlagValue; // The value to return when this rule matches
 	priority: number; // Lower numbers = higher priority
 }
 
@@ -42,7 +41,7 @@ export interface FlagWithRules {
 	key: string;
 	displayName: string;
 	type: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
-	defaultValue: any;
+	defaultValue: FlagValue;
 	description?: string;
 	archived: boolean;
 	rules: TargetingRule[];

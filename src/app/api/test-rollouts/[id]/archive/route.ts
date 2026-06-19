@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -9,9 +10,9 @@ export async function POST(
 ) {
 	const { id } = await params;
 	try {
-		const { type } = await request.json();
+		const { type } = (await request.json()) as { type?: unknown };
 
-		if (!['cancel', 'complete'].includes(type)) {
+		if (type !== 'cancel' && type !== 'complete') {
 			return NextResponse.json(
 				{
 					error: 'Type must be either "cancel" or "complete"',
@@ -32,7 +33,7 @@ export async function POST(
 			);
 		}
 
-		const updateData: any = {
+		const updateData: Prisma.TestRolloutUncheckedUpdateInput = {
 			archived: true,
 			archivedAt: new Date(),
 		};
@@ -51,9 +52,12 @@ export async function POST(
 		});
 
 		return NextResponse.json(updated);
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error archiving test/rollout:', error);
-		if (error.code === 'P2025') {
+		if (
+			error instanceof Prisma.PrismaClientKnownRequestError &&
+			error.code === 'P2025'
+		) {
 			return NextResponse.json(
 				{ error: 'Test/Rollout not found' },
 				{ status: 404 },

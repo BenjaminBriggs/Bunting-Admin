@@ -1,7 +1,7 @@
 'use client';
 
 import { Box, Stack, TextField, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
 	generateDisplayName,
 	normalizeToIdentifierKey,
@@ -32,36 +32,37 @@ export function FlagKeyInput({
 	disabled = false,
 }: FlagKeyInputProps) {
 	const [inputValue, setInputValue] = useState(value);
-	const [normalizedKey, setNormalizedKey] = useState('');
-	const [displayName, setDisplayName] = useState('');
-	const [validation, setValidation] = useState<{
-		valid: boolean;
-		error?: string;
-	}>({ valid: true });
-	const [showPreview, setShowPreview] = useState(false);
 
-	useEffect(() => {
+	// Derived state — computed during render from inputValue.
+	const { normalizedKey, displayName, validation, showPreview } = useMemo(() => {
 		if (inputValue) {
 			const normalized = normalizeToIdentifierKey(inputValue);
-			const display = generateDisplayName(normalized);
-			const validationResult = validateIdentifierKey(normalized);
+			return {
+				normalizedKey: normalized,
+				displayName: generateDisplayName(normalized),
+				validation: validateIdentifierKey(normalized),
+				showPreview: true,
+			};
+		}
+		return {
+			normalizedKey: '',
+			displayName: '',
+			validation: { valid: true },
+			showPreview: false,
+		};
+	}, [inputValue]);
 
-			setNormalizedKey(normalized);
-			setDisplayName(display);
-			setValidation(validationResult);
-			setShowPreview(true);
-
-			if (validationResult.valid) {
-				onChange(inputValue, normalized, display);
+	// Notify the parent of the resolved key whenever the input (and thus the
+	// derived values) change. This is the genuine effect: syncing to the parent.
+	useEffect(() => {
+		if (inputValue) {
+			if (validation.valid) {
+				onChange(inputValue, normalizedKey, displayName);
 			}
 		} else {
-			setNormalizedKey('');
-			setDisplayName('');
-			setValidation({ valid: true });
-			setShowPreview(false);
 			onChange('', '', '');
 		}
-	}, [inputValue, onChange]);
+	}, [inputValue, normalizedKey, displayName, validation.valid, onChange]);
 
 	const swiftAccessor = normalizedKey
 		.replace(/\//g, '.')

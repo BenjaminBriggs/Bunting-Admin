@@ -76,11 +76,10 @@ export async function GET(request: NextRequest) {
 				pem: key.publicKey,
 			}));
 		} else {
-			// Fall back to app.publicKeys
-			const appPublicKeys = app.publicKeys as Array<{
-				kid: string;
-				pem: string;
-			}>;
+			// Fall back to app.publicKeys (a Prisma JSON column that may be null).
+			const appPublicKeys = app.publicKeys as
+				| Array<{ kid: string; pem: string }>
+				| null;
 			if (!appPublicKeys || appPublicKeys.length === 0) {
 				return NextResponse.json(
 					{ error: 'No signing keys found for this app' },
@@ -90,12 +89,12 @@ export async function GET(request: NextRequest) {
 			publicKeysArray = appPublicKeys;
 		}
 
-		// Parse fetch policy with defaults
+		// Parse fetch policy with defaults (JSON column, may be null).
 		const fetchPolicy =
 			(app.fetchPolicy as {
 				min_interval_seconds?: number;
 				hard_ttl_days?: number;
-			}) ?? {};
+			} | null) ?? {};
 		const minIntervalSeconds = fetchPolicy.min_interval_seconds ?? 21600; // 6 hours default
 		const hardTtlDays = fetchPolicy.hard_ttl_days ?? 7; // 7 days default
 
@@ -151,7 +150,7 @@ ${publicKeysArray
 }
 
 // Handle CORS preflight
-export async function OPTIONS(request: NextRequest) {
+export function OPTIONS(_request: NextRequest) {
 	return new NextResponse(null, {
 		status: 200,
 		headers: {

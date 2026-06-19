@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Baloo_2, JetBrains_Mono, Nunito } from 'next/font/google';
+import type { ReactNode } from 'react';
 import { ThemeProvider } from '@/components';
 import AuthSessionProvider from '@/components/providers/session-provider';
 import './globals.css';
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
 	children,
 }: {
-	children: React.ReactNode;
+	children: ReactNode;
 }) {
 	return (
 		// suppressHydrationWarning: browser extensions (e.g. LanguageTool's

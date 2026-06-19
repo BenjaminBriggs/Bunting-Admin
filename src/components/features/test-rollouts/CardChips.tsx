@@ -1,11 +1,11 @@
+import type { SxProps, Theme } from '@mui/material';
 import { Box } from '@mui/material';
 import Link from 'next/link';
-
 import { conditionLabel } from '@/components/features/rules/rule-templates';
 import { typeColors } from '@/theme/designTokens';
 import type { Condition } from '@/types/core';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}

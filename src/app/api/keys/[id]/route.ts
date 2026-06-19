@@ -86,7 +86,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 			);
 		}
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { isActive } = updateKeySchema.parse(body);
 
 		// Verify key exists

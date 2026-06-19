@@ -9,7 +9,14 @@ interface FlagTypeSelectorProps {
 	disabled?: boolean;
 }
 
-const flagTypes: any[] = [
+interface FlagTypeOption {
+	value: FlagType;
+	label: string;
+	description: string;
+	example: string;
+}
+
+const flagTypes: FlagTypeOption[] = [
 	{
 		value: 'bool',
 		label: 'Boolean',

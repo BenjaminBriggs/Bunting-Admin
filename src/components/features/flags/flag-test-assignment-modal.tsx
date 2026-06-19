@@ -123,6 +123,7 @@ export default function FlagTestAssignmentModal({
 				});
 			}
 		});
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- initializing editable form state when the modal opens; the values are then mutated by user input, so they cannot be derived during render
 		setGroupValues(initialValues);
 
 		const initialRollouts: Record<string, FlagValue> = {};

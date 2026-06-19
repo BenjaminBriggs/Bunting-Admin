@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Map string type to enum
-		const typeMap: Record<string, any> = {
+		const typeMap: Record<string, Prisma.FlagCreateInput['type']> = {
 			bool: 'BOOL',
 			string: 'STRING',
 			int: 'INT',

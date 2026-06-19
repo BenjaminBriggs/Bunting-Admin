@@ -13,7 +13,7 @@ const s3Client = getS3Client();
 // POST /api/config/published - Get currently published config from S3
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appIdentifier } = getPublishedConfigSchema.parse(body);
 
 		const bucketName = getConfigBucket();
@@ -37,17 +37,21 @@ export async function POST(request: NextRequest) {
 			}
 
 			const configContent = await response.Body.transformToString('utf-8');
-			const publishedConfig = JSON.parse(configContent);
+			const publishedConfig: unknown = JSON.parse(configContent);
 
 			return NextResponse.json({
 				config: publishedConfig,
 				lastModified: response.LastModified,
 				etag: response.ETag,
 			});
-		} catch (s3Error: any) {
+		} catch (s3Error) {
+			const err = s3Error as {
+				name?: string;
+				$metadata?: { httpStatusCode?: number };
+			};
 			if (
-				s3Error.name === 'NoSuchKey' ||
-				s3Error.$metadata?.httpStatusCode === 404
+				err.name === 'NoSuchKey' ||
+				err.$metadata?.httpStatusCode === 404
 			) {
 				// No published config exists yet
 				return NextResponse.json({

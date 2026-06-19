@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -25,7 +26,7 @@ export async function GET(
 		}
 
 		return NextResponse.json(rollout);
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error fetching rollout:', error);
 		return NextResponse.json(
 			{ error: 'Failed to fetch rollout' },
@@ -41,9 +42,9 @@ export async function PUT(
 ) {
 	const { id } = await params;
 	try {
-		const updateData: Record<string, any> = updateRolloutSchema.parse(
+		const updateData = updateRolloutSchema.parse(
 			await request.json(),
-		);
+		) as Prisma.TestRolloutUncheckedUpdateInput;
 
 		const rollout = await prisma.testRollout.update({
 			where: {
@@ -54,13 +55,16 @@ export async function PUT(
 		});
 
 		return NextResponse.json(rollout);
-	} catch (error: any) {
+	} catch (error) {
 		const validationError = zodErrorResponse(error);
 		if (validationError) {
 			return validationError;
 		}
 		console.error('Error updating rollout:', error);
-		if (error.code === 'P2025') {
+		if (
+			error instanceof Prisma.PrismaClientKnownRequestError &&
+			error.code === 'P2025'
+		) {
 			return NextResponse.json({ error: 'Rollout not found' }, { status: 404 });
 		}
 		return NextResponse.json(
@@ -85,9 +89,12 @@ export async function DELETE(
 		});
 
 		return NextResponse.json({ success: true });
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error deleting rollout:', error);
-		if (error.code === 'P2025') {
+		if (
+			error instanceof Prisma.PrismaClientKnownRequestError &&
+			error.code === 'P2025'
+		) {
 			return NextResponse.json({ error: 'Rollout not found' }, { status: 404 });
 		}
 		return NextResponse.json(

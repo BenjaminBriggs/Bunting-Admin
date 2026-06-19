@@ -64,6 +64,6 @@ export async function identityFromRequest(
 	// oidc: lazy-load NextAuth so non-oidc paths (and unit tests) don't pull it in.
 	const { auth } = await import('./auth');
 	const session = await auth();
-	const email = session?.user?.email?.trim().toLowerCase();
+	const email = session?.user.email.trim().toLowerCase();
 	return email ? { email } : null;
 }

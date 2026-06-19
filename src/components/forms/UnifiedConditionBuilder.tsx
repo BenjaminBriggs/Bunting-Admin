@@ -16,6 +16,7 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
+import type { ElementType, KeyboardEvent } from 'react';
 import { useState } from 'react';
 import {
 	conditionTemplates,
@@ -103,7 +104,7 @@ export function UnifiedConditionBuilder({
 		});
 	};
 
-	const handleKeyPress = (event: React.KeyboardEvent) => {
+	const handleKeyPress = (event: KeyboardEvent) => {
 		if (event.key === 'Enter') {
 			event.preventDefault();
 			handleAddValue();
@@ -216,7 +217,7 @@ export function UnifiedConditionBuilder({
 		},
 	}[variant];
 
-	const ConditionContainer = containerProps.component as any;
+	const ConditionContainer = containerProps.component as ElementType;
 
 	return (
 		<ConditionContainer {...containerProps}>
@@ -326,14 +327,6 @@ export function validateCondition(condition: RuleCondition): {
 	errors: string[];
 } {
 	const errors: string[] = [];
-
-	if (!condition.type) {
-		errors.push('Condition type is required');
-	}
-
-	if (!condition.operator) {
-		errors.push('Operator is required');
-	}
 
 	if (condition.values.length === 0) {
 		errors.push('At least one value is required');

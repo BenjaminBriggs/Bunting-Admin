@@ -18,7 +18,7 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { type KeyboardEvent, useState } from 'react';
 import type { FlagType, FlagValue } from '@/types';
 
 interface ValueInputProps {
@@ -33,7 +33,7 @@ interface ValueInputProps {
 	helperText?: string;
 	fullWidth?: boolean;
 	autoFocus?: boolean;
-	onKeyDown?: (event: React.KeyboardEvent) => void;
+	onKeyDown?: (event: KeyboardEvent) => void;
 }
 
 export default function ValueInput({
@@ -51,35 +51,30 @@ export default function ValueInput({
 	onKeyDown,
 }: ValueInputProps) {
 	const [jsonExpanded, setJsonExpanded] = useState(false);
-	const [stringValue, setStringValue] = useState('');
 	const [jsonError, setJsonError] = useState<string | null>(null);
 
-	useEffect(() => {
-		// Convert value to string representation for editing
-		if ((type as any) === 'json') {
-			setStringValue(
-				typeof value === 'object'
-					? JSON.stringify(value, null, 2)
-					: String(value),
-			);
-		} else {
-			setStringValue(String(value));
+	// Convert value to string representation for editing
+	const deriveStringValue = (): string => {
+		if (typeof value === 'object') {
+			return JSON.stringify(value, null, type === 'json' ? 2 : undefined);
 		}
-	}, [value, type]);
-
-	const formatValue = (val: FlagValue): string => {
-		if (typeof val === 'boolean') {
-			return val ? 'true' : 'false';
-		}
-		if (typeof val === 'object') {
-			return JSON.stringify(val);
-		}
-		return String(val);
+		return String(value);
 	};
+
+	// Mirror the incoming value/type into editable string state. Track the last
+	// derived value so we re-sync only when value/type change, while still
+	// allowing local edits via handleStringChange/handleJSONChange.
+	const [stringValue, setStringValue] = useState(deriveStringValue);
+	const [lastDerived, setLastDerived] = useState(stringValue);
+	const derived = deriveStringValue();
+	if (derived !== lastDerived) {
+		setLastDerived(derived);
+		setStringValue(derived);
+	}
 
 	const getJSONSummary = (jsonString: string): string => {
 		try {
-			const parsed = JSON.parse(jsonString);
+			const parsed: unknown = JSON.parse(jsonString);
 			if (typeof parsed === 'object' && parsed !== null) {
 				const keys = Object.keys(parsed);
 				if (keys.length === 0) {
@@ -115,17 +110,17 @@ export default function ValueInput({
 		try {
 			let processedValue: FlagValue;
 
-			if ((type as any) === 'bool') {
+			if (type === 'bool') {
 				processedValue = newStringValue === 'true';
-			} else if ((type as any) === 'int') {
+			} else if (type === 'int') {
 				processedValue = parseInt(newStringValue) || 0;
-			} else if ((type as any) === 'double') {
+			} else if (type === 'double') {
 				processedValue = parseFloat(newStringValue) || 0.0;
-			} else if ((type as any) === 'json') {
+			} else if (type === 'json') {
 				const jsonErr = validateJSON(newStringValue);
 				setJsonError(jsonErr);
 				if (!jsonErr) {
-					processedValue = JSON.parse(newStringValue);
+					processedValue = JSON.parse(newStringValue) as FlagValue;
 				} else {
 					return; // Don't call onChange if JSON is invalid
 				}
@@ -134,7 +129,7 @@ export default function ValueInput({
 			}
 
 			onChange(processedValue);
-		} catch (error) {
+		} catch {
 			// Handle parsing errors silently - user is still typing
 		}
 	};
@@ -146,7 +141,7 @@ export default function ValueInput({
 
 		if (!jsonErr) {
 			try {
-				const parsed = JSON.parse(newValue);
+				const parsed = JSON.parse(newValue) as FlagValue;
 				onChange(parsed);
 			} catch {
 				// Ignore parsing errors during typing
@@ -155,7 +150,7 @@ export default function ValueInput({
 	};
 
 	// Boolean input
-	if ((type as any) === 'bool') {
+	if (type === 'bool') {
 		return (
 			<FormControl size={size} fullWidth={fullWidth}>
 				<InputLabel>{label}</InputLabel>
@@ -169,7 +164,7 @@ export default function ValueInput({
 					<MenuItem value="false">false</MenuItem>
 					<MenuItem value="true">true</MenuItem>
 				</Select>
-				{(error || helperText) && (
+				{(error ?? helperText) && (
 					<Typography
 						variant="caption"
 						color={error ? 'error' : 'text.secondary'}
@@ -183,7 +178,7 @@ export default function ValueInput({
 	}
 
 	// JSON input with expandable editor
-	if ((type as any) === 'json') {
+	if (type === 'json') {
 		return (
 			<Box>
 				<Paper
@@ -277,15 +272,15 @@ export default function ValueInput({
 			autoFocus={autoFocus}
 			onKeyDown={onKeyDown}
 			type={
-				(type as any) === 'int' || (type as any) === 'double'
+				type === 'int' || type === 'double'
 					? 'number'
-					: (type as any) === 'date'
+					: type === 'date'
 						? 'date'
 						: 'text'
 			}
 			InputProps={{
 				sx: {
-					fontFamily: (type as any) === 'date' ? 'inherit' : 'monospace',
+					fontFamily: type === 'date' ? 'inherit' : 'monospace',
 					fontSize: '0.875rem',
 				},
 			}}

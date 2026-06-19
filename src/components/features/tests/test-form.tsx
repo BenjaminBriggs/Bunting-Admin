@@ -525,7 +525,9 @@ export default function TestForm({
 					<Box
 						component="input"
 						value={name}
-						onChange={(e: any) => setName(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLInputElement>) =>
+							setName(e.target.value)
+						}
 						placeholder="e.g. Paywall copy"
 						sx={{ ...fieldSx, mt: 1 }}
 					/>
@@ -732,7 +734,9 @@ export default function TestForm({
 								<Box
 									component="input"
 									value={g.name}
-									onChange={(e: any) => setGroupName(i, e.target.value)}
+									onChange={(e: ChangeEvent<HTMLInputElement>) =>
+										setGroupName(i, e.target.value)
+									}
 									placeholder="Group name"
 									sx={{
 										flex: 1,
@@ -754,7 +758,9 @@ export default function TestForm({
 										<Box
 											component="input"
 											value={String(effGroups[i].weight)}
-											onChange={(e: any) => setGroupWeight(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLInputElement>) =>
+												setGroupWeight(i, e.target.value)
+											}
 											inputMode="numeric"
 											sx={{
 												width: 58,
@@ -972,7 +978,9 @@ export default function TestForm({
 										<Box
 											component="select"
 											value={c.type}
-											onChange={(e: any) => setCondType(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+												setCondType(i, e.target.value as ConditionType)
+											}
 											sx={{ ...condSelSx, flex: 1 }}
 										>
 											{FIELD_OPTS.map((f) => (
@@ -984,7 +992,9 @@ export default function TestForm({
 										<Box
 											component="select"
 											value={c.operator}
-											onChange={(e: any) => setCondOp(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+												setCondOp(i, e.target.value as ConditionOperator)
+											}
 											sx={{ ...condSelSx, width: 84 }}
 										>
 											{operatorsForType(c.type).map((op) => (
@@ -996,7 +1006,9 @@ export default function TestForm({
 										<Box
 											component="input"
 											value={c.values.join(', ')}
-											onChange={(e: any) => setCondValue(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLInputElement>) =>
+												setCondValue(i, e.target.value)
+											}
 											placeholder="value"
 											sx={{
 												flex: 1,
@@ -1062,7 +1074,9 @@ export default function TestForm({
 					<Box
 						component="textarea"
 						value={description}
-						onChange={(e: any) => setDescription(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+							setDescription(e.target.value)
+						}
 						placeholder="What are you testing, and what do you expect to win?"
 						sx={{
 							...fieldSx,
@@ -1087,7 +1101,9 @@ export default function TestForm({
 					<Box
 						component="input"
 						value={group}
-						onChange={(e: any) => setGroup(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLInputElement>) =>
+							setGroup(e.target.value)
+						}
 						placeholder="e.g. Checkout & Billing"
 						sx={fieldSx}
 					/>

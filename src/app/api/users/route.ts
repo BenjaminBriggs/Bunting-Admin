@@ -9,11 +9,11 @@ const updateUserSchema = z.object({
 	role: z.enum(['ADMIN', 'DEVELOPER']),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
 	try {
 		const session = await auth();
 
-		if (session?.user?.role !== 'ADMIN') {
+		if (session?.user.role !== 'ADMIN') {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -44,11 +44,11 @@ export async function PATCH(request: NextRequest) {
 	try {
 		const session = await auth();
 
-		if (session?.user?.role !== 'ADMIN') {
+		if (session?.user.role !== 'ADMIN') {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { userId, role } = updateUserSchema.parse(body);
 
 		// Prevent changing your own role to DEVELOPER (would lock yourself out)

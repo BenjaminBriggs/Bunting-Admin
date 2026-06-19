@@ -20,7 +20,7 @@ if (
 ) {
 	providers.push({
 		id: 'oidc',
-		name: process.env.OIDC_PROVIDER_NAME || 'SSO',
+		name: process.env.OIDC_PROVIDER_NAME ?? 'SSO',
 		type: 'oidc' as const,
 		issuer: process.env.OIDC_ISSUER,
 		clientId: process.env.OIDC_CLIENT_ID,
@@ -89,7 +89,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			return '/auth/error?error=AccessDenied';
 		},
 		async jwt({ token, user }) {
-			if (user?.email) {
+			if (user.email) {
 				const dbUser = await createOrUpdateUser({
 					email: user.email,
 					name: user.name,
@@ -100,7 +100,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			}
 			return token;
 		},
-		async session({ session, token }) {
+		session({ session, token }) {
 			if (token.id) {
 				session.user.id = token.id as string;
 				session.user.role = token.role as string;

@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -41,6 +42,15 @@ export async function PUT(
 ) {
 	const { id } = await params;
 	try {
+		// variants/rolloutValues are z.any() in the schema (opaque JSON blobs), so
+		// the parsed object carries them as `any`. Re-type the whole parsed result
+		// as unknown-valued blobs so they flow cleanly into the JSON column input.
+		const parsed = updateTestRolloutSchema.parse(
+			await request.json(),
+		) as Omit<
+			ReturnType<typeof updateTestRolloutSchema.parse>,
+			'variants' | 'rolloutValues'
+		> & { variants?: unknown; rolloutValues?: unknown };
 		const {
 			name,
 			description,
@@ -51,7 +61,7 @@ export async function PUT(
 			archived,
 			variants,
 			rolloutValues,
-		} = updateTestRolloutSchema.parse(await request.json());
+		} = parsed;
 
 		const testRollout = await prisma.testRollout.update({
 			where: {
@@ -65,8 +75,8 @@ export async function PUT(
 				conditions: conditions ?? [],
 				flagIds: flagIds ?? [],
 				archived: archived ?? false,
-				variants: variants ?? null,
-				rolloutValues: rolloutValues ?? null,
+				variants: (variants ?? null) as Prisma.InputJsonValue,
+				rolloutValues: (rolloutValues ?? null) as Prisma.InputJsonValue,
 				updatedAt: new Date(),
 			},
 		});

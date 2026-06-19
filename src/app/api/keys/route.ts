@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 			return authz;
 		}
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId, isActive } = createKeySchema.parse(body);
 
 		// Verify app exists
@@ -154,7 +154,7 @@ export async function PUT(request: NextRequest) {
 			return authz;
 		}
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId, newKeyId } = rotateKeySchema.parse(body);
 
 		// Verify app exists

@@ -120,7 +120,7 @@ export async function GET() {
 // POST /api/apps - Create a new app
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const validatedData = createAppSchema.parse(body);
 
 		// Check if app identifier already exists

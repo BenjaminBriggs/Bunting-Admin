@@ -10,7 +10,7 @@ const createAccessEntrySchema = z.object({
 	role: z.enum(['ADMIN', 'DEVELOPER']),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
 	try {
 		const session = await auth();
 
@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
 	try {
 		const session = await auth();
 
-		if (session?.user?.role !== 'ADMIN') {
+		if (session?.user.role !== 'ADMIN') {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { type, value, role } = createAccessEntrySchema.parse(body);
 
 		// Validate input based on type
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 					{ status: 400 },
 				);
 			}
-		} else if (type === 'DOMAIN') {
+		} else {
 			if (!value.startsWith('@')) {
 				return NextResponse.json(
 					{ error: 'Domain must start with @' },
@@ -123,7 +123,7 @@ export async function DELETE(request: NextRequest) {
 	try {
 		const session = await auth();
 
-		if (session?.user?.role !== 'ADMIN') {
+		if (session?.user.role !== 'ADMIN') {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 

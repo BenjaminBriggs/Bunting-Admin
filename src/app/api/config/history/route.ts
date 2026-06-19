@@ -23,10 +23,21 @@ export interface PublishHistoryItem {
 	}>;
 }
 
+// Shape of the `configDiff` JSON column as written by /api/config/publish.
+interface StoredConfigDiff {
+	changes?: Array<{
+		action?: 'added' | 'modified' | 'removed';
+		key?: string;
+		name?: string;
+	}>;
+	flagCount?: number;
+	configSize?: number;
+}
+
 // POST /api/config/history - Get publish history for an app
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId, limit } = getHistorySchema.parse(body);
 
 		// Query audit logs for publish history
@@ -46,15 +57,17 @@ export async function POST(request: NextRequest) {
 
 		// Transform audit logs to PublishHistoryItem format
 		const history: PublishHistoryItem[] = auditLogs.map((log) => {
-			const diff = log.configDiff as any;
+			// configDiff is a Prisma JSON column written by the publish route as
+			// { changes, flagCount, configSize }. Narrow it at the boundary.
+			const diff = (log.configDiff ?? {}) as StoredConfigDiff;
 
 			// Extract changes from configDiff
 			const changes: PublishHistoryItem['changes'] = [];
 
-			if (diff?.changes) {
+			if (diff.changes) {
 				for (const change of diff.changes) {
 					changes.push({
-						type: change.type ?? 'flag',
+						type: 'flag',
 						action: change.action ?? 'modified',
 						key: change.key ?? '',
 						name: change.name ?? change.key ?? '',
@@ -63,7 +76,7 @@ export async function POST(request: NextRequest) {
 			}
 
 			// Count flags from diff or set defaults
-			const flagCount = diff?.flagCount ?? 0;
+			const flagCount = diff.flagCount ?? 0;
 
 			return {
 				id: log.id,

@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/authz';
+import type { TestResult } from '@/lib/crypto-test-utils';
 import {
 	cleanupTestApp,
 	createTestApp,
@@ -42,15 +43,16 @@ export async function GET(request: NextRequest) {
 		const testType = searchParams.get('type') ?? 'full';
 
 		switch (testType) {
-			case 'keygen':
+			case 'keygen': {
 				const keyGenResult = await testKeyGeneration();
 				return NextResponse.json({
 					test: 'Key Generation',
 					result: keyGenResult,
 					timestamp: new Date().toISOString(),
 				});
+			}
 
-			case 'signing':
+			case 'signing': {
 				// Need an app for signing tests
 				const signingTestApp = await createTestApp();
 				try {
@@ -64,8 +66,9 @@ export async function GET(request: NextRequest) {
 				} finally {
 					await cleanupTestApp(signingTestApp.appId);
 				}
+			}
 
-			case 'verification':
+			case 'verification': {
 				// Need an app for verification tests
 				const verificationTestApp = await createTestApp();
 				try {
@@ -81,8 +84,9 @@ export async function GET(request: NextRequest) {
 				} finally {
 					await cleanupTestApp(verificationTestApp.appId);
 				}
+			}
 
-			case 'publickeys':
+			case 'publickeys': {
 				// Need an app for public key tests
 				const publicKeyTestApp = await createTestApp();
 				try {
@@ -98,9 +102,10 @@ export async function GET(request: NextRequest) {
 				} finally {
 					await cleanupTestApp(publicKeyTestApp.appId);
 				}
+			}
 
 			case 'full':
-			default:
+			default: {
 				const fullTestResult = await runEndToEndCryptoTest();
 				return NextResponse.json({
 					test: 'End-to-End Crypto Test',
@@ -108,11 +113,13 @@ export async function GET(request: NextRequest) {
 					timestamp: new Date().toISOString(),
 					summary: {
 						overallSuccess: fullTestResult.overall.success,
-						passedTests: Object.values(fullTestResult).filter((r) => r?.success)
-							.length,
+						passedTests: (
+							Object.values(fullTestResult) as TestResult[]
+						).filter((r) => r.success).length,
 						totalTests: Object.keys(fullTestResult).length,
 					},
 				});
+			}
 		}
 	} catch (error) {
 		console.error('Crypto test failed:', error);
@@ -134,10 +141,14 @@ export async function POST(request: NextRequest) {
 			return guard;
 		}
 
-		const body = await request.json();
+		const body = (await request.json()) as {
+			jws?: unknown;
+			appId?: unknown;
+			configJson?: unknown;
+		};
 		const { jws, appId, configJson } = body;
 
-		if (!jws) {
+		if (!jws || typeof jws !== 'string') {
 			return NextResponse.json(
 				{ error: 'JWS signature is required' },
 				{ status: 400 },
@@ -147,13 +158,22 @@ export async function POST(request: NextRequest) {
 		// Validate JWS format
 		const formatResult = validateJWSFormat(jws);
 
-		const response: any = {
+		const response: {
+			formatValidation: ReturnType<typeof validateJWSFormat>;
+			timestamp: string;
+			verification?: {
+				success: boolean;
+				message: string;
+				keyId?: string;
+				error?: string;
+			};
+		} = {
 			formatValidation: formatResult,
 			timestamp: new Date().toISOString(),
 		};
 
 		// If appId and configJson are provided, attempt verification
-		if (appId && configJson) {
+		if (typeof appId === 'string' && configJson) {
 			try {
 				const { verifyConfigSignature } = await import('@/lib/jws-signer');
 				const configString =

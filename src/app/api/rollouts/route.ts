@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 				group: group ?? null,
 				type: 'ROLLOUT',
 				salt,
-				conditions: conditions as any,
+				conditions,
 				percentage,
 				rolloutValues: {
 					development: null,

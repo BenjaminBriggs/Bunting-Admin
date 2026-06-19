@@ -1,8 +1,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppNotFoundError, generateCurrentConfig, getPublishedConfig } from './api';
+import { createContext, useContext, useEffect, useState } from 'react';
+import {
+	AppNotFoundError,
+	generateCurrentConfig,
+	getPublishedConfig,
+} from './api';
 import { useApp } from './app-context';
 import type { ConfigChange } from './config-comparison';
 import { getConfigChanges, hasConfigChanges } from './config-comparison';
@@ -83,7 +87,7 @@ export function ChangesProvider({ children }: { children: ReactNode }) {
 		// Trigger a change detection check after a brief delay
 		// to allow database operations to complete
 		setTimeout(() => {
-			refreshChanges();
+			void refreshChanges();
 		}, 500);
 	};
 
@@ -97,9 +101,11 @@ export function ChangesProvider({ children }: { children: ReactNode }) {
 	// Initial load when selected app changes
 	useEffect(() => {
 		if (selectedApp) {
-			refreshChanges();
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: refreshChanges sets a loading flag before an async fetch when the app changes
+			void refreshChanges();
 		}
-	}, [selectedApp]); // eslint-disable-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- refreshChanges is recreated each render; re-run only when the selected app changes
+	}, [selectedApp]);
 
 	// Reduced frequency fallback polling (every 5 minutes)
 	// This catches any changes from external sources
@@ -108,9 +114,10 @@ export function ChangesProvider({ children }: { children: ReactNode }) {
 			return;
 		}
 
-		const interval = setInterval(refreshChanges, 300000); // 5 minutes
+		const interval = setInterval(() => void refreshChanges(), 300000); // 5 min
 		return () => clearInterval(interval);
-	}, [selectedApp]); // eslint-disable-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- refreshChanges is recreated each render; re-run only when the selected app changes
+	}, [selectedApp]);
 
 	const value: ChangesContextType = {
 		hasChanges,

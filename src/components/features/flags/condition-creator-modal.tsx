@@ -282,7 +282,7 @@ export default function ConditionCreatorModal({
 							type="number"
 							value={order}
 							onChange={(e) =>
-								handleOrderChange(parseInt(e.target.value, 10) ?? 1)
+								handleOrderChange(parseInt(e.target.value, 10))
 							}
 							inputProps={{ min: 1 }}
 							helperText="Lower numbers = higher priority (1 = highest)"

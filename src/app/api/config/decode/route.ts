@@ -24,10 +24,12 @@ const decodeSchema = z.object({
 
 const s3Client = getS3Client();
 
-function isNotFound(error: any): boolean {
-	return (
-		error?.name === 'NoSuchKey' || error?.$metadata?.httpStatusCode === 404
-	);
+function isNotFound(error: unknown): boolean {
+	const err = error as {
+		name?: string;
+		$metadata?: { httpStatusCode?: number };
+	};
+	return err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404;
 }
 
 async function fetchArtifact(
@@ -44,7 +46,9 @@ async function fetchArtifact(
 			if (!response.Body) {
 				return null;
 			}
-			return JSON.parse(await response.Body.transformToString('utf-8'));
+			return JSON.parse(
+				await response.Body.transformToString('utf-8'),
+			) as ConfigArtifact;
 		} catch (error) {
 			if (isNotFound(error)) {
 				return null;
@@ -72,7 +76,7 @@ async function fetchArtifact(
 // POST /api/config/decode — decode a client fingerprint against its version's artifact.
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId, code } = decodeSchema.parse(body);
 
 		const identity = await identityFromRequest(request.headers);

@@ -12,12 +12,9 @@ import { createHash } from 'crypto';
  *
  * @param salt - Unique salt for this test/rollout (ensures different distributions)
  * @param localId - User's device/session identifier (UUID format preferred)
- * @returns Promise<number> - Bucket number from 1 to 100
+ * @returns Bucket number from 1 to 100
  */
-export async function bucketFor(
-	salt: string,
-	localId: string,
-): Promise<number> {
+export function bucketFor(salt: string, localId: string): number {
 	// Combine salt and local ID for hashing
 	const input = `${salt}:${localId}`;
 
@@ -43,13 +40,13 @@ export async function bucketFor(
  * @param salt - Unique salt for this rollout
  * @param localId - User's device/session identifier
  * @param percentage - Target percentage (0-100)
- * @returns Promise<boolean> - True if user is in the rollout
+ * @returns True if user is in the rollout
  */
-export async function isInRollout(
+export function isInRollout(
 	salt: string,
 	localId: string,
 	percentage: number,
-): Promise<boolean> {
+): boolean {
 	if (percentage <= 0) {
 		return false;
 	}
@@ -57,7 +54,7 @@ export async function isInRollout(
 		return true;
 	}
 
-	const bucket = await bucketFor(salt, localId);
+	const bucket = bucketFor(salt, localId);
 	return bucket <= percentage;
 }
 
@@ -67,14 +64,14 @@ export async function isInRollout(
  * @param salt - Unique salt for this test
  * @param localId - User's device/session identifier
  * @param variants - Array of variant configurations with percentages
- * @returns Promise<string | null> - Assigned variant name or null if not in test
+ * @returns Assigned variant name or null if not in test
  */
-export async function assignVariant(
+export function assignVariant(
 	salt: string,
 	localId: string,
 	variants: Array<{ name: string; percentage: number }>,
-): Promise<string | null> {
-	const bucket = await bucketFor(salt, localId);
+): string | null {
+	const bucket = bucketFor(salt, localId);
 
 	let cumulativePercentage = 0;
 	for (const variant of variants) {

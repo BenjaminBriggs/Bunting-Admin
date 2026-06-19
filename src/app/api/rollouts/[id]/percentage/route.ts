@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -9,7 +10,7 @@ export async function PUT(
 ) {
 	const { id } = await params;
 	try {
-		const { percentage } = await request.json();
+		const { percentage } = (await request.json()) as { percentage?: unknown };
 
 		// Validate percentage
 		if (typeof percentage !== 'number' || percentage < 0 || percentage > 100) {
@@ -30,9 +31,12 @@ export async function PUT(
 		});
 
 		return NextResponse.json(rollout);
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error updating rollout percentage:', error);
-		if (error.code === 'P2025') {
+		if (
+			error instanceof Prisma.PrismaClientKnownRequestError &&
+			error.code === 'P2025'
+		) {
 			return NextResponse.json({ error: 'Rollout not found' }, { status: 404 });
 		}
 		return NextResponse.json(

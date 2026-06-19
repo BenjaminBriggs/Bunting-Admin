@@ -10,7 +10,7 @@ const generateConfigSchema = z.object({
 // POST /api/config/generate - Generate current config JSON from database
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId } = generateConfigSchema.parse(body);
 
 		const config = await generateConfigFromDb(appId);

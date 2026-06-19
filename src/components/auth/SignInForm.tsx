@@ -20,6 +20,7 @@ import {
 	Typography,
 } from '@mui/material';
 import { signIn } from 'next-auth/react';
+import type { FormEvent } from 'react';
 import { useState } from 'react';
 import type { getAvailableProviders } from '@/lib/auth-config';
 
@@ -40,7 +41,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 		providers.github ||
 		providers.microsoft;
 
-	const handleCredentialsSubmit = async (e: React.FormEvent) => {
+	const handleCredentialsSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		setIsLoading(true);
 		setError('');
@@ -52,19 +53,19 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 				redirect: false,
 			});
 
-			if (result?.error) {
+			if (result.error) {
 				setError('Invalid email or password');
-			} else if (result?.ok) {
+			} else if (result.ok) {
 				window.location.href = '/dashboard';
 			}
-		} catch (err) {
+		} catch (_err) {
 			setError('Something went wrong');
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
-	const handleEmailSubmit = async (e: React.FormEvent) => {
+	const handleEmailSubmit = async (e: FormEvent) => {
 		e.preventDefault();
 		setIsLoading(true);
 		setError('');
@@ -75,12 +76,12 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 				redirect: false,
 			});
 
-			if (result?.error) {
+			if (result.error) {
 				setError('Failed to send magic link');
 			} else {
 				setEmailSent(true);
 			}
-		} catch (err) {
+		} catch (_err) {
 			setError('Something went wrong');
 		} finally {
 			setIsLoading(false);
@@ -92,7 +93,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 		setError('');
 		try {
 			await signIn('oidc', { callbackUrl: '/dashboard' });
-		} catch (err) {
+		} catch (_err) {
 			setError('Authentication failed');
 			setIsLoading(false);
 		}
@@ -129,7 +130,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 
 		try {
 			await signIn(provider, { callbackUrl: '/dashboard' });
-		} catch (err) {
+		} catch (_err) {
 			setError('Authentication failed');
 			setIsLoading(false);
 		}
@@ -145,7 +146,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 							<Typography variant="h6" gutterBottom>
 								Email & Password
 							</Typography>
-							<form onSubmit={handleCredentialsSubmit}>
+							<form onSubmit={(e) => void handleCredentialsSubmit(e)}>
 								<Stack spacing={2}>
 									<TextField
 										label="Email"
@@ -206,7 +207,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 						<Stack spacing={2}>
 							{providers.oidc && (
 								<Button
-									onClick={handleSsoSignIn}
+									onClick={() => void handleSsoSignIn()}
 									variant="contained"
 									size="large"
 									disabled={isLoading}
@@ -219,7 +220,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 
 							{providers.google && (
 								<Button
-									onClick={() => handleOAuthSignIn('google')}
+									onClick={() => void handleOAuthSignIn('google')}
 									variant="outlined"
 									size="large"
 									disabled={isLoading}
@@ -232,7 +233,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 
 							{providers.github && (
 								<Button
-									onClick={() => handleOAuthSignIn('github')}
+									onClick={() => void handleOAuthSignIn('github')}
 									variant="outlined"
 									size="large"
 									disabled={isLoading}
@@ -245,7 +246,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 
 							{providers.microsoft && (
 								<Button
-									onClick={() => handleOAuthSignIn('azure-ad')}
+									onClick={() => void handleOAuthSignIn('azure-ad')}
 									variant="outlined"
 									size="large"
 									disabled={isLoading}
@@ -279,7 +280,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 								</Typography>
 							</Alert>
 						) : (
-							<form onSubmit={handleEmailSubmit}>
+							<form onSubmit={(e) => void handleEmailSubmit(e)}>
 								<Stack spacing={2}>
 									<TextField
 										label="Email address"

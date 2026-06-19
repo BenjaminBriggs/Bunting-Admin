@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, Stack, TextField, Typography } from '@mui/material';
-import { useState } from 'react';
+import { type ChangeEvent, useState } from 'react';
 import type { FlagType, FlagValue } from '@/types';
 
 interface DefaultValueEditorProps {
@@ -23,27 +23,25 @@ export function DefaultValueEditor({
 		onChange(newValue);
 	};
 
-	const handleStringChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleStringChange = (e: ChangeEvent<HTMLInputElement>) => {
 		onChange(e.target.value);
 	};
 
-	const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const inputValue = e.target.value;
 		if (inputValue === '') {
-			onChange((type as any) === 'int' ? 0 : 0.0);
+			onChange(type === 'int' ? 0 : 0.0);
 			return;
 		}
 
 		const numValue =
-			(type as any) === 'int'
-				? parseInt(inputValue, 10)
-				: parseFloat(inputValue);
+			type === 'int' ? parseInt(inputValue, 10) : parseFloat(inputValue);
 		if (!isNaN(numValue)) {
 			onChange(numValue);
 		}
 	};
 
-	const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleDateChange = (e: ChangeEvent<HTMLInputElement>) => {
 		const inputValue = e.target.value;
 		if (inputValue) {
 			// Convert HTML datetime-local to ISO8601
@@ -52,7 +50,7 @@ export function DefaultValueEditor({
 		}
 	};
 
-	const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+	const handleJsonChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
 		const inputValue = e.target.value;
 		setJsonError(null);
 
@@ -62,9 +60,9 @@ export function DefaultValueEditor({
 		}
 
 		try {
-			const parsed = JSON.parse(inputValue);
+			const parsed = JSON.parse(inputValue) as FlagValue;
 			onChange(parsed);
-		} catch (error) {
+		} catch {
 			setJsonError('Invalid JSON syntax');
 		}
 	};
@@ -77,7 +75,7 @@ export function DefaultValueEditor({
 		<Stack spacing={1.5}>
 			<Typography variant="subtitle2">Default Value</Typography>
 
-			{(type as any) === 'bool' && (
+			{type === 'bool' && (
 				<Stack direction="row" spacing={2}>
 					<Button
 						type="button"
@@ -98,7 +96,7 @@ export function DefaultValueEditor({
 				</Stack>
 			)}
 
-			{(type as any) === 'string' && (
+			{type === 'string' && (
 				<TextField
 					type="text"
 					value={value}
@@ -110,24 +108,24 @@ export function DefaultValueEditor({
 				/>
 			)}
 
-			{((type as any) === 'int' || (type as any) === 'double') && (
+			{(type === 'int' || type === 'double') && (
 				<TextField
 					type="number"
 					value={value}
 					onChange={handleNumberChange}
 					placeholder={
-						(type as any) === 'int'
+						type === 'int'
 							? 'Enter default integer'
 							: 'Enter default number'
 					}
-					inputProps={{ step: (type as any) === 'double' ? 'any' : '1' }}
+					inputProps={{ step: type === 'double' ? 'any' : '1' }}
 					disabled={disabled}
 					fullWidth
 					size="small"
 				/>
 			)}
 
-			{(type as any) === 'date' && (
+			{type === 'date' && (
 				<TextField
 					type="datetime-local"
 					value={typeof value === 'string' ? formatDateForInput(value) : ''}
@@ -138,7 +136,7 @@ export function DefaultValueEditor({
 				/>
 			)}
 
-			{(type as any) === 'json' && (
+			{type === 'json' && (
 				<TextField
 					multiline
 					minRows={5}

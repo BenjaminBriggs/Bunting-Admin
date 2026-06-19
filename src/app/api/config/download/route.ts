@@ -13,7 +13,7 @@ const s3Client = getS3Client();
 // POST /api/config/download - Download published config file
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appIdentifier } = downloadConfigSchema.parse(body);
 
 		const bucketName = getConfigBucket();
@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
 		}
 
 		const configContent = await response.Body.transformToString();
-		const config = JSON.parse(configContent);
+		const config = JSON.parse(configContent) as {
+			config_version?: string | null;
+		};
 
 		// Generate filename with version
 		const filename = `${appIdentifier}-v${config.config_version ?? 'latest'}.json`;

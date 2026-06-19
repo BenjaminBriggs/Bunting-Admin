@@ -125,9 +125,7 @@ export function TargetingRuleBuilder({
 	};
 
 	const getValueInput = () => {
-		// rule.value is typed `any` in the shared TargetingRule type; narrow it to
-		// FlagValue for safe reads in this component.
-		const ruleValue = rule.value as FlagValue;
+		const ruleValue = rule.value;
 		switch (flagType) {
 			case 'bool':
 				return (

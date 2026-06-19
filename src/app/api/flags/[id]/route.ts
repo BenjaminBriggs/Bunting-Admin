@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
@@ -30,7 +31,7 @@ export async function GET(
 		}
 
 		return NextResponse.json(flag);
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error fetching flag:', error);
 		return NextResponse.json(
 			{ error: 'Failed to fetch flag' },
@@ -48,9 +49,15 @@ export async function PUT(
 	try {
 		// Parsing whitelists updatable fields and strips id/appId/timestamps,
 		// closing the mass-assignment hole from spreading the raw body.
-		const updateData: Record<string, any> = updateFlagSchema.parse(
-			await request.json(),
-		);
+		// The parsed `type` is the lowercase wire enum; it is remapped to the
+		// uppercase Prisma enum below, and archive timestamps are derived here,
+		// so the mutation shape is wider than the parsed shape.
+		const parsed = updateFlagSchema.parse(await request.json());
+		// Mutable copy: the parsed `type` is the lowercase wire enum (remapped to
+		// the uppercase Prisma enum below) and archive timestamps are derived here,
+		// so the mutation shape is wider than the parsed shape. Cast at the
+		// prisma boundary once everything is normalized.
+		const updateData: Record<string, unknown> = { ...parsed };
 
 		const existing = await prisma.flag.findUnique({ where: { id } });
 		if (!existing) {
@@ -90,8 +97,8 @@ export async function PUT(
 		}
 
 		// Map string type to enum if provided
-		if (updateData.type) {
-			const typeMap: Record<string, any> = {
+		if (typeof updateData.type === 'string') {
+			const typeMap: Record<string, Prisma.FlagUpdateInput['type']> = {
 				bool: 'BOOL',
 				string: 'STRING',
 				int: 'INT',
@@ -113,13 +120,16 @@ export async function PUT(
 		});
 
 		return NextResponse.json(flag);
-	} catch (error: any) {
+	} catch (error) {
 		const validationError = zodErrorResponse(error);
 		if (validationError) {
 			return validationError;
 		}
 		console.error('Error updating flag:', error);
-		if (error.code === 'P2025') {
+		if (
+			error instanceof Prisma.PrismaClientKnownRequestError &&
+			error.code === 'P2025'
+		) {
 			return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
 		}
 		return NextResponse.json(
@@ -156,9 +166,12 @@ export async function DELETE(
 		});
 
 		return NextResponse.json({ success: true });
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error deleting flag:', error);
-		if (error.code === 'P2025') {
+		if (
+			error instanceof Prisma.PrismaClientKnownRequestError &&
+			error.code === 'P2025'
+		) {
 			return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
 		}
 		return NextResponse.json(

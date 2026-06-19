@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Validate variant names array length
-		if (variantNames?.length !== variantCount) {
+		if (variantNames.length !== variantCount) {
 			return NextResponse.json(
 				{
 					error: 'Variant names array must match variant count',
@@ -95,7 +95,13 @@ export async function POST(request: NextRequest) {
 		const salt = generateSalt();
 
 		// Create variants object with default null values for each environment
-		const variants: Record<string, any> = {};
+		const variants: Record<
+			string,
+			{
+				percentage: number;
+				values: { development: null; beta: null; production: null };
+			}
+		> = {};
 		variantNames.forEach((variantName, index) => {
 			variants[variantName] = {
 				percentage: trafficSplit[index],
@@ -115,7 +121,7 @@ export async function POST(request: NextRequest) {
 				group: group ?? null,
 				type: 'TEST',
 				salt,
-				conditions: conditions as any,
+				conditions,
 				variants,
 				flagIds: [], // Will be populated when flags are assigned to this test
 				appId,

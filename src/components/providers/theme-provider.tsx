@@ -3,12 +3,13 @@
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider } from '@mui/material/styles';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v14-appRouter';
+import type { ReactNode } from 'react';
 import { createBuntingTheme } from '@/theme/buntingTheme';
 
 export default function CustomThemeProvider({
 	children,
 }: {
-	children: React.ReactNode;
+	children: ReactNode;
 }) {
 	const theme = createBuntingTheme();
 
