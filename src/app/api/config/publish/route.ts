@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { identityFromRequest } from '@/lib/auth-session';
+import { requireAdmin } from '@/lib/authz';
 import { getConfigChanges } from '@/lib/config-comparison';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { generateRSAKeyPair } from '@/lib/crypto';
@@ -28,14 +28,17 @@ const s3Client = getS3Client();
 // POST /api/config/publish - Publish configuration to S3
 export async function POST(request: NextRequest) {
 	try {
+		// Publishing is an ADMIN-only action (see ../docs/authentication.md §Roles).
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
+		}
+		const publishedBy = authz.email;
+
 		const body = await request.json();
 		const { appId, changelog } = publishConfigSchema.parse(body);
 
 		const bucketName = getConfigBucket();
-
-		// Who is publishing — works in both oidc and proxy auth modes.
-		const identity = await identityFromRequest(request.headers);
-		const publishedBy = identity?.email ?? 'unknown';
 
 		// Generate current config
 		const baseConfig = await generateConfigFromDb(appId);

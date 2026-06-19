@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { requireAdmin } from '@/lib/authz';
 import { generateRSAKeyPair, KeySecurity } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
 import { storePrivateKey } from '@/lib/key-protection';
@@ -74,6 +75,11 @@ export async function GET(request: NextRequest) {
 // POST /api/keys - Create a new signing key
 export async function POST(request: NextRequest) {
 	try {
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
+		}
+
 		const body = await request.json();
 		const { appId, isActive } = createKeySchema.parse(body);
 
@@ -143,6 +149,11 @@ export async function POST(request: NextRequest) {
 // PUT /api/keys - Rotate signing keys
 export async function PUT(request: NextRequest) {
 	try {
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
+		}
+
 		const body = await request.json();
 		const { appId, newKeyId } = rotateKeySchema.parse(body);
 

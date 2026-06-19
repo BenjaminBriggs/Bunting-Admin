@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { requireAdmin } from '@/lib/authz';
 import { prisma } from '@/lib/db';
 
 const updateKeySchema = z.object({
@@ -70,6 +71,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
 	const { id: keyId } = await params;
 	try {
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
+		}
+
 		const { searchParams } = new URL(request.url);
 		const appId = searchParams.get('appId');
 
@@ -138,6 +144,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
 	const { id: keyId } = await params;
 	try {
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
+		}
+
 		const { searchParams } = new URL(request.url);
 		const appId = searchParams.get('appId');
 
