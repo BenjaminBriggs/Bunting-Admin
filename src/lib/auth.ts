@@ -89,7 +89,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			return '/auth/error?error=AccessDenied';
 		},
 		async jwt({ token, user }) {
-			if (user.email) {
+			// `user` is only populated on the initial sign-in; on every subsequent
+			// call to refresh the token it is undefined, so this MUST stay optional.
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- NextAuth types `user` as non-null but it is undefined on token refresh
+			if (user?.email) {
 				const dbUser = await createOrUpdateUser({
 					email: user.email,
 					name: user.name,

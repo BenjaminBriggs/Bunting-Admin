@@ -64,6 +64,9 @@ export async function identityFromRequest(
 	// oidc: lazy-load NextAuth so non-oidc paths (and unit tests) don't pull it in.
 	const { auth } = await import('./auth');
 	const session = await auth();
-	const email = session?.user.email.trim().toLowerCase();
+	// Keep `email` optional-chained: the augmented Session type claims it is a
+	// non-null string, but a provider can return a session with no email.
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime email may be absent despite the type
+	const email = session?.user?.email?.trim().toLowerCase();
 	return email ? { email } : null;
 }
