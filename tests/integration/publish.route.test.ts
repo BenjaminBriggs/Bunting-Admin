@@ -27,9 +27,18 @@ run('POST /api/config/publish (integration)', () => {
 	// Let real MinIO traffic through msw. Must be beforeEach: the integration
 	// setup's afterEach calls server.resetHandlers(), which would otherwise drop
 	// this passthrough after the first test.
-	beforeEach(() => {
+	beforeEach(async () => {
 		const endpoint = process.env.S3_ENDPOINT!;
 		server.use(http.all(`${endpoint}/*`, () => passthrough()));
+		// Publishing now requires ADMIN. In proxy mode the role is resolved from
+		// the access list, so authorize the test publishers there.
+		for (const email of ['publisher@example.com', 'p@example.com']) {
+			await prisma.accessList.upsert({
+				where: { type_value: { type: 'EMAIL', value: email } },
+				update: { role: 'ADMIN' },
+				create: { type: 'EMAIL', value: email, role: 'ADMIN' },
+			});
+		}
 	});
 
 	test('signs the exact uploaded bytes, allocates a version, and records the publisher', async () => {

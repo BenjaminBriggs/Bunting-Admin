@@ -4,19 +4,24 @@
  * Authentication is enforced globally in edge middleware (`src/middleware.ts`),
  * but authorization (role checks) cannot run there because Prisma is node-only.
  * These helpers resolve the request identity to a role and gate handlers.
- *
- * The role source of truth is the `User` table, which is authoritative in both
- * `oidc` and `proxy` auth modes. See ../docs/authentication.md §Roles for the
- * ADMIN vs DEVELOPER policy.
+ * See ../docs/authentication.md §Roles for the ADMIN vs DEVELOPER policy.
  */
 
 import { NextResponse } from 'next/server';
+import { getUserRoleFromAccessList } from './access-control';
 import { identityFromRequest } from './auth-session';
 import { db } from './db';
 
 export type Role = 'ADMIN' | 'DEVELOPER';
 
-/** Resolve the request's identity and role, or null if unauthenticated. */
+/**
+ * Resolve the request's identity and role, or null if unauthenticated.
+ *
+ * The `User` table is the role source in oidc mode (populated at sign-in,
+ * including the first-user ADMIN bootstrap). In proxy mode no `User` row is
+ * created, so we fall back to the access list — the documented role source for
+ * both modes (see ../docs/authentication.md §Access control).
+ */
 export async function getRequestRole(
 	headers: Headers,
 ): Promise<{ email: string; role: Role } | null> {
@@ -29,8 +34,12 @@ export async function getRequestRole(
 		where: { email: identity.email },
 		select: { role: true },
 	});
+	if (user) {
+		return { email: identity.email, role: user.role };
+	}
 
-	return { email: identity.email, role: user?.role ?? 'DEVELOPER' };
+	const role = await getUserRoleFromAccessList(identity.email);
+	return { email: identity.email, role };
 }
 
 /**

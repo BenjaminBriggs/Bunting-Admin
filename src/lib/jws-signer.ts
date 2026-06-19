@@ -6,9 +6,10 @@
  */
 
 import { importPKCS8, importSPKI, jwtVerify, SignJWT } from 'jose';
+import { generateRSAKeyPair } from './crypto';
 import { prisma } from './db';
 import { signDetached } from './detached-signature';
-import { loadPrivateKey } from './key-protection';
+import { loadPrivateKey, storePrivateKey } from './key-protection';
 
 export interface SigningResult {
 	signature: string; // Compact JWS string
@@ -21,6 +22,47 @@ export interface VerificationResult {
 	payload?: any;
 	error?: string;
 	keyId?: string;
+}
+
+/**
+ * Ensure an app has at least one active signing key, generating one if needed.
+ * Activates an existing inactive key before minting a new one.
+ */
+export async function ensureSigningKey(appId: string): Promise<void> {
+	try {
+		const existingActiveKey = await prisma.signingKey.findFirst({
+			where: { appId, isActive: true },
+		});
+		if (existingActiveKey) {
+			return;
+		}
+
+		const existingInactiveKey = await prisma.signingKey.findFirst({
+			where: { appId, isActive: false },
+		});
+		if (existingInactiveKey) {
+			await prisma.signingKey.update({
+				where: { id: existingInactiveKey.id },
+				data: { isActive: true },
+			});
+			return;
+		}
+
+		const keyPair = await generateRSAKeyPair();
+		await prisma.signingKey.create({
+			data: {
+				appId,
+				kid: keyPair.kid,
+				privateKey: await storePrivateKey(keyPair.privateKey),
+				publicKey: keyPair.publicKey,
+				algorithm: keyPair.algorithm,
+				isActive: true,
+			},
+		});
+	} catch (error) {
+		console.error('Failed to ensure signing key:', error);
+		throw new Error('Failed to ensure signing key exists');
+	}
 }
 
 /**

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
+import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
 import { artifactUrlFor, getConfigBucket, getS3Client } from '@/lib/storage';
 
 const createAppSchema = z.object({
@@ -37,19 +38,41 @@ async function publishInitialConfig(appId: string): Promise<void> {
 		published_at: new Date().toISOString(),
 	};
 
+	const configContent = JSON.stringify(publishedConfig, null, 2);
 	const configKey = `${appIdentifier}/config.json`;
+	const signatureKey = `${appIdentifier}/config.json.sig`;
 
 	try {
-		// Upload config to S3
-		const putConfigCommand = new PutObjectCommand({
-			Bucket: bucketName,
-			Key: configKey,
-			Body: JSON.stringify(publishedConfig, null, 2),
-			ContentType: 'application/json',
-			CacheControl: 'max-age=300', // 5 minutes
-		});
+		// A new app has no signing key yet — mint one, then sign the exact bytes
+		// we upload so the artifact verifies in the SDK from the very first fetch.
+		await ensureSigningKey(appId);
+		const signingResult = await signConfigDetached(appId, configContent);
 
-		await s3Client.send(putConfigCommand);
+		// Signature first, then config.json (see publish route for the ordering
+		// rationale).
+		await s3Client.send(
+			new PutObjectCommand({
+				Bucket: bucketName,
+				Key: signatureKey,
+				Body: signingResult.signature,
+				ContentType: 'text/plain',
+				CacheControl: 'max-age=300',
+			}),
+		);
+		await s3Client.send(
+			new PutObjectCommand({
+				Bucket: bucketName,
+				Key: configKey,
+				Body: configContent,
+				ContentType: 'application/json',
+				CacheControl: 'max-age=300', // 5 minutes
+				Metadata: {
+					'x-bunting-key-id': signingResult.keyId,
+					'x-bunting-algorithm': signingResult.algorithm,
+					'x-bunting-version': publishedConfig.config_version,
+				},
+			}),
+		);
 
 		// Create audit log entry
 		await prisma.auditLog.create({
@@ -60,7 +83,7 @@ async function publishInitialConfig(appId: string): Promise<void> {
 				publishedBy: 'system',
 				changelog: 'Initial application configuration',
 				configDiff: {},
-				artifactSize: JSON.stringify(publishedConfig).length,
+				artifactSize: configContent.length,
 			},
 		});
 	} catch (error) {
@@ -134,8 +157,17 @@ export async function POST(request: NextRequest) {
 		try {
 			await publishInitialConfig(app.id);
 		} catch (error) {
-			// If initial config publish fails, delete the app and return the error
-			await prisma.app.delete({ where: { id: app.id } });
+			// If initial config publish fails, roll back the app row. Guard the
+			// delete itself: if it throws we'd otherwise mask the original error and
+			// leave a half-created app, so log and continue to the error response.
+			try {
+				await prisma.app.delete({ where: { id: app.id } });
+			} catch (rollbackError) {
+				console.error(
+					'Failed to roll back app after initial config failure:',
+					rollbackError,
+				);
+			}
 			console.error('Failed to publish initial config:', error);
 			return NextResponse.json(
 				{
