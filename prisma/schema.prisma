@@ -112,6 +112,9 @@ model AuditLog {
   appId String @map("app_id")
   app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
 
+  // Hot path: version allocation scans today's versions per app every publish.
+  @@index([appId, configVersion])
+  @@index([appId, publishedAt])
   @@map("audit_logs")
 }
 
