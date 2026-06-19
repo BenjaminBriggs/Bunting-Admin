@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 		});
 
 		console.log(
-			`Found ${testRollouts.length} test-rollouts for appId: ${appId}, flagId: ${flagId || 'all'}`,
+			`Found ${testRollouts.length} test-rollouts for appId: ${appId}, flagId: ${flagId ?? 'all'}`,
 		);
 
 		return NextResponse.json(testRollouts);
@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
 			group: group ?? null,
 			type,
 			salt,
-			conditions: conditions || [],
-			flagIds: flagIds || [],
+			conditions: conditions ?? [],
+			flagIds: flagIds ?? [],
 			appId,
 		};
 

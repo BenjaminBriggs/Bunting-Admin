@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
 
 			// Finalize the reserved audit row now that the upload succeeded.
 			const configChanges = getConfigChanges(baseConfig, previousConfig.config);
-			const flagCount = Object.keys(publishedConfig.flags || {}).length;
+			const flagCount = Object.keys(publishedConfig.flags ?? {}).length;
 			const artifactSize = configContent.length;
 			await prisma.auditLog.update({
 				where: { id: reservation.auditId },
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
 		// lastPublishedAt advances every publish — for archived flags this pushes it
 		// past archivedAt, which is what unlocks deletion. Archived flags are in the
 		// artifact (marked deprecated), so they're stamped too.
-		const publishedKeys = Object.keys(publishedConfig.flags || {});
+		const publishedKeys = Object.keys(publishedConfig.flags ?? {});
 		if (publishedKeys.length > 0) {
 			const now = new Date();
 			await prisma.flag.updateMany({
@@ -282,4 +282,3 @@ async function getPublishedConfigFromS3(
 		return { config: null };
 	}
 }
-

@@ -46,9 +46,7 @@ async function fixAllBrokenFlags() {
 						? defaultValues.development
 						: existingValue,
 				beta:
-					defaultValues.beta !== undefined
-						? defaultValues.beta
-						: existingValue,
+					defaultValues.beta !== undefined ? defaultValues.beta : existingValue,
 				production:
 					defaultValues.production !== undefined
 						? defaultValues.production
@@ -62,7 +60,7 @@ async function fixAllBrokenFlags() {
 				where: { id: flag.id },
 				data: {
 					defaultValues: fixedDefaultValues,
-					variants: defaultValues.variants || {}, // Ensure variants exist
+					variants: defaultValues.variants ?? {}, // Ensure variants exist
 				},
 			});
 

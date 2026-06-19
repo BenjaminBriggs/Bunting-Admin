@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 		}
 
 		const { searchParams } = new URL(request.url);
-		const testType = searchParams.get('type') || 'full';
+		const testType = searchParams.get('type') ?? 'full';
 
 		switch (testType) {
 			case 'keygen':

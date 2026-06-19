@@ -95,9 +95,9 @@ export async function GET(request: NextRequest) {
 			(app.fetchPolicy as {
 				min_interval_seconds?: number;
 				hard_ttl_days?: number;
-			}) || {};
-		const minIntervalSeconds = fetchPolicy.min_interval_seconds || 21600; // 6 hours default
-		const hardTtlDays = fetchPolicy.hard_ttl_days || 7; // 7 days default
+			}) ?? {};
+		const minIntervalSeconds = fetchPolicy.min_interval_seconds ?? 21600; // 6 hours default
+		const hardTtlDays = fetchPolicy.hard_ttl_days ?? 7; // 7 days default
 
 		// publicKeysArray is already defined above
 

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 		const config = JSON.parse(configContent);
 
 		// Generate filename with version
-		const filename = `${appIdentifier}-v${config.config_version || 'latest'}.json`;
+		const filename = `${appIdentifier}-v${config.config_version ?? 'latest'}.json`;
 
 		// Return the config as a downloadable file
 		return new NextResponse(JSON.stringify(config, null, 2), {

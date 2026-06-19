@@ -99,7 +99,7 @@ export async function PUT(
 				date: 'DATE',
 				json: 'JSON',
 			};
-			updateData.type = typeMap[updateData.type] || updateData.type;
+			updateData.type = typeMap[updateData.type] ?? updateData.type;
 		}
 
 		const flag = await prisma.flag.update({
