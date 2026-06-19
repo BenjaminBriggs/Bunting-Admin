@@ -1,23 +1,33 @@
-import { NextResponse } from 'next/server';
+type Identity = { email: string } | null;
+type Role = 'ADMIN' | 'DEVELOPER';
 
-const mockIdentityFromRequest = jest.fn();
-const mockFindUnique = jest.fn();
-const mockRoleFromAccessList = jest.fn();
+const mockIdentityFromRequest = jest.fn<Promise<Identity>, [Headers]>();
+const mockFindUnique = jest.fn<Promise<{ role: Role } | null>, [unknown]>();
+const mockRoleFromAccessList = jest.fn<Promise<Role | null>, [string]>();
 
 jest.mock('@/lib/auth-session', () => ({
-	identityFromRequest: (headers: Headers) => mockIdentityFromRequest(headers),
+	identityFromRequest: (headers: Headers): Promise<Identity> =>
+		mockIdentityFromRequest(headers),
 }));
 
 jest.mock('@/lib/db', () => ({
-	db: { user: { findUnique: (args: unknown) => mockFindUnique(args) } },
+	db: {
+		user: {
+			findUnique: (args: unknown): Promise<{ role: Role } | null> =>
+				mockFindUnique(args),
+		},
+	},
 }));
 
 jest.mock('@/lib/access-control', () => ({
-	getUserRoleFromAccessList: (email: string) => mockRoleFromAccessList(email),
+	getUserRoleFromAccessList: (email: string): Promise<Role | null> =>
+		mockRoleFromAccessList(email),
 }));
 
 // Imported after the jest.mock calls so the mocked dependencies register first.
-// eslint-disable-next-line import/first
+// eslint-disable-next-line import/first -- jest.mock must register before import
+import { NextResponse } from 'next/server';
+// eslint-disable-next-line import/first -- jest.mock must register before import
 import { getRequestRole, requireAdmin } from '@/lib/authz';
 
 const headers = new Headers();

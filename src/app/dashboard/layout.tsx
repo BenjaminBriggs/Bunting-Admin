@@ -1,9 +1,7 @@
 'use client';
 
 import {
-	AccountCircle,
 	Add,
-	Apps,
 	Flag,
 	History,
 	KeyboardArrowDown,
@@ -32,6 +30,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
+import type { App } from '@/lib/api';
 import { AppProvider, useApp } from '@/lib/app-context';
 import { ChangesProvider, useChanges } from '@/lib/changes-context';
 import { typeColors } from '@/theme/designTokens';
@@ -106,7 +105,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 	};
 
 	const isSelected = (path: string) => {
-		return pathname?.startsWith(path) || false;
+		return pathname.startsWith(path);
 	};
 
 	const handleAppMenuClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -117,7 +116,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 		setAppMenuAnchor(null);
 	};
 
-	const handleAppSelect = (app: any) => {
+	const handleAppSelect = (app: App) => {
 		setSelectedApp(app);
 		handleAppMenuClose();
 	};
@@ -226,7 +225,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 					)}
 				</Box>
 				{/* Main Menu */}
-				<List sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+				<List
+					sx={{
+						flexGrow: 1,
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '3px',
+					}}
+				>
 					{menuItems.map((item, index) => {
 						const selected = isSelected(item.path);
 						const accent = item.type ? typeColors[item.type] : null;
@@ -351,15 +357,15 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 							<ListItemButton onClick={handleUserMenuClick}>
 								<ListItemIcon>
 									<Avatar
-										src={session.user.image || undefined}
+										src={session.user.image ?? undefined}
 										sx={{ width: 24, height: 24 }}
 									>
-										{session.user.name?.[0] ||
+										{session.user.name?.[0] ??
 											session.user.email[0].toUpperCase()}
 									</Avatar>
 								</ListItemIcon>
 								<ListItemText
-									primary={session.user.name || session.user.email}
+									primary={session.user.name ?? session.user.email}
 									secondary={session.user.role}
 								/>
 								<KeyboardArrowDown />
@@ -384,7 +390,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 						>
 							<ListItemText
 								primary={app.name}
-								secondary={`${app._count?.flags || 0} flags`}
+								secondary={`${app._count?.flags ?? 0} flags`}
 							/>
 						</MenuItem>
 					))}
@@ -408,12 +414,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 				>
 					<MenuItem disabled>
 						<ListItemText
-							primary={session?.user?.name || session?.user?.email}
-							secondary={`Role: ${session?.user?.role}`}
+							primary={session?.user.name ?? session?.user.email}
+							secondary={`Role: ${session?.user.role}`}
 						/>
 					</MenuItem>
 					<Divider />
-					<MenuItem onClick={handleSignOut}>
+					<MenuItem onClick={() => void handleSignOut()}>
 						<ListItemIcon>
 							<Logout />
 						</ListItemIcon>

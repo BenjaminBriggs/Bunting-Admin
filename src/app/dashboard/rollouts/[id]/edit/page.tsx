@@ -3,7 +3,7 @@
 import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import RolloutForm, {
 	type RolloutFormSubmit,
 } from '@/components/features/rollouts/rollout-form';
@@ -11,38 +11,49 @@ import {
 	archiveTestRollout,
 	deleteRollout,
 	fetchTestRollout,
+	type TestRollout,
 	updateTestRollout,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
-import type { Condition } from '@/types';
 
 export default function EditRolloutPage() {
 	const params = useParams();
 	const router = useRouter();
 	const { markChangesDetected } = useChanges();
-	const rolloutId = params?.id as string;
+	const rolloutId = params.id as string;
 
 	const [loading, setLoading] = useState(true);
-	const [rollout, setRollout] = useState<any>(null);
+	const [rollout, setRollout] = useState<TestRollout | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [saveError, setSaveError] = useState<string | null>(null);
 
-	const loadRollout = useCallback(async () => {
-		try {
-			setLoading(true);
-			const data = await fetchTestRollout(rolloutId);
-			setRollout(data);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to load rollout');
-		} finally {
-			setLoading(false);
-		}
-	}, [rolloutId]);
-
 	useEffect(() => {
-		loadRollout();
-	}, [loadRollout]);
+		let active = true;
+		const loadRollout = async () => {
+			try {
+				setLoading(true);
+				const data = await fetchTestRollout(rolloutId);
+				if (active) {
+					setRollout(data);
+				}
+			} catch (err) {
+				if (active) {
+					setError(
+						err instanceof Error ? err.message : 'Failed to load rollout',
+					);
+				}
+			} finally {
+				if (active) {
+					setLoading(false);
+				}
+			}
+		};
+		void loadRollout();
+		return () => {
+			active = false;
+		};
+	}, [rolloutId]);
 
 	const handleSubmit = async (payload: RolloutFormSubmit) => {
 		if (!rollout) {
@@ -119,7 +130,7 @@ export default function EditRolloutPage() {
 		return (
 			<Box sx={{ textAlign: 'center', py: 8 }}>
 				<Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
-					{error || 'Rollout not found'}
+					{error ?? 'Rollout not found'}
 				</Alert>
 				<Button variant="outlined" component={Link} href="/dashboard/rollouts">
 					Back to Rollouts
@@ -141,16 +152,16 @@ export default function EditRolloutPage() {
 					name: rollout.name,
 					key: rollout.key,
 					percentage: rollout.percentage ?? 0,
-					description: rollout.description || '',
-					group: rollout.group || '',
+					description: rollout.description ?? '',
+					group: rollout.group ?? '',
 					archived: rollout.archived,
-					conditions: (rollout.conditions || []) as Condition[],
+					conditions: rollout.conditions,
 				}}
 				saving={saving}
 				saveError={saveError}
-				onSubmit={handleSubmit}
-				onComplete={handleComplete}
-				onDelete={handleDelete}
+				onSubmit={(payload) => void handleSubmit(payload)}
+				onComplete={() => void handleComplete()}
+				onDelete={() => void handleDelete()}
 			/>
 		</Box>
 	);

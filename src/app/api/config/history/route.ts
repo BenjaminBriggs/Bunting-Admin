@@ -54,23 +54,23 @@ export async function POST(request: NextRequest) {
 			if (diff?.changes) {
 				for (const change of diff.changes) {
 					changes.push({
-						type: change.type || 'flag',
-						action: change.action || 'modified',
-						key: change.key || '',
-						name: change.name || change.key || '',
+						type: change.type ?? 'flag',
+						action: change.action ?? 'modified',
+						key: change.key ?? '',
+						name: change.name ?? change.key ?? '',
 					});
 				}
 			}
 
 			// Count flags from diff or set defaults
-			const flagCount = diff?.flagCount || 0;
+			const flagCount = diff?.flagCount ?? 0;
 
 			return {
 				id: log.id,
 				version: log.configVersion,
 				publishedAt: log.publishedAt.toISOString(),
-				publishedBy: log.publishedBy || 'System',
-				changelog: log.changelog || '',
+				publishedBy: log.publishedBy ?? 'System',
+				changelog: log.changelog ?? '',
 				flagCount,
 				changes: changes.length > 0 ? changes : undefined,
 			};

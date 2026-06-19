@@ -1,17 +1,30 @@
 'use client';
 
-import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Stack,
+	Typography,
+} from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { FlagRow } from '@/components';
 import { fetchFlags, type Flag as FlagType } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
-import { ink, surface, technicalButtonSx, typeColors } from '@/theme/designTokens';
+import {
+	ink,
+	surface,
+	technicalButtonSx,
+	typeColors,
+} from '@/theme/designTokens';
 
 // Flags with no group land in this bucket, always shown last.
 const UNGROUPED = 'Ungrouped';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -46,7 +59,9 @@ function SectionHeader({
 				{count}
 			</Box>
 			{hint && (
-				<Typography sx={{ ml: 'auto', font: "600 12px 'Nunito'", color: ink.muted }}>
+				<Typography
+					sx={{ ml: 'auto', font: "600 12px 'Nunito'", color: ink.muted }}
+				>
 					{hint}
 				</Typography>
 			)}
@@ -87,7 +102,10 @@ function GroupHeader({
 				sx={{ fontSize: 22, color: muted ? '#9A9483' : '#6B6452' }}
 			/>
 			<Typography
-				sx={{ font: "800 17px 'Baloo 2'", color: muted ? '#9A9483' : ink.primary }}
+				sx={{
+					font: "800 17px 'Baloo 2'",
+					color: muted ? '#9A9483' : ink.primary,
+				}}
 			>
 				{name}
 			</Typography>
@@ -134,9 +152,9 @@ export default function FlagsPage() {
 		window.addEventListener('keydown', onKeyDown);
 		return () => window.removeEventListener('keydown', onKeyDown);
 	}, []);
-	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(
-		{},
-	);
+	const [collapsedGroups, setCollapsedGroups] = useState<
+		Record<string, boolean>
+	>({});
 
 	useEffect(() => {
 		const loadFlags = async () => {
@@ -155,7 +173,7 @@ export default function FlagsPage() {
 			}
 		};
 
-		loadFlags();
+		void loadFlags();
 	}, [selectedApp]);
 
 	const matchesSearch = (flag: FlagType) => {
@@ -166,15 +184,19 @@ export default function FlagsPage() {
 		);
 	};
 
-	const activeFlags = flags.filter((flag) => matchesSearch(flag) && !flag.archived);
-	const archivedFlags = flags.filter((flag) => matchesSearch(flag) && flag.archived);
+	const activeFlags = flags.filter(
+		(flag) => matchesSearch(flag) && !flag.archived,
+	);
+	const archivedFlags = flags.filter(
+		(flag) => matchesSearch(flag) && flag.archived,
+	);
 
 	// Bucket active flags by their admin-only `group` label. Named groups sort
 	// alphabetically; ungrouped flags always trail in an "Ungrouped" bucket.
 	const groupedActive = useMemo(() => {
 		const buckets = new Map<string, FlagType[]>();
 		for (const flag of activeFlags) {
-			const key = flag.group?.trim() || UNGROUPED;
+			const key = flag.group?.trim() ?? UNGROUPED;
 			const list = buckets.get(key) ?? [];
 			list.push(flag);
 			buckets.set(key, list);
@@ -235,7 +257,9 @@ export default function FlagsPage() {
 					component="input"
 					ref={searchInputRef}
 					value={searchTerm}
-					onChange={(e: any) => setSearchTerm(e.target.value)}
+					onChange={(e: ChangeEvent<HTMLInputElement>) =>
+						setSearchTerm(e.target.value)
+					}
 					placeholder="Search flags by name or key…"
 					sx={{
 						flex: 1,
@@ -287,12 +311,17 @@ export default function FlagsPage() {
 							mb: 1.5,
 						}}
 					>
-						<Ms name="flag" sx={{ fontSize: 28, color: typeColors.flag.solid }} />
+						<Ms
+							name="flag"
+							sx={{ fontSize: 28, color: typeColors.flag.solid }}
+						/>
 					</Box>
 					<Typography sx={{ font: "700 16px 'Baloo 2'", mb: 0.5 }}>
 						{searchTerm ? 'No flags match your search' : 'No flags yet'}
 					</Typography>
-					<Typography sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mb: 3 }}>
+					<Typography
+						sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mb: 3 }}
+					>
 						{searchTerm
 							? 'Try adjusting your search terms'
 							: 'Create your first flag to start gating features.'}

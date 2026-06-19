@@ -32,6 +32,7 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
+import type { KeyboardEvent } from 'react';
 import { useState } from 'react';
 import type {
 	RuleCondition,
@@ -93,7 +94,7 @@ export function ConditionBuilder({
 
 	const handleTypeChange = (newType: RuleConditionType) => {
 		const newTemplate = conditionTemplates.find((t) => t.type === newType);
-		const defaultOperator = newTemplate?.operators[0] || 'equals';
+		const defaultOperator = newTemplate?.operators[0] ?? 'equals';
 
 		onChange({
 			...condition,
@@ -137,7 +138,7 @@ export function ConditionBuilder({
 		});
 	};
 
-	const handleKeyPress = (event: React.KeyboardEvent) => {
+	const handleKeyPress = (event: KeyboardEvent) => {
 		if (event.key === 'Enter') {
 			event.preventDefault();
 			handleAddValue();
@@ -321,11 +322,11 @@ export function ConditionBuilder({
 							<TextField
 								label="Minimum"
 								type={template.valueType === 'number' ? 'number' : 'text'}
-								value={condition.values[0] || ''}
+								value={condition.values[0] ?? ''}
 								onChange={(e) =>
 									onChange({
 										...condition,
-										values: [e.target.value, condition.values[1] || ''],
+										values: [e.target.value, condition.values[1] ?? ''],
 									})
 								}
 								size="small"
@@ -337,11 +338,11 @@ export function ConditionBuilder({
 							<TextField
 								label="Maximum"
 								type={template.valueType === 'number' ? 'number' : 'text'}
-								value={condition.values[1] || ''}
+								value={condition.values[1] ?? ''}
 								onChange={(e) =>
 									onChange({
 										...condition,
-										values: [condition.values[0] || '', e.target.value],
+										values: [condition.values[0] ?? '', e.target.value],
 									})
 								}
 								size="small"

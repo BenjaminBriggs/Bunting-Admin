@@ -1,6 +1,6 @@
 'use client';
 
-import { Add, Remove } from '@mui/icons-material';
+import { Add } from '@mui/icons-material';
 import {
 	Alert,
 	Box,
@@ -12,16 +12,14 @@ import {
 	DialogTitle,
 	Divider,
 	FormControl,
-	FormControlLabel,
 	InputLabel,
 	MenuItem,
 	Select,
 	Stack,
-	Switch,
 	TextField,
 	Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { generateId } from '@/lib/utils';
 import type {
 	ConditionalVariant,
@@ -30,9 +28,14 @@ import type {
 	FlagValue,
 } from '@/types';
 import type { RuleCondition } from '@/types/rules';
-import { RuleConditionType } from '@/types/rules';
 import ValueInput from '../../ui/value-input';
 import { ConditionBuilder } from '../rules/condition-builder';
+
+// The UI supports an "environment" pseudo-condition that is not part of the
+// SDK's ConditionType union; model it locally so the type field can carry it.
+type UICondition = Omit<RuleCondition, 'type'> & {
+	type: RuleCondition['type'] | 'environment';
+};
 
 interface ConditionCreatorModalProps {
 	open: boolean;
@@ -51,19 +54,18 @@ export default function ConditionCreatorModal({
 	onSave,
 	environment,
 	flagType,
-	flagId,
 	appId,
 	existingVariant,
 }: ConditionCreatorModalProps) {
 	// Remove name requirement - auto-generate from conditions
 	const [variantValue, setVariantValue] = useState<FlagValue>('');
-	const [conditions, setConditions] = useState<RuleCondition[]>([]);
+	const [conditions, setConditions] = useState<UICondition[]>([]);
 	const [conditionLogic, setConditionLogic] = useState<'AND' | 'OR'>('AND');
 	const [order, setOrder] = useState(1);
 	const [errors, setErrors] = useState<string[]>([]);
 
 	const getDefaultValue = useCallback((): FlagValue => {
-		switch (flagType as any) {
+		switch (flagType) {
 			case 'bool':
 				return false;
 			case 'string':
@@ -81,22 +83,22 @@ export default function ConditionCreatorModal({
 	}, [flagType]);
 
 	const createDefaultCondition = useCallback(
-		(): RuleCondition => ({
-			type: 'environment' as any,
+		(): UICondition => ({
+			type: 'environment',
 			operator: 'in',
 			values: [environment],
 		}),
 		[environment],
 	);
 
-	const generateVariantName = (conditions: RuleCondition[]): string => {
+	const generateVariantName = (conditions: UICondition[]): string => {
 		if (conditions.length === 0) {
 			return 'Variant';
 		}
 
 		// Generate a descriptive name from conditions
 		const descriptions = conditions.map((condition) => {
-			if ((condition.type as any) === 'environment') {
+			if (condition.type === 'environment') {
 				return condition.values.join('/');
 			} else if (condition.type === 'app_version') {
 				return `v${condition.values.join('/')}`;
@@ -162,16 +164,28 @@ export default function ConditionCreatorModal({
 		}
 	};
 
+	// Reproduces String()'s coercion (objects become "[object Object]") while
+	// keeping the type checker aware that every branch yields a string.
+	const valueToString = (value: FlagValue): string => {
+		if (typeof value === 'string') {
+			return value;
+		}
+		if (typeof value === 'number' || typeof value === 'boolean') {
+			return String(value);
+		}
+		return Object.prototype.toString.call(value);
+	};
+
 	const validateForm = (): boolean => {
 		const newErrors: string[] = [];
 
-		if (flagType === 'string' && !String(variantValue).trim()) {
+		if (flagType === 'string' && !valueToString(variantValue).trim()) {
 			newErrors.push('Variant value is required for string flags');
 		}
 
 		if (flagType === 'json') {
 			try {
-				JSON.parse(String(variantValue));
+				JSON.parse(valueToString(variantValue));
 			} catch {
 				newErrors.push('Variant value must be valid JSON');
 			}
@@ -199,10 +213,12 @@ export default function ConditionCreatorModal({
 		}
 
 		const variant: ConditionalVariant = {
-			id: existingVariant?.id || generateId(),
+			id: existingVariant?.id ?? generateId(),
 			name: generateVariantName(conditions),
 			type: 'conditional',
-			conditions: conditions,
+			// UICondition is a superset of RuleCondition (it adds the admin-only
+			// 'environment' default type); the saved shape is otherwise identical.
+			conditions: conditions as RuleCondition[],
 			value: variantValue,
 			order,
 		};
@@ -266,7 +282,7 @@ export default function ConditionCreatorModal({
 							type="number"
 							value={order}
 							onChange={(e) =>
-								handleOrderChange(parseInt(e.target.value, 10) || 1)
+								handleOrderChange(parseInt(e.target.value, 10) ?? 1)
 							}
 							inputProps={{ min: 1 }}
 							helperText="Lower numbers = higher priority (1 = highest)"
@@ -311,8 +327,10 @@ export default function ConditionCreatorModal({
 						<Stack spacing={2}>
 							{conditions.map((condition, index) => (
 								<Box key={index}>
+									{/* The "environment" pseudo-type is UI-only and never edited
+									    through ConditionBuilder; narrow back to RuleCondition. */}
 									<ConditionBuilder
-										condition={condition}
+										condition={condition as RuleCondition}
 										onChange={(newCondition) =>
 											handleConditionChange(index, newCondition)
 										}

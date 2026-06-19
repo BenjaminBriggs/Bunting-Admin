@@ -3,7 +3,7 @@
 import { Add, Info, Warning } from '@mui/icons-material';
 import { Alert, Box, Button, Paper, Stack, Typography } from '@mui/material';
 import { useMemo } from 'react';
-import type { Condition, ConditionType } from '@/types';
+import type { Condition } from '@/types';
 import { ConditionEditor } from './condition-editor';
 
 interface ConditionsContainerProps {
@@ -25,7 +25,7 @@ interface ValidationError {
 export function ConditionsContainer({
 	conditions,
 	onChange,
-	appId,
+	appId: _appId,
 	title = 'Conditions',
 	description = 'Define the criteria that must be met',
 	disabled = false,
@@ -87,7 +87,7 @@ export function ConditionsContainer({
 
 			// Version validation for version-type conditions
 			if (['app_version', 'os_version'].includes(condition.type)) {
-				condition.values.forEach((value, valueIndex) => {
+				condition.values.forEach((value) => {
 					if (value && !/^\d+(\.\d+)*(\.\d+)*$/.test(value)) {
 						errors.push({
 							conditionId: String(index),

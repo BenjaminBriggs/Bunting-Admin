@@ -175,7 +175,7 @@ export default function ValueInput({
 						color={error ? 'error' : 'text.secondary'}
 						sx={{ mt: 0.5 }}
 					>
-						{error || helperText}
+						{error ?? helperText}
 					</Typography>
 				)}
 			</FormControl>
@@ -243,12 +243,12 @@ export default function ValueInput({
 							rows={6}
 							value={stringValue}
 							onChange={(e) => handleJSONChange(e.target.value)}
-							placeholder={placeholder || '{\n  "key": "value"\n}'}
+							placeholder={placeholder ?? '{\n  "key": "value"\n}'}
 							fullWidth={fullWidth}
 							size={size}
-							error={Boolean(error || jsonError)}
+							error={Boolean(error ?? jsonError)}
 							helperText={
-								error || jsonError || helperText || 'Enter valid JSON'
+								error ?? jsonError ?? helperText ?? 'Enter valid JSON'
 							}
 							autoFocus={autoFocus}
 							onKeyDown={onKeyDown}
@@ -272,7 +272,7 @@ export default function ValueInput({
 			fullWidth={fullWidth}
 			required={required}
 			error={Boolean(error)}
-			helperText={error || helperText}
+			helperText={error ?? helperText}
 			placeholder={placeholder}
 			autoFocus={autoFocus}
 			onKeyDown={onKeyDown}

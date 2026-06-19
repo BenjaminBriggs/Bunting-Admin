@@ -45,9 +45,9 @@ async function fixBrokenFlag() {
 
 	// Get the existing value (probably from development)
 	const existingValue =
-		defaultValues.development ||
-		defaultValues.beta ||
-		defaultValues.production ||
+		defaultValues.development ??
+		defaultValues.beta ??
+		defaultValues.production ??
 		false;
 
 	console.log(`Using ${existingValue} as default for missing environments`);
@@ -58,10 +58,7 @@ async function fixBrokenFlag() {
 			defaultValues.development !== undefined
 				? defaultValues.development
 				: existingValue,
-		beta:
-			defaultValues.beta !== undefined
-				? defaultValues.beta
-				: existingValue,
+		beta: defaultValues.beta !== undefined ? defaultValues.beta : existingValue,
 		production:
 			defaultValues.production !== undefined
 				? defaultValues.production
@@ -75,7 +72,7 @@ async function fixBrokenFlag() {
 		where: { id: flag.id },
 		data: {
 			defaultValues: fixedDefaultValues,
-			variants: defaultValues.variants || {}, // Ensure variants exist
+			variants: defaultValues.variants ?? {}, // Ensure variants exist
 		},
 	});
 

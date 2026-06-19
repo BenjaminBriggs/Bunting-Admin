@@ -1,10 +1,11 @@
 'use client';
 
 import { Box, CircularProgress, Typography } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useState } from 'react';
 import { createApp } from '@/lib/api';
 import { ink, monoFontFamily } from '@/theme/designTokens';
 
@@ -17,7 +18,7 @@ interface SetupData {
 	};
 }
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -211,9 +212,11 @@ export default function SetupPage() {
 					<Typography sx={{ font: "800 26px 'Baloo 2'", color: ink.primary }}>
 						Create your first application
 					</Typography>
-					<Typography sx={{ font: "600 14px 'Nunito'", color: '#8B8472', mt: 0.75 }}>
-						An application is one config bundle the SDK fetches — usually one per
-						platform.
+					<Typography
+						sx={{ font: "600 14px 'Nunito'", color: '#8B8472', mt: 0.75 }}
+					>
+						An application is one config bundle the SDK fetches — usually one
+						per platform.
 					</Typography>
 				</Box>
 
@@ -240,7 +243,9 @@ export default function SetupPage() {
 							<Box sx={stepDot(atDetails, atReview)}>
 								{atReview ? <Ms name="check" sx={{ fontSize: 16 }} /> : '1'}
 							</Box>
-							<Typography sx={{ font: "700 13px 'Nunito'", color: ink.primary }}>
+							<Typography
+								sx={{ font: "700 13px 'Nunito'", color: ink.primary }}
+							>
 								Application Details
 							</Typography>
 						</Box>
@@ -267,14 +272,23 @@ export default function SetupPage() {
 
 					{/* STEP 1 */}
 					{atDetails && (
-						<Box sx={{ p: '26px', display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+						<Box
+							sx={{
+								p: '26px',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: 2.5,
+							}}
+						>
 							<Box>
 								<Typography sx={labelSx}>APPLICATION NAME</Typography>
 								<Box sx={fieldSx}>
 									<Box
 										component="input"
 										value={setupData.appName}
-										onChange={(e: any) => handleNameChange(e.target.value)}
+										onChange={(e: ChangeEvent<HTMLInputElement>) =>
+											handleNameChange(e.target.value)
+										}
 										placeholder="e.g. Feast iOS"
 										sx={{
 											...inputReset,
@@ -289,7 +303,11 @@ export default function SetupPage() {
 									APPLICATION IDENTIFIER{' '}
 									<Box
 										component="span"
-										sx={{ color: '#B4AC9A', fontWeight: 400, textTransform: 'none' }}
+										sx={{
+											color: '#B4AC9A',
+											fontWeight: 400,
+											textTransform: 'none',
+										}}
 									>
 										· auto-derived from name, editable
 									</Box>
@@ -299,7 +317,7 @@ export default function SetupPage() {
 									<Box
 										component="input"
 										value={setupData.appIdentifier}
-										onChange={(e: any) =>
+										onChange={(e: ChangeEvent<HTMLInputElement>) =>
 											setSetupData((prev) => ({
 												...prev,
 												appIdentifier: e.target.value,
@@ -314,12 +332,21 @@ export default function SetupPage() {
 										}}
 									/>
 									{identifierValid && (
-										<Ms name="check_circle" sx={{ fontSize: 18, color: '#82C868' }} />
+										<Ms
+											name="check_circle"
+											sx={{ fontSize: 18, color: '#82C868' }}
+										/>
 									)}
 								</Box>
-								<Typography sx={{ font: "500 12px 'Nunito'", color: '#A79F8C', mt: 0.875 }}>
-									Used in the SDK fetch URL — change it now; it's awkward to change
-									later.
+								<Typography
+									sx={{
+										font: "500 12px 'Nunito'",
+										color: '#A79F8C',
+										mt: 0.875,
+									}}
+								>
+									Used in the SDK fetch URL — change it now; it's awkward to
+									change later.
 								</Typography>
 							</Box>
 
@@ -335,10 +362,12 @@ export default function SetupPage() {
 								}}
 							>
 								<Ms name="cloud_sync" sx={{ fontSize: 20, color: '#3E8E84' }} />
-								<Typography sx={{ font: "500 13px/1.55 'Nunito'", color: '#46615C' }}>
+								<Typography
+									sx={{ font: "500 13px/1.55 'Nunito'", color: '#46615C' }}
+								>
 									Configs are stored in the instance bucket and served via the
-									configured CDN base URL. The SDK's fetch URL is derived from the
-									identifier above.
+									configured CDN base URL. The SDK's fetch URL is derived from
+									the identifier above.
 								</Typography>
 							</Box>
 						</Box>
@@ -346,8 +375,21 @@ export default function SetupPage() {
 
 					{/* STEP 2 */}
 					{atReview && (
-						<Box sx={{ p: '26px', display: 'flex', flexDirection: 'column', gap: 1.75 }}>
-							<Typography sx={{ font: "700 11px 'JetBrains Mono'", letterSpacing: '.04em', color: '#6B6452' }}>
+						<Box
+							sx={{
+								p: '26px',
+								display: 'flex',
+								flexDirection: 'column',
+								gap: 1.75,
+							}}
+						>
+							<Typography
+								sx={{
+									font: "700 11px 'JetBrains Mono'",
+									letterSpacing: '.04em',
+									color: '#6B6452',
+								}}
+							>
 								REVIEW
 							</Typography>
 							<Box
@@ -360,7 +402,11 @@ export default function SetupPage() {
 							>
 								{[
 									{ label: 'Name', value: setupData.appName, mono: false },
-									{ label: 'Identifier', value: setupData.appIdentifier, mono: true },
+									{
+										label: 'Identifier',
+										value: setupData.appIdentifier,
+										mono: true,
+									},
 									{
 										label: 'Fetch policy',
 										value: `min ${setupData.fetchPolicy.minIntervalHours}h · hard TTL ${setupData.fetchPolicy.hardTtlDays}d`,
@@ -375,10 +421,13 @@ export default function SetupPage() {
 											alignItems: 'center',
 											gap: 2.25,
 											p: '14px 16px',
-											borderBottom: i < arr.length - 1 ? '1px solid #F1EBDD' : 'none',
+											borderBottom:
+												i < arr.length - 1 ? '1px solid #F1EBDD' : 'none',
 										}}
 									>
-										<Typography sx={{ font: "600 13px 'Nunito'", color: '#8B8472' }}>
+										<Typography
+											sx={{ font: "600 13px 'Nunito'", color: '#8B8472' }}
+										>
 											{row.label}
 										</Typography>
 										<Typography
@@ -412,7 +461,9 @@ export default function SetupPage() {
 								}}
 							>
 								<Ms name="vpn_key" sx={{ fontSize: 20, color: '#9A6F1C' }} />
-								<Typography sx={{ font: "500 13px/1.55 'Nunito'", color: '#5E4A18' }}>
+								<Typography
+									sx={{ font: "500 13px/1.55 'Nunito'", color: '#5E4A18' }}
+								>
 									A signing keypair is generated on create. You'll download{' '}
 									<Box component="span" sx={{ fontFamily: monoFontFamily }}>
 										BuntingConfig.plist
@@ -494,7 +545,7 @@ export default function SetupPage() {
 						) : (
 							<Box
 								component="button"
-								onClick={handleCreate}
+								onClick={() => void handleCreate()}
 								disabled={loading}
 								sx={{
 									display: 'inline-flex',
@@ -522,7 +573,12 @@ export default function SetupPage() {
 				</Box>
 
 				<Typography
-					sx={{ textAlign: 'center', font: "500 12px 'Nunito'", color: '#A79F8C', mt: 2.25 }}
+					sx={{
+						textAlign: 'center',
+						font: "500 12px 'Nunito'",
+						color: '#A79F8C',
+						mt: 2.25,
+					}}
 				>
 					You can add more applications any time from the dashboard.
 				</Typography>

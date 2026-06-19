@@ -13,6 +13,7 @@ import { server } from '../msw/server';
 //   S3_SECRET_ACCESS_KEY=admin123 S3_BUCKET=bunting-configs S3_REGION=us-east-1 \
 //   SIGNING_KEY_SECRET=dev AUTH_MODE=proxy pnpm exec jest tests/integration/publish.route.test.ts
 const hasSigningEnv =
+	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: an empty-string env var means "not configured", so '' must fall through to the second operand
 	process.env.SIGNING_KEY_SECRET || process.env.SIGNING_KEY_KMS_KEY_ID;
 const run = process.env.S3_ENDPOINT && hasSigningEnv ? describe : describe.skip;
 
@@ -74,7 +75,7 @@ run('POST /api/config/publish (integration)', () => {
 
 		const res = await POST(req);
 		expect(res.status).toBe(200);
-		const json = await res.json();
+		const json = (await res.json()) as { signed: boolean; version: string };
 		expect(json.signed).toBe(true);
 		expect(json.version).toMatch(/^\d{4}-\d{2}-\d{2}\.\d+$/);
 
@@ -133,7 +134,7 @@ run('POST /api/config/publish (integration)', () => {
 			},
 		});
 
-		const publish = () => {
+		const publish = (): Promise<{ version: string }> => {
 			const req = new NextRequest('http://local/api/config/publish', {
 				method: 'POST',
 				headers: {
@@ -142,7 +143,7 @@ run('POST /api/config/publish (integration)', () => {
 				},
 				body: JSON.stringify({ appId: app.id, changelog: 'c' }),
 			});
-			return POST(req).then((r) => r.json());
+			return POST(req).then((r) => r.json() as Promise<{ version: string }>);
 		};
 
 		const first = await publish();

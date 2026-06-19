@@ -1,13 +1,37 @@
 // API utility functions for making requests to our backend
 
 import type {
+	Condition,
 	ConfigArtifact,
 	CreateRolloutRequest,
 	CreateTestRequest,
 	DBFlag,
 	DBTestRollout,
+	FlagValue,
 } from '@/types';
-import { CreateFlagRequest } from '@/types';
+
+// Error envelope returned by the API routes: `{ error, details? }`.
+interface ApiErrorBody {
+	error?: string;
+	details?: string;
+}
+
+// Parse a successful JSON response. `T` is inferred from the caller's return
+// position, so callers write `return parseJson(response)` with no type argument.
+async function parseJson<T>(response: Response): Promise<T> {
+	return (await response.json()) as T;
+}
+
+// Build an error message from a failed response's `{ error, details }` body,
+// falling back to `fallback` when the body is absent or unparseable.
+async function errorMessage(
+	response: Response,
+	fallback: string,
+): Promise<string> {
+	const body = (await response.json().catch(() => ({}))) as ApiErrorBody;
+	const base = body.error ?? fallback;
+	return body.details ? `${base}: ${body.details}` : base;
+}
 
 export interface StorageConfig {
 	bucket: string;
@@ -43,7 +67,7 @@ export async function fetchApps(): Promise<App[]> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch apps');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 // artifactUrl and storageConfig are server-managed (single global bucket; URL
@@ -60,10 +84,9 @@ export async function createApp(data: CreateAppInput): Promise<App> {
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to create app');
+		throw new Error(await errorMessage(response, 'Failed to create app'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function updateApp(
@@ -76,10 +99,9 @@ export async function updateApp(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to update app');
+		throw new Error(await errorMessage(response, 'Failed to update app'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function deleteApp(id: string): Promise<void> {
@@ -87,8 +109,7 @@ export async function deleteApp(id: string): Promise<void> {
 		method: 'DELETE',
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to delete app');
+		throw new Error(await errorMessage(response, 'Failed to delete app'));
 	}
 }
 
@@ -98,7 +119,7 @@ export async function fetchFlags(appId: string): Promise<Flag[]> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch flags');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function fetchFlag(id: string): Promise<Flag> {
@@ -106,7 +127,7 @@ export async function fetchFlag(id: string): Promise<Flag> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch flag');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function createFlag(data: {
@@ -115,11 +136,11 @@ export async function createFlag(data: {
 	displayName: string;
 	type: string;
 	defaultValues: {
-		development: any;
-		beta: any;
-		production: any;
+		development: FlagValue;
+		beta: FlagValue;
+		production: FlagValue;
 	};
-	rules?: any[];
+	rules?: unknown[];
 	description?: string;
 	group?: string | null;
 }): Promise<Flag> {
@@ -129,10 +150,9 @@ export async function createFlag(data: {
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to create flag');
+		throw new Error(await errorMessage(response, 'Failed to create flag'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function updateFlag(
@@ -145,10 +165,9 @@ export async function updateFlag(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to update flag');
+		throw new Error(await errorMessage(response, 'Failed to update flag'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function archiveFlag(
@@ -161,10 +180,9 @@ export async function archiveFlag(
 		body: JSON.stringify({ archived }),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to archive flag');
+		throw new Error(await errorMessage(response, 'Failed to archive flag'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function deleteFlag(id: string): Promise<void> {
@@ -172,8 +190,7 @@ export async function deleteFlag(id: string): Promise<void> {
 		method: 'DELETE',
 	});
 	if (!response.ok) {
-		const error = await response.json().catch(() => ({}));
-		throw new Error(error.error || 'Failed to delete flag');
+		throw new Error(await errorMessage(response, 'Failed to delete flag'));
 	}
 }
 
@@ -201,29 +218,26 @@ export async function generateCurrentConfig(
 		throw new AppNotFoundError();
 	}
 	if (!response.ok) {
-		const error = await response.json();
-		// Surface the server's `details` (the real cause) — not just the generic message.
-		const message = error.details
-			? `${error.error || 'Failed to generate config'}: ${error.details}`
-			: error.error || 'Failed to generate current config';
-		throw new Error(message);
+		// errorMessage surfaces the server's `details` (the real cause) when present.
+		throw new Error(
+			await errorMessage(response, 'Failed to generate current config'),
+		);
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function getPublishedConfig(
 	appIdentifier: string,
-): Promise<{ config: any | null; lastModified?: Date; etag?: string }> {
+): Promise<{ config: ConfigArtifact | null; lastModified?: Date; etag?: string }> {
 	const response = await fetch('/api/config/published', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ appIdentifier }),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to fetch published config');
+		throw new Error(await errorMessage(response, 'Failed to fetch published config'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 // Validation API
@@ -254,10 +268,9 @@ export async function validateConfig(appId: string): Promise<ValidationResult> {
 		throw new AppNotFoundError();
 	}
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to validate configuration');
+		throw new Error(await errorMessage(response, 'Failed to validate configuration'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 // Publish API
@@ -271,10 +284,9 @@ export async function publishConfig(
 		body: JSON.stringify({ appId, changelog }),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to publish configuration');
+		throw new Error(await errorMessage(response, 'Failed to publish configuration'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 // Publish History API
@@ -303,10 +315,9 @@ export async function getPublishHistory(
 		body: JSON.stringify({ appId, limit }),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to fetch publish history');
+		throw new Error(await errorMessage(response, 'Failed to fetch publish history'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export interface DecodedFingerprintResponse {
@@ -330,10 +341,9 @@ export async function decodeFingerprint(
 		body: JSON.stringify({ appId, code }),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to decode fingerprint');
+		throw new Error(await errorMessage(response, 'Failed to decode fingerprint'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function downloadConfig(appIdentifier: string): Promise<void> {
@@ -344,8 +354,7 @@ export async function downloadConfig(appIdentifier: string): Promise<void> {
 	});
 
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to download configuration');
+		throw new Error(await errorMessage(response, 'Failed to download configuration'));
 	}
 
 	// Get the filename from the response headers
@@ -373,7 +382,7 @@ export async function fetchTests(appId: string): Promise<TestRollout[]> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch tests');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function fetchTest(id: string): Promise<TestRollout> {
@@ -381,7 +390,7 @@ export async function fetchTest(id: string): Promise<TestRollout> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch test');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function createTest(
@@ -393,10 +402,9 @@ export async function createTest(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to create test');
+		throw new Error(await errorMessage(response, 'Failed to create test'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function updateTest(
@@ -409,10 +417,9 @@ export async function updateTest(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to update test');
+		throw new Error(await errorMessage(response, 'Failed to update test'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function deleteTest(id: string): Promise<void> {
@@ -430,7 +437,7 @@ export async function fetchRollouts(appId: string): Promise<TestRollout[]> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch rollouts');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function fetchRollout(id: string): Promise<TestRollout> {
@@ -438,7 +445,7 @@ export async function fetchRollout(id: string): Promise<TestRollout> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch rollout');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function createRollout(
@@ -450,10 +457,9 @@ export async function createRollout(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to create rollout');
+		throw new Error(await errorMessage(response, 'Failed to create rollout'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function updateRollout(
@@ -466,10 +472,9 @@ export async function updateRollout(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to update rollout');
+		throw new Error(await errorMessage(response, 'Failed to update rollout'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function deleteRollout(id: string): Promise<void> {
@@ -491,10 +496,10 @@ export async function fetchTestsAndRolloutsForFlag(
 	if (!response.ok) {
 		throw new Error('Failed to fetch tests and rollouts for flag');
 	}
-	const data = await response.json();
+	const data = await parseJson<TestRollout[]>(response);
 	return {
-		tests: data.filter((item: TestRollout) => item.type === 'TEST'),
-		rollouts: data.filter((item: TestRollout) => item.type === 'ROLLOUT'),
+		tests: data.filter((item) => item.type === 'TEST'),
+		rollouts: data.filter((item) => item.type === 'ROLLOUT'),
 	};
 }
 
@@ -508,10 +513,9 @@ export async function updateRolloutPercentage(
 		body: JSON.stringify({ percentage }),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to update rollout percentage');
+		throw new Error(await errorMessage(response, 'Failed to update rollout percentage'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function archiveTestRollout(
@@ -524,10 +528,9 @@ export async function archiveTestRollout(
 		body: JSON.stringify({ type }),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to archive test/rollout');
+		throw new Error(await errorMessage(response, 'Failed to archive test/rollout'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 // Unified test/rollout creation function
@@ -537,9 +540,9 @@ export async function createTestRollout(data: {
 	description?: string;
 	group?: string | null;
 	type: 'TEST' | 'ROLLOUT';
-	variants?: Record<string, { percentage: number; value: any }>;
+	variants?: Record<string, { percentage: number; value: FlagValue }>;
 	percentage?: number;
-	conditions?: any[];
+	conditions?: Condition[];
 	flagIds?: string[];
 }): Promise<TestRollout> {
 	const response = await fetch('/api/test-rollouts', {
@@ -548,10 +551,9 @@ export async function createTestRollout(data: {
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to create test/rollout');
+		throw new Error(await errorMessage(response, 'Failed to create test/rollout'));
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function fetchTestRollout(id: string): Promise<TestRollout> {
@@ -559,7 +561,7 @@ export async function fetchTestRollout(id: string): Promise<TestRollout> {
 	if (!response.ok) {
 		throw new Error('Failed to fetch test/rollout');
 	}
-	return response.json();
+	return parseJson(response);
 }
 
 export async function updateTestRollout(
@@ -572,8 +574,7 @@ export async function updateTestRollout(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		const error = await response.json();
-		throw new Error(error.error || 'Failed to update test/rollout');
+		throw new Error(await errorMessage(response, 'Failed to update test/rollout'));
 	}
-	return response.json();
+	return parseJson(response);
 }

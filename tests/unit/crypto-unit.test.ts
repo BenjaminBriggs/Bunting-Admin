@@ -2,6 +2,7 @@
  * Unit tests for JWS crypto functionality (no database required)
  */
 
+import { createPrivateKey, createPublicKey } from 'crypto';
 import { describe, expect, it } from '@jest/globals';
 import {
 	generateKeyId,
@@ -118,9 +119,12 @@ describe('Crypto Unit Tests (No Database)', () => {
 			const jws = `${headerB64}.${payloadB64}.${signature}`;
 
 			const result = validateJWSFormat(jws);
+			const details = result.details as
+				| { algorithm?: string; keyId?: string }
+				| undefined;
 			expect(result.success).toBe(true);
-			expect(result.details?.algorithm).toBe('RS256');
-			expect(result.details?.keyId).toBe('test-kid-123456789012345678901234');
+			expect(details?.algorithm).toBe('RS256');
+			expect(details?.keyId).toBe('test-kid-123456789012345678901234');
 		});
 
 		it('should reject invalid JWS format', () => {
@@ -173,7 +177,11 @@ describe('Crypto Unit Tests (No Database)', () => {
 			);
 			const jws = `${headerB64}.payload.signature`;
 
-			const parsedHeader = JWSUtils.parseHeader(jws);
+			const parsedHeader = JWSUtils.parseHeader(jws) as {
+				alg?: string;
+				kid?: string;
+				typ?: string;
+			};
 			expect(parsedHeader.alg).toBe('RS256');
 			expect(parsedHeader.kid).toBe('test-kid');
 			expect(parsedHeader.typ).toBe('JWT');
@@ -198,9 +206,9 @@ describe('Crypto Unit Tests (No Database)', () => {
 		});
 
 		it('should handle invalid JWS gracefully', () => {
-			expect(() => JWSUtils.parseHeader('invalid')).toThrow(
-				'Invalid JWS format',
-			);
+			expect(() => {
+				JWSUtils.parseHeader('invalid');
+			}).toThrow('Invalid JWS format');
 			expect(JWSUtils.extractKeyId('invalid')).toBe(null);
 			expect(JWSUtils.isValidJWSFormat('invalid')).toBe(false);
 		});
@@ -210,13 +218,10 @@ describe('Crypto Unit Tests (No Database)', () => {
 		it('should use compatible key generation parameters', async () => {
 			const keyPair = await generateRSAKeyPair();
 
-			// Verify the key pair can be used with Node.js crypto
-			const crypto = require('crypto');
-
-			// Should not throw when importing the keys
+			// Should not throw when importing the keys with Node.js crypto
 			expect(() => {
-				crypto.createPublicKey(keyPair.publicKey);
-				crypto.createPrivateKey(keyPair.privateKey);
+				createPublicKey(keyPair.publicKey);
+				createPrivateKey(keyPair.privateKey);
 			}).not.toThrow();
 		});
 

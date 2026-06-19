@@ -1,5 +1,6 @@
 'use client';
 
+import type { SxProps, Theme } from '@mui/material';
 import {
 	Alert,
 	Box,
@@ -12,14 +13,28 @@ import {
 	Stack,
 	Typography,
 } from '@mui/material';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { envColors, ink, monoFontFamily, surface } from '@/theme/designTokens';
-import type { DBTestRollout, Environment } from '@/types';
+import type { DBTestRollout, Environment, FlagValue } from '@/types';
+import type { FlagType } from './flag-value-input';
 import FlagValueInput, {
 	getDefaultValueForType,
 	processValueForType,
 	validateValue,
 } from './flag-value-input';
+
+// Runtime shape stored in DBTestRollout.variants for a flag-assignment test:
+// each group's `values` is keyed environment → flagId → value, which differs
+// from the shared TestVariant.values type (environment → FlagValue). Modelled
+// locally so this modal can read/write it without `any`. See report.
+type FlagGroupValues = Partial<Record<Environment, Record<string, FlagValue>>>;
+interface FlagTestVariant {
+	values?: FlagGroupValues;
+}
+type RolloutFlagValues = Partial<
+	Record<Environment, Record<string, FlagValue>>
+>;
 
 interface FlagTestAssignmentModalProps {
 	open: boolean;
@@ -37,7 +52,7 @@ interface TestGroupValue {
 	testId: string;
 	testName: string;
 	groupName: string;
-	value: any;
+	value: FlagValue;
 }
 
 // Group swatch palette (matches the Test form / Tests card). Control reads soft + last.
@@ -45,7 +60,7 @@ const PALETTE = ['#F6A444', '#54C9C0', '#F47C5D', '#82C868', '#D8CFBC'];
 const CONTROL_COLOR = '#D8CFBC';
 const isControl = (name: string) => name.trim().toLowerCase() === 'control';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -53,7 +68,7 @@ function Ms({ name, sx }: { name: string; sx?: any }) {
 	);
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: { children: ReactNode }) {
 	return (
 		<Typography
 			sx={{
@@ -82,11 +97,13 @@ export default function FlagTestAssignmentModal({
 	selectedRollouts,
 }: FlagTestAssignmentModalProps) {
 	const [groupValues, setGroupValues] = useState<TestGroupValue[]>([]);
-	const [rolloutValues, setRolloutValues] = useState<Record<string, any>>({});
+	const [rolloutValues, setRolloutValues] = useState<Record<string, FlagValue>>(
+		{},
+	);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const env = envColors[environment] ?? envColors.production;
+	const env = envColors[environment];
 	const itemCount = selectedTests.length + selectedRollouts.length;
 
 	useEffect(() => {
@@ -101,16 +118,18 @@ export default function FlagTestAssignmentModal({
 						testId: test.id,
 						testName: test.name,
 						groupName,
-						value: getDefaultValueForType(flagType as any),
+						value: getDefaultValueForType(flagType as FlagType),
 					});
 				});
 			}
 		});
 		setGroupValues(initialValues);
 
-		const initialRollouts: Record<string, any> = {};
+		const initialRollouts: Record<string, FlagValue> = {};
 		selectedRollouts.forEach((rollout) => {
-			initialRollouts[rollout.id] = getDefaultValueForType(flagType as any);
+			initialRollouts[rollout.id] = getDefaultValueForType(
+				flagType as FlagType,
+			);
 		});
 		setRolloutValues(initialRollouts);
 		setError(null);
@@ -119,7 +138,7 @@ export default function FlagTestAssignmentModal({
 	const handleGroupValueChange = (
 		testId: string,
 		groupName: string,
-		value: any,
+		value: FlagValue,
 	) => {
 		setGroupValues((prev) =>
 			prev.map((gv) =>
@@ -130,16 +149,16 @@ export default function FlagTestAssignmentModal({
 		);
 	};
 
-	const handleRolloutValueChange = (rolloutId: string, value: any) => {
+	const handleRolloutValueChange = (rolloutId: string, value: FlagValue) => {
 		setRolloutValues((prev) => ({ ...prev, [rolloutId]: value }));
 	};
 
 	const validateValues = (): boolean => {
 		const groupsOk = groupValues.every(
-			(gv) => validateValue(gv.value, flagType as any).isValid,
+			(gv) => validateValue(gv.value, flagType as FlagType).isValid,
 		);
 		const rolloutsOk = Object.values(rolloutValues).every(
-			(v) => validateValue(v, flagType as any).isValid,
+			(v) => validateValue(v, flagType as FlagType).isValid,
 		);
 		return groupsOk && rolloutsOk;
 	};
@@ -155,37 +174,37 @@ export default function FlagTestAssignmentModal({
 
 		try {
 			// Group values by test
-			const testUpdates: Record<string, Record<string, any>> = {};
+			const testUpdates: Record<string, Record<string, FlagValue>> = {};
 			groupValues.forEach((gv) => {
-				if (!testUpdates[gv.testId]) {
-					testUpdates[gv.testId] = {};
-				}
-				testUpdates[gv.testId][gv.groupName] = processValueForType(
+				const groups = (testUpdates[gv.testId] ??= {});
+				groups[gv.groupName] = processValueForType(
 					gv.value,
-					flagType as any,
+					flagType as FlagType,
 				);
 			});
 
 			for (const testId of Object.keys(testUpdates)) {
 				const test = selectedTests.find((t) => t.id === testId);
 				if (test?.variants) {
-					const updatedVariants = { ...test.variants };
+					// The stored variants carry per-flag values (see FlagTestVariant).
+					const updatedVariants = { ...test.variants } as Record<
+						string,
+						FlagTestVariant
+					>;
 
 					Object.keys(testUpdates[testId]).forEach((groupName) => {
-						if (updatedVariants[groupName]) {
-							if (!updatedVariants[groupName].values) {
-								updatedVariants[groupName].values = {
-									development: {},
-									beta: {},
-									production: {},
-								};
-							}
-							if (!updatedVariants[groupName].values[environment]) {
-								updatedVariants[groupName].values[environment] = {};
-							}
-							(updatedVariants[groupName].values as any)[environment][flagId] =
-								testUpdates[testId][groupName];
-						}
+						// groupName is always a key of updatedVariants (both derive from
+						// test.variants), so the variant is guaranteed present here.
+						const variant = updatedVariants[groupName];
+						const values: FlagGroupValues = variant.values ?? {
+							development: {},
+							beta: {},
+							production: {},
+						};
+						const envValues = values[environment] ?? {};
+						envValues[flagId] = testUpdates[testId][groupName];
+						values[environment] = envValues;
+						variant.values = values;
 					});
 
 					const updatedFlagIds = test.flagIds.includes(flagId)
@@ -211,17 +230,22 @@ export default function FlagTestAssignmentModal({
 			// Rollouts — one served value per rollout (the picked value, not a default)
 			for (const rollout of selectedRollouts) {
 				const rolloutValue = processValueForType(
-					rolloutValues[rollout.id] ?? getDefaultValueForType(flagType as any),
-					flagType as any,
+					rolloutValues[rollout.id] ??
+						getDefaultValueForType(flagType as FlagType),
+					flagType as FlagType,
 				);
 
+				// rolloutValues is stored environment → flagId → value (see report).
+				const existingRolloutValues = rollout.rolloutValues as
+					| RolloutFlagValues
+					| undefined;
 				const updatedRolloutValues = {
 					development: {},
 					beta: {},
 					production: {},
-					...rollout.rolloutValues,
+					...existingRolloutValues,
 					[environment]: {
-						...(rollout.rolloutValues as any)?.[environment],
+						...existingRolloutValues?.[environment],
 						[flagId]: rolloutValue,
 					},
 				};
@@ -247,9 +271,7 @@ export default function FlagTestAssignmentModal({
 			onSave();
 			onClose();
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : 'Failed to assign flag',
-			);
+			setError(err instanceof Error ? err.message : 'Failed to assign flag');
 		} finally {
 			setSaving(false);
 		}
@@ -259,7 +281,8 @@ export default function FlagTestAssignmentModal({
 	const groupsForTest = (testId: string): TestGroupValue[] => {
 		const rows = groupValues.filter((gv) => gv.testId === testId);
 		return [...rows].sort(
-			(a, b) => (isControl(a.groupName) ? 1 : 0) - (isControl(b.groupName) ? 1 : 0),
+			(a, b) =>
+				(isControl(a.groupName) ? 1 : 0) - (isControl(b.groupName) ? 1 : 0),
 		);
 	};
 
@@ -335,14 +358,22 @@ export default function FlagTestAssignmentModal({
 					>
 						<Ms name="info" sx={{ fontSize: 19, color: env.text, mt: '1px' }} />
 						<Typography
-							sx={{ fontWeight: 600, fontSize: 13, color: env.text, lineHeight: 1.5 }}
+							sx={{
+								fontWeight: 600,
+								fontSize: 13,
+								color: env.text,
+								lineHeight: 1.5,
+							}}
 						>
 							Configure the value{' '}
 							<Box component="span" sx={{ fontWeight: 800 }}>
 								{flagName}
 							</Box>{' '}
 							(
-							<Box component="span" sx={{ fontFamily: monoFontFamily, fontWeight: 700 }}>
+							<Box
+								component="span"
+								sx={{ fontFamily: monoFontFamily, fontWeight: 700 }}
+							>
 								{flagType}
 							</Box>
 							) serves in {env.label} for each selected test group and rollout.
@@ -354,8 +385,13 @@ export default function FlagTestAssignmentModal({
 					{/* Rollouts */}
 					{selectedRollouts.length > 0 && (
 						<Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
-								<Ms name="rocket_launch" sx={{ fontSize: 19, color: '#9A6F1C' }} />
+							<Box
+								sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}
+							>
+								<Ms
+									name="rocket_launch"
+									sx={{ fontSize: 19, color: '#9A6F1C' }}
+								/>
 								<Typography variant="h6" sx={{ fontSize: 16 }}>
 									Rollouts
 								</Typography>
@@ -378,7 +414,7 @@ export default function FlagTestAssignmentModal({
 											</Typography>
 										</Box>
 										<FlagValueInput
-											flagType={flagType as any}
+											flagType={flagType as FlagType}
 											value={rolloutValues[rollout.id]}
 											onChange={(v) => handleRolloutValueChange(rollout.id, v)}
 											fullWidth={false}
@@ -393,7 +429,9 @@ export default function FlagTestAssignmentModal({
 					{/* A/B Tests */}
 					{selectedTests.length > 0 && (
 						<Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+							<Box
+								sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}
+							>
 								<Ms name="science" sx={{ fontSize: 19, color: '#9A6F1C' }} />
 								<Typography variant="h6" sx={{ fontSize: 16 }}>
 									A/B Tests
@@ -414,7 +452,9 @@ export default function FlagTestAssignmentModal({
 												p: '14px 15px',
 											}}
 										>
-											<Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1.25 }}>
+											<Typography
+												sx={{ fontWeight: 700, fontSize: 14, mb: 1.25 }}
+											>
 												{test.name}
 											</Typography>
 											<Box sx={{ mb: 1 }}>
@@ -422,7 +462,7 @@ export default function FlagTestAssignmentModal({
 											</Box>
 											<Stack spacing={1}>
 												{rows.map((gv) => {
-													const idx = Object.keys(test.variants || {}).indexOf(
+													const idx = Object.keys(test.variants ?? {}).indexOf(
 														gv.groupName,
 													);
 													const color = isControl(gv.groupName)
@@ -462,10 +502,14 @@ export default function FlagTestAssignmentModal({
 																{gv.groupName}
 															</Typography>
 															<FlagValueInput
-																flagType={flagType as any}
+																flagType={flagType as FlagType}
 																value={gv.value}
 																onChange={(v) =>
-																	handleGroupValueChange(gv.testId, gv.groupName, v)
+																	handleGroupValueChange(
+																		gv.testId,
+																		gv.groupName,
+																		v,
+																	)
 																}
 																fullWidth={false}
 																size="small"
@@ -484,13 +528,19 @@ export default function FlagTestAssignmentModal({
 			</DialogContent>
 
 			<DialogActions
-				sx={{ p: '15px 22px', bgcolor: '#FCFAF3', borderTop: '1px solid #F1EBDD' }}
+				sx={{
+					p: '15px 22px',
+					bgcolor: '#FCFAF3',
+					borderTop: '1px solid #F1EBDD',
+				}}
 			>
 				<Button variant="outlined" onClick={onClose}>
 					Cancel
 				</Button>
 				<Button
-					onClick={handleSave}
+					onClick={() => {
+						void handleSave();
+					}}
 					disabled={saving || !validateValues()}
 					startIcon={
 						saving ? (
@@ -508,7 +558,11 @@ export default function FlagTestAssignmentModal({
 						fontWeight: 700,
 						boxShadow: 'none',
 						'&:hover': { bgcolor: env.text, opacity: 0.9, boxShadow: 'none' },
-						'&.Mui-disabled': { bgcolor: '#C2BAA8', color: '#fff', opacity: 0.55 },
+						'&.Mui-disabled': {
+							bgcolor: '#C2BAA8',
+							color: '#fff',
+							opacity: 0.55,
+						},
 					}}
 				>
 					{saving

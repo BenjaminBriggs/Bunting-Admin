@@ -5,8 +5,10 @@
 // supplies initial values + the submit / complete / delete callbacks (preserving the
 // existing createRollout / updateTestRollout / archiveTestRollout / deleteRollout logic).
 
+import type { SxProps, Theme } from '@mui/material';
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import Link from 'next/link';
+import type { ChangeEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import {
 	conditionTemplates,
@@ -59,7 +61,7 @@ const TYPE_OPTIONS = conditionTemplates.map((t) => ({
 	label: t.label,
 }));
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: { children: ReactNode }) {
 	return (
 		<Typography
 			component="div"
@@ -83,7 +85,7 @@ function Ms({
 	onClick,
 }: {
 	name: string;
-	sx?: any;
+	sx?: SxProps<Theme>;
 	onClick?: () => void;
 }) {
 	return (
@@ -252,7 +254,11 @@ export default function RolloutForm({
 		}
 		const out: Array<{ field: string; from: string; to: string }> = [];
 		if (name !== initial.name) {
-			out.push({ field: 'NAME', from: initial.name || '∅', to: name || '∅' });
+			out.push({
+				field: 'NAME',
+				from: initial.name ?? '∅',
+				to: name ?? '∅',
+			});
 		}
 		if (keyChanged) {
 			out.push({ field: 'KEY', from: initial.key, to: keyText });
@@ -274,12 +280,16 @@ export default function RolloutForm({
 		if (description !== initial.description) {
 			out.push({
 				field: 'DESCRIPTION',
-				from: initial.description || '∅',
-				to: description || '∅',
+				from: initial.description ?? '∅',
+				to: description ?? '∅',
 			});
 		}
 		if (group !== initial.group) {
-			out.push({ field: 'GROUP', from: initial.group || '∅', to: group || '∅' });
+			out.push({
+				field: 'GROUP',
+				from: initial.group ?? '∅',
+				to: group ?? '∅',
+			});
 		}
 		return out;
 	}, [
@@ -310,7 +320,11 @@ export default function RolloutForm({
 						})),
 					};
 		return JSON.stringify(
-			{ key: keyText || 'new_rollout', percentage, audience },
+			{
+				key: keyText ?? 'new_rollout',
+				percentage,
+				audience,
+			},
 			null,
 			2,
 		);
@@ -320,7 +334,14 @@ export default function RolloutForm({
 		if (!canSubmit) {
 			return;
 		}
-		onSubmit({ key: keyText, name, description, group: group.trim(), percentage, conditions });
+		onSubmit({
+			key: keyText,
+			name,
+			description,
+			group: group.trim(),
+			percentage,
+			conditions,
+		});
 	};
 
 	return (
@@ -360,7 +381,13 @@ export default function RolloutForm({
 						{isEdit ? 'Edit rollout' : 'Create a rollout'}
 					</Typography>
 					<Typography
-						sx={{ fontWeight: 600, fontSize: 13, color: '#8B8472', mt: 0.5, maxWidth: 560 }}
+						sx={{
+							fontWeight: 600,
+							fontSize: 13,
+							color: '#8B8472',
+							mt: 0.5,
+							maxWidth: 560,
+						}}
 					>
 						{isEdit
 							? 'Adjust the ramp or audience. Changes apply everywhere this rollout is used.'
@@ -372,7 +399,12 @@ export default function RolloutForm({
 						<Button
 							variant="outlined"
 							size="small"
-							startIcon={<Ms name="check_circle" sx={{ fontSize: 17, color: '#3F7A2D' }} />}
+							startIcon={
+								<Ms
+									name="check_circle"
+									sx={{ fontSize: 17, color: '#3F7A2D' }}
+								/>
+							}
 							onClick={onComplete}
 						>
 							Complete (100%)
@@ -397,7 +429,15 @@ export default function RolloutForm({
 				</Alert>
 			)}
 
-			<Box sx={{ display: 'flex', gap: 2.75, alignItems: 'flex-start', mt: 2.75, flexWrap: 'wrap' }}>
+			<Box
+				sx={{
+					display: 'flex',
+					gap: 2.75,
+					alignItems: 'flex-start',
+					mt: 2.75,
+					flexWrap: 'wrap',
+				}}
+			>
 				{/* LEFT: form */}
 				<Box
 					sx={{
@@ -412,17 +452,34 @@ export default function RolloutForm({
 				>
 					{/* name */}
 					<Label>
-						Rollout name <Box component="span" sx={{ color: '#C8503C' }}>*</Box>
+						Rollout name{' '}
+						<Box component="span" sx={{ color: '#C8503C' }}>
+							*
+						</Box>
 					</Label>
 					<Box
 						component="input"
 						value={name}
-						onChange={(e: any) => setName(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLInputElement>) =>
+							setName(e.target.value)
+						}
 						placeholder="e.g. New checkout flow"
 						sx={{ ...fieldSx, mt: 1 }}
 					/>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.875, mt: 1.125, flexWrap: 'wrap' }}>
-						<Typography sx={{ fontWeight: 600, fontSize: 11, color: ink.muted }}>key</Typography>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 0.875,
+							mt: 1.125,
+							flexWrap: 'wrap',
+						}}
+					>
+						<Typography
+							sx={{ fontWeight: 600, fontSize: 11, color: ink.muted }}
+						>
+							key
+						</Typography>
 						<Ms name="arrow_forward" sx={{ fontSize: 15, color: '#C2BAA8' }} />
 						<Box
 							sx={{
@@ -436,15 +493,26 @@ export default function RolloutForm({
 								py: 0.375,
 							}}
 						>
-							{keyText || '—'}
+							{keyText ?? '—'}
 						</Box>
 						{keyValidation.error ? (
-							<Typography sx={{ fontWeight: 600, fontSize: 11, color: '#C8503C' }}>
+							<Typography
+								sx={{ fontWeight: 600, fontSize: 11, color: '#C8503C' }}
+							>
 								{keyValidation.error}
 							</Typography>
 						) : (
 							keyAvailable && (
-								<Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontWeight: 600, fontSize: 11, color: '#3F7A2D' }}>
+								<Box
+									sx={{
+										display: 'inline-flex',
+										alignItems: 'center',
+										gap: 0.5,
+										fontWeight: 600,
+										fontSize: 11,
+										color: '#3F7A2D',
+									}}
+								>
 									<Ms name="check_circle" sx={{ fontSize: 15 }} />
 									available
 								</Box>
@@ -465,17 +533,38 @@ export default function RolloutForm({
 							}}
 						>
 							<Ms name="warning" sx={{ fontSize: 19, color: '#9A6F1C' }} />
-							<Typography sx={{ fontWeight: 600, fontSize: 12, color: '#5E4A18', lineHeight: 1.5 }}>
+							<Typography
+								sx={{
+									fontWeight: 600,
+									fontSize: 12,
+									color: '#5E4A18',
+									lineHeight: 1.5,
+								}}
+							>
 								Renaming changes the key from{' '}
-								<Box component="span" sx={{ fontFamily: monoFontFamily, fontSize: 11, color: '#9A6F1C' }}>
+								<Box
+									component="span"
+									sx={{
+										fontFamily: monoFontFamily,
+										fontSize: 11,
+										color: '#9A6F1C',
+									}}
+								>
 									{initial.key}
 								</Box>{' '}
 								to{' '}
-								<Box component="span" sx={{ fontFamily: monoFontFamily, fontSize: 11, color: '#9A6F1C' }}>
+								<Box
+									component="span"
+									sx={{
+										fontFamily: monoFontFamily,
+										fontSize: 11,
+										color: '#9A6F1C',
+									}}
+								>
 									{keyText}
 								</Box>
-								. Any flag using this rollout keeps the link, but code referencing
-								the key must be updated.
+								. Any flag using this rollout keeps the link, but code
+								referencing the key must be updated.
 							</Typography>
 						</Box>
 					)}
@@ -484,11 +573,38 @@ export default function RolloutForm({
 					<Box sx={{ mt: 3 }}>
 						<Label>Rollout percentage</Label>
 					</Box>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, mt: 1.5 }}>
+					<Box
+						sx={{ display: 'flex', alignItems: 'center', gap: 2.5, mt: 1.5 }}
+					>
 						<Box sx={{ flex: 1 }}>
-							<Box sx={{ position: 'relative', height: 22, display: 'flex', alignItems: 'center' }}>
-								<Box sx={{ position: 'absolute', left: 0, right: 0, height: 12, borderRadius: '7px', bgcolor: '#EFE8DA' }} />
-								<Box sx={{ position: 'absolute', left: 0, height: 12, width: `${percentage}%`, bgcolor: ink.primary, borderRadius: '7px' }} />
+							<Box
+								sx={{
+									position: 'relative',
+									height: 22,
+									display: 'flex',
+									alignItems: 'center',
+								}}
+							>
+								<Box
+									sx={{
+										position: 'absolute',
+										left: 0,
+										right: 0,
+										height: 12,
+										borderRadius: '7px',
+										bgcolor: '#EFE8DA',
+									}}
+								/>
+								<Box
+									sx={{
+										position: 'absolute',
+										left: 0,
+										height: 12,
+										width: `${percentage}%`,
+										bgcolor: ink.primary,
+										borderRadius: '7px',
+									}}
+								/>
 								<Box
 									sx={{
 										position: 'absolute',
@@ -510,7 +626,9 @@ export default function RolloutForm({
 									min={0}
 									max={100}
 									value={percentage}
-									onChange={(e: any) => setPercentage(clampPct(parseInt(e.target.value, 10)))}
+									onChange={(e: ChangeEvent<HTMLInputElement>) =>
+										setPercentage(clampPct(parseInt(e.target.value, 10)))
+									}
 									sx={{
 										appearance: 'none',
 										WebkitAppearance: 'none',
@@ -521,7 +639,10 @@ export default function RolloutForm({
 										cursor: 'pointer',
 										position: 'relative',
 										'&:focus': { outline: 'none' },
-										'&::-webkit-slider-runnable-track': { height: 22, background: 'transparent' },
+										'&::-webkit-slider-runnable-track': {
+											height: 22,
+											background: 'transparent',
+										},
 										'&::-webkit-slider-thumb': {
 											WebkitAppearance: 'none',
 											appearance: 'none',
@@ -531,15 +652,53 @@ export default function RolloutForm({
 											background: 'transparent',
 											cursor: 'grab',
 										},
-										'&::-moz-range-track': { height: 22, background: 'transparent' },
-										'&::-moz-range-thumb': { width: 22, height: 22, border: 'none', background: 'transparent', cursor: 'grab' },
+										'&::-moz-range-track': {
+											height: 22,
+											background: 'transparent',
+										},
+										'&::-moz-range-thumb': {
+											width: 22,
+											height: 22,
+											border: 'none',
+											background: 'transparent',
+											cursor: 'grab',
+										},
 									}}
 								/>
 							</Box>
-							<Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-								<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 500, fontSize: 10, color: '#B4AC9A' }}>0%</Typography>
-								<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 500, fontSize: 10, color: '#B4AC9A' }}>50%</Typography>
-								<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 500, fontSize: 10, color: '#B4AC9A' }}>100%</Typography>
+							<Box
+								sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}
+							>
+								<Typography
+									sx={{
+										fontFamily: monoFontFamily,
+										fontWeight: 500,
+										fontSize: 10,
+										color: '#B4AC9A',
+									}}
+								>
+									0%
+								</Typography>
+								<Typography
+									sx={{
+										fontFamily: monoFontFamily,
+										fontWeight: 500,
+										fontSize: 10,
+										color: '#B4AC9A',
+									}}
+								>
+									50%
+								</Typography>
+								<Typography
+									sx={{
+										fontFamily: monoFontFamily,
+										fontWeight: 500,
+										fontSize: 10,
+										color: '#B4AC9A',
+									}}
+								>
+									100%
+								</Typography>
 							</Box>
 						</Box>
 						<Box
@@ -557,8 +716,15 @@ export default function RolloutForm({
 							<Box
 								component="input"
 								value={percentage}
-								onChange={(e: any) =>
-									setPercentage(clampPct(parseInt(String(e.target.value).replace(/[^0-9]/g, ''), 10)))
+								onChange={(e: ChangeEvent<HTMLInputElement>) =>
+									setPercentage(
+										clampPct(
+											parseInt(
+												e.target.value.replace(/[^0-9]/g, ''),
+												10,
+											),
+										),
+									)
 								}
 								inputMode="numeric"
 								sx={{
@@ -571,14 +737,24 @@ export default function RolloutForm({
 									color: ink.primary,
 								}}
 							/>
-							<Typography sx={{ font: "800 20px 'Baloo 2'", color: '#8B8472' }}>%</Typography>
+							<Typography sx={{ font: "800 20px 'Baloo 2'", color: '#8B8472' }}>
+								%
+							</Typography>
 						</Box>
 					</Box>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.625, mt: 1.375, color: '#B4AC9A' }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 0.625,
+							mt: 1.375,
+							color: '#B4AC9A',
+						}}
+					>
 						<Ms name="info" sx={{ fontSize: 14 }} />
 						<Typography sx={{ fontWeight: 600, fontSize: 11 }}>
-							Users are bucketed by a stable hash — ramping up never re-rolls those
-							already in.
+							Users are bucketed by a stable hash — ramping up never re-rolls
+							those already in.
 						</Typography>
 					</Box>
 
@@ -586,7 +762,17 @@ export default function RolloutForm({
 					<Box sx={{ mt: 3 }}>
 						<Label>Audience</Label>
 					</Box>
-					<Box sx={{ display: 'flex', gap: 0.875, bgcolor: '#F4F1E9', borderRadius: '11px', p: 0.5, width: 'max-content', mt: 1.25 }}>
+					<Box
+						sx={{
+							display: 'flex',
+							gap: 0.875,
+							bgcolor: '#F4F1E9',
+							borderRadius: '11px',
+							p: 0.5,
+							width: 'max-content',
+							mt: 1.25,
+						}}
+					>
 						{[
 							{ on: false, label: 'Everyone' },
 							{ on: true, label: 'Only matching users' },
@@ -613,19 +799,44 @@ export default function RolloutForm({
 						})}
 					</Box>
 					{audienceOn && (
-						<Box sx={{ border: `1.5px solid ${surface.border}`, borderRadius: '13px', p: 1.875, mt: 1.625, bgcolor: '#FCFAF3' }}>
-							<Typography sx={{ fontWeight: 600, fontSize: 11, color: '#8B8472', mb: 1.375 }}>
+						<Box
+							sx={{
+								border: `1.5px solid ${surface.border}`,
+								borderRadius: '13px',
+								p: 1.875,
+								mt: 1.625,
+								bgcolor: '#FCFAF3',
+							}}
+						>
+							<Typography
+								sx={{
+									fontWeight: 600,
+									fontSize: 11,
+									color: '#8B8472',
+									mb: 1.375,
+								}}
+							>
 								User must match{' '}
-								<Box component="span" sx={{ fontWeight: 800, color: '#3A352C' }}>all</Box>{' '}
+								<Box
+									component="span"
+									sx={{ fontWeight: 800, color: '#3A352C' }}
+								>
+									all
+								</Box>{' '}
 								of these:
 							</Typography>
 							<Stack spacing={1.125}>
 								{conditions.map((c, index) => (
-									<Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<Box
+										key={index}
+										sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+									>
 										<Box
 											component="select"
 											value={c.type}
-											onChange={(e: any) => setCondType(index, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+												setCondType(index, e.target.value)
+											}
 											sx={{ ...selectSx, flex: 1 }}
 										>
 											{TYPE_OPTIONS.map((t) => (
@@ -637,7 +848,9 @@ export default function RolloutForm({
 										<Box
 											component="select"
 											value={c.operator}
-											onChange={(e: any) => setCondOperator(index, e.target.value)}
+											onChange={(e: any) =>
+												setCondOperator(index, e.target.value)
+											}
 											sx={{ ...selectSx, width: 130 }}
 										>
 											{operatorsForType(c.type).map((op) => (
@@ -656,7 +869,13 @@ export default function RolloutForm({
 										<Ms
 											name="close"
 											onClick={() => removeCondition(index)}
-											sx={{ fontSize: 19, color: '#C8503C', p: 0.875, borderRadius: '8px', cursor: 'pointer' }}
+											sx={{
+												fontSize: 19,
+												color: '#C8503C',
+												p: 0.875,
+												borderRadius: '8px',
+												cursor: 'pointer',
+											}}
 										/>
 									</Box>
 								))}
@@ -687,7 +906,10 @@ export default function RolloutForm({
 					<Box sx={{ mt: 3, mb: 1.125 }}>
 						<Label>
 							Description{' '}
-							<Box component="span" sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}>
+							<Box
+								component="span"
+								sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}
+							>
 								· optional
 							</Box>
 						</Label>
@@ -697,14 +919,22 @@ export default function RolloutForm({
 						value={description}
 						onChange={(e: any) => setDescription(e.target.value)}
 						placeholder="What is this rollout gating?"
-						sx={{ ...fieldSx, minHeight: 64, resize: 'vertical', lineHeight: 1.5 }}
+						sx={{
+							...fieldSx,
+							minHeight: 64,
+							resize: 'vertical',
+							lineHeight: 1.5,
+						}}
 					/>
 
 					{/* group (admin-only organisation; not published) */}
 					<Box sx={{ mt: 3, mb: 1.125 }}>
 						<Label>
 							Group{' '}
-							<Box component="span" sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}>
+							<Box
+								component="span"
+								sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}
+							>
 								· optional · organises the rollouts list only
 							</Box>
 						</Label>
@@ -734,7 +964,12 @@ export default function RolloutForm({
 						<Button
 							onClick={handleSubmit}
 							disabled={!canSubmit}
-							startIcon={<Ms name={isEdit ? 'check' : 'rocket_launch'} sx={{ fontSize: 18 }} />}
+							startIcon={
+								<Ms
+									name={isEdit ? 'check' : 'rocket_launch'}
+									sx={{ fontSize: 18 }}
+								/>
+							}
 							sx={technicalButtonSx({ disabled: !canSubmit })}
 						>
 							{isEdit ? 'Save changes' : 'Create rollout'}
@@ -755,29 +990,105 @@ export default function RolloutForm({
 					}}
 				>
 					{isEdit && (
-						<Box sx={{ bgcolor: '#fff', border: `1px solid ${surface.border}`, borderRadius: '16px', p: '18px 20px', boxShadow: '0 1px 2px rgba(40,33,20,.03)' }}>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.625 }}>
-								<Ms name="pending_actions" sx={{ fontSize: 18, color: '#7E776A' }} />
-								<Typography variant="h6" sx={{ fontSize: 14 }}>Pending changes</Typography>
-								<Box sx={{ ml: 'auto', fontFamily: monoFontFamily, fontWeight: 700, fontSize: 11, color: '#9A9483', bgcolor: '#EFE8D9', borderRadius: '20px', px: 1, py: 0.25 }}>
+						<Box
+							sx={{
+								bgcolor: '#fff',
+								border: `1px solid ${surface.border}`,
+								borderRadius: '16px',
+								p: '18px 20px',
+								boxShadow: '0 1px 2px rgba(40,33,20,.03)',
+							}}
+						>
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 1,
+									mb: 1.625,
+								}}
+							>
+								<Ms
+									name="pending_actions"
+									sx={{ fontSize: 18, color: '#7E776A' }}
+								/>
+								<Typography variant="h6" sx={{ fontSize: 14 }}>
+									Pending changes
+								</Typography>
+								<Box
+									sx={{
+										ml: 'auto',
+										fontFamily: monoFontFamily,
+										fontWeight: 700,
+										fontSize: 11,
+										color: '#9A9483',
+										bgcolor: '#EFE8D9',
+										borderRadius: '20px',
+										px: 1,
+										py: 0.25,
+									}}
+								>
 									{changes.length}
 								</Box>
 							</Box>
 							{changes.length === 0 ? (
-								<Typography sx={{ fontWeight: 600, fontSize: 12, color: '#B4AC9A', textAlign: 'center', py: 1 }}>
+								<Typography
+									sx={{
+										fontWeight: 600,
+										fontSize: 12,
+										color: '#B4AC9A',
+										textAlign: 'center',
+										py: 1,
+									}}
+								>
 									No changes yet.
 								</Typography>
 							) : (
 								<Stack spacing={1.125}>
 									{changes.map((c) => (
 										<Box key={c.field}>
-											<Box sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 9, color: '#9A6F1C', bgcolor: '#FCEFD2', borderRadius: '5px', px: 0.75, py: 0.25, display: 'inline-block' }}>
+											<Box
+												sx={{
+													fontFamily: monoFontFamily,
+													fontWeight: 700,
+													fontSize: 9,
+													color: '#9A6F1C',
+													bgcolor: '#FCEFD2',
+													borderRadius: '5px',
+													px: 0.75,
+													py: 0.25,
+													display: 'inline-block',
+												}}
+											>
 												{c.field}
 											</Box>
-											<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.375, flexWrap: 'wrap', fontFamily: monoFontFamily, fontWeight: 500, fontSize: 11 }}>
-												<Box component="span" sx={{ color: '#B4AC9A', textDecoration: 'line-through' }}>{c.from}</Box>
-												<Ms name="arrow_forward" sx={{ fontSize: 14, color: '#C2BAA8' }} />
-												<Box component="span" sx={{ color: ink.primary }}>{c.to}</Box>
+											<Box
+												sx={{
+													display: 'flex',
+													alignItems: 'center',
+													gap: 0.75,
+													mt: 0.375,
+													flexWrap: 'wrap',
+													fontFamily: monoFontFamily,
+													fontWeight: 500,
+													fontSize: 11,
+												}}
+											>
+												<Box
+													component="span"
+													sx={{
+														color: '#B4AC9A',
+														textDecoration: 'line-through',
+													}}
+												>
+													{c.from}
+												</Box>
+												<Ms
+													name="arrow_forward"
+													sx={{ fontSize: 14, color: '#C2BAA8' }}
+												/>
+												<Box component="span" sx={{ color: ink.primary }}>
+													{c.to}
+												</Box>
 											</Box>
 										</Box>
 									))}
@@ -785,13 +1096,42 @@ export default function RolloutForm({
 							)}
 						</Box>
 					)}
-					<Box sx={{ bgcolor: '#fff', border: `1px solid ${surface.border}`, borderRadius: '16px', p: '18px 20px', boxShadow: '0 1px 2px rgba(40,33,20,.03)' }}>
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.375 }}>
+					<Box
+						sx={{
+							bgcolor: '#fff',
+							border: `1px solid ${surface.border}`,
+							borderRadius: '16px',
+							p: '18px 20px',
+							boxShadow: '0 1px 2px rgba(40,33,20,.03)',
+						}}
+					>
+						<Box
+							sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.375 }}
+						>
 							<Ms name="data_object" sx={{ fontSize: 17, color: '#7E776A' }} />
-							<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 11, letterSpacing: '.04em', color: ink.soft }}>
+							<Typography
+								sx={{
+									fontFamily: monoFontFamily,
+									fontWeight: 700,
+									fontSize: 11,
+									letterSpacing: '.04em',
+									color: ink.soft,
+								}}
+							>
 								PREVIEW
 							</Typography>
-							<Box sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 10, color: '#3F7A2D', bgcolor: '#E9F4E0', borderRadius: '6px', px: 0.875, py: 0.25 }}>
+							<Box
+								sx={{
+									fontFamily: monoFontFamily,
+									fontWeight: 600,
+									fontSize: 10,
+									color: '#3F7A2D',
+									bgcolor: '#E9F4E0',
+									borderRadius: '6px',
+									px: 0.875,
+									py: 0.25,
+								}}
+							>
 								live
 							</Box>
 						</Box>
@@ -814,11 +1154,28 @@ export default function RolloutForm({
 							{jsonPreview}
 						</Box>
 					</Box>
-					<Box sx={{ bgcolor: '#fff', border: '1px solid #DCE6E3', borderRadius: '16px', p: '15px 17px', display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
+					<Box
+						sx={{
+							bgcolor: '#fff',
+							border: '1px solid #DCE6E3',
+							borderRadius: '16px',
+							p: '15px 17px',
+							display: 'flex',
+							alignItems: 'flex-start',
+							gap: 1.25,
+						}}
+					>
 						<Ms name="info" sx={{ fontSize: 19, color: '#3E8E84' }} />
-						<Typography sx={{ fontWeight: 500, fontSize: 12, lineHeight: 1.55, color: '#46615C' }}>
-							The value users in this rollout actually receive is set per-flag when
-							you attach it from the Flags page.
+						<Typography
+							sx={{
+								fontWeight: 500,
+								fontSize: 12,
+								lineHeight: 1.55,
+								color: '#46615C',
+							}}
+						>
+							The value users in this rollout actually receive is set per-flag
+							when you attach it from the Flags page.
 						</Typography>
 					</Box>
 				</Box>

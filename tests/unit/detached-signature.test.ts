@@ -47,7 +47,7 @@ describe('signDetached', () => {
 		expect(parts[1]).toBe(''); // detached: payload not embedded
 		const header = JSON.parse(
 			Buffer.from(parts[0], 'base64url').toString('utf8'),
-		);
+		) as Record<string, unknown>;
 		expect(header).toMatchObject({
 			alg: 'RS256',
 			kid: 'k1',

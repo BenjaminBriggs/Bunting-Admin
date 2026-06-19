@@ -1,14 +1,21 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import React, { createContext, useContext } from 'react';
+import { createContext, useContext } from 'react';
+import type { ConditionType } from '@/types/core';
 
 export type ConditionContextType = 'flag_variant';
 
 interface ConditionContextData {
 	loading: boolean;
 	error: string | null;
-	config: Record<string, any>;
+	config: Record<string, unknown>;
+}
+
+export interface ConditionUIConfig {
+	title: string;
+	allowedTypes: ConditionType[];
+	description?: string;
 }
 
 const ConditionContext = createContext<ConditionContextData | undefined>(
@@ -46,7 +53,7 @@ export function useConditionContext(_contextType: ConditionContextType) {
 	const context = useConditions();
 
 	// Provide context-specific configuration
-	const config = {
+	const config: ConditionUIConfig = {
 		title: 'Add Targeting Condition',
 		allowedTypes: [
 			'app_version',

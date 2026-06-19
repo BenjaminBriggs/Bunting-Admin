@@ -11,7 +11,7 @@ import {
 	Stack,
 	Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import type { FlagValue } from '@/types/core';
 import type { RuleValidationError, TargetingRule } from '@/types/rules';
 import { TargetingRuleBuilder } from './targeting-rule-builder';
 
@@ -19,7 +19,7 @@ interface RulesContainerProps {
 	rules: TargetingRule[];
 	onChange: (rules: TargetingRule[]) => void;
 	flagType: 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
-	defaultValue: any;
+	defaultValue: FlagValue;
 	appId?: string;
 }
 

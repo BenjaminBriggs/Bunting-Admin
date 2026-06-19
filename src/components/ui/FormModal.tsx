@@ -128,8 +128,10 @@ export function FormModal({
 				key={key}
 				variant={variant}
 				color={color}
-				onClick={onClick}
-				disabled={disabled || loading || saving}
+				onClick={() => {
+					void onClick();
+				}}
+				disabled={Boolean(disabled) || loading || saving}
 				startIcon={actionLoading ? <CircularProgress size={16} /> : startIcon}
 			>
 				{actionLoading ? 'Loading...' : label}
@@ -156,7 +158,7 @@ export function FormModal({
 	};
 
 	// Default actions if not provided
-	const defaultCancelAction: FormModalAction = cancelAction || {
+	const defaultCancelAction: FormModalAction = cancelAction ?? {
 		label: 'Cancel',
 		onClick: handleClose,
 		variant: 'outlined',
@@ -388,7 +390,11 @@ export function useFormModal(initialOpen: boolean = false) {
 			// Optionally close modal after successful action
 			// closeModal();
 		} catch (err) {
-			setError((err as any)?.message || 'An error occurred');
+			// `Error` is shadowed by the @mui/icons-material import above, so use
+			// the global constructor explicitly.
+			setError(
+				err instanceof globalThis.Error ? err.message : 'An error occurred',
+			);
 		} finally {
 			setSaving(false);
 		}

@@ -30,9 +30,9 @@ async function fixAllBrokenFlags() {
 
 			// Get the existing value (probably from development)
 			const existingValue =
-				defaultValues.development ||
-				defaultValues.beta ||
-				defaultValues.production ||
+				defaultValues.development ??
+				defaultValues.beta ??
+				defaultValues.production ??
 				false;
 
 			console.log(

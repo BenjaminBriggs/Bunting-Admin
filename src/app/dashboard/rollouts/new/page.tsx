@@ -66,7 +66,7 @@ export default function NewRolloutPage() {
 				}}
 				saving={saving}
 				saveError={saveError}
-				onSubmit={handleSubmit}
+				onSubmit={(payload) => void handleSubmit(payload)}
 			/>
 		</Box>
 	);

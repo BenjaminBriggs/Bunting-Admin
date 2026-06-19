@@ -53,7 +53,7 @@ export default function JSONEditor({
 
 	const getJSONSummary = (jsonString: string): string => {
 		try {
-			const parsed = JSON.parse(jsonString);
+			const parsed: unknown = JSON.parse(jsonString);
 			if (typeof parsed === 'object' && parsed !== null) {
 				const keys = Object.keys(parsed);
 				if (keys.length === 0) {
@@ -80,8 +80,8 @@ export default function JSONEditor({
 		setJsonError(validationError);
 	};
 
-	const hasError = Boolean(error || jsonError);
-	const displayError = error || jsonError;
+	const hasError = Boolean(error ?? jsonError);
+	const displayError = error ?? jsonError;
 
 	return (
 		<Box>
@@ -147,7 +147,7 @@ export default function JSONEditor({
 						placeholder={placeholder}
 						fullWidth={fullWidth}
 						error={hasError}
-						helperText={displayError || helperText}
+						helperText={displayError ?? helperText}
 						disabled={disabled}
 						InputProps={{
 							sx: { fontFamily: 'monospace', fontSize: '0.875rem' },

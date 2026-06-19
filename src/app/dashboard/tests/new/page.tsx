@@ -34,7 +34,7 @@ export default function NewTestPage() {
 				key: payload.key,
 				name: payload.name,
 				description: payload.description,
-				group: payload.group || null,
+				group: payload.group,
 				conditions: payload.conditions,
 				variantCount: payload.groups.length,
 				trafficSplit: payload.groups.map((g) => g.weight),
@@ -47,13 +47,15 @@ export default function NewTestPage() {
 				body: JSON.stringify(testData),
 			});
 			if (!response.ok) {
-				const err = await response.json();
-				throw new Error(err.error || 'Failed to create test');
+				const err = (await response.json()) as { error?: string };
+				throw new Error(err.error ?? 'Failed to create test');
 			}
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
-			setSaveError(err instanceof Error ? err.message : 'Failed to create test');
+			setSaveError(
+				err instanceof Error ? err.message : 'Failed to create test',
+			);
 		} finally {
 			setSaving(false);
 		}
@@ -77,7 +79,7 @@ export default function NewTestPage() {
 				}}
 				saving={saving}
 				saveError={saveError}
-				onSubmit={handleSubmit}
+				onSubmit={(payload) => void handleSubmit(payload)}
 			/>
 		</Box>
 	);

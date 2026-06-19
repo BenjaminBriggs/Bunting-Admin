@@ -3,7 +3,6 @@
 import { Add, Delete } from '@mui/icons-material';
 import {
 	Alert,
-	Autocomplete,
 	Box,
 	Chip,
 	FormControl,
@@ -16,6 +15,7 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
+import type { KeyboardEvent } from 'react';
 import { useState } from 'react';
 import {
 	conditionTemplates,
@@ -42,7 +42,7 @@ export function ConditionEditor({
 
 	const handleTypeChange = (newType: ConditionType) => {
 		const newTemplate = conditionTemplates.find((t) => t.type === newType);
-		const defaultOperator = newTemplate?.operators[0] || 'equals';
+		const defaultOperator = newTemplate?.operators[0] ?? 'equals';
 
 		onChange({
 			...condition,
@@ -81,7 +81,7 @@ export function ConditionEditor({
 		});
 	};
 
-	const handleKeyDown = (e: React.KeyboardEvent) => {
+	const handleKeyDown = (e: KeyboardEvent) => {
 		if (e.key === 'Enter') {
 			e.preventDefault();
 			handleAddValue();
@@ -129,7 +129,7 @@ export function ConditionEditor({
 							<TextField
 								size="small"
 								label="Attribute Name"
-								value={condition.values[0] || ''}
+								value={condition.values[0] ?? ''}
 								onChange={(e) => handleAttributeChange(e.target.value)}
 								placeholder="e.g., subscription_tier, user_segment"
 								disabled={disabled}
@@ -148,7 +148,7 @@ export function ConditionEditor({
 								>
 									{template.operators.map((op) => (
 										<MenuItem key={op} value={op}>
-											{operatorLabels[op] || op}
+											{operatorLabels[op] ?? op}
 										</MenuItem>
 									))}
 								</Select>
@@ -161,7 +161,7 @@ export function ConditionEditor({
 								<Stack direction="row" spacing={1} alignItems="center">
 									<TextField
 										size="small"
-										label={template?.placeholder || 'Value'}
+										label={template?.placeholder ?? 'Value'}
 										value={valueInput}
 										onChange={(e) => setValueInput(e.target.value)}
 										onKeyDown={handleKeyDown}

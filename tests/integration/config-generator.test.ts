@@ -39,7 +39,7 @@ describe('generateConfigFromDb (integration)', () => {
 		expect(config.schema_version).toBe(1);
 		expect(config.app_identifier).toBe(app.identifier);
 
-		const flag = (config.flags as Record<string, any>)['new_paywall'];
+		const flag = config.flags['new_paywall'];
 		expect(flag).toBeDefined();
 		// Prisma enum BOOL is normalised to the wire form 'bool'.
 		expect(flag.type).toBe('bool');
@@ -79,8 +79,8 @@ describe('generateConfigFromDb (integration)', () => {
 
 		const config = await generateConfigFromDb(app.id);
 
-		expect((config.flags as Record<string, any>).live_flag).toBeDefined();
+		expect(config.flags.live_flag).toBeDefined();
 		// Archived flags must not ship to the SDK.
-		expect((config.flags as Record<string, any>).archived_flag).toBeUndefined();
+		expect(config.flags.archived_flag).toBeUndefined();
 	});
 });

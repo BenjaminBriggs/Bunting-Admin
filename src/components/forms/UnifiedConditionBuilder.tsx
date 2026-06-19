@@ -59,7 +59,7 @@ export function UnifiedConditionBuilder({
 
 	const handleTypeChange = (newType: RuleConditionType) => {
 		const newTemplate = conditionTemplates.find((t) => t.type === newType);
-		const defaultOperator = newTemplate?.operators[0] || 'equals';
+		const defaultOperator = newTemplate?.operators[0] ?? 'equals';
 
 		onChange({
 			...condition,
@@ -119,8 +119,8 @@ export function UnifiedConditionBuilder({
 			return (
 				<Autocomplete
 					multiple
-					options={template.options || []}
-					value={(template.options || []).filter((option) =>
+					options={template.options ?? []}
+					value={(template.options ?? []).filter((option) =>
 						condition.values.includes(option.value),
 					)}
 					onChange={(_, newValue) => {
@@ -311,7 +311,7 @@ export function createNewCondition(
 	type: RuleConditionType = 'app_version',
 ): RuleCondition {
 	const template = conditionTemplates.find((t) => t.type === type);
-	const defaultOperator = template?.operators[0] || 'equals';
+	const defaultOperator = template?.operators[0] ?? 'equals';
 
 	return {
 		type,

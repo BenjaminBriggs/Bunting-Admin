@@ -1,13 +1,15 @@
 const jose = require('node-jose');
+const { truncateAll } = require('./db-utils.ts');
+const { server } = require('./msw/server');
 require('@testing-library/jest-dom');
 
+/* global jest, expect, beforeAll, beforeEach, afterEach, afterAll -- jest provides these globals at runtime; this setup filename is not matched by the jest test-file glob */
+// jest.mock is hoisted above the requires above by babel-plugin-jest-hoist, so the
+// next/headers mock still registers before any module that imports it is loaded.
 jest.mock('next/headers', () => ({
 	cookies: () => new Map(),
 	headers: () => new Map(),
 }));
-
-const { truncateAll } = require('./db-utils.ts');
-const { server } = require('./msw/server');
 
 // Increase timeout for tests
 jest.setTimeout(30000);

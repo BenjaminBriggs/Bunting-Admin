@@ -1,19 +1,41 @@
 /**
  * JSON Spec compliant flag evaluation algorithm
  * Based on "Flag evaluation walkthrough" section lines 500-551
+ *
+ * Reference implementation mirroring the SDK's evaluation order. Evaluation is
+ * synchronous: the admin has no async data source for it.
  */
 
-import { bucketFor } from '@/lib/bucketing';
-import type { Condition, Environment, FlagVariant } from '@/types';
+import type {
+	Condition,
+	ConditionOperator,
+	Environment,
+	EnvironmentFlag,
+	FlagValue,
+	FlagVariant,
+} from '@/types';
+
+// Device/user attributes evaluated against conditions. The known keys are
+// strings; the index signature allows custom attributes.
+export interface UserAttributes {
+	app_version?: string;
+	os_version?: string;
+	build_number?: string;
+	language?: string;
+	platform?: string;
+	device_model?: string;
+	region?: string;
+	[key: string]: unknown;
+}
 
 export interface EvaluationContext {
 	environment: Environment;
 	localId: string;
-	userAttributes: Record<string, any>;
+	userAttributes: UserAttributes;
 }
 
 export interface FlagEvaluationResult {
-	value: any;
+	value: FlagValue;
 	variant?: FlagVariant;
 	reason: 'default' | 'conditional' | 'test' | 'rollout';
 }
@@ -22,29 +44,26 @@ export interface FlagEvaluationResult {
  * Evaluate a flag for a given environment and user context
  * Implements the exact algorithm from JSON Spec lines 502-511
  */
-export async function evaluateFlag(
-	flag: any, // EnvironmentFlag from artifact
+export function evaluateFlag(
+	flag: EnvironmentFlag,
 	environment: Environment,
 	context: EvaluationContext,
-): Promise<FlagEvaluationResult> {
+): FlagEvaluationResult {
 	// Step 1: Load the environment object
 	const envConfig = flag[environment];
-	if (!envConfig) {
-		throw new Error(`Environment ${environment} not found for flag`);
-	}
 
 	// Step 2: Sort variants by order ascending (lowest first)
-	const variants = (envConfig.variants || []).sort(
-		(a: FlagVariant, b: FlagVariant) => a.order - b.order,
+	const variants = [...(envConfig.variants ?? [])].sort(
+		(a, b) => a.order - b.order,
 	);
 
 	// Step 3: Evaluate each variant in order
 	for (const variant of variants) {
 		if (variant.type === 'conditional') {
 			// Conditional variant: evaluate all conditions
-			if (await evaluateConditions(variant.conditions || [], context)) {
+			if (evaluateConditions(variant.conditions ?? [], context)) {
 				return {
-					value: variant.value,
+					value: variant.value ?? envConfig.default,
 					variant,
 					reason: 'conditional',
 				};
@@ -59,7 +78,7 @@ export async function evaluateFlag(
 					`Test variant evaluation not fully implemented: ${testName}`,
 				);
 			}
-		} else if (variant.type === 'rollout') {
+		} else {
 			// Rollout variant: compute rollout bucket
 			const rolloutName = variant.rollout;
 			if (rolloutName) {
@@ -82,12 +101,12 @@ export async function evaluateFlag(
 /**
  * Evaluate all conditions (AND logic - all must pass)
  */
-export async function evaluateConditions(
+export function evaluateConditions(
 	conditions: Condition[],
 	context: EvaluationContext,
-): Promise<boolean> {
+): boolean {
 	for (const condition of conditions) {
-		if (!(await evaluateCondition(condition, context))) {
+		if (!evaluateCondition(condition, context)) {
 			return false; // Short-circuit on first failure
 		}
 	}
@@ -97,10 +116,10 @@ export async function evaluateConditions(
 /**
  * Evaluate a single condition based on JSON Spec condition types
  */
-export async function evaluateCondition(
+export function evaluateCondition(
 	condition: Condition,
 	context: EvaluationContext,
-): Promise<boolean> {
+): boolean {
 	const { type, operator, values } = condition;
 
 	switch (type) {
@@ -154,7 +173,7 @@ export async function evaluateCondition(
 			);
 
 		case 'custom_attribute':
-			return evaluateCustomCondition(condition, context);
+			return evaluateCustomCondition(condition);
 
 		default:
 			// All ConditionType values are handled above; this guards malformed
@@ -169,7 +188,7 @@ export async function evaluateCondition(
  */
 function evaluateVersionCondition(
 	userValue: string | undefined,
-	operator: string,
+	operator: ConditionOperator,
 	values: string[],
 ): boolean {
 	if (!userValue || values.length === 0) {
@@ -191,7 +210,7 @@ function evaluateVersionCondition(
 			return compareVersions(userValue, targetVersion) < 0;
 		case 'less_than_or_equal':
 			return compareVersions(userValue, targetVersion) <= 0;
-		case 'between':
+		case 'between': {
 			if (values.length < 2) {
 				return false;
 			}
@@ -201,6 +220,7 @@ function evaluateVersionCondition(
 				compareVersions(userValue, minVersion) >= 0 &&
 				compareVersions(userValue, maxVersion) <= 0
 			);
+		}
 		default:
 			return false;
 	}
@@ -211,7 +231,7 @@ function evaluateVersionCondition(
  */
 function evaluateListCondition(
 	userValue: string | undefined,
-	operator: string,
+	operator: ConditionOperator,
 	values: string[],
 ): boolean {
 	if (!userValue) {
@@ -232,10 +252,7 @@ function evaluateListCondition(
  * Evaluate custom conditions
  * Implementation is SDK-specific
  */
-function evaluateCustomCondition(
-	condition: Condition,
-	context: EvaluationContext,
-): boolean {
+function evaluateCustomCondition(condition: Condition): boolean {
 	// Custom condition evaluation would be implemented by the SDK
 	// This is a placeholder for the concept
 	console.warn(
@@ -255,8 +272,10 @@ function compareVersions(a: string, b: string): number {
 	const maxLength = Math.max(aParts.length, bParts.length);
 
 	for (let i = 0; i < maxLength; i++) {
-		const aPart = aParts[i] || 0;
-		const bPart = bParts[i] || 0;
+		// Missing parts (i beyond length) and non-numeric parts (NaN) both count as
+		// 0 — note `??` would not catch NaN, so guard explicitly.
+		const aPart = Number.isFinite(aParts[i]) ? aParts[i] : 0;
+		const bPart = Number.isFinite(bParts[i]) ? bParts[i] : 0;
 
 		if (aPart < bPart) {
 			return -1;
@@ -272,8 +291,8 @@ function compareVersions(a: string, b: string): number {
 /**
  * Example usage and testing
  */
-export async function testFlagEvaluation(): Promise<void> {
-	const mockFlag = {
+export function testFlagEvaluation(): void {
+	const mockFlag: EnvironmentFlag = {
 		type: 'bool',
 		development: {
 			default: false,
@@ -293,6 +312,8 @@ export async function testFlagEvaluation(): Promise<void> {
 				},
 			],
 		},
+		beta: { default: false, variants: [] },
+		production: { default: false, variants: [] },
 	};
 
 	const context: EvaluationContext = {
@@ -305,7 +326,7 @@ export async function testFlagEvaluation(): Promise<void> {
 		},
 	};
 
-	const result = await evaluateFlag(mockFlag, 'development', context);
+	const result = evaluateFlag(mockFlag, 'development', context);
 	console.log('Evaluation result:', result);
 	// Should return: { value: true, variant: {...}, reason: 'conditional' }
 }

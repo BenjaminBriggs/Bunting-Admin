@@ -5,12 +5,7 @@
  * This should have caught the "boolean" vs "bool" type issue.
  */
 
-const {
-	validateConfig,
-	isValidFlagType,
-	validateFlagValue,
-	getDefaultValueForType,
-} = require('../../src/lib/config-validation');
+const { validateConfig } = require('../../src/lib/config-validation');
 
 describe('Config Validation', () => {
 	describe('Flag Type Validation', () => {
