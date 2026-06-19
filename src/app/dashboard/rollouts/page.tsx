@@ -21,7 +21,7 @@ import {
 } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
-import { danger, ink, monoFontFamily, surface } from '@/theme/designTokens';
+import { danger, ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
 import {
 	groupByGroup,
 	GroupHeader,
@@ -381,7 +381,7 @@ export default function RolloutsPage() {
 						textAlign: 'center',
 					}}
 				>
-					<Ms name="rocket_launch" sx={{ fontSize: 44, color: '#C2BAA8' }} />
+					<Ms name="rocket_launch" sx={{ fontSize: 44, color: typeColors.rollout.solid }} />
 					<Typography sx={{ font: "700 18px 'Baloo 2'", mt: 1 }}>
 						{searchTerm ? 'No rollouts match your search' : 'No rollouts yet'}
 					</Typography>

@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchRollouts, fetchTests } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
-import { envColors, ink, monoFontFamily, surface } from '@/theme/designTokens';
+import { envColors, ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
 import type { DBTestRollout, Environment } from '@/types';
 import FlagValueInput, {
 	getDefaultValueForType,
@@ -36,19 +36,18 @@ interface TestRolloutAssignmentModalProps {
 
 type Segment = 'rollout' | 'test';
 
-// Segment accent: rollouts read green, tests read amber. These borrow the fixed
-// production / development environment colours so the modal stays in the system
-// palette — the accent communicates the *mode*, while the subtitle keeps the
-// actual environment identity.
+// Segment accent: the accent communicates the *core type* (Rollout vs Test), so it
+// reads the brand type colours — Rollout green, Test teal. The subtitle keeps the
+// actual environment identity (which is a separate colour dimension).
 const SEGMENT_ACCENT: Record<Segment, { accent: string; tint: string; icon: string }> = {
 	rollout: {
-		accent: envColors.production.text,
-		tint: envColors.production.headerBg,
+		accent: typeColors.rollout.text,
+		tint: typeColors.rollout.bg,
 		icon: 'rocket_launch',
 	},
 	test: {
-		accent: envColors.development.text,
-		tint: envColors.development.headerBg,
+		accent: typeColors.test.text,
+		tint: typeColors.test.bg,
 		icon: 'science',
 	},
 };

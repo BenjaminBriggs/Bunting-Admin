@@ -28,7 +28,46 @@ export const surface = {
 
 export const danger = '#C8503C';
 
+// --- Core type mapping (Flag / Test / Rollout) ---
+// The brand's warm hues identify *what kind of object* this is. These appear
+// everywhere (nav, list rows, chips, icons, headers). They are a separate
+// dimension from environment colors and must never share a hue with them.
+export interface TypeColors {
+	label: string;
+	solid: string; // icon / dot / fill
+	bg: string; // light tint — chip & header background
+	border: string;
+	text: string; // ink — label text
+}
+
+export const typeColors: Record<'flag' | 'test' | 'rollout', TypeColors> = {
+	flag: {
+		label: 'Flag',
+		solid: '#E0564B',
+		bg: '#FBE4E0',
+		border: '#F6D4CE',
+		text: '#C24A3E',
+	},
+	test: {
+		label: 'Test',
+		solid: '#1E9E92',
+		bg: '#DEF3F0',
+		border: '#C9ECE7',
+		text: '#1E7B72',
+	},
+	rollout: {
+		label: 'Rollout',
+		solid: '#4C9E3A',
+		bg: '#E9F4E0',
+		border: '#DCEDCF',
+		text: '#3F7A2D',
+	},
+};
+
 // --- Fixed environment mapping (must match the Flags-list columns) ---
+// Environment is a *separate dimension* from core type. The ramp is intentional:
+// yellow → blue → purple (dev → beta → prod) reads warm-to-cool as you promote
+// toward production, with a deliberately large jump between Dev and Prod.
 export interface EnvColors {
 	label: string;
 	text: string;
@@ -41,27 +80,27 @@ export interface EnvColors {
 export const envColors: Record<'production' | 'beta' | 'development', EnvColors> = {
 	production: {
 		label: 'Production',
-		text: '#3F7A2D',
-		bg: '#F3FAEE',
-		headerBg: '#E9F4E0',
-		border: '#DCEDCF',
-		dot: '#57A95A',
+		text: '#623ca1',
+		bg: '#F5F3FD',
+		headerBg: '#ece9fb',
+		border: '#D9CFF3',
+		dot: '#814fd4',
 	},
 	beta: {
 		label: 'Beta',
-		text: '#1E7B72',
-		bg: '#EDF8F6',
-		headerBg: '#DEF3F0',
-		border: '#C9ECE7',
-		dot: '#54C9C0',
+		text: '#3a9cce',
+		bg: '#EFF8FD',
+		headerBg: '#e1f2fb',
+		border: '#bde6f3',
+		dot: '#44baf6',
 	},
 	development: {
 		label: 'Development',
-		text: '#9A6F1C',
-		bg: '#FDF6E6',
-		headerBg: '#FCEFD2',
-		border: '#F3E2BD',
-		dot: '#F6A444',
+		text: '#9A7B16',
+		bg: '#FEF9E6',
+		headerBg: '#FCF3CF',
+		border: '#F3E7B0',
+		dot: '#FCD34D',
 	},
 };
 

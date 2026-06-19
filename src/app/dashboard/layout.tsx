@@ -11,14 +11,13 @@ import {
 	Rocket,
 	Science,
 	Settings,
+	UnfoldMore,
 } from '@mui/icons-material';
 import {
 	Avatar,
-	Badge,
 	Box,
 	Divider,
 	Drawer,
-	IconButton,
 	List,
 	ListItem,
 	ListItemButton,
@@ -35,6 +34,7 @@ import { signOut, useSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from '@/lib/app-context';
 import { ChangesProvider, useChanges } from '@/lib/changes-context';
+import { typeColors } from '@/theme/designTokens';
 
 const drawerWidth = 266;
 
@@ -59,24 +59,37 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 		null,
 	);
 
-	const menuItems = [
+	// Core-type nav items carry their brand type colour (Flag = coral, Test = teal,
+	// Rollout = green): the icon is always tinted, and the active row uses the type
+	// tint. Releases is navigation-only and keeps the neutral active state.
+	const menuItems: Array<{
+		path: string;
+		label: string;
+		icon: React.ReactNode;
+		newPath?: string;
+		badge?: boolean;
+		type?: 'flag' | 'test' | 'rollout';
+	}> = [
 		{
 			path: '/dashboard/flags',
-			label: 'Feature Flags',
+			label: 'Flags',
 			icon: <Flag />,
 			newPath: '/dashboard/flags/new',
+			type: 'flag',
 		},
 		{
 			path: '/dashboard/tests',
 			label: 'Tests',
 			icon: <Science />,
 			newPath: '/dashboard/tests/new',
+			type: 'test',
 		},
 		{
 			path: '/dashboard/rollouts',
 			label: 'Rollouts',
 			icon: <Rocket />,
 			newPath: '/dashboard/rollouts/new',
+			type: 'rollout',
 		},
 		{
 			path: '/dashboard/releases',
@@ -197,7 +210,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 						>
 							{selectedApp ? selectedApp.name : 'Select application'}
 						</Typography>
-						<KeyboardArrowDown sx={{ fontSize: 20, color: '#A79F8C' }} />
+						<UnfoldMore sx={{ fontSize: 20, color: '#A79F8C' }} />
 					</Box>
 					{selectedApp && (
 						<Typography
@@ -213,13 +226,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 					)}
 				</Box>
 				{/* Main Menu */}
-				<List sx={{ flexGrow: 1 }}>
+				<List sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
 					{menuItems.map((item, index) => {
 						const selected = isSelected(item.path);
+						const accent = item.type ? typeColors[item.type] : null;
 						return (
 							<React.Fragment key={item.path}>
 								{/* Add divider before releases (index 2) */}
-								{index === 4 && <Divider sx={{ my: 1 }} />}
+								{index === 3 && <Divider sx={{ my: 1 }} />}
 								<ListItem
 									disablePadding
 									sx={
@@ -234,27 +248,52 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 											: undefined
 									}
 									secondaryAction={
-										item.newPath ? (
-											<IconButton
+										item.newPath && accent ? (
+											<Box
+												component="span"
 												className="nav-add"
-												edge="end"
-												size="small"
+												role="button"
 												aria-label={`New ${item.label}`}
 												onClick={(e) => {
 													e.preventDefault();
 													e.stopPropagation();
-													router.push(item.newPath);
+													if (item.newPath) {
+														router.push(item.newPath);
+													}
 												}}
 												sx={{
-													bgcolor: 'text.primary',
-													color: 'background.paper',
-													width: 22,
-													height: 22,
-													'&:hover': { bgcolor: 'text.secondary' },
+													display: 'inline-flex',
+													alignItems: 'center',
+													gap: '3px',
+													bgcolor: accent.solid,
+													color: '#fff',
+													borderRadius: '9px',
+													padding: '3px 9px 3px 6px',
+													font: "800 11px 'Nunito'",
+													cursor: 'pointer',
 												}}
 											>
-												<Add sx={{ fontSize: 16 }} />
-											</IconButton>
+												<Add sx={{ fontSize: 15 }} />
+												new
+											</Box>
+										) : item.badge && hasChanges ? (
+											<Box
+												component="span"
+												sx={{
+													display: 'inline-flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													minWidth: 21,
+													height: 21,
+													px: 0.75,
+													borderRadius: '11px',
+													bgcolor: '#F47C5D',
+													color: '#fff',
+													font: "700 12px 'Nunito'",
+												}}
+											>
+												{getChangeCount()}
+											</Box>
 										) : undefined
 									}
 								>
@@ -262,17 +301,32 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 										component={Link}
 										href={item.path}
 										selected={selected}
+										sx={
+											accent
+												? {
+														'& .MuiListItemIcon-root': { color: accent.solid },
+														'&.Mui-selected': {
+															backgroundColor: accent.bg,
+															'&:hover': { backgroundColor: accent.bg },
+														},
+													}
+												: undefined
+										}
 									>
-										<ListItemIcon>
-											{item.badge && hasChanges ? (
-												<Badge badgeContent={getChangeCount()} color="primary">
-													{item.icon}
-												</Badge>
-											) : (
-												item.icon
-											)}
-										</ListItemIcon>
-										<ListItemText primary={item.label} />
+										<ListItemIcon>{item.icon}</ListItemIcon>
+										<ListItemText
+											primary={item.label}
+											slotProps={{
+												primary: {
+													sx: {
+														font: selected
+															? "700 14px 'Nunito'"
+															: "600 14px 'Nunito'",
+														color: selected ? '#1C1B1A' : '#544F45',
+													},
+												},
+											}}
+										/>
 									</ListItemButton>
 								</ListItem>
 							</React.Fragment>

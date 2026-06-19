@@ -20,7 +20,13 @@ import {
 	hasConfigChanges,
 } from '@/lib/config-comparison';
 import { diffJson } from '@/lib/json-diff';
-import { ink, monoFontFamily, surface, technicalButtonSx } from '@/theme/designTokens';
+import {
+	ink,
+	monoFontFamily,
+	surface,
+	technicalButtonSx,
+	typeColors,
+} from '@/theme/designTokens';
 
 function Ms({ name, sx }: { name: string; sx?: any }) {
 	return (
@@ -234,6 +240,7 @@ export default function PublishPage() {
 	};
 
 	const renderGroup = (
+		type: 'flag' | 'test' | 'rollout',
 		glyph: string,
 		label: string,
 		group: { added: ConfigChange[]; modified: ConfigChange[]; removed: ConfigChange[] },
@@ -245,7 +252,7 @@ export default function PublishPage() {
 		return (
 			<Box sx={{ mb: 2.25 }}>
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
-					<Ms name={glyph} sx={{ fontSize: 18, color: '#7E776A' }} />
+					<Ms name={glyph} sx={{ fontSize: 18, color: typeColors[type].solid }} />
 					<Typography sx={{ font: "800 13px 'Baloo 2'" }}>{label}</Typography>
 					<Typography
 						sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 11, color: '#9A9483' }}
@@ -479,9 +486,14 @@ export default function PublishPage() {
 								</Typography>
 							) : (
 								<Box sx={{ mt: 0.5 }}>
-									{renderGroup('flag', 'Flags', groupedChanges.flags)}
-									{renderGroup('science', 'Tests', groupedChanges.tests)}
-									{renderGroup('rocket_launch', 'Rollouts', groupedChanges.rollouts)}
+									{renderGroup('flag', 'flag', 'Flags', groupedChanges.flags)}
+									{renderGroup('test', 'science', 'Tests', groupedChanges.tests)}
+									{renderGroup(
+										'rollout',
+										'rocket_launch',
+										'Rollouts',
+										groupedChanges.rollouts,
+									)}
 								</Box>
 							)}
 						</Box>

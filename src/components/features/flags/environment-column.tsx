@@ -2,7 +2,13 @@
 
 import { Add, Delete } from '@mui/icons-material';
 import { Box, IconButton, Stack, Typography } from '@mui/material';
-import { envColors, ink, monoFontFamily, surface } from '@/theme/designTokens';
+import {
+	envColors,
+	ink,
+	monoFontFamily,
+	surface,
+	typeColors,
+} from '@/theme/designTokens';
 import type { ConditionalVariant, Environment, FlagValue } from '@/types';
 import { formatValueForDisplay } from './flag-value-input';
 
@@ -241,15 +247,22 @@ export default function EnvironmentColumn({
 									fontFamily: monoFontFamily,
 									fontWeight: 700,
 									fontSize: 10,
-									color: c.text,
-									bgcolor: c.headerBg,
+									color: typeColors.rollout.text,
+									bgcolor: typeColors.rollout.bg,
 									borderRadius: '7px',
 									px: 1.125,
 									py: 0.5,
 									cursor: 'pointer',
 								}}
 							>
-								<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: c.dot }} />
+								<Box
+									sx={{
+										width: 6,
+										height: 6,
+										borderRadius: '50%',
+										bgcolor: typeColors.rollout.solid,
+									}}
+								/>
 								Rollout {rollout.percentage}%
 							</Box>
 						))}

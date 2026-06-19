@@ -25,7 +25,7 @@ import {
 	isPublished,
 } from '@/lib/flag-lifecycle';
 import { formatTimestamp } from '@/lib/utils';
-import { envColors, ink, surface } from '@/theme/designTokens';
+import { envColors, ink, surface, typeColors } from '@/theme/designTokens';
 import type {
 	ConditionalVariant,
 	DBFlag,
@@ -51,6 +51,22 @@ const ENV_SUMMARY: Array<{ env: Environment; short: string }> = [
 	{ env: 'beta', short: 'BETA' },
 	{ env: 'development', short: 'DEV' },
 ];
+
+// The compact value column is fixed-width so the env labels line up across every
+// card (the summary block is right-anchored, so a constant width = a constant
+// left edge). Long values are middle-truncated to keep within that width.
+const COMPACT_VALUE_CHARS = 10;
+const COMPACT_VALUE_WIDTH = 116;
+
+function middleTruncate(value: string, max = COMPACT_VALUE_CHARS): string {
+	if (value.length <= max) {
+		return value;
+	}
+	const keep = max - 1; // room for the ellipsis
+	const head = Math.ceil(keep / 2);
+	const tail = Math.floor(keep / 2);
+	return `${value.slice(0, head)}…${value.slice(value.length - tail)}`;
+}
 
 interface FlagRowProps {
 	flag: DBFlag;
@@ -549,13 +565,14 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 					</Typography>
 				</Box>
 
-				{/* Collapsed summary: per-environment value at a glance */}
+				{/* Collapsed summary: per-environment value, stacked one row per env. */}
 				{!expanded && !archived && (
 					<Box
 						sx={{
 							display: { xs: 'none', sm: 'flex' },
-							alignItems: 'center',
-							gap: 2.5,
+							flexDirection: 'column',
+							alignItems: 'flex-start',
+							gap: 0.375,
 							flexShrink: 0,
 						}}
 					>
@@ -565,41 +582,112 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 							const test = getActiveTests(env)[0];
 							const variantCount = getEnvironmentVariants(env).length;
 
-							// Env-tinted marker: icon (+ optional label), explained on hover.
-							const marker = (
-								key: string,
-								icon: string,
-								label: string,
-								title: string,
-							) => (
-								<Tooltip key={key} title={title} arrow>
-									<Box
-										component="span"
+							const pillSx = {
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: 0.375,
+								font: "700 10px 'JetBrains Mono'",
+								borderRadius: '6px',
+								px: 0.875,
+								py: 0.375,
+								cursor: 'default',
+							} as const;
+
+							// An active rollout (green) or test (env-tinted) pill takes the
+							// slot; otherwise the default value, with a variant chip when the
+							// env has conditional overrides.
+							let value: React.ReactNode;
+							if (rollout) {
+								value = (
+									<Tooltip
+										title={`Rollout “${rollout.name}” serving ${rollout.percentage}% of users`}
+										arrow
+									>
+										<Box
+											component="span"
+											sx={{
+												...pillSx,
+												color: typeColors.rollout.text,
+												bgcolor: typeColors.rollout.bg,
+											}}
+										>
+											<Ms name="rocket_launch" sx={{ fontSize: 12 }} />
+											{rollout.percentage}%
+										</Box>
+									</Tooltip>
+								);
+							} else if (test) {
+								value = (
+									<Tooltip title={`In A/B test “${test.name}”`} arrow>
+										<Box
+											component="span"
+											sx={{
+												...pillSx,
+												color: typeColors.test.text,
+												bgcolor: typeColors.test.bg,
+											}}
+										>
+											<Ms name="science" sx={{ fontSize: 12 }} />
+											A/B
+										</Box>
+									</Tooltip>
+								);
+							} else {
+								const raw = formatValue(flagData.defaultValues[env]);
+								const shown = middleTruncate(raw);
+								const valueText = (
+									<Typography
 										sx={{
-											display: 'inline-flex',
-											alignItems: 'center',
-											gap: 0.375,
-											bgcolor: c.headerBg,
-											color: c.text,
-											border: `1px solid ${c.border}`,
-											borderRadius: '6px',
-											px: 0.625,
-											py: 0.25,
-											font: "700 9px 'JetBrains Mono'",
-											letterSpacing: '.02em',
-											cursor: 'default',
+											font: "600 13px 'JetBrains Mono'",
+											color: ink.primary,
+											whiteSpace: 'nowrap',
 										}}
 									>
-										<Ms name={icon} sx={{ fontSize: 12 }} />
-										{label}
-									</Box>
-								</Tooltip>
-							);
+										{shown}
+									</Typography>
+								);
+								value = (
+									<>
+										{shown !== raw ? (
+											<Tooltip title={raw} arrow>
+												{valueText}
+											</Tooltip>
+										) : (
+											valueText
+										)}
+										{variantCount > 0 && (
+											<Tooltip
+												title={`${variantCount} conditional variant${variantCount === 1 ? '' : 's'} override the default`}
+												arrow
+											>
+												<Box
+													component="span"
+													sx={{
+														display: 'inline-flex',
+														alignItems: 'center',
+														gap: 0.25,
+														font: "700 9px 'JetBrains Mono'",
+														color: typeColors.flag.text,
+														bgcolor: typeColors.flag.bg,
+														borderRadius: '6px',
+														px: 0.625,
+														py: 0.25,
+														cursor: 'default',
+													}}
+												>
+													<Ms name="call_split" sx={{ fontSize: 11 }} />
+													{variantCount}
+												</Box>
+											</Tooltip>
+										)}
+									</>
+								);
+							}
 
 							return (
 								<Box
 									key={env}
-									sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}
+									sx={{ display: 'flex', alignItems: 'center', gap: 0.875 }}
 								>
 									<Box
 										sx={{
@@ -610,33 +698,25 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 										}}
 									/>
 									<Typography
-										sx={{ font: "700 10px 'JetBrains Mono'", color: '#8B8472' }}
+										sx={{
+											font: "700 10px 'JetBrains Mono'",
+											color: '#8B8472',
+											minWidth: 34,
+										}}
 									>
 										{short}
 									</Typography>
-									{/* Baseline default value is always shown … */}
-									<Typography
-										sx={{ font: "600 13px 'JetBrains Mono'", color: ink.primary }}
+									<Box
+										sx={{
+											display: 'flex',
+											alignItems: 'center',
+											gap: 0.75,
+											width: COMPACT_VALUE_WIDTH,
+											flexShrink: 0,
+										}}
 									>
-										{formatValue(flagData.defaultValues[env])}
-									</Typography>
-									{/* … with markers when the env is overridden. */}
-									{variantCount > 0 &&
-										marker(
-											'v',
-											'call_split',
-											String(variantCount),
-											`${variantCount} conditional variant${variantCount === 1 ? '' : 's'} override the default`,
-										)}
-									{rollout &&
-										marker(
-											'r',
-											'rocket_launch',
-											`${rollout.percentage}%`,
-											`Rollout “${rollout.name}” serving to ${rollout.percentage}% of users`,
-										)}
-									{test &&
-										marker('t', 'science', 'A/B', `In A/B test “${test.name}”`)}
+										{value}
+									</Box>
 								</Box>
 							);
 						})}

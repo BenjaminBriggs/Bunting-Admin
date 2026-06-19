@@ -2,11 +2,11 @@
 
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlagRow } from '@/components';
 import { fetchFlags, type Flag as FlagType } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
-import { ink, surface, technicalButtonSx } from '@/theme/designTokens';
+import { ink, surface, technicalButtonSx, typeColors } from '@/theme/designTokens';
 
 // Flags with no group land in this bucket, always shown last.
 const UNGROUPED = 'Ungrouped';
@@ -114,7 +114,26 @@ export default function FlagsPage() {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [searchTerm, setSearchTerm] = useState('');
+	const searchInputRef = useRef<HTMLInputElement>(null);
 	const [archivedOpen, setArchivedOpen] = useState(false);
+
+	// "/" focuses the search box (ignored while already typing in a field).
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) {
+				return;
+			}
+			const el = document.activeElement;
+			const tag = el?.tagName;
+			if (tag === 'INPUT' || tag === 'TEXTAREA') {
+				return;
+			}
+			e.preventDefault();
+			searchInputRef.current?.focus();
+		};
+		window.addEventListener('keydown', onKeyDown);
+		return () => window.removeEventListener('keydown', onKeyDown);
+	}, []);
 	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(
 		{},
 	);
@@ -214,6 +233,7 @@ export default function FlagsPage() {
 				<Ms name="search" sx={{ fontSize: 22, color: '#B4AC9A' }} />
 				<Box
 					component="input"
+					ref={searchInputRef}
 					value={searchTerm}
 					onChange={(e: any) => setSearchTerm(e.target.value)}
 					placeholder="Search flags by name or key…"
@@ -227,6 +247,19 @@ export default function FlagsPage() {
 						'&::placeholder': { color: '#B4AC9A' },
 					}}
 				/>
+				<Box
+					component="span"
+					sx={{
+						font: "500 11px 'JetBrains Mono'",
+						color: '#C2BAA8',
+						border: `1px solid ${surface.border}`,
+						borderRadius: '6px',
+						px: 0.875,
+						py: 0.375,
+					}}
+				>
+					/
+				</Box>
 			</Box>
 
 			{/* Empty state */}
@@ -247,14 +280,14 @@ export default function FlagsPage() {
 							width: 54,
 							height: 54,
 							borderRadius: '15px',
-							bgcolor: '#FBEDC6',
+							bgcolor: typeColors.flag.bg,
 							display: 'inline-flex',
 							alignItems: 'center',
 							justifyContent: 'center',
 							mb: 1.5,
 						}}
 					>
-						<Ms name="flag" sx={{ fontSize: 28, color: '#9A6F1C' }} />
+						<Ms name="flag" sx={{ fontSize: 28, color: typeColors.flag.solid }} />
 					</Box>
 					<Typography sx={{ font: "700 16px 'Baloo 2'", mb: 0.5 }}>
 						{searchTerm ? 'No flags match your search' : 'No flags yet'}

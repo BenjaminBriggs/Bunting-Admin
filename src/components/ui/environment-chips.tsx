@@ -1,6 +1,7 @@
 'use client';
 
 import { Chip } from '@mui/material';
+import { envColors } from '@/theme/designTokens';
 import type { Environment } from '@/types';
 
 interface EnvironmentChipsProps {
@@ -49,47 +50,36 @@ export interface EnvironmentBandColors {
 }
 
 /**
- * Festive Bunting palette mapped to environments — green Production,
- * amber Beta, teal Development. Used for the colored env header bands
- * and the compact flag-row summaries.
+ * Environment band colours — Development yellow, Beta blue, Production purple.
+ * Delegates to the single source of truth (`envColors` in designTokens) so the
+ * env palette can never drift from the Flags-list columns.
  */
+const ENV_SHORT: Record<Environment, string> = {
+	production: 'PROD',
+	beta: 'STG',
+	development: 'DEV',
+};
+
 export function getEnvironmentBandColors(
 	environment: Environment,
 ): EnvironmentBandColors {
-	switch (environment) {
-		case 'production':
-			return {
-				bg: '#E9F4E0',
-				border: '#DCEDCF',
-				dot: '#82C868',
-				text: '#3F7A2D',
-				short: 'PROD',
-			};
-		case 'beta':
-			return {
-				bg: '#FCEFD2',
-				border: '#F3E2BD',
-				dot: '#F6A444',
-				text: '#9A6F1C',
-				short: 'STG',
-			};
-		case 'development':
-			return {
-				bg: '#DEF3F0',
-				border: '#C9ECE7',
-				dot: '#54C9C0',
-				text: '#1E7B72',
-				short: 'DEV',
-			};
-		default:
-			return {
-				bg: '#EFE8D9',
-				border: '#E4DBC8',
-				dot: '#A79F8C',
-				text: '#6B6452',
-				short: environment,
-			};
+	const c = envColors[environment];
+	if (!c) {
+		return {
+			bg: '#EFE8D9',
+			border: '#E4DBC8',
+			dot: '#A79F8C',
+			text: '#6B6452',
+			short: environment,
+		};
 	}
+	return {
+		bg: c.headerBg,
+		border: c.border,
+		dot: c.dot,
+		text: c.text,
+		short: ENV_SHORT[environment] ?? environment,
+	};
 }
 
 export function EnvironmentChip({

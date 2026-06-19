@@ -14,7 +14,7 @@ import {
 } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
-import { ink, monoFontFamily, surface } from '@/theme/designTokens';
+import { ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
 import {
 	groupByGroup,
 	GroupHeader,
@@ -385,14 +385,14 @@ export default function TestsPage() {
 							width: 54,
 							height: 54,
 							borderRadius: '15px',
-							bgcolor: '#FBEDC6',
+							bgcolor: typeColors.test.bg,
 							display: 'inline-flex',
 							alignItems: 'center',
 							justifyContent: 'center',
 							mb: 1.5,
 						}}
 					>
-						<Ms name="science" sx={{ fontSize: 28, color: '#9A6F1C' }} />
+						<Ms name="science" sx={{ fontSize: 28, color: typeColors.test.solid }} />
 					</Box>
 					<Typography sx={{ font: "700 16px 'Baloo 2'", mb: 0.5 }}>
 						{searchTerm ? 'No tests match your search' : 'No tests yet'}
