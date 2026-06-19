@@ -170,16 +170,24 @@ export const configArtifactSchema = {
 	},
 };
 
+// Narrow an unknown value to a plain object for property inspection.
+function asRecord(value: unknown): Record<string, unknown> {
+	return typeof value === 'object' && value !== null
+		? (value as Record<string, unknown>)
+		: {};
+}
+
 /**
  * Validate a config artifact against the JSON Schema
  */
-export function validateConfigArtifact(config: any): {
+export function validateConfigArtifact(config: unknown): {
 	valid: boolean;
 	errors: string[];
 } {
 	// Note: This is a simplified validation
 	// In production, you'd use a proper JSON Schema validator like Ajv
 	const errors: string[] = [];
+	const cfg = asRecord(config);
 
 	// Check required top-level fields
 	const requiredFields = [
@@ -193,37 +201,37 @@ export function validateConfigArtifact(config: any): {
 	];
 
 	for (const field of requiredFields) {
-		if (!(field in config)) {
+		if (!(field in cfg)) {
 			errors.push(`Missing required field: ${field}`);
 		}
 	}
 
 	// Validate schema version
-	if (config.schema_version !== 1) {
+	if (cfg.schema_version !== 1) {
 		errors.push(
-			`Invalid schema_version: expected 1, got ${config.schema_version}`,
+			`Invalid schema_version: expected 1, got ${String(cfg.schema_version)}`,
 		);
 	}
 
 	// Validate config version format (YYYY-MM-DD.N)
 	if (
-		config.config_version &&
-		!/^\d{4}-\d{2}-\d{2}\.\d+$/.test(config.config_version)
+		typeof cfg.config_version === 'string' &&
+		!/^\d{4}-\d{2}-\d{2}\.\d+$/.test(cfg.config_version)
 	) {
-		errors.push(`Invalid config_version format: ${config.config_version}`);
+		errors.push(`Invalid config_version format: ${cfg.config_version}`);
 	}
 
 	// Validate published_at is ISO 8601
-	if (config.published_at) {
+	if (typeof cfg.published_at === 'string') {
 		try {
-			new Date(config.published_at).toISOString();
+			new Date(cfg.published_at).toISOString();
 		} catch {
-			errors.push(`Invalid published_at format: ${config.published_at}`);
+			errors.push(`Invalid published_at format: ${cfg.published_at}`);
 		}
 	}
 
 	// Validate flag types
-	if (config.flags) {
+	if (cfg.flags) {
 		const validFlagTypes = [
 			'bool',
 			'string',
@@ -232,16 +240,17 @@ export function validateConfigArtifact(config: any): {
 			'date',
 			'json',
 		];
-		for (const [key, flag] of Object.entries(config.flags)) {
+		for (const [key, flag] of Object.entries(asRecord(cfg.flags))) {
 			if (flag && typeof flag === 'object') {
-				if (!validFlagTypes.includes((flag as any).type)) {
-					errors.push(`Invalid flag type for "${key}": ${(flag as any).type}`);
+				const f = flag as Record<string, unknown>;
+				if (!validFlagTypes.includes(f.type as string)) {
+					errors.push(`Invalid flag type for "${key}": ${String(f.type)}`);
 				}
 
 				// Check required environments
 				const environments = ['development', 'beta', 'production'];
 				for (const env of environments) {
-					if (!(env in flag)) {
+					if (!(env in f)) {
 						errors.push(`Flag "${key}" missing environment: ${env}`);
 					}
 				}
@@ -256,70 +265,17 @@ export function validateConfigArtifact(config: any): {
 }
 
 /**
- * Validate a single condition object
- */
-function validateCondition(condition: any): string[] {
-	const errors: string[] = [];
-
-	const requiredFields = ['id', 'type', 'values', 'operator'];
-	for (const field of requiredFields) {
-		if (!(field in condition)) {
-			errors.push(`Missing required field: ${field}`);
-		}
-	}
-
-	const validTypes = [
-		'app_version',
-		'os_version',
-		'build_number',
-		'platform',
-		'device_model',
-		'region',
-		'language',
-		'custom_attribute',
-	];
-
-	if (condition.type && !validTypes.includes(condition.type)) {
-		errors.push(`Invalid condition type: ${condition.type}`);
-	}
-
-	const validOperators = [
-		'equals',
-		'does_not_equals',
-		'between',
-		'greater_than_or_equal',
-		'greater_than',
-		'less_than',
-		'less_than_or_equal',
-		'in',
-		'not_in',
-		'custom',
-	];
-
-	if (condition.operator && !validOperators.includes(condition.operator)) {
-		errors.push(`Invalid operator: ${condition.operator}`);
-	}
-
-	if (condition.values && !Array.isArray(condition.values)) {
-		errors.push('Values must be an array');
-	} else if (condition.values?.length === 0) {
-		errors.push('Values array cannot be empty');
-	}
-
-	return errors;
-}
-
-/**
  * Additional validation for naming rules per JSON Spec
  */
-export function validateNamingRules(config: any): string[] {
+export function validateNamingRules(config: unknown): string[] {
 	const errors: string[] = [];
 	const keyPattern = /^[a-z_]+$/;
 	const noLeadingTrailing = /^[a-z](?:[a-z_]*[a-z])?$/;
+	const cfg = asRecord(config);
 
 	// Validate flag keys
-	if (config.flags) {
-		for (const key of Object.keys(config.flags)) {
+	if (cfg.flags) {
+		for (const key of Object.keys(asRecord(cfg.flags))) {
 			if (!keyPattern.test(key)) {
 				errors.push(
 					`Flag key "${key}" violates naming rules: must contain only lowercase letters and underscores`,
@@ -337,8 +293,8 @@ export function validateNamingRules(config: any): string[] {
 	}
 
 	// Validate test keys
-	if (config.tests) {
-		for (const key of Object.keys(config.tests)) {
+	if (cfg.tests) {
+		for (const key of Object.keys(asRecord(cfg.tests))) {
 			if (!keyPattern.test(key)) {
 				errors.push(
 					`Test key "${key}" violates naming rules: must contain only lowercase letters and underscores`,
@@ -356,8 +312,8 @@ export function validateNamingRules(config: any): string[] {
 	}
 
 	// Validate rollout keys
-	if (config.rollouts) {
-		for (const key of Object.keys(config.rollouts)) {
+	if (cfg.rollouts) {
+		for (const key of Object.keys(asRecord(cfg.rollouts))) {
 			if (!keyPattern.test(key)) {
 				errors.push(
 					`Rollout key "${key}" violates naming rules: must contain only lowercase letters and underscores`,
