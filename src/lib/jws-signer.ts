@@ -19,7 +19,7 @@ export interface SigningResult {
 
 export interface VerificationResult {
 	verified: boolean;
-	payload?: any;
+	payload?: unknown;
 	error?: string;
 	keyId?: string;
 }
@@ -70,7 +70,7 @@ export async function ensureSigningKey(appId: string): Promise<void> {
  */
 export async function signConfig(
 	appId: string,
-	configJson: any,
+	configJson: unknown,
 ): Promise<SigningResult> {
 	try {
 		// Get the active signing key for this app
@@ -152,62 +152,6 @@ export async function signConfigDetached(
 }
 
 /**
- * Create a detached JWS signature for a config
- * The config JSON is not embedded in the JWS, only signed
- */
-export async function createDetachedSignature(
-	appId: string,
-	configString: string,
-): Promise<SigningResult> {
-	try {
-		// Get the active signing key for this app
-		const signingKey = await prisma.signingKey.findFirst({
-			where: {
-				appId,
-				isActive: true,
-			},
-			orderBy: {
-				createdAt: 'desc',
-			},
-		});
-
-		if (!signingKey) {
-			throw new Error(`No active signing key found for app ${appId}`);
-		}
-
-		// Decrypt (if enveloped) then import the private key for signing
-		const privateKeyPem = await loadPrivateKey(signingKey.privateKey);
-		const privateKey = await importPKCS8(privateKeyPem, signingKey.algorithm);
-
-		// Create JWS with empty payload (detached signature)
-		const jwt = new SignJWT({})
-			.setProtectedHeader({
-				alg: signingKey.algorithm,
-				kid: signingKey.kid,
-				typ: 'JWT',
-				crit: ['b64'], // Critical header parameter
-				b64: false as any, // Unencoded payload (for detached signature)
-			})
-			.setIssuedAt()
-			.setExpirationTime('24h');
-
-		// Sign the config string directly (detached)
-		const signature = await jwt.sign(privateKey);
-
-		return {
-			signature,
-			keyId: signingKey.kid,
-			algorithm: signingKey.algorithm,
-		};
-	} catch (error) {
-		console.error('Detached signature creation failed:', error);
-		throw new Error(
-			`Failed to create detached signature: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		);
-	}
-}
-
-/**
  * Verify a JWS signature against a config using a specific public key
  */
 export async function verifyConfigSignature(
@@ -251,11 +195,11 @@ export async function verifyConfigSignature(
 				if (jwtPayload.config === configString) {
 					return {
 						verified: true,
-						payload: JSON.parse(configString),
+						payload: JSON.parse(configString) as unknown,
 						keyId: signingKey.kid,
 					};
 				}
-			} catch (keyError) {
+			} catch {
 				// Continue trying other keys
 				continue;
 			}
@@ -327,15 +271,11 @@ export async function rotateSigningKeys(
 				data: { isActive: false },
 			});
 
-			// Activate the new key
-			const updatedKey = await tx.signingKey.update({
+			// Activate the new key (throws P2025 if the key does not exist)
+			await tx.signingKey.update({
 				where: { appId_kid: { appId, kid: newKeyId } },
 				data: { isActive: true },
 			});
-
-			if (!updatedKey) {
-				throw new Error(`Key ${newKeyId} not found for app ${appId}`);
-			}
 		});
 	} catch (error) {
 		console.error('Key rotation failed:', error);
@@ -346,18 +286,29 @@ export async function rotateSigningKeys(
 }
 
 /**
+ * A parsed JWS protected header. Only the standard fields are typed; the index
+ * signature allows additional/critical parameters.
+ */
+export interface JWSHeader {
+	alg?: string;
+	kid?: string;
+	typ?: string;
+	[key: string]: unknown;
+}
+
+/**
  * Utility functions for JWS header inspection
  */
 export class JWSUtils {
 	/**
 	 * Parse JWS header without verification
 	 */
-	static parseHeader(jwsCompact: string): any {
+	static parseHeader(jwsCompact: string): JWSHeader {
 		try {
 			const [headerB64] = jwsCompact.split('.');
 			const headerJson = Buffer.from(headerB64, 'base64url').toString('utf8');
-			return JSON.parse(headerJson);
-		} catch (error) {
+			return JSON.parse(headerJson) as JWSHeader;
+		} catch {
 			throw new Error('Invalid JWS format');
 		}
 	}
@@ -368,8 +319,8 @@ export class JWSUtils {
 	static extractKeyId(jwsCompact: string): string | null {
 		try {
 			const header = this.parseHeader(jwsCompact);
-			return header.kid || null;
-		} catch (error) {
+			return header.kid ?? null;
+		} catch {
 			return null;
 		}
 	}
@@ -378,11 +329,7 @@ export class JWSUtils {
 	 * Validate JWS format
 	 */
 	static isValidJWSFormat(jwsCompact: string): boolean {
-		try {
-			const parts = jwsCompact.split('.');
-			return parts.length === 3; // header.payload.signature
-		} catch (error) {
-			return false;
-		}
+		const parts = jwsCompact.split('.');
+		return parts.length === 3; // header.payload.signature
 	}
 }

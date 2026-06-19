@@ -93,6 +93,16 @@ export async function protectPrivateKey(
 	});
 }
 
+// A persisted key envelope. `scheme` is kept as a plain string (not a union) so
+// the unknown-scheme guard below stays reachable for corrupt/forward data.
+interface KeyEnvelope {
+	scheme: string;
+	salt?: string;
+	iv?: string;
+	tag?: string;
+	ciphertext: string;
+}
+
 export async function unprotectPrivateKey(
 	stored: string,
 	config: ProtectionConfig,
@@ -102,7 +112,7 @@ export async function unprotectPrivateKey(
 		return stored;
 	}
 
-	const envelope = JSON.parse(stored);
+	const envelope = JSON.parse(stored) as KeyEnvelope;
 
 	if (envelope.scheme === 'local') {
 		if (config.scheme !== 'local') {
@@ -110,9 +120,9 @@ export async function unprotectPrivateKey(
 				'Stored key uses the local scheme but no SIGNING_KEY_SECRET is configured.',
 			);
 		}
-		const salt = Buffer.from(envelope.salt, 'base64');
-		const iv = Buffer.from(envelope.iv, 'base64');
-		const tag = Buffer.from(envelope.tag, 'base64');
+		const salt = Buffer.from(envelope.salt ?? '', 'base64');
+		const iv = Buffer.from(envelope.iv ?? '', 'base64');
+		const tag = Buffer.from(envelope.tag ?? '', 'base64');
 		const key = deriveLocalKey(config.secret, salt);
 		const decipher = createDecipheriv('aes-256-gcm', key, iv);
 		decipher.setAuthTag(tag);
@@ -173,7 +183,7 @@ export async function getProtectionConfig(
 	const { KMSClient, EncryptCommand, DecryptCommand } =
 		await import('@aws-sdk/client-kms');
 	const client = new KMSClient({
-		region: env.AWS_REGION || env.S3_REGION || 'us-east-1',
+		region: env.AWS_REGION ?? env.S3_REGION ?? 'us-east-1',
 	});
 	const kms: KmsAdapter = {
 		async encrypt(plaintext) {
