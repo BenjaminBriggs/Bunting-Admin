@@ -75,9 +75,7 @@ The single source of truth for environments, flag types, versioning, the publish
 
 ---
 
-## Known issues
+## Authentication & authorization
 
-Two known gaps are documented in the human docs — read them before touching the related code:
-
-- **32-bit bucketing** (`src/lib/bucketing.ts` uses 4 bytes; SDK uses 8) — see `../docs/concepts.md` and `../docs/codebase-overview.md`.
-- **API authorization gap** (25 of 27 routes don't call `auth()`) — see `docs/security.md` → "API authorization coverage".
+- **Authentication** is enforced globally in `src/middleware.ts` (edge); unauthenticated requests never reach a handler.
+- **Authorization** is enforced per-route via `requireAdmin` (`src/lib/authz.ts`) in node-runtime handlers — the role comes from the `User` table (oidc) or the access list (proxy). ADMIN-only: publish, keys, users, access-list, crypto/test. Flags/tests/rollouts/apps are open to any authenticated user. See `docs/security.md` → "API authorization coverage" and `../docs/authentication.md` §Roles.

@@ -127,9 +127,16 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 - Subsequent users get `DEVELOPER` unless their email or `@domain` appears in the `AccessList` table with an explicit role.
 - Admins can manage the access list under Settings → Team in the dashboard.
 
-### API authorization coverage (known gap)
+### API authorization coverage
 
-Role enforcement is **not yet applied uniformly**. Only the `/api/users` and `/api/access-list` routes currently call `auth()` and require `ADMIN`. The remaining API routes — `apps`, `flags`, `tests`, `rollouts`, `config`, `bootstrap`, and `keys` (25 of 27 route handlers) — do not check the session and are effectively unauthenticated at the application layer. Until this is fixed, the admin must be protected at the network layer (reverse proxy, IAP, or private network); do not expose it directly to the public internet. Adding an `auth()` gate to every mutating route is required before public deployment.
+**Authentication** is enforced globally: `src/middleware.ts` rejects any unauthenticated request (401 for `/api/*`, redirect otherwise) before it reaches a route handler. Authentication cannot be done per-route in the handlers themselves for the role check because Prisma is not available in the edge middleware runtime.
+
+**Authorization** (role checks) is enforced per-route in node-runtime handlers via `requireAdmin` (`src/lib/authz.ts`), which resolves the caller's role from the `User` table (oidc mode) or the access list (proxy mode):
+
+- **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production).
+- **Any authenticated user (incl. DEVELOPER):** `apps`, `flags`, `tests`, `rollouts` — per [authentication.md](../../docs/authentication.md) §Roles, developers may author flags/tests/rollouts/apps but may not publish or manage keys/users.
+
+Defense-in-depth at the network layer (reverse proxy, IAP, or private network) is still recommended, but the application layer no longer leaves routes unauthenticated.
 
 ---
 

@@ -16,6 +16,8 @@ jest.mock('@/lib/access-control', () => ({
 	getUserRoleFromAccessList: (email: string) => mockRoleFromAccessList(email),
 }));
 
+// Imported after the jest.mock calls so the mocked dependencies register first.
+// eslint-disable-next-line import/first
 import { getRequestRole, requireAdmin } from '@/lib/authz';
 
 const headers = new Headers();
