@@ -146,9 +146,7 @@ export default function TestForm({
 	const [name, setName] = useState(initial.name);
 	const [groups, setGroups] = useState<TestGroupValue[]>(initial.groups);
 	const [adjustSplit, setAdjustSplit] = useState(initial.adjustSplit);
-	const [audienceOn, setAudienceOn] = useState(
-		initial.conditions.length > 0,
-	);
+	const [audienceOn, setAudienceOn] = useState(initial.conditions.length > 0);
 	const [conditions, setConditions] = useState<Condition[]>(initial.conditions);
 	const [description, setDescription] = useState(initial.description);
 	const [group, setGroup] = useState(initial.group);

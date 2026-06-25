@@ -72,9 +72,7 @@ describe('assignVariant', () => {
 	it('returns null when the variant percentages do not cover the bucket', () => {
 		// 'test-salt'/'user-123' => bucket 27, so a 20% single variant excludes it.
 		expect(
-			assignVariant('test-salt', 'user-123', [
-				{ name: 'a', percentage: 20 },
-			]),
+			assignVariant('test-salt', 'user-123', [{ name: 'a', percentage: 20 }]),
 		).toBeNull();
 	});
 

@@ -206,7 +206,9 @@ export function validateValue(
 
 // Shared label above non-MUI-framed controls (segmented bool / JSON block).
 function FieldLabel({ label }: { label?: string }) {
-	if (!label) {return null;}
+	if (!label) {
+		return null;
+	}
 	return (
 		<Typography
 			component="div"

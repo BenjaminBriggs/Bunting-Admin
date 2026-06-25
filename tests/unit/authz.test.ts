@@ -5,7 +5,10 @@ type AuthConfig = { mode: 'oidc' | 'proxy' };
 
 const mockResolveAuthConfig = jest.fn<AuthConfig, []>();
 const mockAuth = jest.fn<Promise<Session>, []>();
-const mockIdentityFromHeaders = jest.fn<Promise<Identity>, [Headers, AuthConfig]>();
+const mockIdentityFromHeaders = jest.fn<
+	Promise<Identity>,
+	[Headers, AuthConfig]
+>();
 const mockRoleFromAccessList = jest.fn<Promise<Role>, [string]>();
 
 jest.mock('@/lib/auth-env', () => ({
@@ -17,8 +20,10 @@ jest.mock('@/lib/auth', () => ({
 }));
 
 jest.mock('@/lib/auth-session', () => ({
-	identityFromHeaders: (headers: Headers, config: AuthConfig): Promise<Identity> =>
-		mockIdentityFromHeaders(headers, config),
+	identityFromHeaders: (
+		headers: Headers,
+		config: AuthConfig,
+	): Promise<Identity> => mockIdentityFromHeaders(headers, config),
 }));
 
 jest.mock('@/lib/access-control', () => ({
@@ -95,14 +100,18 @@ describe('requireAdmin', () => {
 	});
 
 	it('returns 403 for a DEVELOPER', async () => {
-		mockAuth.mockResolvedValue({ user: { email: 'dev@x.com', role: 'DEVELOPER' } });
+		mockAuth.mockResolvedValue({
+			user: { email: 'dev@x.com', role: 'DEVELOPER' },
+		});
 		const result = await requireAdmin(headers);
 		expect(result).toBeInstanceOf(NextResponse);
 		expect((result as NextResponse).status).toBe(403);
 	});
 
 	it('returns the identity for an ADMIN', async () => {
-		mockAuth.mockResolvedValue({ user: { email: 'admin@x.com', role: 'ADMIN' } });
+		mockAuth.mockResolvedValue({
+			user: { email: 'admin@x.com', role: 'ADMIN' },
+		});
 		const result = await requireAdmin(headers);
 		expect(result).toEqual({ email: 'admin@x.com' });
 	});

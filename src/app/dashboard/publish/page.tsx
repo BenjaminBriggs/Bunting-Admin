@@ -1,6 +1,13 @@
 'use client';
 
-import { Alert, Box, Button, CircularProgress, TextField, Typography } from '@mui/material';
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	TextField,
+	Typography,
+} from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -79,7 +86,9 @@ function ChangeRow({ tag, change }: { tag: string; change: ConfigChange }) {
 				{change.key}
 			</Box>
 			{detail && (
-				<Box sx={{ fontWeight: 600, fontSize: 12, color: ink.muted, minWidth: 0 }}>
+				<Box
+					sx={{ fontWeight: 600, fontSize: 12, color: ink.muted, minWidth: 0 }}
+				>
 					{detail}
 				</Box>
 			)}
@@ -106,7 +115,9 @@ export default function PublishPage() {
 	const [publishSuccess, setPublishSuccess] = useState<string | null>(null);
 	const [validation, setValidation] = useState<ValidationResult | null>(null);
 	const [changes, setChanges] = useState<ConfigChange[]>([]);
-	const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>([]);
+	const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>(
+		[],
+	);
 	const [hasChangesDetected, setHasChangesDetected] = useState(false);
 	// Raw configs kept for the technical (JSON) diff view.
 	const [currentConfig, setCurrentConfig] = useState<unknown>(null);
@@ -150,12 +161,12 @@ export default function PublishPage() {
 
 				const configChanges = getConfigChanges(currentConfig, publishedConfig);
 				setChanges(configChanges);
-				setHasChangesDetected(
-					hasConfigChanges(currentConfig, publishedConfig),
-				);
+				setHasChangesDetected(hasConfigChanges(currentConfig, publishedConfig));
 			} catch (err) {
 				console.error('Failed to load app data:', err);
-				setError(err instanceof Error ? err.message : 'Failed to load app data');
+				setError(
+					err instanceof Error ? err.message : 'Failed to load app data',
+				);
 			} finally {
 				setLoading(false);
 			}
@@ -248,19 +259,32 @@ export default function PublishPage() {
 		type: 'flag' | 'test' | 'rollout',
 		glyph: string,
 		label: string,
-		group: { added: ConfigChange[]; modified: ConfigChange[]; removed: ConfigChange[] },
+		group: {
+			added: ConfigChange[];
+			modified: ConfigChange[];
+			removed: ConfigChange[];
+		},
 	) => {
-		const count = group.added.length + group.modified.length + group.removed.length;
+		const count =
+			group.added.length + group.modified.length + group.removed.length;
 		if (count === 0) {
 			return null;
 		}
 		return (
 			<Box sx={{ mb: 2.25 }}>
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
-					<Ms name={glyph} sx={{ fontSize: 18, color: typeColors[type].solid }} />
+					<Ms
+						name={glyph}
+						sx={{ fontSize: 18, color: typeColors[type].solid }}
+					/>
 					<Typography sx={{ font: "800 13px 'Baloo 2'" }}>{label}</Typography>
 					<Typography
-						sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 11, color: '#9A9483' }}
+						sx={{
+							fontFamily: monoFontFamily,
+							fontWeight: 700,
+							fontSize: 11,
+							color: '#9A9483',
+						}}
 					>
 						{count}
 					</Typography>
@@ -333,7 +357,9 @@ export default function PublishPage() {
 					<Typography variant="h4" sx={{ mt: 0.75 }}>
 						Publish configuration
 					</Typography>
-					<Typography sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.625 }}>
+					<Typography
+						sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.625 }}
+					>
 						Review everything that changed, then ship a new signed config
 						{selectedApp ? ` for ${selectedApp.name}` : ''}.
 					</Typography>
@@ -384,7 +410,15 @@ export default function PublishPage() {
 					}}
 				>
 					{/* LEFT: validation + diff + changelog */}
-					<Box sx={{ flex: 1, minWidth: 420, display: 'flex', flexDirection: 'column', gap: 2 }}>
+					<Box
+						sx={{
+							flex: 1,
+							minWidth: 420,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 2,
+						}}
+					>
 						{/* validation banner */}
 						{!hasChangesDetected ? (
 							<Box
@@ -399,7 +433,9 @@ export default function PublishPage() {
 								}}
 							>
 								<Ms name="info" sx={{ fontSize: 24, color: '#1E7B72' }} />
-								<Typography sx={{ font: "700 14px 'Baloo 2'", color: '#1E7B72' }}>
+								<Typography
+									sx={{ font: "700 14px 'Baloo 2'", color: '#1E7B72' }}
+								>
 									No changes to publish yet
 								</Typography>
 							</Box>
@@ -409,25 +445,46 @@ export default function PublishPage() {
 									display: 'flex',
 									alignItems: 'center',
 									gap: 1.5,
-									bgcolor: hasBlockingErrors ? '#FBEAE5' : warningCount > 0 ? '#FCEFD2' : '#E9F4E0',
+									bgcolor: hasBlockingErrors
+										? '#FBEAE5'
+										: warningCount > 0
+											? '#FCEFD2'
+											: '#E9F4E0',
 									border: `1px solid ${hasBlockingErrors ? '#EAC7BF' : warningCount > 0 ? '#F3E2BD' : '#CDE6C2'}`,
 									borderRadius: '14px',
 									p: '14px 16px',
 								}}
 							>
 								<Ms
-									name={hasBlockingErrors ? 'error' : warningCount > 0 ? 'warning' : 'check_circle'}
-									sx={{ fontSize: 24, color: hasBlockingErrors ? '#C8503C' : warningCount > 0 ? '#9A6F1C' : '#3F7A2D' }}
+									name={
+										hasBlockingErrors
+											? 'error'
+											: warningCount > 0
+												? 'warning'
+												: 'check_circle'
+									}
+									sx={{
+										fontSize: 24,
+										color: hasBlockingErrors
+											? '#C8503C'
+											: warningCount > 0
+												? '#9A6F1C'
+												: '#3F7A2D',
+									}}
 								/>
 								<Box sx={{ flex: 1, minWidth: 0 }}>
 									<Typography
 										sx={{
 											font: "700 14px 'Baloo 2'",
-											color: hasBlockingErrors ? '#7A2E20' : warningCount > 0 ? '#5E4A18' : '#2F5E22',
+											color: hasBlockingErrors
+												? '#7A2E20'
+												: warningCount > 0
+													? '#5E4A18'
+													: '#2F5E22',
 										}}
 									>
-										{warningCount} warning{warningCount === 1 ? '' : 's'} · {errorCount} blocking
-										error{errorCount === 1 ? '' : 's'}
+										{warningCount} warning{warningCount === 1 ? '' : 's'} ·{' '}
+										{errorCount} blocking error{errorCount === 1 ? '' : 's'}
 									</Typography>
 									{(validation?.warnings[0] ?? validation?.errors[0]) && (
 										<Typography
@@ -462,7 +519,14 @@ export default function PublishPage() {
 
 						{/* changes to publish */}
 						<Box sx={{ ...cardSx, p: '20px 22px' }}>
-							<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.25, mb: 0.75 }}>
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'baseline',
+									gap: 1.25,
+									mb: 0.75,
+								}}
+							>
 								<Typography sx={{ font: "800 17px 'Baloo 2'" }}>
 									Changes to publish
 								</Typography>
@@ -480,19 +544,28 @@ export default function PublishPage() {
 								</Box>
 							</Box>
 							{lastVersion && (
-								<Typography sx={{ font: "600 12px 'Nunito'", color: ink.muted, mb: 2 }}>
+								<Typography
+									sx={{ font: "600 12px 'Nunito'", color: ink.muted, mb: 2 }}
+								>
 									since {lastVersion}
 								</Typography>
 							)}
 							{!hasChangesDetected ? (
-								<Typography sx={{ font: "600 13px 'Nunito'", color: ink.muted, py: 1 }}>
+								<Typography
+									sx={{ font: "600 13px 'Nunito'", color: ink.muted, py: 1 }}
+								>
 									No changes detected. Make some changes to your flags before
 									publishing.
 								</Typography>
 							) : (
 								<Box sx={{ mt: 0.5 }}>
 									{renderGroup('flag', 'flag', 'Flags', groupedChanges.flags)}
-									{renderGroup('test', 'science', 'Tests', groupedChanges.tests)}
+									{renderGroup(
+										'test',
+										'science',
+										'Tests',
+										groupedChanges.tests,
+									)}
 									{renderGroup(
 										'rollout',
 										'rocket_launch',
@@ -507,17 +580,30 @@ export default function PublishPage() {
 						{hasChangesDetected && (
 							<Box sx={{ ...cardSx, p: '20px 22px' }}>
 								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-									<Ms name="data_object" sx={{ fontSize: 18, color: '#7E776A' }} />
-									<Typography sx={{ font: "800 16px 'Baloo 2'" }}>Raw diff</Typography>
+									<Ms
+										name="data_object"
+										sx={{ fontSize: 18, color: '#7E776A' }}
+									/>
+									<Typography sx={{ font: "800 16px 'Baloo 2'" }}>
+										Raw diff
+									</Typography>
 									<Typography
-										sx={{ font: `600 11px ${monoFontFamily}`, color: ink.muted }}
+										sx={{
+											font: `600 11px ${monoFontFamily}`,
+											color: ink.muted,
+										}}
 									>
 										published → current
 									</Typography>
 									<Box
 										component="button"
 										onClick={() => setShowRawDiff((v) => !v)}
-										sx={{ ml: 'auto', ...technicalButtonSx(), border: 'none', cursor: 'pointer' }}
+										sx={{
+											ml: 'auto',
+											...technicalButtonSx(),
+											border: 'none',
+											cursor: 'pointer',
+										}}
 									>
 										{showRawDiff ? 'Hide' : 'Show'} diff
 									</Box>
@@ -537,36 +623,50 @@ export default function PublishPage() {
 											lineHeight: 1.55,
 										}}
 									>
-										{diffJson(publishedConfig ?? undefined, currentConfig).map((line, idx) => {
-											const isAdd = line.kind === 'add';
-											const isDel = line.kind === 'del';
-											return (
-												<Box
-													key={idx}
-													sx={{
-														display: 'flex',
-														px: 1.5,
-														whiteSpace: 'pre-wrap',
-														wordBreak: 'break-word',
-														bgcolor: isAdd ? '#E9F4E0' : isDel ? '#FBEAE5' : 'transparent',
-														color: isAdd ? '#2F5E22' : isDel ? '#7A2E20' : ink.soft,
-													}}
-												>
+										{diffJson(publishedConfig ?? undefined, currentConfig).map(
+											(line, idx) => {
+												const isAdd = line.kind === 'add';
+												const isDel = line.kind === 'del';
+												return (
 													<Box
-														component="span"
+														key={idx}
 														sx={{
-															width: 14,
-															flexShrink: 0,
-															userSelect: 'none',
-															color: isAdd ? '#3F7A2D' : isDel ? '#C8503C' : '#C2BAA8',
+															display: 'flex',
+															px: 1.5,
+															whiteSpace: 'pre-wrap',
+															wordBreak: 'break-word',
+															bgcolor: isAdd
+																? '#E9F4E0'
+																: isDel
+																	? '#FBEAE5'
+																	: 'transparent',
+															color: isAdd
+																? '#2F5E22'
+																: isDel
+																	? '#7A2E20'
+																	: ink.soft,
 														}}
 													>
-														{isAdd ? '+' : isDel ? '-' : ' '}
+														<Box
+															component="span"
+															sx={{
+																width: 14,
+																flexShrink: 0,
+																userSelect: 'none',
+																color: isAdd
+																	? '#3F7A2D'
+																	: isDel
+																		? '#C8503C'
+																		: '#C2BAA8',
+															}}
+														>
+															{isAdd ? '+' : isDel ? '-' : ' '}
+														</Box>
+														<Box component="span">{line.text || ' '}</Box>
 													</Box>
-													<Box component="span">{line.text || ' '}</Box>
-												</Box>
-											);
-										})}
+												);
+											},
+										)}
 									</Box>
 								)}
 							</Box>
@@ -575,8 +675,17 @@ export default function PublishPage() {
 						{/* changelog */}
 						{hasChangesDetected && (
 							<Box sx={{ ...cardSx, p: '20px 22px' }}>
-								<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.875, mb: 1.375 }}>
-									<Typography sx={{ font: "800 16px 'Baloo 2'" }}>Changelog</Typography>
+								<Box
+									sx={{
+										display: 'flex',
+										alignItems: 'center',
+										gap: 0.875,
+										mb: 1.375,
+									}}
+								>
+									<Typography sx={{ font: "800 16px 'Baloo 2'" }}>
+										Changelog
+									</Typography>
 									<Box
 										sx={{
 											font: "700 10px 'Nunito'",
@@ -619,8 +728,16 @@ export default function PublishPage() {
 								Ready to ship
 							</Typography>
 							{[
-								{ label: 'New version', value: hasChangesDetected ? generateVersion() : '—', color: ink.primary },
-								{ label: 'Changes', value: String(changes.length), color: ink.primary },
+								{
+									label: 'New version',
+									value: hasChangesDetected ? generateVersion() : '—',
+									color: ink.primary,
+								},
+								{
+									label: 'Changes',
+									value: String(changes.length),
+									color: ink.primary,
+								},
 								{
 									label: 'Blocking errors',
 									value: String(errorCount),
@@ -634,10 +751,13 @@ export default function PublishPage() {
 										justifyContent: 'space-between',
 										alignItems: 'center',
 										py: 1.25,
-										borderBottom: i < arr.length - 1 ? '1px solid #F1EBDD' : 'none',
+										borderBottom:
+											i < arr.length - 1 ? '1px solid #F1EBDD' : 'none',
 									}}
 								>
-									<Typography sx={{ font: "600 12px 'Nunito'", color: '#8B8472' }}>
+									<Typography
+										sx={{ font: "600 12px 'Nunito'", color: '#8B8472' }}
+									>
 										{row.label}
 									</Typography>
 									<Typography
@@ -658,12 +778,25 @@ export default function PublishPage() {
 										<Ms name="bolt" sx={{ fontSize: 19 }} />
 									)
 								}
-								sx={{ ...technicalButtonSx({ accent: true, disabled: !canPublish || isPublishing }), mt: 1.5, width: '100%', py: 1.5 }}
+								sx={{
+									...technicalButtonSx({
+										accent: true,
+										disabled: !canPublish || isPublishing,
+									}),
+									mt: 1.5,
+									width: '100%',
+									py: 1.5,
+								}}
 							>
 								{isPublishing ? 'Publishing…' : 'Publish config'}
 							</Button>
 							<Typography
-								sx={{ font: "500 11px 'Nunito'", color: ink.muted, textAlign: 'center', mt: 1.25 }}
+								sx={{
+									font: "500 11px 'Nunito'",
+									color: ink.muted,
+									textAlign: 'center',
+									mt: 1.25,
+								}}
 							>
 								{hasBlockingErrors
 									? 'Fix blocking errors before publishing'
@@ -672,17 +805,31 @@ export default function PublishPage() {
 						</Box>
 
 						<Box sx={{ ...cardSx, p: '18px 20px' }}>
-							<Typography sx={{ font: "700 12px 'Nunito'", color: '#8B8472', mb: 1.5 }}>
+							<Typography
+								sx={{ font: "700 12px 'Nunito'", color: '#8B8472', mb: 1.5 }}
+							>
 								RECENT PUBLISHES
 							</Typography>
 							{publishHistory.length === 0 ? (
-								<Typography sx={{ font: "600 12px 'Nunito'", color: ink.muted, textAlign: 'center', py: 1 }}>
+								<Typography
+									sx={{
+										font: "600 12px 'Nunito'",
+										color: ink.muted,
+										textAlign: 'center',
+										py: 1,
+									}}
+								>
 									No publish history yet
 								</Typography>
 							) : (
-								<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.375 }}>
+								<Box
+									sx={{ display: 'flex', flexDirection: 'column', gap: 1.375 }}
+								>
 									{publishHistory.slice(0, 5).map((publish, index) => (
-										<Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1.125 }}>
+										<Box
+											key={index}
+											sx={{ display: 'flex', alignItems: 'center', gap: 1.125 }}
+										>
 											<Box
 												sx={{
 													font: "600 12px 'JetBrains Mono'",
@@ -696,7 +843,13 @@ export default function PublishPage() {
 											>
 												{publish.version}
 											</Box>
-											<Typography sx={{ font: "600 12px 'Nunito'", color: ink.soft, minWidth: 0 }}>
+											<Typography
+												sx={{
+													font: "600 12px 'Nunito'",
+													color: ink.soft,
+													minWidth: 0,
+												}}
+											>
 												{new Date(publish.publishedAt).toLocaleDateString()}
 											</Typography>
 										</Box>

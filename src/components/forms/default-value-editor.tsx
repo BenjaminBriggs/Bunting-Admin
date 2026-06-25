@@ -114,9 +114,7 @@ export function DefaultValueEditor({
 					value={value}
 					onChange={handleNumberChange}
 					placeholder={
-						type === 'int'
-							? 'Enter default integer'
-							: 'Enter default number'
+						type === 'int' ? 'Enter default integer' : 'Enter default number'
 					}
 					inputProps={{ step: type === 'double' ? 'any' : '1' }}
 					disabled={disabled}

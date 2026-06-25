@@ -89,9 +89,7 @@ function resolveFlagSpecificValue(
 }
 
 function highestOrder(variants: FlagVariant[]): number {
-	return variants.length > 0
-		? Math.max(...variants.map((v) => v.order))
-		: 0;
+	return variants.length > 0 ? Math.max(...variants.map((v) => v.order)) : 0;
 }
 
 export async function generateConfigFromDb(
@@ -149,7 +147,8 @@ export async function generateConfigFromDb(
 		// Normalize Prisma enum to lowercase (Prisma returns 'BOOL', we want 'bool')
 		const jsonSpecType = normalizeFlagType(flag.type) as FlagType;
 
-		const storedVariants = (flag.variants ?? {}) as unknown as StoredVariantsByEnv;
+		const storedVariants = (flag.variants ??
+			{}) as unknown as StoredVariantsByEnv;
 		const conditionalVariants = (
 			list: StoredConditionalVariant[] | undefined,
 		): FlagVariant[] =>
@@ -205,12 +204,10 @@ export async function generateConfigFromDb(
 			// Derive groups from variants — SDK needs groups to do deterministic bucketing
 			const variants = (testRollout.variants ??
 				{}) as unknown as StoredTestVariants;
-			const groups: TestGroup[] = Object.entries(variants).map(
-				([name, v]) => ({
-					name,
-					percentage: v.percentage ?? 0,
-				}),
-			);
+			const groups: TestGroup[] = Object.entries(variants).map(([name, v]) => ({
+				name,
+				percentage: v.percentage ?? 0,
+			}));
 
 			tests[testRollout.key] = {
 				name: testRollout.name,
@@ -271,7 +268,8 @@ export async function generateConfigFromDb(
 			};
 
 			// Add rollout variants to assigned flags
-			const rolloutValues = testRollout.rolloutValues as StoredRolloutValues | null;
+			const rolloutValues =
+				testRollout.rolloutValues as StoredRolloutValues | null;
 			if (!rolloutValues) {
 				return;
 			}

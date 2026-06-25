@@ -34,23 +34,24 @@ export function FlagKeyInput({
 	const [inputValue, setInputValue] = useState(value);
 
 	// Derived state — computed during render from inputValue.
-	const { normalizedKey, displayName, validation, showPreview } = useMemo(() => {
-		if (inputValue) {
-			const normalized = normalizeToIdentifierKey(inputValue);
+	const { normalizedKey, displayName, validation, showPreview } =
+		useMemo(() => {
+			if (inputValue) {
+				const normalized = normalizeToIdentifierKey(inputValue);
+				return {
+					normalizedKey: normalized,
+					displayName: generateDisplayName(normalized),
+					validation: validateIdentifierKey(normalized),
+					showPreview: true,
+				};
+			}
 			return {
-				normalizedKey: normalized,
-				displayName: generateDisplayName(normalized),
-				validation: validateIdentifierKey(normalized),
-				showPreview: true,
+				normalizedKey: '',
+				displayName: '',
+				validation: { valid: true },
+				showPreview: false,
 			};
-		}
-		return {
-			normalizedKey: '',
-			displayName: '',
-			validation: { valid: true },
-			showPreview: false,
-		};
-	}, [inputValue]);
+		}, [inputValue]);
 
 	// Notify the parent of the resolved key whenever the input (and thus the
 	// derived values) change. This is the genuine effect: syncing to the parent.

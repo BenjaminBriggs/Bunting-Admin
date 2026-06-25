@@ -30,8 +30,8 @@ resolved flag values exactly. It is designed to be:
 <config_version>.<HEX>
 ```
 
-| Part             | Description                                                              |
-| ---------------- | ------------------------------------------------------------------------ |
+| Part             | Description                                                               |
+| ---------------- | ------------------------------------------------------------------------- |
 | `config_version` | Existing publish identifier `YYYY-MM-DD.N`, verbatim.                     |
 | `HEX`            | Uppercase hex of the payload bitstream. Final partial nibble zero-padded. |
 
@@ -62,12 +62,12 @@ variant/test/rollout whose conditions live in the artifact. No replay required.
 
 Bits are packed **MSB-first, big-endian**, in this order:
 
-| Field        | Bits                          | Meaning                                                                                  |
-| ------------ | ----------------------------- | ---------------------------------------------------------------------------------------- |
-| `fmt`        | 4                             | Fingerprint format version. This spec defines `1`. Evolves independently of `schema_version`. |
-| `env`        | 2                             | Environment index: `0`=development, `1`=beta, `2`=production.                             |
-| per-flag     | Σ `ceil(log2(pathCount))`     | One selector per flag, flags iterated by **key ascending**.                              |
-| `crc`        | 8                             | CRC-8 (poly `0x07`, init `0x00`) over all preceding bits, zero-padded to whole bytes.     |
+| Field    | Bits                      | Meaning                                                                                       |
+| -------- | ------------------------- | --------------------------------------------------------------------------------------------- |
+| `fmt`    | 4                         | Fingerprint format version. This spec defines `1`. Evolves independently of `schema_version`. |
+| `env`    | 2                         | Environment index: `0`=development, `1`=beta, `2`=production.                                 |
+| per-flag | Σ `ceil(log2(pathCount))` | One selector per flag, flags iterated by **key ascending**.                                   |
+| `crc`    | 8                         | CRC-8 (poly `0x07`, init `0x00`) over all preceding bits, zero-padded to whole bytes.         |
 
 A flag with a single possible path (a pure default, no variants) contributes
 **0 bits**. A flag with two paths contributes 1 bit, four paths 2 bits, etc.
@@ -137,12 +137,12 @@ encoded.
 
 ## Integrity and failure modes
 
-| Condition                              | Behavior                                                                 |
-| -------------------------------------- | ----------------------------------------------------------------------- |
-| Transcription error in `HEX`           | CRC-8 mismatch → reject before a silent mis-decode.                      |
+| Condition                                | Behavior                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------- |
+| Transcription error in `HEX`             | CRC-8 mismatch → reject before a silent mis-decode.                       |
 | Leftover non-padding bits / short buffer | Code does not match the artifact for that version → reject with an error. |
-| Unknown `config_version`               | Artifact unavailable → cannot decode; surface explicitly.               |
-| Unsupported `fmt`                      | Decoder refuses rather than guessing the layout.                        |
+| Unknown `config_version`                 | Artifact unavailable → cannot decode; surface explicitly.                 |
+| Unsupported `fmt`                        | Decoder refuses rather than guessing the layout.                          |
 
 ---
 

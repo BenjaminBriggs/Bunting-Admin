@@ -44,7 +44,12 @@ const functional = {
 	dangerBg: '#FBEAE5',
 };
 
-const displayFont = ['var(--font-baloo)', 'Baloo 2', 'system-ui', 'sans-serif'].join(',');
+const displayFont = [
+	'var(--font-baloo)',
+	'Baloo 2',
+	'system-ui',
+	'sans-serif',
+].join(',');
 const bodyFont = [
 	'var(--font-nunito)',
 	'Nunito',
@@ -241,7 +246,11 @@ export function createBuntingTheme() {
 
 			MuiTabs: {
 				styleOverrides: {
-					indicator: { height: 2.5, borderRadius: 0, backgroundColor: ink.primary },
+					indicator: {
+						height: 2.5,
+						borderRadius: 0,
+						backgroundColor: ink.primary,
+					},
 				},
 			},
 			MuiTab: {
@@ -263,8 +272,12 @@ export function createBuntingTheme() {
 					root: {
 						borderRadius: 11,
 						backgroundColor: surface.paper,
-						'& .MuiOutlinedInput-notchedOutline': { borderColor: surface.borderStrong },
-						'&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#D8CFBC' },
+						'& .MuiOutlinedInput-notchedOutline': {
+							borderColor: surface.borderStrong,
+						},
+						'&:hover .MuiOutlinedInput-notchedOutline': {
+							borderColor: '#D8CFBC',
+						},
 						'&.Mui-focused .MuiOutlinedInput-notchedOutline': {
 							borderColor: ink.primary,
 							boxShadow: focusRing,
@@ -310,7 +323,9 @@ export function createBuntingTheme() {
 			},
 
 			MuiTableHead: {
-				styleOverrides: { root: { backgroundColor: alpha(surface.border, 0.4) } },
+				styleOverrides: {
+					root: { backgroundColor: alpha(surface.border, 0.4) },
+				},
 			},
 			MuiTableCell: {
 				styleOverrides: {
@@ -346,12 +361,18 @@ export function createBuntingTheme() {
 			},
 
 			MuiDialog: {
-				styleOverrides: { paper: { borderRadius: 20, boxShadow: raisedShadow } },
+				styleOverrides: {
+					paper: { borderRadius: 20, boxShadow: raisedShadow },
+				},
 			},
 
 			MuiTooltip: {
 				styleOverrides: {
-					tooltip: { borderRadius: 8, background: ink.primary, fontWeight: 600 },
+					tooltip: {
+						borderRadius: 8,
+						background: ink.primary,
+						fontWeight: 600,
+					},
 					arrow: { color: ink.primary },
 				},
 			},

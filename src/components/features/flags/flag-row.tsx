@@ -880,8 +880,8 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				open={variantModalOpen}
 				onClose={() => setVariantModalOpen(false)}
 				onSave={(variant) => {
-						void handleVariantSave(variant);
-					}}
+					void handleVariantSave(variant);
+				}}
 				environment={selectedEnvironment}
 				flagType={flagData.type}
 				flagId={flagData.id}

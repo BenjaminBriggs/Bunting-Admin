@@ -57,7 +57,11 @@ export default async function ErrorPage({ searchParams }: ErrorPageProps) {
 						justifyContent: 'center',
 					}}
 				>
-					<Box component="span" className="ms" sx={{ fontSize: 34, color: '#C8503C' }}>
+					<Box
+						component="span"
+						className="ms"
+						sx={{ fontSize: 34, color: '#C8503C' }}
+					>
 						block
 					</Box>
 				</Box>

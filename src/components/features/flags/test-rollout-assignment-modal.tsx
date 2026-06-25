@@ -702,9 +702,9 @@ export default function TestRolloutAssignmentModal({
 									</Box>
 									<Stack spacing={1}>
 										{selectedGroups.map((g) => {
-											const idx = Object.keys(
-												selected.variants ?? {},
-											).indexOf(g);
+											const idx = Object.keys(selected.variants ?? {}).indexOf(
+												g,
+											);
 											const color = isControl(g)
 												? CONTROL_COLOR
 												: PALETTE[(idx < 0 ? 0 : idx) % PALETTE.length];

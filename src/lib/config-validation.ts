@@ -129,7 +129,10 @@ export function validateFlag(flag: unknown): ValidationResult {
 /**
  * Validates that a flag value matches its declared type.
  */
-export function validateFlagValue(type: ValidFlagType, value: unknown): boolean {
+export function validateFlagValue(
+	type: ValidFlagType,
+	value: unknown,
+): boolean {
 	switch (type) {
 		case 'bool':
 			return typeof value === 'boolean';

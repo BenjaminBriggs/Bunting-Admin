@@ -290,15 +290,7 @@ export default function RolloutForm({
 			});
 		}
 		return out;
-	}, [
-		isEdit,
-		name,
-		percentage,
-		conditions,
-		description,
-		group,
-		initial,
-	]);
+	}, [isEdit, name, percentage, conditions, description, group, initial]);
 
 	const dirty = isEdit ? changes.length > 0 : keyText.length > 0;
 	const canSubmit = dirty && !keyValidation.error && !saving;
@@ -666,10 +658,7 @@ export default function RolloutForm({
 								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setPercentage(
 										clampPct(
-											parseInt(
-												e.target.value.replace(/[^0-9]/g, ''),
-												10,
-											),
+											parseInt(e.target.value.replace(/[^0-9]/g, ''), 10),
 										),
 									)
 								}
@@ -810,8 +799,8 @@ export default function RolloutForm({
 											component="input"
 											value={c.values[0] ?? ''}
 											onChange={(e: ChangeEvent<HTMLInputElement>) =>
-											setCondValue(index, e.target.value)
-										}
+												setCondValue(index, e.target.value)
+											}
 											placeholder="value"
 											sx={valueInputSx}
 										/>

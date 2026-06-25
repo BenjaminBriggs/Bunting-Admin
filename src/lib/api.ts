@@ -226,16 +226,20 @@ export async function generateCurrentConfig(
 	return parseJson(response);
 }
 
-export async function getPublishedConfig(
-	appIdentifier: string,
-): Promise<{ config: ConfigArtifact | null; lastModified?: Date; etag?: string }> {
+export async function getPublishedConfig(appIdentifier: string): Promise<{
+	config: ConfigArtifact | null;
+	lastModified?: Date;
+	etag?: string;
+}> {
 	const response = await fetch('/api/config/published', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ appIdentifier }),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to fetch published config'));
+		throw new Error(
+			await errorMessage(response, 'Failed to fetch published config'),
+		);
 	}
 	return parseJson(response);
 }
@@ -268,7 +272,9 @@ export async function validateConfig(appId: string): Promise<ValidationResult> {
 		throw new AppNotFoundError();
 	}
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to validate configuration'));
+		throw new Error(
+			await errorMessage(response, 'Failed to validate configuration'),
+		);
 	}
 	return parseJson(response);
 }
@@ -284,7 +290,9 @@ export async function publishConfig(
 		body: JSON.stringify({ appId, changelog }),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to publish configuration'));
+		throw new Error(
+			await errorMessage(response, 'Failed to publish configuration'),
+		);
 	}
 	return parseJson(response);
 }
@@ -315,7 +323,9 @@ export async function getPublishHistory(
 		body: JSON.stringify({ appId, limit }),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to fetch publish history'));
+		throw new Error(
+			await errorMessage(response, 'Failed to fetch publish history'),
+		);
 	}
 	return parseJson(response);
 }
@@ -325,10 +335,7 @@ export interface DecodedFingerprintResponse {
 	env: 'development' | 'beta' | 'production';
 	publishedAt: string;
 	appIdentifier: string;
-	flags: Record<
-		string,
-		{ type: string; value: unknown; reason: string }
-	>;
+	flags: Record<string, { type: string; value: unknown; reason: string }>;
 }
 
 export async function decodeFingerprint(
@@ -341,7 +348,9 @@ export async function decodeFingerprint(
 		body: JSON.stringify({ appId, code }),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to decode fingerprint'));
+		throw new Error(
+			await errorMessage(response, 'Failed to decode fingerprint'),
+		);
 	}
 	return parseJson(response);
 }
@@ -354,7 +363,9 @@ export async function downloadConfig(appIdentifier: string): Promise<void> {
 	});
 
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to download configuration'));
+		throw new Error(
+			await errorMessage(response, 'Failed to download configuration'),
+		);
 	}
 
 	// Get the filename from the response headers
@@ -513,7 +524,9 @@ export async function updateRolloutPercentage(
 		body: JSON.stringify({ percentage }),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to update rollout percentage'));
+		throw new Error(
+			await errorMessage(response, 'Failed to update rollout percentage'),
+		);
 	}
 	return parseJson(response);
 }
@@ -528,7 +541,9 @@ export async function archiveTestRollout(
 		body: JSON.stringify({ type }),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to archive test/rollout'));
+		throw new Error(
+			await errorMessage(response, 'Failed to archive test/rollout'),
+		);
 	}
 	return parseJson(response);
 }
@@ -551,7 +566,9 @@ export async function createTestRollout(data: {
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to create test/rollout'));
+		throw new Error(
+			await errorMessage(response, 'Failed to create test/rollout'),
+		);
 	}
 	return parseJson(response);
 }
@@ -574,7 +591,9 @@ export async function updateTestRollout(
 		body: JSON.stringify(data),
 	});
 	if (!response.ok) {
-		throw new Error(await errorMessage(response, 'Failed to update test/rollout'));
+		throw new Error(
+			await errorMessage(response, 'Failed to update test/rollout'),
+		);
 	}
 	return parseJson(response);
 }

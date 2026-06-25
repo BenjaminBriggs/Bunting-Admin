@@ -17,7 +17,12 @@ import {
 } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
-import { ink, monoFontFamily, surface, technicalButtonSx } from '@/theme/designTokens';
+import {
+	ink,
+	monoFontFamily,
+	surface,
+	technicalButtonSx,
+} from '@/theme/designTokens';
 
 const DIFF_TAG: Record<string, { tag: string; color: string; bg: string }> = {
 	added: { tag: 'ADDED', color: '#3F7A2D', bg: '#E9F4E0' },
@@ -36,7 +41,9 @@ function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 export default function ReleasesPage() {
 	const { selectedApp } = useApp();
 	const { hasChanges, getChangeCount } = useChanges();
-	const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>([]);
+	const [publishHistory, setPublishHistory] = useState<PublishHistoryItem[]>(
+		[],
+	);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [downloading, setDownloading] = useState(false);
@@ -122,7 +129,9 @@ export default function ReleasesPage() {
 			>
 				<Box>
 					<Typography variant="h4">Releases</Typography>
-					<Typography sx={{ fontWeight: 600, fontSize: 13, color: '#8B8472', mt: 0.625 }}>
+					<Typography
+						sx={{ fontWeight: 600, fontSize: 13, color: '#8B8472', mt: 0.625 }}
+					>
 						{selectedApp
 							? 'Every published config, newest first. Inspect what changed or roll back to a known-good version.'
 							: 'Release history and changelogs'}
@@ -185,15 +194,25 @@ export default function ReleasesPage() {
 							flexShrink: 0,
 						}}
 					>
-						<Ms name="pending_actions" sx={{ fontSize: 22, color: '#9A6F1C' }} />
+						<Ms
+							name="pending_actions"
+							sx={{ fontSize: 22, color: '#9A6F1C' }}
+						/>
 					</Box>
 					<Box sx={{ flex: 1 }}>
 						<Typography sx={{ font: "800 15px 'Baloo 2'", color: '#5E4A18' }}>
-							{getChangeCount()} change{getChangeCount() === 1 ? '' : 's'} staged
+							{getChangeCount()} change{getChangeCount() === 1 ? '' : 's'}{' '}
+							staged
 							{latest ? ` since ${latest.version}` : ''}
 						</Typography>
 						<Typography
-							sx={{ fontFamily: monoFontFamily, fontWeight: 500, fontSize: 12, color: '#9A7B36', mt: 0.25 }}
+							sx={{
+								fontFamily: monoFontFamily,
+								fontWeight: 500,
+								fontSize: 12,
+								color: '#9A7B36',
+								mt: 0.25,
+							}}
 						>
 							Not live until published
 						</Typography>
@@ -210,9 +229,25 @@ export default function ReleasesPage() {
 			)}
 
 			{selectedApp && (
-				<Box sx={{ display: 'flex', gap: 2.75, alignItems: 'flex-start', mt: 3, flexWrap: 'wrap' }}>
+				<Box
+					sx={{
+						display: 'flex',
+						gap: 2.75,
+						alignItems: 'flex-start',
+						mt: 3,
+						flexWrap: 'wrap',
+					}}
+				>
 					{/* LEFT: timeline */}
-					<Box sx={{ flex: 1, minWidth: 440, display: 'flex', flexDirection: 'column', gap: 1.75 }}>
+					<Box
+						sx={{
+							flex: 1,
+							minWidth: 440,
+							display: 'flex',
+							flexDirection: 'column',
+							gap: 1.75,
+						}}
+					>
 						{publishHistory.length === 0 && (
 							<Box
 								sx={{
@@ -227,7 +262,14 @@ export default function ReleasesPage() {
 								<Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
 									No releases yet
 								</Typography>
-								<Typography sx={{ fontWeight: 600, fontSize: 13, color: '#8B8472', mb: 3 }}>
+								<Typography
+									sx={{
+										fontWeight: 600,
+										fontSize: 13,
+										color: '#8B8472',
+										mb: 3,
+									}}
+								>
 									Once you publish your first configuration, it will appear here
 									with a detailed changelog.
 								</Typography>
@@ -259,11 +301,22 @@ export default function ReleasesPage() {
 								>
 									{/* card head */}
 									<Box
-										onClick={() => setOpenVersion(isOpen ? null : release.version)}
+										onClick={() =>
+											setOpenVersion(isOpen ? null : release.version)
+										}
 										sx={{ p: '18px 20px', cursor: 'pointer' }}
 									>
-										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.375 }}>
-											<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 18, color: ink.primary }}>
+										<Box
+											sx={{ display: 'flex', alignItems: 'center', gap: 1.375 }}
+										>
+											<Typography
+												sx={{
+													fontFamily: monoFontFamily,
+													fontWeight: 700,
+													fontSize: 18,
+													color: ink.primary,
+												}}
+											>
 												{release.version}
 											</Typography>
 											{isLatest && (
@@ -283,7 +336,14 @@ export default function ReleasesPage() {
 													LATEST
 												</Box>
 											)}
-											<Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+											<Box
+												sx={{
+													ml: 'auto',
+													display: 'flex',
+													alignItems: 'center',
+													gap: 1,
+												}}
+											>
 												<Box
 													sx={{
 														width: 26,
@@ -299,20 +359,46 @@ export default function ReleasesPage() {
 												>
 													{(release.publishedBy || 'a')[0].toLowerCase()}
 												</Box>
-												<Typography sx={{ fontWeight: 600, fontSize: 12, color: ink.soft }}>
+												<Typography
+													sx={{
+														fontWeight: 600,
+														fontSize: 12,
+														color: ink.soft,
+													}}
+												>
 													by {release.publishedBy || 'unknown'}
 												</Typography>
-												<Typography sx={{ fontWeight: 600, fontSize: 12, color: '#B4AC9A' }}>
+												<Typography
+													sx={{
+														fontWeight: 600,
+														fontSize: 12,
+														color: '#B4AC9A',
+													}}
+												>
 													· {formatDate(release.publishedAt)}
 												</Typography>
 											</Box>
 										</Box>
 										{release.changelog && (
-											<Typography sx={{ fontWeight: 500, fontSize: 14, color: '#3A352C', mt: 1.375 }}>
+											<Typography
+												sx={{
+													fontWeight: 500,
+													fontSize: 14,
+													color: '#3A352C',
+													mt: 1.375,
+												}}
+											>
 												{release.changelog}
 											</Typography>
 										)}
-										<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.875, mt: 1.625 }}>
+										<Box
+											sx={{
+												display: 'flex',
+												alignItems: 'center',
+												gap: 0.875,
+												mt: 1.625,
+											}}
+										>
 											<Box
 												sx={{
 													fontFamily: monoFontFamily,
@@ -339,8 +425,13 @@ export default function ReleasesPage() {
 														color: '#9A6F1C',
 													}}
 												>
-													{isOpen ? 'Hide changes' : `View ${changes.length} changes`}
-													<Ms name={isOpen ? 'expand_less' : 'expand_more'} sx={{ fontSize: 18 }} />
+													{isOpen
+														? 'Hide changes'
+														: `View ${changes.length} changes`}
+													<Ms
+														name={isOpen ? 'expand_less' : 'expand_more'}
+														sx={{ fontSize: 18 }}
+													/>
 												</Box>
 											)}
 										</Box>
@@ -348,12 +439,31 @@ export default function ReleasesPage() {
 
 									{/* expanded diff */}
 									{isOpen && changes.length > 0 && (
-										<Box sx={{ borderTop: '1px solid #F1EBDD', bgcolor: '#FCFAF3', p: '18px 20px' }}>
-											<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.875 }}>
+										<Box
+											sx={{
+												borderTop: '1px solid #F1EBDD',
+												bgcolor: '#FCFAF3',
+												p: '18px 20px',
+											}}
+										>
+											<Box
+												sx={{
+													display: 'flex',
+													flexDirection: 'column',
+													gap: 0.875,
+												}}
+											>
 												{changes.map((change, ci) => {
 													const t = DIFF_TAG[change.action];
 													return (
-														<Box key={ci} sx={{ display: 'flex', alignItems: 'center', gap: 1.375 }}>
+														<Box
+															key={ci}
+															sx={{
+																display: 'flex',
+																alignItems: 'center',
+																gap: 1.375,
+															}}
+														>
 															<Box
 																sx={{
 																	width: 78,
@@ -370,11 +480,24 @@ export default function ReleasesPage() {
 															>
 																{t.tag}
 															</Box>
-															<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 500, fontSize: 13, color: ink.primary }}>
+															<Typography
+																sx={{
+																	fontFamily: monoFontFamily,
+																	fontWeight: 500,
+																	fontSize: 13,
+																	color: ink.primary,
+																}}
+															>
 																{change.key}
 															</Typography>
 															{change.name && (
-																<Typography sx={{ fontWeight: 600, fontSize: 12, color: ink.muted }}>
+																<Typography
+																	sx={{
+																		fontWeight: 600,
+																		fontSize: 12,
+																		color: ink.muted,
+																	}}
+																>
 																	{change.name}
 																</Typography>
 															)}
@@ -382,13 +505,23 @@ export default function ReleasesPage() {
 													);
 												})}
 											</Box>
-											<Box sx={{ display: 'flex', gap: 1.125, borderTop: '1px solid #F1EBDD', pt: 1.875, mt: 2 }}>
+											<Box
+												sx={{
+													display: 'flex',
+													gap: 1.125,
+													borderTop: '1px solid #F1EBDD',
+													pt: 1.875,
+													mt: 2,
+												}}
+											>
 												<Button
 													variant="outlined"
 													size="small"
 													onClick={() => void handleDownload()}
 													disabled={downloading}
-													startIcon={<Ms name="download" sx={{ fontSize: 17 }} />}
+													startIcon={
+														<Ms name="download" sx={{ fontSize: 17 }} />
+													}
 												>
 													{downloading ? 'Downloading…' : 'Download artifact'}
 												</Button>
@@ -413,21 +546,48 @@ export default function ReleasesPage() {
 								top: 34,
 							}}
 						>
-							<Box sx={{ bgcolor: '#fff', border: `1px solid ${surface.border}`, borderRadius: '16px', p: 2.5 }}>
+							<Box
+								sx={{
+									bgcolor: '#fff',
+									border: `1px solid ${surface.border}`,
+									borderRadius: '16px',
+									p: 2.5,
+								}}
+							>
 								<Typography sx={{ font: "800 15px 'Baloo 2'", mb: 1.75 }}>
 									Release stats
 								</Typography>
-								<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.25 }}>
+								<Box
+									sx={{
+										display: 'grid',
+										gridTemplateColumns: 'repeat(2, 1fr)',
+										gap: 1.25,
+									}}
+								>
 									{[
 										{ n: publishHistory.length, l: 'total releases' },
 										{ n: latest?.flagCount ?? 0, l: 'flags live' },
 									].map((s) => (
 										<Box
 											key={s.l}
-											sx={{ border: `1px solid ${surface.border}`, borderRadius: '12px', bgcolor: '#FCFAF3', p: '13px 14px' }}
+											sx={{
+												border: `1px solid ${surface.border}`,
+												borderRadius: '12px',
+												bgcolor: '#FCFAF3',
+												p: '13px 14px',
+											}}
 										>
-											<Typography sx={{ font: "800 24px 'Baloo 2'" }}>{s.n}</Typography>
-											<Typography sx={{ fontWeight: 600, fontSize: 11, color: '#8B8472', mt: 0.25 }}>
+											<Typography sx={{ font: "800 24px 'Baloo 2'" }}>
+												{s.n}
+											</Typography>
+											<Typography
+												sx={{
+													fontWeight: 600,
+													fontSize: 11,
+													color: '#8B8472',
+													mt: 0.25,
+												}}
+											>
 												{s.l}
 											</Typography>
 										</Box>
@@ -443,18 +603,41 @@ export default function ReleasesPage() {
 										borderTop: '1px solid #F1EBDD',
 									}}
 								>
-									<Typography sx={{ fontWeight: 600, fontSize: 12, color: '#8B8472' }}>
+									<Typography
+										sx={{ fontWeight: 600, fontSize: 12, color: '#8B8472' }}
+									>
 										Latest version
 									</Typography>
-									<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 13 }}>
+									<Typography
+										sx={{
+											fontFamily: monoFontFamily,
+											fontWeight: 700,
+											fontSize: 13,
+										}}
+									>
 										{latest?.version}
 									</Typography>
 								</Box>
-								<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1.375 }}>
-									<Typography sx={{ fontWeight: 600, fontSize: 12, color: '#8B8472' }}>
+								<Box
+									sx={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										pt: 1.375,
+									}}
+								>
+									<Typography
+										sx={{ fontWeight: 600, fontSize: 12, color: '#8B8472' }}
+									>
 										Last published
 									</Typography>
-									<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 13 }}>
+									<Typography
+										sx={{
+											fontFamily: monoFontFamily,
+											fontWeight: 700,
+											fontSize: 13,
+										}}
+									>
 										{latest ? formatDate(latest.publishedAt) : '—'}
 									</Typography>
 								</Box>

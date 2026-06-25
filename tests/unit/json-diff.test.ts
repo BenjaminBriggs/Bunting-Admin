@@ -45,9 +45,7 @@ describe('diffJson', () => {
 	it('ignores key reordering, surfaces real value changes', () => {
 		const before = { flags: { a: { default: false }, b: { default: true } } };
 		const after = { flags: { b: { default: true }, a: { default: true } } };
-		const changed = diffJson(before, after).filter(
-			(l) => l.kind !== 'context',
-		);
+		const changed = diffJson(before, after).filter((l) => l.kind !== 'context');
 		// Only a.default flipped; b's reordering should produce no diff lines.
 		expect(changed.some((l) => l.text.includes('false'))).toBe(true);
 		expect(changed.some((l) => l.text.includes('true'))).toBe(true);

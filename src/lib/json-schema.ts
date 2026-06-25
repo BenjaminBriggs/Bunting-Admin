@@ -232,14 +232,7 @@ export function validateConfigArtifact(config: unknown): {
 
 	// Validate flag types
 	if (cfg.flags) {
-		const validFlagTypes = [
-			'bool',
-			'string',
-			'int',
-			'double',
-			'date',
-			'json',
-		];
+		const validFlagTypes = ['bool', 'string', 'int', 'double', 'date', 'json'];
 		for (const [key, flag] of Object.entries(asRecord(cfg.flags))) {
 			if (flag && typeof flag === 'object') {
 				const f = flag as Record<string, unknown>;

@@ -52,7 +52,9 @@ export default function UsersPage() {
 					ADMIN ONLY
 				</Box>
 			</Box>
-			<Typography sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.625 }}>
+			<Typography
+				sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.625 }}
+			>
 				Dashboard-wide access. Grant by exact email, or a whole domain.
 			</Typography>
 

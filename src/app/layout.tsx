@@ -32,11 +32,7 @@ export const metadata: Metadata = {
 	description: 'Feature flag management interface for Bunting',
 };
 
-export default function RootLayout({
-	children,
-}: {
-	children: ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
 		// suppressHydrationWarning: browser extensions (e.g. LanguageTool's
 		// data-lt-installed) mutate <html> before hydration; this only suppresses the
