@@ -3,7 +3,7 @@ import {
 	GetObjectCommand,
 	PutObjectCommand,
 } from '@aws-sdk/client-s3';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/generated/prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
