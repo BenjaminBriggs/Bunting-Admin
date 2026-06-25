@@ -19,9 +19,10 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
 	type App,
 	type DecodedFingerprintResponse,
@@ -37,7 +38,7 @@ import {
 	technicalButtonSx,
 } from '@/theme/designTokens';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -145,17 +146,20 @@ export default function SettingsPage() {
 				setLoading(false);
 			}
 		};
-		loadApps();
+		void loadApps();
 	}, []);
 
 	useEffect(() => {
-		if (selectedApp && !editMode) {
-			setFormData({
-				name: selectedApp.name,
-				minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
-				hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
-			});
-		}
+		const syncFormFromApp = () => {
+			if (selectedApp && !editMode) {
+				setFormData({
+					name: selectedApp.name,
+					minIntervalHours: selectedApp.fetchPolicy.min_interval_seconds / 3600,
+					hardTtlDays: selectedApp.fetchPolicy.hard_ttl_days,
+				});
+			}
+		};
+		syncFormFromApp();
 	}, [selectedApp, editMode]);
 
 	const handleEditStart = () => {
@@ -229,7 +233,7 @@ export default function SettingsPage() {
 		setDeleteConfirmOpen(true);
 	};
 
-	const confirmDelete = async () => {
+	const confirmDelete = () => {
 		if (appToDelete) {
 			try {
 				console.log('Delete app:', appToDelete.name);
@@ -410,7 +414,7 @@ export default function SettingsPage() {
 											</Button>
 											<Button
 												size="small"
-												onClick={handleSave}
+												onClick={() => void handleSave()}
 												disabled={saving}
 												sx={technicalButtonSx({ disabled: saving })}
 											>
@@ -511,7 +515,7 @@ export default function SettingsPage() {
 												</Box>
 												<Box
 													component="button"
-													onClick={copyArtifactUrl}
+													onClick={() => void copyArtifactUrl()}
 													title={copied ? 'Copied' : 'Copy'}
 													sx={{
 														cursor: 'pointer',
@@ -563,7 +567,7 @@ export default function SettingsPage() {
 									{(selectedApp.publicKeys.length > 0
 										? selectedApp.publicKeys
 										: [{ kid: 'no key configured' }]
-									).map((k: any, i: number) => (
+									).map((k: { kid: string }, i: number) => (
 										<Box
 											key={k.kid || i}
 											sx={{
@@ -649,7 +653,7 @@ export default function SettingsPage() {
 							</Box>
 
 							{/* user management admin link */}
-							{session?.user?.role === 'ADMIN' && (
+							{session?.user.role === 'ADMIN' && (
 								<Box
 									component="a"
 									onClick={() => router.push('/dashboard/users')}
@@ -999,7 +1003,7 @@ let metering = bunting.bool("metering_enabled", default: false)`}
 										onChange={(e) => setFpCode(e.target.value)}
 										onKeyDown={(e) => {
 											if (e.key === 'Enter') {
-												handleDecode();
+												void handleDecode();
 											}
 										}}
 										placeholder="2026-06-17.2.1A46"
@@ -1011,7 +1015,7 @@ let metering = bunting.bool("metering_enabled", default: false)`}
 										}}
 									/>
 									<Button
-										onClick={handleDecode}
+										onClick={() => void handleDecode()}
 										disabled={fpLoading || !fpCode.trim()}
 										sx={technicalButtonSx({ accent: true })}
 									>
@@ -1101,13 +1105,7 @@ let metering = bunting.bool("metering_enabled", default: false)`}
 	);
 }
 
-function Row({
-	label,
-	children,
-}: {
-	label: string;
-	children: React.ReactNode;
-}) {
+function Row({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<Box
 			sx={{

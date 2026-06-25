@@ -1,7 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { generateSalt } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { createTestSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/tests?appId=xxx
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(tests);
 	} catch (error) {
-		console.error('Error fetching tests:', error);
+		logger.error({ err: error }, 'Error fetching tests');
 		return NextResponse.json(
 			{ error: 'Failed to fetch tests' },
 			{ status: 500 },
@@ -34,6 +36,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/tests
 export async function POST(request: NextRequest) {
+	const actor = await actorFromHeaders(request.headers);
 	try {
 		const {
 			key,
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Validate variant names array length
-		if (variantNames?.length !== variantCount) {
+		if (variantNames.length !== variantCount) {
 			return NextResponse.json(
 				{
 					error: 'Variant names array must match variant count',
@@ -95,7 +98,13 @@ export async function POST(request: NextRequest) {
 		const salt = generateSalt();
 
 		// Create variants object with default null values for each environment
-		const variants: Record<string, any> = {};
+		const variants: Record<
+			string,
+			{
+				percentage: number;
+				values: { development: null; beta: null; production: null };
+			}
+		> = {};
 		variantNames.forEach((variantName, index) => {
 			variants[variantName] = {
 				percentage: trafficSplit[index],
@@ -115,11 +124,20 @@ export async function POST(request: NextRequest) {
 				group: group ?? null,
 				type: 'TEST',
 				salt,
-				conditions: conditions as any,
+				conditions,
 				variants,
 				flagIds: [], // Will be populated when flags are assigned to this test
 				appId,
 			},
+		});
+
+		await logActivity({
+			actor,
+			action: 'create',
+			entityType: 'test',
+			entityId: test.id,
+			appId: test.appId,
+			summary: `Created test ${test.name}`,
 		});
 
 		return NextResponse.json(test, { status: 201 });
@@ -128,7 +146,7 @@ export async function POST(request: NextRequest) {
 		if (validationError) {
 			return validationError;
 		}
-		console.error('Error creating test:', error);
+		logger.error({ err: error }, 'Error creating test');
 		return NextResponse.json(
 			{ error: 'Failed to create test' },
 			{ status: 500 },

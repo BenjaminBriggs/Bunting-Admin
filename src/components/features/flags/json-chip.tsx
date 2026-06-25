@@ -14,7 +14,6 @@ import {
 	DialogTitle,
 	FormHelperText,
 	TextField,
-	Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import {
@@ -23,10 +22,23 @@ import {
 	monoFontFamily,
 	typeColors,
 } from '@/theme/designTokens';
-import { validateValue } from './flag-value-input';
+import type { FlagValue } from '@/types';
+
+// Validates a JSON string the same way flag-value-input's validateValue does for
+// the 'json' type. Defined locally to avoid an import cycle between the two files.
+function validateJson(value: string): { isValid: boolean; error?: string } {
+	try {
+		if (value.trim()) {
+			JSON.parse(value);
+		}
+		return { isValid: true };
+	} catch {
+		return { isValid: false, error: 'Invalid JSON format' };
+	}
+}
 
 // Accepts either a JSON string or an already-parsed object/array.
-function parseJson(value: any): { parsed: any; ok: boolean } {
+function parseJson(value: unknown): { parsed: unknown; ok: boolean } {
 	if (value === null || value === undefined) {
 		return { parsed: undefined, ok: false };
 	}
@@ -45,7 +57,7 @@ function parseJson(value: any): { parsed: any; ok: boolean } {
 }
 
 // `{}` when empty (null/undefined/{}/[]/blank/unparseable-empty), `{···}` otherwise.
-export function isEmptyJson(value: any): boolean {
+export function isEmptyJson(value: unknown): boolean {
 	const { parsed, ok } = parseJson(value);
 	if (!ok) {
 		// Unparseable or blank — treat a literal "{}" / "[]" string as empty too.
@@ -67,18 +79,27 @@ export function isEmptyJson(value: any): boolean {
 
 // Pretty-printed string for the view modal; falls back to the raw value if it
 // doesn't parse so the user can still see (and fix) malformed JSON.
-function prettyPrint(value: any): string {
+function prettyPrint(value: unknown): string {
 	const { parsed, ok } = parseJson(value);
 	if (ok && parsed !== undefined) {
 		return JSON.stringify(parsed, null, 2);
 	}
-	return typeof value === 'string' ? value : String(value ?? '');
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (value === null || value === undefined) {
+		return '';
+	}
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return String(value);
+	}
+	return Object.prototype.toString.call(value);
 }
 
 interface JsonModalProps {
 	open: boolean;
 	onClose: () => void;
-	value: any;
+	value: FlagValue;
 	editable?: boolean;
 	onChange?: (jsonString: string) => void;
 	title?: string;
@@ -97,15 +118,20 @@ export function JsonModal({
 
 	useEffect(() => {
 		if (open) {
+			// Initialize the editable draft from the incoming value when the modal opens.
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: mirrors an external (prop) value into a local editable buffer on open
 			setDraft(prettyPrint(value));
 			setCopied(false);
 		}
 	}, [open, value]);
 
-	const validation = validateValue(draft, 'json');
+	const validation = validateJson(draft);
 	const isValid = validation.isValid;
 
 	const handleCopy = () => {
+		// navigator.clipboard is typed as always-present but is undefined in
+		// insecure contexts / older browsers, so guard defensively.
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- runtime: navigator.clipboard can be undefined despite its lib type
 		void navigator.clipboard?.writeText(prettyPrint(value));
 		setCopied(true);
 	};
@@ -129,7 +155,7 @@ export function JsonModal({
 					fontWeight: 800,
 				}}
 			>
-				{title || (editable ? 'Edit JSON' : 'JSON value')}
+				{title ?? (editable ? 'Edit JSON' : 'JSON value')}
 				{editable && (
 					<Box
 						sx={{
@@ -183,7 +209,7 @@ export function JsonModal({
 						/>
 						{!isValid && (
 							<FormHelperText error sx={{ mx: 0, mt: 0.75 }}>
-								{validation.error || 'Invalid JSON'}
+								{validation.error ?? 'Invalid JSON'}
 							</FormHelperText>
 						)}
 					</>
@@ -245,7 +271,7 @@ export function JsonModal({
 }
 
 interface JsonChipProps {
-	value: any;
+	value: FlagValue;
 	editable?: boolean;
 	onChange?: (jsonString: string) => void;
 	disabled?: boolean;

@@ -10,21 +10,34 @@ import {
 	DialogActions,
 	DialogContent,
 	DialogTitle,
-	FormControl,
-	MenuItem,
-	Select,
 	Stack,
-	TextField,
 	Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { fetchRollout, fetchTest, updateRollout, updateTest } from '@/lib/api';
-import type { DBTestRollout, Environment } from '@/types';
+import type { DBTestRollout, Environment, FlagValue } from '@/types';
 import FlagValueInput, {
+	type FlagType,
 	getDefaultValueForType,
 	processValueForType,
 	validateValue,
 } from './flag-value-input';
+
+// The flag-value assignments this modal edits are stored as a nested
+// environment → flagId → value map per test variant / rollout. That nested
+// shape is not captured by the shared TestVariant/TestRollout types, so it is
+// modelled locally for the narrowing below.
+type EnvFlagValueMap = Partial<Record<Environment, Record<string, FlagValue>>>;
+
+interface AssignmentVariant {
+	values?: EnvFlagValueMap;
+}
+
+interface AssignmentItem {
+	name: string;
+	variants?: Record<string, AssignmentVariant>;
+	rolloutValues?: EnvFlagValueMap;
+}
 
 interface FlagAssignmentEditModalProps {
 	open: boolean;
@@ -34,7 +47,7 @@ interface FlagAssignmentEditModalProps {
 	itemId: string;
 	flagId: string;
 	flagName: string;
-	flagType: string;
+	flagType: FlagType;
 	environment: Environment;
 }
 
@@ -49,11 +62,11 @@ export default function FlagAssignmentEditModal({
 	flagType,
 	environment,
 }: FlagAssignmentEditModalProps) {
-	const [item, setItem] = useState<DBTestRollout | null>(null);
+	const [item, setItem] = useState<AssignmentItem | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [flagValues, setFlagValues] = useState<Record<string, any>>({});
+	const [flagValues, setFlagValues] = useState<Record<string, FlagValue>>({});
 
 	useEffect(() => {
 		const loadItem = async () => {
@@ -65,39 +78,34 @@ export default function FlagAssignmentEditModal({
 			setError(null);
 
 			try {
-				const data =
+				const fetched: DBTestRollout =
 					type === 'test'
 						? await fetchTest(itemId)
 						: await fetchRollout(itemId);
+				// Reinterpret through the local nested-assignment shape (see types above).
+				const data = fetched as unknown as AssignmentItem;
 				setItem(data);
 
 				// Extract current flag values
-				const currentValues: Record<string, any> = {};
+				const currentValues: Record<string, FlagValue> = {};
 
 				if (type === 'test' && data.variants) {
 					// For tests, get values from each variant
-					Object.entries(data.variants).forEach(
-						([variantName, variant]: [string, any]) => {
-							if (variant.values?.[environment]?.[flagId] !== undefined) {
-								currentValues[variantName] =
-									variant.values[environment][flagId];
-							} else {
-								currentValues[variantName] = getDefaultValueForType(
-									flagType as any,
-								);
-							}
-						},
-					);
+					Object.entries(data.variants).forEach(([variantName, variant]) => {
+						const existing = variant.values?.[environment]?.[flagId];
+						if (existing !== undefined) {
+							currentValues[variantName] = existing;
+						} else {
+							currentValues[variantName] = getDefaultValueForType(flagType);
+						}
+					});
 				} else if (type === 'rollout' && data.rolloutValues) {
 					// For rollouts, get the single value
-					if (
-						(data.rolloutValues as any)[environment]?.[flagId] !== undefined
-					) {
-						currentValues.rollout = (data.rolloutValues as any)[environment][
-							flagId
-						];
+					const existing = data.rolloutValues[environment]?.[flagId];
+					if (existing !== undefined) {
+						currentValues.rollout = existing;
 					} else {
-						currentValues.rollout = getDefaultValueForType(flagType as any);
+						currentValues.rollout = getDefaultValueForType(flagType);
 					}
 				}
 
@@ -109,16 +117,16 @@ export default function FlagAssignmentEditModal({
 			}
 		};
 
-		loadItem();
+		void loadItem();
 	}, [open, itemId, type, environment, flagId, flagType]);
 
 	const validateValues = (): boolean => {
 		return Object.values(flagValues).every(
-			(value) => validateValue(value, flagType as any).isValid,
+			(value) => validateValue(value, flagType).isValid,
 		);
 	};
 
-	const handleValueChange = (key: string, value: any) => {
+	const handleValueChange = (key: string, value: FlagValue) => {
 		setFlagValues((prev) => ({
 			...prev,
 			[key]: value,
@@ -137,39 +145,41 @@ export default function FlagAssignmentEditModal({
 		try {
 			if (type === 'test') {
 				// Update test variants
-				const updatedVariants = { ...item.variants };
+				const updatedVariants: Record<string, AssignmentVariant> = {
+					...item.variants,
+				};
 
 				Object.entries(flagValues).forEach(([variantName, value]) => {
-					if (updatedVariants[variantName]) {
-						if (!updatedVariants[variantName].values) {
-							updatedVariants[variantName].values = {
-								development: {},
-								beta: {},
-								production: {},
-							};
-						}
-						if (!updatedVariants[variantName].values[environment]) {
-							updatedVariants[variantName].values[environment] = {};
-						}
-						(updatedVariants[variantName].values as any)[environment][flagId] =
-							processValueForType(value, flagType as any);
-					}
+					// flagValues keys are derived from this same variants map, so the
+					// variant is always present.
+					const variant = updatedVariants[variantName];
+					const values: EnvFlagValueMap = variant.values ?? {
+						development: {},
+						beta: {},
+						production: {},
+					};
+					const envValues = values[environment] ?? {};
+					envValues[flagId] = processValueForType(value, flagType);
+					values[environment] = envValues;
+					variant.values = values;
 				});
 
-				await updateTest(itemId, { variants: updatedVariants });
+				await updateTest(itemId, {
+					variants: updatedVariants as DBTestRollout['variants'],
+				});
 			} else {
 				// Update rollout values
-				const updatedRolloutValues = {
+				const updatedRolloutValues: EnvFlagValueMap = {
 					...item.rolloutValues,
 					[environment]: {
-						...(item.rolloutValues as any)?.[environment],
-						[flagId]: processValueForType(flagValues.rollout, flagType as any),
+						...item.rolloutValues?.[environment],
+						[flagId]: processValueForType(flagValues.rollout, flagType),
 					},
 				};
 
 				await updateRollout(itemId, {
-					rolloutValues: updatedRolloutValues as any,
-				});
+					rolloutValues: updatedRolloutValues,
+				} as Partial<DBTestRollout>);
 			}
 
 			onSave();
@@ -183,10 +193,10 @@ export default function FlagAssignmentEditModal({
 		}
 	};
 
-	const renderValueInput = (key: string, value: any) => {
+	const renderValueInput = (key: string, value: FlagValue) => {
 		return (
 			<FlagValueInput
-				flagType={flagType as any}
+				flagType={flagType}
 				value={value}
 				onChange={(newValue) => handleValueChange(key, newValue)}
 				size="small"
@@ -249,7 +259,9 @@ export default function FlagAssignmentEditModal({
 			<DialogActions>
 				<Button onClick={onClose}>Cancel</Button>
 				<Button
-					onClick={handleSave}
+					onClick={() => {
+						void handleSave();
+					}}
 					variant="contained"
 					disabled={saving || !validateValues() || loading}
 					startIcon={saving ? <CircularProgress size={20} /> : <Save />}

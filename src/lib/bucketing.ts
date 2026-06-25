@@ -12,24 +12,24 @@ import { createHash } from 'crypto';
  *
  * @param salt - Unique salt for this test/rollout (ensures different distributions)
  * @param localId - User's device/session identifier (UUID format preferred)
- * @returns Promise<number> - Bucket number from 1 to 100
+ * @returns Bucket number from 1 to 100
  */
-export async function bucketFor(
-	salt: string,
-	localId: string,
-): Promise<number> {
+export function bucketFor(salt: string, localId: string): number {
 	// Combine salt and local ID for hashing
 	const input = `${salt}:${localId}`;
 
 	// Create SHA256 hash
 	const hash = createHash('sha256').update(input, 'utf8').digest('hex');
 
-	// Take first 8 characters (32 bits) and convert to integer
-	const hashInt = parseInt(hash.substring(0, 8), 16);
+	// Take the first 8 bytes (16 hex chars) as a big-endian unsigned 64-bit
+	// integer, matching the SDK (Bucketing.swift) and ../docs/concepts.md
+	// §Deterministic Bucketing. A 32-bit read here diverges from the SDK for
+	// ~99% of users.
+	const value = BigInt(`0x${hash.substring(0, 16)}`);
 
 	// Map to 1-100 range using modulo
 	// Add 1 to ensure range is 1-100 instead of 0-99
-	const bucket = (hashInt % 100) + 1;
+	const bucket = Number(value % 100n) + 1;
 
 	return bucket;
 }
@@ -40,13 +40,13 @@ export async function bucketFor(
  * @param salt - Unique salt for this rollout
  * @param localId - User's device/session identifier
  * @param percentage - Target percentage (0-100)
- * @returns Promise<boolean> - True if user is in the rollout
+ * @returns True if user is in the rollout
  */
-export async function isInRollout(
+export function isInRollout(
 	salt: string,
 	localId: string,
 	percentage: number,
-): Promise<boolean> {
+): boolean {
 	if (percentage <= 0) {
 		return false;
 	}
@@ -54,7 +54,7 @@ export async function isInRollout(
 		return true;
 	}
 
-	const bucket = await bucketFor(salt, localId);
+	const bucket = bucketFor(salt, localId);
 	return bucket <= percentage;
 }
 
@@ -64,14 +64,14 @@ export async function isInRollout(
  * @param salt - Unique salt for this test
  * @param localId - User's device/session identifier
  * @param variants - Array of variant configurations with percentages
- * @returns Promise<string | null> - Assigned variant name or null if not in test
+ * @returns Assigned variant name or null if not in test
  */
-export async function assignVariant(
+export function assignVariant(
 	salt: string,
 	localId: string,
 	variants: Array<{ name: string; percentage: number }>,
-): Promise<string | null> {
-	const bucket = await bucketFor(salt, localId);
+): string | null {
+	const bucket = bucketFor(salt, localId);
 
 	let cumulativePercentage = 0;
 	for (const variant of variants) {

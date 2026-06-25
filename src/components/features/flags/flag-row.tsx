@@ -9,7 +9,9 @@ import {
 	Tooltip,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import {
 	archiveFlag,
@@ -27,10 +29,12 @@ import {
 import { formatTimestamp } from '@/lib/utils';
 import { envColors, ink, surface, typeColors } from '@/theme/designTokens';
 import type {
+	Condition,
 	ConditionalVariant,
 	DBFlag,
 	DBTestRollout,
 	Environment,
+	FlagValue,
 } from '@/types';
 import { VariantCreatorModal } from '../conditions';
 import EnvironmentColumn from './environment-column';
@@ -39,7 +43,13 @@ import { formatValueForDisplay } from './flag-value-input';
 import JsonChip from './json-chip';
 import TestRolloutAssignmentModal from './test-rollout-assignment-modal';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+// The UI carries an "environment" pseudo condition type that is not part of the
+// shared ConditionType union; model it locally for condition formatting.
+type UICondition = Omit<Condition, 'type'> & {
+	type: Condition['type'] | 'environment';
+};
+
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -132,7 +142,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			}
 		};
 
-		loadTestsAndRollouts();
+		void loadTestsAndRollouts();
 	}, [selectedApp, flagData.id]);
 
 	const getActiveTests = (env: Environment) => {
@@ -148,9 +158,12 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				}
 
 				// Check if any variant has values for this environment and flag
-				if (test.variants && typeof test.variants === 'object') {
-					return Object.values(test.variants).some((variant: any) => {
-						return variant.values?.[env]?.[flagData.id] !== undefined;
+				if (test.variants) {
+					return Object.values(test.variants).some((variant) => {
+						const values = variant.values as
+							| Record<string, Record<string, FlagValue>>
+							| undefined;
+						return values?.[env]?.[flagData.id] !== undefined;
 					});
 				}
 
@@ -159,7 +172,14 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			.map((test) => ({
 				id: test.id,
 				name: test.name,
-				variants: test.variants || {},
+				variants: (test.variants ?? {}) as Record<
+					string,
+					{
+						percentage: number;
+						value?: FlagValue;
+						values?: Record<string, Record<string, FlagValue>>;
+					}
+				>,
 			}));
 	};
 
@@ -176,20 +196,20 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				}
 
 				// Check if rollout has values for this environment and flag
-				return (
-					rollout.rolloutValues &&
-					(rollout.rolloutValues as any)[env]?.[flagData.id] !== undefined
-				);
+				const rolloutValues = rollout.rolloutValues as
+					| Record<string, Record<string, FlagValue>>
+					| undefined;
+				return rolloutValues?.[env]?.[flagData.id] !== undefined;
 			})
 			.map((rollout) => ({
 				id: rollout.id,
 				name: rollout.name,
-				percentage: rollout.percentage || 0,
+				percentage: rollout.percentage ?? 0,
 			}));
 	};
 
 	const getEnvironmentVariants = (env: Environment): ConditionalVariant[] => {
-		return flagData.variants?.[env] || [];
+		return flagData.variants[env];
 	};
 
 	const handleVariantAdd = (environment: Environment) => {
@@ -211,7 +231,9 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 		variant: ConditionalVariant,
 		environment: Environment,
 	) => {
-		const variantName = variant.name || formatVariantSummary(variant);
+		// An empty name falls through to a generated summary.
+		const variantName =
+			variant.name !== '' ? variant.name : formatVariantSummary(variant);
 
 		if (
 			!window.confirm(
@@ -250,7 +272,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 	};
 
 	const formatVariantSummary = (variant: ConditionalVariant): string => {
-		const conditions = variant.conditions || [];
+		const conditions = variant.conditions;
 		if (conditions.length === 0) {
 			return 'No conditions';
 		}
@@ -268,7 +290,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 		// For many conditions, group by type
 		const grouped = conditions.reduce<Record<string, number>>(
 			(acc, condition) => {
-				acc[condition.type] = (acc[condition.type] || 0) + 1;
+				acc[condition.type] = (acc[condition.type] ?? 0) + 1;
 				return acc;
 			},
 			{},
@@ -282,7 +304,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 		return parts.join(', ');
 	};
 
-	const formatSingleCondition = (condition: any): string => {
+	const formatSingleCondition = (condition: UICondition): string => {
 		const { type, operator, values } = condition;
 
 		switch (type) {
@@ -319,7 +341,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			platform: 'platform',
 			region: 'region',
 		};
-		return typeMap[type] || type;
+		return typeMap[type] ?? type;
 	};
 
 	const formatOperator = (operator: string): string => {
@@ -335,7 +357,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			not_in: 'not in',
 			custom: 'has',
 		};
-		return operatorMap[operator] || operator;
+		return operatorMap[operator] ?? operator;
 	};
 
 	const handleVariantSave = async (variant: ConditionalVariant) => {
@@ -410,7 +432,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 
 	const handleTestRolloutAssignmentComplete = () => {
 		// Refresh the test/rollout data after assignment
-		refreshTestsAndRollouts();
+		void refreshTestsAndRollouts();
 		setTestRolloutModalOpen(false);
 	};
 
@@ -426,7 +448,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 
 	const handleAssignmentEditComplete = () => {
 		// Refresh the test/rollout data after editing
-		refreshTestsAndRollouts();
+		void refreshTestsAndRollouts();
 		setAssignmentEditModalOpen(false);
 		setEditingItem(null);
 	};
@@ -477,7 +499,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 		}
 	};
 
-	const formatValue = (value: any): string =>
+	const formatValue = (value: FlagValue): string =>
 		formatValueForDisplay(value, flagData.type);
 
 	return (
@@ -579,8 +601,10 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 					>
 						{ENV_SUMMARY.map(({ env, short }) => {
 							const c = envColors[env];
-							const rollout = getActiveRollouts(env)[0];
-							const test = getActiveTests(env)[0];
+							// noUncheckedIndexedAccess is off project-wide; .at(0) yields
+							// `T | undefined` so the guards below stay meaningful.
+							const rollout = getActiveRollouts(env).at(0);
+							const test = getActiveTests(env).at(0);
 							const variantCount = getEnvironmentVariants(env).length;
 
 							const pillSx = {
@@ -597,7 +621,7 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 							// An active rollout (green) or test (env-tinted) pill takes the
 							// slot; otherwise the default value, with a variant chip when the
 							// env has conditional overrides.
-							let value: React.ReactNode;
+							let value: ReactNode;
 							if (rollout) {
 								value = (
 									<Tooltip
@@ -767,13 +791,13 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 									flagType={flagData.type}
 									defaultValue={flagData.defaultValues[env]}
 									variants={getEnvironmentVariants(env)}
-									activeTests={getActiveTests(env) as any}
+									activeTests={getActiveTests(env)}
 									activeRollouts={getActiveRollouts(env)}
 									onVariantAdd={() => handleVariantAdd(env)}
 									onVariantEdit={(variant) => handleVariantEdit(variant, env)}
-									onVariantDelete={(variant) =>
-										handleVariantDelete(variant, env)
-									}
+									onVariantDelete={(variant) => {
+										void handleVariantDelete(variant, env);
+									}}
 									onTestRolloutAdd={() => handleTestRolloutAdd(env)}
 									onTestRolloutEdit={(type, id) =>
 										handleTestRolloutEdit(type, id, env)
@@ -804,26 +828,39 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 				{/* Archive is only offered for a published, active flag. A never-published
 				    flag skips straight to Delete; an archived flag offers Unarchive. */}
 				{flagData.archived ? (
-					<MenuItem onClick={handleArchive}>
+					<MenuItem
+						onClick={() => {
+							void handleArchive();
+						}}
+					>
 						<Unarchive sx={{ mr: 1 }} />
 						Unarchive
 					</MenuItem>
 				) : (
 					published && (
-						<MenuItem onClick={handleArchive}>
+						<MenuItem
+							onClick={() => {
+								void handleArchive();
+							}}
+						>
 							<Archive sx={{ mr: 1 }} />
 							Archive
 						</MenuItem>
 					)
 				)}
 				{deletable ? (
-					<MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+					<MenuItem
+						onClick={() => {
+							void handleDelete();
+						}}
+						sx={{ color: 'error.main' }}
+					>
 						<Delete sx={{ mr: 1 }} />
 						Delete
 					</MenuItem>
 				) : (
 					<Tooltip
-						title={blockReason ? DELETE_BLOCK_MESSAGE[blockReason] : ''}
+						title={DELETE_BLOCK_MESSAGE[blockReason]}
 						arrow
 						placement="left"
 					>
@@ -842,12 +879,14 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 			<VariantCreatorModal
 				open={variantModalOpen}
 				onClose={() => setVariantModalOpen(false)}
-				onSave={handleVariantSave}
+				onSave={(variant) => {
+					void handleVariantSave(variant);
+				}}
 				environment={selectedEnvironment}
 				flagType={flagData.type}
 				flagId={flagData.id}
 				appId={selectedApp?.id}
-				existingVariant={editingVariant || undefined}
+				existingVariant={editingVariant ?? undefined}
 			/>
 
 			{/* Test/Rollout Assignment Modal */}

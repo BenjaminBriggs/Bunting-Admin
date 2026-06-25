@@ -8,6 +8,7 @@
 import { randomBytes } from 'crypto';
 import { generateKeyPair } from 'crypto';
 import { promisify } from 'util';
+import { logger } from '@/lib/logger';
 
 const generateKeyPairAsync = promisify(generateKeyPair);
 
@@ -69,7 +70,7 @@ export async function generateRSAKeyPair(): Promise<KeyPair> {
 			algorithm: 'RS256',
 		};
 	} catch (error) {
-		console.error('Failed to generate RSA key pair:', error);
+		logger.error({ err: error }, 'Failed to generate RSA key pair');
 		throw new Error('RSA key pair generation failed');
 	}
 }
@@ -83,7 +84,7 @@ export function validatePublicKeyPEM(pem: string): boolean {
 		const publicKeyRegex =
 			/^-----BEGIN PUBLIC KEY-----[\s\S]*-----END PUBLIC KEY-----$/;
 		return publicKeyRegex.test(pem.trim());
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }
@@ -97,7 +98,7 @@ export function validatePrivateKeyPEM(pem: string): boolean {
 		const privateKeyRegex =
 			/^-----BEGIN PRIVATE KEY-----[\s\S]*-----END PRIVATE KEY-----$/;
 		return privateKeyRegex.test(pem.trim());
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }

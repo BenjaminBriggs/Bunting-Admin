@@ -1,36 +1,23 @@
 'use client';
 
-import {
-	CheckCircle,
-	Error as ErrorIcon,
-	ExpandLess,
-	ExpandMore,
-	Save,
-} from '@mui/icons-material';
+import { Save } from '@mui/icons-material';
 import {
 	Alert,
 	Box,
 	Button,
 	CircularProgress,
-	Collapse,
 	Dialog,
 	DialogActions,
 	DialogContent,
 	DialogTitle,
-	FormControl,
-	IconButton,
-	InputLabel,
-	MenuItem,
-	Paper,
-	Select,
-	TextField,
 	Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { updateFlag } from '@/lib/api';
-import type { Environment } from '@/types';
+import type { DBFlag, Environment, FlagValue } from '@/types';
 import FlagValueInput, {
-	getDefaultValueForType as getBaseDefaultValue,
+	type FlagType,
+	getDefaultValueForType,
 	processValueForType,
 	validateValue,
 } from './flag-value-input';
@@ -38,27 +25,14 @@ import FlagValueInput, {
 interface DefaultValueEditModalProps {
 	open: boolean;
 	onClose: () => void;
-	onSave: (newValue: any) => void;
+	onSave: (newValue: FlagValue) => void;
 	environment: Environment;
 	flagId: string;
-	flagType: string;
-	currentValue: any;
+	flagType: FlagType;
+	currentValue: FlagValue | null;
 	flagName: string;
-	allDefaultValues: Record<string, any>; // Full defaultValues object for all environments
+	allDefaultValues: DBFlag['defaultValues']; // Full defaultValues object for all environments
 }
-
-const getEnvironmentColor = (env: Environment) => {
-	switch (env) {
-		case 'development':
-			return 'info';
-		case 'beta':
-			return 'warning';
-		case 'production':
-			return 'success';
-		default:
-			return 'default';
-	}
-};
 
 export default function DefaultValueEditModal({
 	open,
@@ -71,17 +45,15 @@ export default function DefaultValueEditModal({
 	flagName,
 	allDefaultValues,
 }: DefaultValueEditModalProps) {
-	const [value, setValue] = useState<any>(null);
+	const [value, setValue] = useState<FlagValue | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
 
 	useEffect(() => {
 		if (open) {
-			setValue(
-				currentValue !== undefined && currentValue !== null
-					? currentValue
-					: getBaseDefaultValue(flagType as any),
-			);
+			// Sync the editor to the current value each time the dialog opens.
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: initialize editor state from props on open
+			setValue(currentValue ?? getDefaultValueForType(flagType));
 			setSaveError(null);
 		}
 	}, [open, flagType, currentValue]);
@@ -95,17 +67,17 @@ export default function DefaultValueEditModal({
 		setSaveError(null);
 
 		try {
-			const processedValue = processValueForType(value, flagType as any);
+			const processedValue = processValueForType(value, flagType);
 
 			// Preserve all environment values, only update the current one
-			const updatedDefaultValues = {
+			const updatedDefaultValues: DBFlag['defaultValues'] = {
 				...allDefaultValues,
 				[environment]: processedValue,
 			};
 
 			// Update the flag with the new default value for this environment
 			await updateFlag(flagId, {
-				defaultValues: updatedDefaultValues as any,
+				defaultValues: updatedDefaultValues,
 			});
 
 			onSave(processedValue);
@@ -122,7 +94,7 @@ export default function DefaultValueEditModal({
 	};
 
 	const isValid = () => {
-		return validateValue(value, flagType as any).isValid;
+		return validateValue(value, flagType).isValid;
 	};
 
 	return (
@@ -153,8 +125,8 @@ export default function DefaultValueEditModal({
 						</Typography>
 
 						<FlagValueInput
-							flagType={flagType as any}
-							value={value}
+							flagType={flagType}
+							value={value ?? getDefaultValueForType(flagType)}
 							onChange={setValue}
 							label="Default Value"
 							helperText="Value returned when no targeting rules match"
@@ -190,7 +162,7 @@ export default function DefaultValueEditModal({
 									[environment]: {
 										default: (() => {
 											try {
-												return processValueForType(value, flagType as any);
+												return processValueForType(value, flagType);
 											} catch {
 												return value;
 											}
@@ -208,7 +180,9 @@ export default function DefaultValueEditModal({
 			<DialogActions>
 				<Button onClick={onClose}>Cancel</Button>
 				<Button
-					onClick={handleSave}
+					onClick={() => {
+						void handleSave();
+					}}
 					variant="contained"
 					disabled={!isValid() || saving}
 					startIcon={saving ? <CircularProgress size={20} /> : <Save />}

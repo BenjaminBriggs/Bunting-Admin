@@ -200,6 +200,43 @@ You must configure at least one auth provider before the first sign-in. In `oidc
 
 ---
 
+## Health checks
+
+The app exposes an unauthenticated liveness/readiness probe at **`GET /api/health`**. It runs a trivial `SELECT 1` against the database and returns:
+
+- `200 {"status":"ok","db":"up"}` when the process is up and Postgres is reachable.
+- `503 {"status":"degraded","db":"down"}` when the database cannot be reached.
+
+Point your orchestrator's health check at it. Examples:
+
+```yaml
+# Docker Compose / ECS
+healthcheck:
+  test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/api/health']
+  interval: 30s
+  timeout: 5s
+  retries: 3
+```
+
+```nginx
+# nginx upstream check (or use it as the LB target health path)
+location = /healthz { proxy_pass http://127.0.0.1:3000/api/health; }
+```
+
+The endpoint is deliberately terse and leaks no connection details, so it is safe to expose to a load balancer. It does **not** require authentication (whitelisted in `src/middleware.ts`).
+
+---
+
+## Logging and observability
+
+The app writes **structured JSON logs to stdout** via [pino](https://getpino.io). There is no external logging service or vendor SDK — collect stdout with whatever your platform provides (CloudWatch, Loki, Datadog, `docker logs`, etc.).
+
+Control verbosity with `LOG_LEVEL` (`trace|debug|info|warn|error|fatal`); it defaults to `info` in production. Known secret-bearing keys (`password`, `secret`, `token`, `privateKey`, `authorization`) are redacted from log bindings.
+
+**Change trail.** Every create/update/delete/archive of a flag, test, rollout, app, signing key, user, or access-list entry is recorded in the `activity_logs` table with the acting user's email. Admins can read it at **`GET /api/activity`** (filter by `appId`, `entityType`, `entityId`, `limit`). This is separate from the publish ledger (`audit_logs`), which records signed-config publishes.
+
+---
+
 ## Post-deploy checklist
 
 - [ ] `DATABASE_URL` points to production Postgres; migrations applied with `make db-migrate`
@@ -215,3 +252,5 @@ You must configure at least one auth provider before the first sign-in. In `oidc
 - [ ] TLS terminated at reverse proxy; app not exposed on port 3000 directly
 - [ ] Signed in once to confirm first-admin bootstrap
 - [ ] Published a test config and verified SDK can fetch and verify it
+- [ ] Orchestrator/LB health check points at `GET /api/health`
+- [ ] Container stdout is collected by your log aggregator; `LOG_LEVEL` set as desired

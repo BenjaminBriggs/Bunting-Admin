@@ -35,7 +35,7 @@ export function artifactUrlFor(
 
 	// Plain AWS S3: virtual-host style.
 	if (env.S3_BUCKET) {
-		const region = env.S3_REGION || 'us-east-1';
+		const region = env.S3_REGION ?? 'us-east-1';
 		return `https://${env.S3_BUCKET}.s3.${region}.amazonaws.com/${appIdentifier}/`;
 	}
 
@@ -49,7 +49,7 @@ export function artifactUrlFor(
  */
 export function buildS3Config(env: Env = process.env): S3ClientConfig {
 	const config: S3ClientConfig = {
-		region: env.S3_REGION || 'us-east-1',
+		region: env.S3_REGION ?? 'us-east-1',
 		forcePathStyle: true, // required for MinIO; harmless on AWS
 	};
 

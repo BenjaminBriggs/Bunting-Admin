@@ -5,10 +5,12 @@
  * and verification flow, as well as validation helpers.
  */
 
-import { generateRSAKeyPair, KeyPair } from './crypto';
+import { logger } from '@/lib/logger';
+import { generateRSAKeyPair } from './crypto';
 import { prisma } from './db';
 import {
 	getPublicKeysForApp,
+	type JWSHeader,
 	signConfig,
 	verifyConfigSignature,
 } from './jws-signer';
@@ -16,7 +18,7 @@ import {
 export interface TestResult {
 	success: boolean;
 	message: string;
-	details?: any;
+	details?: unknown;
 	error?: string;
 }
 
@@ -78,7 +80,7 @@ export async function cleanupTestApp(appId: string): Promise<void> {
 			where: { id: appId },
 		});
 	} catch (error) {
-		console.error('Failed to cleanup test app:', error);
+		logger.error({ err: error }, 'Failed to cleanup test app');
 		throw error;
 	}
 }
@@ -241,7 +243,7 @@ export async function testSignatureVerification(
 			return {
 				success: false,
 				message: 'Signature verification failed',
-				error: verificationResult.error || 'Verification returned false',
+				error: verificationResult.error ?? 'Verification returned false',
 			};
 		}
 
@@ -411,7 +413,7 @@ export async function runEndToEndCryptoTest(): Promise<EndToEndTestResult> {
 			try {
 				await cleanupTestApp(testAppId);
 			} catch (cleanupError) {
-				console.error('Failed to cleanup test app:', cleanupError);
+				logger.error({ err: cleanupError }, 'Failed to cleanup test app');
 			}
 		}
 	}
@@ -434,7 +436,7 @@ export function validateJWSFormat(jws: string): TestResult {
 		// Try to decode the header
 		try {
 			const headerJson = Buffer.from(parts[0], 'base64url').toString('utf8');
-			const header = JSON.parse(headerJson);
+			const header = JSON.parse(headerJson) as JWSHeader;
 
 			if (!header.alg || !header.kid) {
 				return {
@@ -450,10 +452,10 @@ export function validateJWSFormat(jws: string): TestResult {
 				details: {
 					algorithm: header.alg,
 					keyId: header.kid,
-					type: header.typ || 'JWT',
+					type: header.typ ?? 'JWT',
 				},
 			};
-		} catch (headerError) {
+		} catch {
 			return {
 				success: false,
 				message: 'Invalid JWS header encoding',

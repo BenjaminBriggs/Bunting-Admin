@@ -2,6 +2,14 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+interface StoredDefaults {
+	development?: unknown;
+	beta?: unknown;
+	production?: unknown;
+	variants?: unknown;
+	[key: string]: unknown;
+}
+
 async function fixBrokenFlag() {
 	console.log('🔍 Checking for the broken flag...');
 
@@ -30,7 +38,7 @@ async function fixBrokenFlag() {
 		currentDefaultValues: flag.defaultValues,
 	});
 
-	const defaultValues = flag.defaultValues as any;
+	const defaultValues = flag.defaultValues as unknown as StoredDefaults;
 
 	// Check if it's missing environment values
 	const environments = ['development', 'beta', 'production'];
@@ -45,12 +53,14 @@ async function fixBrokenFlag() {
 
 	// Get the existing value (probably from development)
 	const existingValue =
-		defaultValues.development ||
-		defaultValues.beta ||
-		defaultValues.production ||
+		defaultValues.development ??
+		defaultValues.beta ??
+		defaultValues.production ??
 		false;
 
-	console.log(`Using ${existingValue} as default for missing environments`);
+	console.log(
+		`Using ${JSON.stringify(existingValue)} as default for missing environments`,
+	);
 
 	// Create complete defaultValues
 	const fixedDefaultValues = {
@@ -72,7 +82,7 @@ async function fixBrokenFlag() {
 		where: { id: flag.id },
 		data: {
 			defaultValues: fixedDefaultValues,
-			variants: defaultValues.variants || {}, // Ensure variants exist
+			variants: defaultValues.variants ?? {}, // Ensure variants exist
 		},
 	});
 
@@ -91,7 +101,7 @@ async function main() {
 }
 
 if (require.main === module) {
-	main();
+	void main();
 }
 
 export { fixBrokenFlag };

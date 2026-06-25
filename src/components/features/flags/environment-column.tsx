@@ -9,9 +9,36 @@ import {
 	surface,
 	typeColors,
 } from '@/theme/designTokens';
-import type { ConditionalVariant, Environment, FlagValue } from '@/types';
+import type {
+	Condition,
+	ConditionalVariant,
+	Environment,
+	FlagType,
+	FlagValue,
+} from '@/types';
 import { formatValueForDisplay } from './flag-value-input';
 import JsonChip from './json-chip';
+
+// The UI carries an "environment" pseudo condition type that is not part of the
+// shared ConditionType union; model it locally for condition formatting.
+type UICondition = Omit<Condition, 'type'> & {
+	type: Condition['type'] | 'environment';
+};
+
+// A test as rendered in this column. Each test variant exposes per-environment,
+// per-flag values keyed by environment then flag id.
+interface ActiveTest {
+	id: string;
+	name: string;
+	variants: Record<
+		string,
+		{
+			percentage: number;
+			value?: FlagValue;
+			values?: Record<string, Record<string, FlagValue>>;
+		}
+	>;
+}
 
 interface EnvironmentColumnProps {
 	environment: Environment;
@@ -19,11 +46,7 @@ interface EnvironmentColumnProps {
 	flagType: string;
 	defaultValue: FlagValue;
 	variants: ConditionalVariant[];
-	activeTests: Array<{
-		id: string;
-		name: string;
-		variants: Record<string, { percentage: number; value: any }>;
-	}>;
+	activeTests: ActiveTest[];
 	activeRollouts: Array<{
 		id: string;
 		name: string;
@@ -55,30 +78,30 @@ export default function EnvironmentColumn({
 	const isJson = flagType.toLowerCase() === 'json';
 
 	const formatValue = (value: FlagValue): string => {
-		return formatValueForDisplay(value, flagType as any);
+		return formatValueForDisplay(value, flagType as FlagType);
 	};
 
 	// Raw per-variant values for this environment/flag (used to render JSON chips).
-	const getTestVariantRawValues = (test: any): any[] => {
-		const values: any[] = [];
+	const getTestVariantRawValues = (
+		test: ActiveTest,
+	): Array<FlagValue | undefined> => {
+		const values: Array<FlagValue | undefined> = [];
 
-		if (test.variants && typeof test.variants === 'object') {
-			Object.values(test.variants).forEach((variant: any) => {
-				values.push(variant.values?.[environment]?.[flagId]);
-			});
-		}
+		Object.values(test.variants).forEach((variant) => {
+			values.push(variant.values?.[environment]?.[flagId]);
+		});
 
 		return values;
 	};
 
-	const getTestVariantValues = (test: any): string => {
+	const getTestVariantValues = (test: ActiveTest): string => {
 		return getTestVariantRawValues(test)
 			.map((v) => (v === undefined ? 'undefined' : formatValue(v)))
 			.join('/');
 	};
 
 	const formatVariantSummary = (variant: ConditionalVariant): string => {
-		const conditions = variant.conditions || [];
+		const conditions = variant.conditions;
 		if (conditions.length === 0) {
 			return 'No conditions';
 		}
@@ -96,7 +119,7 @@ export default function EnvironmentColumn({
 		// For many conditions, group by type
 		const grouped = conditions.reduce<Record<string, number>>(
 			(acc, condition) => {
-				acc[condition.type] = (acc[condition.type] || 0) + 1;
+				acc[condition.type] = (acc[condition.type] ?? 0) + 1;
 				return acc;
 			},
 			{},
@@ -110,7 +133,7 @@ export default function EnvironmentColumn({
 		return parts.join(', ');
 	};
 
-	const formatSingleCondition = (condition: any): string => {
+	const formatSingleCondition = (condition: UICondition): string => {
 		const { type, operator, values } = condition;
 
 		switch (type) {
@@ -147,7 +170,7 @@ export default function EnvironmentColumn({
 			platform: 'platform',
 			region: 'region',
 		};
-		return typeMap[type] || type;
+		return typeMap[type] ?? type;
 	};
 
 	const formatOperator = (operator: string): string => {
@@ -163,10 +186,10 @@ export default function EnvironmentColumn({
 			not_in: 'not in',
 			custom: 'has',
 		};
-		return operatorMap[operator] || operator;
+		return operatorMap[operator] ?? operator;
 	};
 
-	const c = envColors[environment] ?? envColors.production;
+	const c = envColors[environment];
 
 	// Small square "+" affordance (amber token) used by both section headers.
 	const addButtonSx = {
@@ -297,7 +320,9 @@ export default function EnvironmentColumn({
 									getTestVariantRawValues(test).map((v, i) => (
 										<JsonChip
 											key={i}
-											value={v}
+											// JsonChip treats undefined and '' identically (both
+											// render as empty), preserving previous behavior.
+											value={v ?? ''}
 											size="small"
 											onClick={() => onTestRolloutEdit('test', test.id)}
 										/>
@@ -350,7 +375,7 @@ export default function EnvironmentColumn({
 					<Stack spacing={1} sx={{ mt: 1 }}>
 						{variants.map((variant, index) => (
 							<Box
-								key={variant.id || index}
+								key={variant.id !== '' ? variant.id : index}
 								sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
 							>
 								<Box

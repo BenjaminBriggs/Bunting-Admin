@@ -29,6 +29,7 @@ import {
 	Typography,
 } from '@mui/material';
 import { useState } from 'react';
+import type { FlagValue } from '@/types/core';
 import type { RuleCondition, TargetingRule } from '@/types/rules';
 import { ConditionBuilder } from './condition-builder';
 
@@ -89,22 +90,26 @@ export function TargetingRuleBuilder({
 		});
 	};
 
-	const handleValueChange = (value: any) => {
-		// Convert value based on flag type
-		let convertedValue = value;
+	const handleValueChange = (value: string) => {
+		// Convert the raw string from the input based on flag type.
+		let convertedValue: FlagValue = value;
 		switch (flagType) {
 			case 'bool':
 				convertedValue = value === 'true';
 				break;
-			case 'int':
-				convertedValue = parseInt(value) || 0;
+			case 'int': {
+				const parsed = parseInt(value);
+				convertedValue = Number.isNaN(parsed) ? 0 : parsed;
 				break;
-			case 'double':
-				convertedValue = parseFloat(value) || 0;
+			}
+			case 'double': {
+				const parsed = parseFloat(value);
+				convertedValue = Number.isNaN(parsed) ? 0 : parsed;
 				break;
+			}
 			case 'json':
 				try {
-					convertedValue = JSON.parse(value);
+					convertedValue = JSON.parse(value) as FlagValue;
 				} catch {
 					convertedValue = value; // Keep as string if invalid JSON
 				}
@@ -120,13 +125,14 @@ export function TargetingRuleBuilder({
 	};
 
 	const getValueInput = () => {
+		const ruleValue = rule.value;
 		switch (flagType) {
 			case 'bool':
 				return (
 					<FormControl fullWidth>
 						<InputLabel>Value</InputLabel>
 						<Select
-							value={String(rule.value)}
+							value={ruleValue === true ? 'true' : 'false'}
 							label="Value"
 							onChange={(e) => handleValueChange(e.target.value)}
 						>
@@ -141,7 +147,7 @@ export function TargetingRuleBuilder({
 					<TextField
 						label="Value"
 						type="number"
-						value={rule.value || ''}
+						value={typeof ruleValue === 'number' ? ruleValue : ''}
 						onChange={(e) => handleValueChange(e.target.value)}
 						fullWidth
 					/>
@@ -153,9 +159,9 @@ export function TargetingRuleBuilder({
 						multiline
 						rows={3}
 						value={
-							typeof rule.value === 'string'
-								? rule.value
-								: JSON.stringify(rule.value, null, 2)
+							typeof ruleValue === 'string'
+								? ruleValue
+								: JSON.stringify(ruleValue, null, 2)
 						}
 						onChange={(e) => handleValueChange(e.target.value)}
 						fullWidth
@@ -169,7 +175,7 @@ export function TargetingRuleBuilder({
 				return (
 					<TextField
 						label="Value"
-						value={rule.value || ''}
+						value={typeof ruleValue === 'string' ? ruleValue : ''}
 						onChange={(e) => handleValueChange(e.target.value)}
 						fullWidth
 					/>

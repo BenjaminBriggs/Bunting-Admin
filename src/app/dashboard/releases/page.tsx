@@ -7,6 +7,7 @@ import {
 	CircularProgress,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -29,7 +30,7 @@ const DIFF_TAG: Record<string, { tag: string; color: string; bg: string }> = {
 	removed: { tag: 'REMOVED', color: '#C8503C', bg: '#FBEAE5' },
 };
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -67,11 +68,14 @@ export default function ReleasesPage() {
 	}, [selectedApp]);
 
 	useEffect(() => {
-		if (selectedApp) {
-			loadReleases();
-		} else {
-			setLoading(false);
-		}
+		const load = async () => {
+			if (selectedApp) {
+				await loadReleases();
+			} else {
+				setLoading(false);
+			}
+		};
+		void load();
 	}, [selectedApp, loadReleases]);
 
 	const formatDate = (dateString: string) => {
@@ -109,7 +113,7 @@ export default function ReleasesPage() {
 		);
 	}
 
-	const latest = publishHistory[0];
+	const latest = publishHistory.at(0);
 
 	return (
 		<Box sx={{ maxWidth: 1000, mx: 'auto', py: 1 }}>
@@ -283,7 +287,7 @@ export default function ReleasesPage() {
 						{publishHistory.map((release, index) => {
 							const isOpen = openVersion === release.version;
 							const isLatest = index === 0;
-							const changes = release.changes || [];
+							const changes = release.changes ?? [];
 							return (
 								<Box
 									key={release.id}
@@ -450,9 +454,7 @@ export default function ReleasesPage() {
 												}}
 											>
 												{changes.map((change, ci) => {
-													const t =
-														DIFF_TAG[String(change.action).toLowerCase()] ||
-														DIFF_TAG.modified;
+													const t = DIFF_TAG[change.action];
 													return (
 														<Box
 															key={ci}
@@ -515,7 +517,7 @@ export default function ReleasesPage() {
 												<Button
 													variant="outlined"
 													size="small"
-													onClick={handleDownload}
+													onClick={() => void handleDownload()}
 													disabled={downloading}
 													startIcon={
 														<Ms name="download" sx={{ fontSize: 17 }} />

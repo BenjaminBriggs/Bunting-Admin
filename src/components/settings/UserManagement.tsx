@@ -1,8 +1,10 @@
 'use client';
 
 import { Alert, Box, MenuItem, Select, Typography } from '@mui/material';
+import type { SelectChangeEvent, SxProps, Theme } from '@mui/material';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ink, monoFontFamily, surface } from '@/theme/designTokens';
 
 interface User {
@@ -69,7 +71,7 @@ const MONO_LABEL_SX = {
 	color: ink.soft,
 } as const;
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -81,7 +83,6 @@ export default function UserManagement() {
 	const { data: session } = useSession();
 	const [users, setUsers] = useState<User[]>([]);
 	const [accessList, setAccessList] = useState<AccessListEntry[]>([]);
-	const [unifiedUsers, setUnifiedUsers] = useState<UnifiedUser[]>([]);
 	const [newEntry, setNewEntry] = useState<{
 		value: string;
 		role: 'ADMIN' | 'DEVELOPER';
@@ -92,12 +93,7 @@ export default function UserManagement() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState('');
 
-	useEffect(() => {
-		loadUsers();
-		loadAccessList();
-	}, []);
-
-	useEffect(() => {
+	const unifiedUsers = useMemo<UnifiedUser[]>(() => {
 		const unified: UnifiedUser[] = [];
 
 		users.forEach((user) => {
@@ -133,7 +129,7 @@ export default function UserManagement() {
 					type: entry.type,
 					createdAt: entry.createdAt,
 					invitedBy:
-						entry.createdBy?.name || entry.createdBy?.email || 'System',
+						entry.createdBy?.name ?? entry.createdBy?.email ?? 'System',
 				});
 			}
 		});
@@ -142,14 +138,14 @@ export default function UserManagement() {
 			(a, b) =>
 				new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
 		);
-		setUnifiedUsers(unified);
+		return unified;
 	}, [users, accessList]);
 
 	const loadUsers = async () => {
 		try {
 			const response = await fetch('/api/users');
 			if (response.ok) {
-				const data = await response.json();
+				const data = (await response.json()) as User[];
 				setUsers(data);
 			}
 		} catch (err) {
@@ -161,7 +157,7 @@ export default function UserManagement() {
 		try {
 			const response = await fetch('/api/access-list');
 			if (response.ok) {
-				const data = await response.json();
+				const data = (await response.json()) as AccessListEntry[];
 				setAccessList(data);
 			}
 		} catch (err) {
@@ -169,7 +165,7 @@ export default function UserManagement() {
 		}
 	};
 
-	const addAccessEntry = async (e: React.FormEvent) => {
+	const addAccessEntry = async (e: FormEvent) => {
 		e.preventDefault();
 		setIsLoading(true);
 		setError('');
@@ -189,12 +185,12 @@ export default function UserManagement() {
 
 			if (response.ok) {
 				setNewEntry({ value: '', role: 'DEVELOPER' });
-				loadAccessList();
+				void loadAccessList();
 			} else {
-				const data = await response.json();
-				setError(data.error || 'Failed to add entry');
+				const data = (await response.json()) as { error?: string };
+				setError(data.error ?? 'Failed to add entry');
 			}
-		} catch (err) {
+		} catch (_err) {
 			setError('Failed to add entry');
 		} finally {
 			setIsLoading(false);
@@ -207,7 +203,7 @@ export default function UserManagement() {
 				method: 'DELETE',
 			});
 			if (response.ok) {
-				loadAccessList();
+				void loadAccessList();
 			}
 		} catch (err) {
 			console.error('Failed to remove entry:', err);
@@ -226,15 +222,22 @@ export default function UserManagement() {
 			});
 
 			if (response.ok) {
-				loadUsers();
+				void loadUsers();
 			} else {
-				const data = await response.json();
-				setError(data.error || 'Failed to update user role');
+				const data = (await response.json()) as { error?: string };
+				setError(data.error ?? 'Failed to update user role');
 			}
-		} catch (err) {
+		} catch (_err) {
 			setError('Failed to update user role');
 		}
 	};
+
+	useEffect(() => {
+		const loadAll = async () => {
+			await Promise.all([loadUsers(), loadAccessList()]);
+		};
+		void loadAll();
+	}, []);
 
 	const formatRelative = (dateString?: string) => {
 		if (!dateString) {
@@ -255,7 +258,7 @@ export default function UserManagement() {
 				</Typography>
 				<Box
 					component="form"
-					onSubmit={addAccessEntry}
+					onSubmit={(e) => void addAccessEntry(e)}
 					sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap' }}
 				>
 					<Box
@@ -282,7 +285,7 @@ export default function UserManagement() {
 							component="input"
 							required
 							value={newEntry.value}
-							onChange={(e: any) =>
+							onChange={(e: ChangeEvent<HTMLInputElement>) =>
 								setNewEntry({ ...newEntry, value: e.target.value })
 							}
 							placeholder="email@example.com  or  @company.com"
@@ -383,7 +386,7 @@ export default function UserManagement() {
 			</Box>
 			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
 				{activeUsers.map((user) => {
-					const isYou = user.id === session?.user?.id;
+					const isYou = user.id === session?.user.id;
 					const role = ROLE_STYLE[user.role];
 					return (
 						<Box
@@ -414,7 +417,7 @@ export default function UserManagement() {
 									textTransform: 'lowercase',
 								}}
 							>
-								{(user.name?.[0] || user.email[0]).toLowerCase()}
+								{(user.name?.[0] ?? user.email[0]).toLowerCase()}
 							</Box>
 							<Box sx={{ flex: 1, minWidth: 0 }}>
 								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.125 }}>
@@ -467,7 +470,9 @@ export default function UserManagement() {
 							) : (
 								<Select
 									value={user.role}
-									onChange={(e) => updateUserRole(user.id, e.target.value)}
+									onChange={(e: SelectChangeEvent<'ADMIN' | 'DEVELOPER'>) =>
+										void updateUserRole(user.id, e.target.value)
+									}
 									variant="standard"
 									disableUnderline
 									renderValue={(val) => ROLE_STYLE[val].label}
@@ -601,7 +606,7 @@ export default function UserManagement() {
 								</Box>
 								<Box
 									component="button"
-									onClick={() => removeAccessEntry(inv.id)}
+									onClick={() => void removeAccessEntry(inv.id)}
 									aria-label="Remove invite"
 									sx={{
 										border: '1px solid #ECD4CD',

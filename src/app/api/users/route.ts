@@ -1,19 +1,21 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logActivity } from '@/lib/activity-log';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 const updateUserSchema = z.object({
 	userId: z.string(),
 	role: z.enum(['ADMIN', 'DEVELOPER']),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
 	try {
 		const session = await auth();
 
-		if (session?.user?.role !== 'ADMIN') {
+		if (session?.user.role !== 'ADMIN') {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(users);
 	} catch (error) {
-		console.error('Failed to fetch users:', error);
+		logger.error({ err: error }, 'Failed to fetch users');
 		return NextResponse.json(
 			{ error: 'Internal server error' },
 			{ status: 500 },
@@ -44,11 +46,11 @@ export async function PATCH(request: NextRequest) {
 	try {
 		const session = await auth();
 
-		if (session?.user?.role !== 'ADMIN') {
+		if (session?.user.role !== 'ADMIN') {
 			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { userId, role } = updateUserSchema.parse(body);
 
 		// Prevent changing your own role to DEVELOPER (would lock yourself out)
@@ -73,6 +75,16 @@ export async function PATCH(request: NextRequest) {
 			},
 		});
 
+		const actor = session.user.email;
+		await logActivity({
+			actor,
+			action: 'update',
+			entityType: 'user',
+			entityId: user.id,
+			appId: null,
+			summary: `Set role of ${user.email} to ${role}`,
+		});
+
 		return NextResponse.json(user);
 	} catch (error) {
 		if (error instanceof z.ZodError) {
@@ -82,7 +94,7 @@ export async function PATCH(request: NextRequest) {
 			);
 		}
 
-		console.error('Failed to update user:', error);
+		logger.error({ err: error }, 'Failed to update user');
 		return NextResponse.json(
 			{ error: 'Internal server error' },
 			{ status: 500 },

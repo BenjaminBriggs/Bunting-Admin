@@ -20,7 +20,8 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import type { KeyboardEvent } from 'react';
+import { useState } from 'react';
 import {
 	conditionTemplates,
 	operatorLabels,
@@ -58,28 +59,28 @@ export function ConditionBuilderModal({
 	const [valueInput, setValueInput] = useState('');
 	const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-	// Handle modal open/close and condition loading
-	useEffect(() => {
+	// Reset the form state on the render where the modal transitions to open,
+	// loading the existing condition for editing or static defaults for creation.
+	// Resetting during render (rather than in an effect) avoids cascading renders.
+	const [wasOpen, setWasOpen] = useState(false);
+	if (open !== wasOpen) {
+		setWasOpen(open);
 		if (open) {
-			if (existingCondition) {
-				// Editing existing condition
-				setCondition(existingCondition);
-			} else {
-				// Creating new condition - use static default
-				setCondition({
+			setCondition(
+				existingCondition ?? {
 					type: 'app_version',
 					operator: 'in',
 					values: [],
-				});
-			}
+				},
+			);
 			setValueInput('');
 			setValidationErrors([]);
 		}
-	}, [open, existingCondition]);
+	}
 
 	const handleTypeChange = (newType: RuleConditionType) => {
 		const newTemplate = conditionTemplates.find((t) => t.type === newType);
-		const defaultOperator = newTemplate?.operators[0] || 'equals';
+		const defaultOperator = newTemplate?.operators[0] ?? 'equals';
 
 		setCondition({
 			...condition,
@@ -148,7 +149,7 @@ export function ConditionBuilderModal({
 		}
 	};
 
-	const handleKeyPress = (event: React.KeyboardEvent) => {
+	const handleKeyPress = (event: KeyboardEvent) => {
 		if (event.key === 'Enter') {
 			event.preventDefault();
 			handleAddValue();
@@ -157,14 +158,6 @@ export function ConditionBuilderModal({
 
 	const validateCondition = (): boolean => {
 		const errors: string[] = [];
-
-		if (!condition.type) {
-			errors.push('Condition type is required');
-		}
-
-		if (!condition.operator) {
-			errors.push('Operator is required');
-		}
 
 		if (condition.values.length === 0) {
 			errors.push('At least one value is required');
@@ -218,7 +211,7 @@ export function ConditionBuilderModal({
 					{error && <Alert severity="warning">{error}</Alert>}
 
 					<Alert severity="info">
-						{(config as any)?.description ||
+						{config.description ??
 							'Configure conditions for targeting specific users or contexts.'}
 					</Alert>
 
@@ -268,8 +261,8 @@ export function ConditionBuilderModal({
 						{template.valueType === 'select' ? (
 							<Autocomplete
 								multiple
-								options={template.options || []}
-								value={(template.options || []).filter((option) =>
+								options={template.options ?? []}
+								value={(template.options ?? []).filter((option) =>
 									condition.values.includes(option.value),
 								)}
 								onChange={(_, newValue) => {

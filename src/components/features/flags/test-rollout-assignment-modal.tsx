@@ -12,7 +12,9 @@ import {
 	Stack,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchRollouts, fetchTests } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
@@ -23,8 +25,9 @@ import {
 	surface,
 	typeColors,
 } from '@/theme/designTokens';
-import type { DBTestRollout, Environment } from '@/types';
+import type { DBTestRollout, Environment, FlagType, FlagValue } from '@/types';
 import FlagValueInput, {
+	formatValueForDisplay,
 	getDefaultValueForType,
 	processValueForType,
 	validateValue,
@@ -36,7 +39,7 @@ interface TestRolloutAssignmentModalProps {
 	environment: Environment;
 	flagId: string;
 	flagName: string;
-	flagType: string;
+	flagType: FlagType;
 	onComplete?: () => void;
 }
 
@@ -66,7 +69,7 @@ const PALETTE = ['#F6A444', '#54C9C0', '#F47C5D', '#82C868', '#D8CFBC'];
 const CONTROL_COLOR = '#D8CFBC';
 const isControl = (name: string) => name.trim().toLowerCase() === 'control';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -74,7 +77,7 @@ function Ms({ name, sx }: { name: string; sx?: any }) {
 	);
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: { children: ReactNode }) {
 	return (
 		<Typography
 			sx={{
@@ -106,15 +109,15 @@ export default function TestRolloutAssignmentModal({
 	const [tests, setTests] = useState<DBTestRollout[]>([]);
 	const [rollouts, setRollouts] = useState<DBTestRollout[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
-	const [servedValue, setServedValue] = useState<any>(
-		getDefaultValueForType(flagType as any),
+	const [servedValue, setServedValue] = useState<FlagValue>(
+		getDefaultValueForType(flagType),
 	);
-	const [groupValues, setGroupValues] = useState<Record<string, any>>({});
+	const [groupValues, setGroupValues] = useState<Record<string, FlagValue>>({});
 	const [dataLoading, setDataLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const env = envColors[environment] ?? envColors.production;
+	const env = envColors[environment];
 	const { accent, tint, icon: segIcon } = SEGMENT_ACCENT[segment];
 	const isRollout = segment === 'rollout';
 
@@ -143,12 +146,12 @@ export default function TestRolloutAssignmentModal({
 				setDataLoading(false);
 			}
 		};
-		load();
+		void load();
 	}, [open, selectedApp]);
 
 	// Only the items belonging to the active segment are shown / selectable.
 	const options = isRollout ? rollouts : tests;
-	const selected = options.find((o) => o.id === selectedId) || null;
+	const selected = options.find((o) => o.id === selectedId) ?? null;
 	const isEmpty = !dataLoading && options.length === 0;
 
 	const switchSegment = (next: Segment) => {
@@ -175,11 +178,11 @@ export default function TestRolloutAssignmentModal({
 		setSelectedId(item.id);
 		setError(null);
 		if (item.type === 'ROLLOUT') {
-			setServedValue(getDefaultValueForType(flagType as any));
+			setServedValue(getDefaultValueForType(flagType));
 		} else {
-			const init: Record<string, any> = {};
-			Object.keys(item.variants || {}).forEach((g) => {
-				init[g] = getDefaultValueForType(flagType as any);
+			const init: Record<string, FlagValue> = {};
+			Object.keys(item.variants ?? {}).forEach((g) => {
+				init[g] = getDefaultValueForType(flagType);
 			});
 			setGroupValues(init);
 		}
@@ -196,10 +199,10 @@ export default function TestRolloutAssignmentModal({
 			return false;
 		}
 		if (selected.type === 'ROLLOUT') {
-			return validateValue(servedValue, flagType as any).isValid;
+			return validateValue(servedValue, flagType).isValid;
 		}
 		return selectedGroups.every(
-			(g) => validateValue(groupValues[g], flagType as any).isValid,
+			(g) => validateValue(groupValues[g], flagType).isValid,
 		);
 	})();
 
@@ -213,10 +216,16 @@ export default function TestRolloutAssignmentModal({
 		setError(null);
 		try {
 			if (selected.type === 'ROLLOUT') {
-				const value = processValueForType(servedValue, flagType as any);
-				const rolloutValues: any = { ...(selected.rolloutValues || {}) };
+				const value = processValueForType(servedValue, flagType);
+				// Runtime shape: rolloutValues is keyed by environment, then by flag id.
+				const existingRolloutValues = selected.rolloutValues as unknown as
+					| Record<string, Record<string, FlagValue>>
+					| undefined;
+				const rolloutValues: Record<string, Record<string, FlagValue>> = {
+					...(existingRolloutValues ?? {}),
+				};
 				rolloutValues[environment] = {
-					...(rolloutValues[environment] || {}),
+					...(rolloutValues[environment] ?? {}),
 					[flagId]: value,
 				};
 				const flagIds = selected.flagIds.includes(flagId)
@@ -232,16 +241,23 @@ export default function TestRolloutAssignmentModal({
 					throw new Error(`Failed to update rollout ${selected.name}: ${text}`);
 				}
 			} else {
-				const variants: any = { ...(selected.variants || {}) };
+				// Runtime shape: each variant has a `values` map keyed by environment,
+				// then by flag id. Other variant fields (e.g. percentage) pass through.
+				type VariantValues = Record<string, Record<string, FlagValue>>;
+				type Variant = { values?: VariantValues } & Record<string, unknown>;
+				const variants: Record<string, Variant | undefined> = {
+					...(selected.variants as unknown as Record<string, Variant>),
+				};
 				selectedGroups.forEach((g) => {
-					if (!variants[g]) {
+					const existing = variants[g];
+					if (!existing) {
 						return;
 					}
-					const current = { ...variants[g] };
-					const values: any = { ...(current.values || {}) };
+					const current = { ...existing };
+					const values: VariantValues = { ...(current.values ?? {}) };
 					values[environment] = {
-						...(values[environment] || {}),
-						[flagId]: processValueForType(groupValues[g], flagType as any),
+						...(values[environment] ?? {}),
+						[flagId]: processValueForType(groupValues[g], flagType),
 					};
 					variants[g] = { ...current, values };
 				});
@@ -270,7 +286,7 @@ export default function TestRolloutAssignmentModal({
 	const defaultDisplay =
 		flagType === 'json'
 			? '{ … }'
-			: String(getDefaultValueForType(flagType as any));
+			: formatValueForDisplay(getDefaultValueForType(flagType), flagType);
 
 	const confirmLabel = isEmpty
 		? isRollout
@@ -566,7 +582,7 @@ export default function TestRolloutAssignmentModal({
 														{o.key}
 														{o.type === 'ROLLOUT'
 															? ` · ${o.percentage ?? 0}%`
-															: ` · ${Object.keys(o.variants || {}).length} groups`}
+															: ` · ${Object.keys(o.variants ?? {}).length} groups`}
 													</Typography>
 												</Box>
 												<Box
@@ -670,7 +686,7 @@ export default function TestRolloutAssignmentModal({
 										</Typography>
 									</Box>
 									<FlagValueInput
-										flagType={flagType as any}
+										flagType={flagType}
 										value={servedValue}
 										onChange={setServedValue}
 										fullWidth
@@ -686,7 +702,7 @@ export default function TestRolloutAssignmentModal({
 									</Box>
 									<Stack spacing={1}>
 										{selectedGroups.map((g) => {
-											const idx = Object.keys(selected?.variants || {}).indexOf(
+											const idx = Object.keys(selected.variants ?? {}).indexOf(
 												g,
 											);
 											const color = isControl(g)
@@ -724,7 +740,7 @@ export default function TestRolloutAssignmentModal({
 														{g}
 													</Typography>
 													<FlagValueInput
-														flagType={flagType as any}
+														flagType={flagType}
 														value={groupValues[g]}
 														onChange={(v) =>
 															setGroupValues((prev) => ({ ...prev, [g]: v }))
@@ -755,7 +771,7 @@ export default function TestRolloutAssignmentModal({
 					Cancel
 				</Button>
 				<Button
-					onClick={handleAdd}
+					onClick={() => void handleAdd()}
 					disabled={isEmpty || !canAdd}
 					startIcon={
 						saving ? (

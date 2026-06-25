@@ -1,8 +1,10 @@
 'use client';
 
 import { Box, FormHelperText, TextField, Typography } from '@mui/material';
+import type { KeyboardEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { ink, monoFontFamily, surface } from '@/theme/designTokens';
+import type { FlagValue } from '@/types';
 import JsonChip from './json-chip';
 
 export type FlagType =
@@ -21,8 +23,8 @@ export type FlagType =
 
 interface FlagValueInputProps {
 	flagType: FlagType;
-	value: any;
-	onChange: (value: any) => void;
+	value: FlagValue;
+	onChange: (value: FlagValue) => void;
 	label?: string;
 	placeholder?: string;
 	error?: boolean;
@@ -32,10 +34,22 @@ interface FlagValueInputProps {
 	size?: 'small' | 'medium';
 	fullWidth?: boolean;
 	autoFocus?: boolean;
-	onKeyDown?: (event: React.KeyboardEvent) => void;
+	onKeyDown?: (event: KeyboardEvent) => void;
 }
 
-export function getDefaultValueForType(flagType: FlagType): any {
+// Mirrors String(value)'s coercion while keeping the type checker happy:
+// objects fall back to Object's default ("[object Object]"), matching prior behavior.
+function stringifyPrimitive(value: unknown): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return String(value);
+	}
+	return Object.prototype.toString.call(value);
+}
+
+export function getDefaultValueForType(flagType: FlagType): FlagValue {
 	const normalizedType = flagType.toLowerCase() as FlagType;
 	switch (normalizedType) {
 		case 'bool':
@@ -55,15 +69,18 @@ export function getDefaultValueForType(flagType: FlagType): any {
 	}
 }
 
-export function processValueForType(value: any, flagType: FlagType): any {
+export function processValueForType(
+	value: unknown,
+	flagType: FlagType,
+): FlagValue {
 	const normalizedType = flagType.toLowerCase() as FlagType;
 	switch (normalizedType) {
 		case 'bool':
 			return value === 'true' || value === true;
 		case 'int':
-			return parseInt(value) || 0;
+			return parseInt(String(value)) || 0;
 		case 'double':
-			return parseFloat(value) || 0.0;
+			return parseFloat(String(value)) || 0.0;
 		case 'json':
 			// Store JSON as escaped strings for SDK compatibility
 			try {
@@ -82,11 +99,15 @@ export function processValueForType(value: any, flagType: FlagType): any {
 		case 'string':
 		case 'date':
 		default:
-			return value;
+			// Non-JSON values pass through; coerce to a FlagValue-safe form.
+			return value as FlagValue;
 	}
 }
 
-export function formatValueForDisplay(value: any, flagType: FlagType): string {
+export function formatValueForDisplay(
+	value: unknown,
+	flagType: FlagType,
+): string {
 	if (value === null || value === undefined) {
 		return 'undefined';
 	}
@@ -100,29 +121,29 @@ export function formatValueForDisplay(value: any, flagType: FlagType): string {
 			try {
 				if (typeof value === 'string') {
 					// Validate and pretty-print if it's a JSON string
-					const parsed = JSON.parse(value);
+					const parsed: unknown = JSON.parse(value);
 					return JSON.stringify(parsed);
 				}
 				return typeof value === 'object'
 					? JSON.stringify(value)
-					: String(value);
+					: stringifyPrimitive(value);
 			} catch {
-				return String(value);
+				return stringifyPrimitive(value);
 			}
 		case 'string':
 		case 'date':
-			return String(value);
+			return stringifyPrimitive(value);
 		case 'int':
 		case 'double':
 			return String(Number(value));
 		default:
-			return String(value);
+			return stringifyPrimitive(value);
 	}
 }
 
 export function getJSONSummary(jsonString: string): string {
 	try {
-		const parsed = JSON.parse(jsonString);
+		const parsed: unknown = JSON.parse(jsonString);
 		if (typeof parsed === 'object' && parsed !== null) {
 			const keys = Object.keys(parsed);
 			if (keys.length === 0) {
@@ -144,7 +165,7 @@ export function getJSONSummary(jsonString: string): string {
 }
 
 export function validateValue(
-	value: any,
+	value: unknown,
 	flagType: FlagType,
 ): { isValid: boolean; error?: string } {
 	const normalizedType = flagType.toLowerCase() as FlagType;
@@ -158,24 +179,26 @@ export function validateValue(
 			} catch {
 				return { isValid: false, error: 'Invalid JSON format' };
 			}
-		case 'int':
+		case 'int': {
 			if (value === '' || value === null || value === undefined) {
 				return { isValid: true };
 			}
-			const intValue = parseInt(value);
+			const intValue = parseInt(stringifyPrimitive(value));
 			if (isNaN(intValue)) {
 				return { isValid: false, error: 'Must be a valid integer' };
 			}
 			return { isValid: true };
-		case 'double':
+		}
+		case 'double': {
 			if (value === '' || value === null || value === undefined) {
 				return { isValid: true };
 			}
-			const floatValue = parseFloat(value);
+			const floatValue = parseFloat(stringifyPrimitive(value));
 			if (isNaN(floatValue)) {
 				return { isValid: false, error: 'Must be a valid number' };
 			}
 			return { isValid: true };
+		}
 		default:
 			return { isValid: true };
 	}
@@ -202,6 +225,18 @@ function FieldLabel({ label }: { label?: string }) {
 			{label}
 		</Typography>
 	);
+}
+
+// Coerces a flag value into a string for a controlled MUI input. Empty/absent
+// values render as an empty field; objects coerce the same way String() would.
+function toInputValue(value: FlagValue): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return String(value);
+	}
+	return Object.prototype.toString.call(value);
 }
 
 // Mono-styled input shared by string / number / date (the "technical voice").
@@ -233,21 +268,18 @@ export default function FlagValueInput({
 	const [jsonError, setJsonError] = useState<string | null>(null);
 
 	useEffect(() => {
-		// Convert value to string representation for editing
-		if (flagType.toLowerCase() === 'json') {
-			setStringValue(
-				typeof value === 'object'
-					? JSON.stringify(value, null, 2)
-					: String(value),
-			);
-		} else {
-			setStringValue(String(value));
-		}
+		// Sync the editable string buffer with the incoming value prop.
+		const next =
+			flagType.toLowerCase() === 'json' && typeof value === 'object'
+				? JSON.stringify(value, null, 2)
+				: stringifyPrimitive(value);
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: mirrors an external (prop) value into a local editable buffer
+		setStringValue(next);
 	}, [value, flagType]);
 
 	const validation = validateValue(value, flagType);
-	const isError = error || !validation.isValid;
-	const displayHelperText = helperText || validation.error;
+	const isError = Boolean(error) || !validation.isValid;
+	const displayHelperText = helperText ?? validation.error;
 
 	// Normalize flag type to lowercase for consistency
 	const normalizedFlagType = flagType.toLowerCase() as FlagType;
@@ -304,7 +336,7 @@ export default function FlagValueInput({
 		const handleJSONChange = (newValue: string) => {
 			setStringValue(newValue);
 			const jsonErr = validateValue(newValue, 'json');
-			setJsonError(jsonErr.isValid ? null : jsonErr.error || 'Invalid JSON');
+			setJsonError(jsonErr.isValid ? null : (jsonErr.error ?? 'Invalid JSON'));
 			if (jsonErr.isValid) {
 				try {
 					JSON.parse(newValue);
@@ -318,7 +350,7 @@ export default function FlagValueInput({
 		return (
 			<Box sx={fullWidth ? { width: '100%' } : undefined}>
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-					<FieldLabel label={label || 'JSON value'} />
+					<FieldLabel label={label ?? 'JSON value'} />
 				</Box>
 				<JsonChip
 					value={stringValue}
@@ -326,9 +358,9 @@ export default function FlagValueInput({
 					onChange={handleJSONChange}
 					disabled={disabled}
 				/>
-				{(jsonError || displayHelperText) && (
+				{(jsonError ?? displayHelperText) && (
 					<FormHelperText error={Boolean(jsonError)} sx={{ mx: 0, mt: 0.75 }}>
-						{jsonError || displayHelperText}
+						{jsonError ?? displayHelperText}
 					</FormHelperText>
 				)}
 			</Box>
@@ -341,7 +373,7 @@ export default function FlagValueInput({
 			<TextField
 				label={label}
 				type="number"
-				value={value ?? ''}
+				value={toInputValue(value)}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
 				fullWidth={fullWidth}
@@ -364,7 +396,7 @@ export default function FlagValueInput({
 			<TextField
 				label={label}
 				type="date"
-				value={value || ''}
+				value={toInputValue(value)}
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
 				fullWidth={fullWidth}
@@ -385,7 +417,7 @@ export default function FlagValueInput({
 	return (
 		<TextField
 			label={label}
-			value={value || ''}
+			value={toInputValue(value)}
 			onChange={(e) => onChange(e.target.value)}
 			placeholder={placeholder}
 			fullWidth={fullWidth}

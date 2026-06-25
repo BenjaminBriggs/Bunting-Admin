@@ -92,7 +92,7 @@ describe('validation-schemas', () => {
 		});
 
 		it('rejects a missing appId', () => {
-			const { appId, ...noApp } = valid;
+			const { appId: _appId, ...noApp } = valid;
 			expect(createFlagSchema.safeParse(noApp).success).toBe(false);
 		});
 

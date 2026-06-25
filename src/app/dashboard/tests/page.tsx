@@ -5,11 +5,19 @@ import {
 	CircularProgress,
 	Menu,
 	MenuItem,
+	type SxProps,
+	type Theme,
 	Typography,
 } from '@mui/material';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { CardChips } from '@/components/features/test-rollouts/CardChips';
+import {
+	groupByGroup,
+	GroupHeader,
+	hasNamedGroups,
+} from '@/components/ui/group-section';
 import {
 	archiveTestRollout,
 	deleteTest,
@@ -21,12 +29,6 @@ import {
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
 import { ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
-import { CardChips } from '@/components/features/test-rollouts/CardChips';
-import {
-	groupByGroup,
-	GroupHeader,
-	hasNamedGroups,
-} from '@/components/ui/group-section';
 
 // Vibrant treatment colors (Control is rendered soft + last).
 const TREATMENT_COLORS = ['#F6A444', '#54C9C0', '#F47C5D', '#82C868'];
@@ -39,7 +41,7 @@ interface SplitGroup {
 	isControl: boolean;
 }
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -50,7 +52,6 @@ function Ms({ name, sx }: { name: string; sx?: any }) {
 export default function TestsPage() {
 	const { selectedApp } = useApp();
 	const { markChangesDetected } = useChanges();
-	const router = useRouter();
 	const [tests, setTests] = useState<TestRollout[]>([]);
 	const [flagsById, setFlagsById] = useState<Record<string, Flag>>({});
 	const [loading, setLoading] = useState(true);
@@ -67,7 +68,6 @@ export default function TestsPage() {
 			return;
 		}
 		try {
-			setLoading(true);
 			const [testsData, flagsData] = await Promise.all([
 				fetchTests(selectedApp.id),
 				fetchFlags(selectedApp.id),
@@ -86,7 +86,9 @@ export default function TestsPage() {
 	}, [selectedApp]);
 
 	useEffect(() => {
-		loadTests();
+		void (async () => {
+			await loadTests();
+		})();
 	}, [loadTests]);
 
 	const openMenu = (e: React.MouseEvent<HTMLElement>, test: TestRollout) => {
@@ -143,7 +145,7 @@ export default function TestsPage() {
 			const isControl = name.toLowerCase() === 'control';
 			const group: SplitGroup = {
 				name,
-				pct: (variant as any)?.percentage ?? 0,
+				pct: variant.percentage,
 				color: isControl
 					? CONTROL_COLOR
 					: TREATMENT_COLORS[ti++ % TREATMENT_COLORS.length],
@@ -181,10 +183,13 @@ export default function TestsPage() {
 
 	const renderCard = (test: TestRollout, isArchived: boolean) => {
 		const split = buildSplit(test);
-		const flagChips = (test.flagIds || []).map((id) => ({
-			id,
-			name: flagsById[id]?.displayName || flagsById[id]?.key || id,
-		}));
+		const flagChips = test.flagIds.map((id) => {
+			const flag = Object.hasOwn(flagsById, id) ? flagsById[id] : undefined;
+			return {
+				id,
+				name: flag?.displayName ?? flag?.key ?? id,
+			};
+		});
 		return (
 			<Box
 				key={test.id}
@@ -313,7 +318,7 @@ export default function TestsPage() {
 				)}
 
 				<CardChips
-					conditions={test.conditions ?? []}
+					conditions={test.conditions}
 					flags={flagChips.map((c) => ({
 						...c,
 						href: `/dashboard/flags/${c.id}/edit`,
@@ -358,7 +363,9 @@ export default function TestsPage() {
 				<Box
 					component="input"
 					value={searchTerm}
-					onChange={(e: any) => setSearchTerm(e.target.value)}
+					onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+						setSearchTerm(e.target.value)
+					}
 					placeholder="Search tests by name or key…"
 					sx={{
 						border: 'none',
@@ -533,7 +540,7 @@ export default function TestsPage() {
 					</Typography>
 				</MenuItem>
 				<MenuItem
-					onClick={() => handleArchive('cancel')}
+					onClick={() => void handleArchive('cancel')}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
@@ -549,7 +556,7 @@ export default function TestsPage() {
 					</Typography>
 				</MenuItem>
 				<MenuItem
-					onClick={() => handleArchive('complete')}
+					onClick={() => void handleArchive('complete')}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="check_circle" sx={{ fontSize: 19, color: '#3F7A2D' }} />
@@ -565,7 +572,7 @@ export default function TestsPage() {
 					</Typography>
 				</MenuItem>
 				<MenuItem
-					onClick={handleDelete}
+					onClick={() => void handleDelete()}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="delete" sx={{ fontSize: 19, color: '#C8503C' }} />

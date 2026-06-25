@@ -1,9 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { type App, fetchApps } from './api';
 
 interface AppContextType {
@@ -18,8 +17,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-	const router = useRouter();
-	const { data: session, status } = useSession();
+	const { status } = useSession();
 	const [apps, setApps] = useState<App[]>([]);
 	const [selectedApp, setSelectedAppState] = useState<App | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -31,13 +29,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
 			setError(null);
 			const appsData = await fetchApps();
 			setApps(appsData);
-			// Reconcile the current selection against the fresh list: re-point it to
-			// the up-to-date object, or clear it if the app no longer exists (e.g. the
-			// DB was recreated under a running tab, or the app was deleted). Auto-select
-			// then picks apps[0] when any remain.
-			setSelectedAppState((prev) =>
-				prev ? (appsData.find((a) => a.id === prev.id) ?? null) : null,
-			);
+			// Reconcile the current selection against the fresh list: re-point an
+			// existing selection to the up-to-date object, and otherwise auto-select
+			// the first app (covers no prior selection, or a selected app that no
+			// longer exists — e.g. the DB was recreated under a running tab).
+			setSelectedAppState((prev) => {
+				const reconciled = prev
+					? appsData.find((a) => a.id === prev.id)
+					: undefined;
+				return reconciled ?? appsData.at(0) ?? null;
+			});
 		} catch (err) {
 			console.error('Error loading apps:', err);
 			setError(
@@ -54,19 +55,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setSelectedAppState(app);
 	};
 
-	// Initial load - only when authenticated
+	// Initial load - only when authenticated. (Auto-selection of the first app is
+	// handled inside refreshApps' reconciliation, so no separate effect is needed.)
 	useEffect(() => {
 		if (status === 'authenticated') {
-			refreshApps();
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: refreshApps sets a loading flag before an async fetch once authenticated
+			void refreshApps();
 		}
 	}, [status]);
-
-	// Auto-select first app when apps change and no app is selected
-	useEffect(() => {
-		if (apps.length > 0 && !selectedApp) {
-			setSelectedAppState(apps[0]);
-		}
-	}, [apps, selectedApp]);
 
 	const value: AppContextType = {
 		apps,

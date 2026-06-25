@@ -1,5 +1,6 @@
 'use client';
 
+import type { SxProps, Theme } from '@mui/material';
 import {
 	Alert,
 	Box,
@@ -11,7 +12,12 @@ import {
 	Stack,
 	Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import type {
+	ChangeEvent,
+	FocusEvent,
+	KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
+import { useCallback, useState } from 'react';
 import {
 	conditionTemplates,
 	operatorLabels,
@@ -59,6 +65,15 @@ const OP_WORDS: Record<string, string> = {
 	custom: 'matches',
 };
 
+// Render a FlagValue as a display string. Objects (json flags) are serialized as
+// JSON rather than relying on default Object stringification ("[object Object]").
+function flagValueToString(value: FlagValue): string {
+	if (typeof value === 'object') {
+		return JSON.stringify(value);
+	}
+	return String(value);
+}
+
 function typeLabel(type: string): string {
 	return conditionTemplates.find((t) => t.type === type)?.label ?? type;
 }
@@ -81,7 +96,7 @@ function Ms({
 	onClick,
 }: {
 	name: string;
-	sx?: any;
+	sx?: SxProps<Theme>;
 	onClick?: () => void;
 }) {
 	return (
@@ -104,10 +119,10 @@ export function VariantCreatorModal({
 	const [order, setOrder] = useState(1);
 	const [errors, setErrors] = useState<string[]>([]);
 
-	const env = envColors[environment] ?? envColors.production;
+	const env = envColors[environment];
 
 	const getDefaultValue = useCallback((): FlagValue => {
-		switch (flagType as any) {
+		switch (flagType) {
 			case 'bool':
 				return false;
 			case 'string':
@@ -131,15 +146,22 @@ export function VariantCreatorModal({
 		setErrors([]);
 	}, [getDefaultValue]);
 
-	useEffect(() => {
-		if (existingVariant) {
-			setVariantValue(existingVariant.value);
-			setConditions(existingVariant.conditions);
-			setOrder(existingVariant.order);
-		} else {
-			resetForm();
+	// Sync form state on the render where the modal transitions to open: load the
+	// existing variant for editing, or reset to defaults for creation. Resetting
+	// during render (rather than in an effect) avoids cascading renders.
+	const [wasOpen, setWasOpen] = useState(false);
+	if (open !== wasOpen) {
+		setWasOpen(open);
+		if (open) {
+			if (existingVariant) {
+				setVariantValue(existingVariant.value);
+				setConditions(existingVariant.conditions);
+				setOrder(existingVariant.order);
+			} else {
+				resetForm();
+			}
 		}
-	}, [existingVariant, open, resetForm]);
+	}
 
 	const generateVariantName = (conds: RuleCondition[]): string => {
 		if (conds.length === 0) {
@@ -203,7 +225,7 @@ export function VariantCreatorModal({
 		clearErrors();
 	};
 	const addValue = (index: number, raw: string) => {
-		const val = (raw || '').trim();
+		const val = raw.trim();
 		if (!val) {
 			return;
 		}
@@ -268,7 +290,7 @@ export function VariantCreatorModal({
 
 	const validateForm = (): boolean => {
 		const newErrors: string[] = [];
-		if (flagType === 'string' && !String(variantValue).trim()) {
+		if (flagType === 'string' && !flagValueToString(variantValue).trim()) {
 			newErrors.push('Variant value is required for string flags');
 		}
 		if (flagType === 'json') {
@@ -299,7 +321,7 @@ export function VariantCreatorModal({
 			return;
 		}
 		onSave({
-			id: existingVariant?.id || generateId(),
+			id: existingVariant?.id ?? generateId(),
 			name: generateVariantName(conditions),
 			type: 'conditional',
 			conditions,
@@ -322,7 +344,7 @@ export function VariantCreatorModal({
 					.filter((c) => c.values.length)
 					.map(
 						(c) =>
-							`${typeLabel(c.type)} ${OP_WORDS[c.operator] || c.operator} ${c.values.join(', ')}`,
+							`${typeLabel(c.type)} ${OP_WORDS[c.operator] ?? c.operator} ${c.values.join(', ')}`,
 					)
 					.join(' and ');
 	const serveDisplay =
@@ -330,7 +352,7 @@ export function VariantCreatorModal({
 			? typeof variantValue === 'string'
 				? variantValue
 				: JSON.stringify(variantValue)
-			: String(variantValue);
+			: flagValueToString(variantValue);
 	const variantJson = JSON.stringify(
 		{
 			value: variantValue,
@@ -554,7 +576,7 @@ export function VariantCreatorModal({
 										<Box
 											component="select"
 											value={condition.type}
-											onChange={(e: any) =>
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
 												setConditionType(index, e.target.value)
 											}
 											sx={selectSx}
@@ -568,14 +590,14 @@ export function VariantCreatorModal({
 										<Box
 											component="select"
 											value={condition.operator}
-											onChange={(e: any) =>
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
 												setConditionOperator(index, e.target.value)
 											}
 											sx={{ ...selectSx, fontWeight: 600, color: ink.soft }}
 										>
 											{operatorsForType(condition.type).map((op) => (
 												<option key={op} value={op}>
-													{operatorLabels[op] || op}
+													{operatorLabels[op] ?? op}
 												</option>
 											))}
 										</Box>
@@ -583,7 +605,7 @@ export function VariantCreatorModal({
 											<Box
 												component="input"
 												value={condition.values[0] ?? ''}
-												onChange={(e: any) =>
+												onChange={(e: ChangeEvent<HTMLInputElement>) =>
 													setSingleValue(index, e.target.value)
 												}
 												placeholder={placeholderForType(condition.type)}
@@ -603,7 +625,7 @@ export function VariantCreatorModal({
 												<Box
 													component="input"
 													value={condition.values[0] ?? ''}
-													onChange={(e: any) =>
+													onChange={(e: ChangeEvent<HTMLInputElement>) =>
 														setBetweenValue(index, 0, e.target.value)
 													}
 													placeholder="min"
@@ -621,7 +643,7 @@ export function VariantCreatorModal({
 												<Box
 													component="input"
 													value={condition.values[1] ?? ''}
-													onChange={(e: any) =>
+													onChange={(e: ChangeEvent<HTMLInputElement>) =>
 														setBetweenValue(index, 1, e.target.value)
 													}
 													placeholder="max"
@@ -682,14 +704,16 @@ export function VariantCreatorModal({
 															? `${placeholderForType(condition.type)} — Enter to add`
 															: 'add…'
 													}
-													onKeyDown={(e: any) => {
+													onKeyDown={(
+														e: ReactKeyboardEvent<HTMLInputElement>,
+													) => {
 														if (e.key === 'Enter') {
 															e.preventDefault();
 															addValue(index, e.currentTarget.value);
 															e.currentTarget.value = '';
 														}
 													}}
-													onBlur={(e: any) => {
+													onBlur={(e: FocusEvent<HTMLInputElement>) => {
 														addValue(index, e.currentTarget.value);
 														e.currentTarget.value = '';
 													}}

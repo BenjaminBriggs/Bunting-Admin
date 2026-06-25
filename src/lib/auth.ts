@@ -20,7 +20,7 @@ if (
 ) {
 	providers.push({
 		id: 'oidc',
-		name: process.env.OIDC_PROVIDER_NAME || 'SSO',
+		name: process.env.OIDC_PROVIDER_NAME ?? 'SSO',
 		type: 'oidc' as const,
 		issuer: process.env.OIDC_ISSUER,
 		clientId: process.env.OIDC_CLIENT_ID,
@@ -89,6 +89,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			return '/auth/error?error=AccessDenied';
 		},
 		async jwt({ token, user }) {
+			// `user` is only populated on the initial sign-in; on every subsequent
+			// call to refresh the token it is undefined, so this MUST stay optional.
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- NextAuth types `user` as non-null but it is undefined on token refresh
 			if (user?.email) {
 				const dbUser = await createOrUpdateUser({
 					email: user.email,
@@ -100,7 +103,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			}
 			return token;
 		},
-		async session({ session, token }) {
+		session({ session, token }) {
 			if (token.id) {
 				session.user.id = token.id as string;
 				session.user.role = token.role as string;

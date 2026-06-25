@@ -21,7 +21,8 @@ describe('local AES-GCM protection', () => {
 		const envelope = await protectPrivateKey(PEM, cfg);
 		expect(envelope).not.toContain('BEGIN PRIVATE KEY');
 		expect(envelope).not.toContain('fakekeymaterial');
-		expect(JSON.parse(envelope).scheme).toBe('local');
+		const parsed = JSON.parse(envelope) as { scheme: string };
+		expect(parsed.scheme).toBe('local');
 	});
 
 	it('rejects decryption with the wrong secret', async () => {
@@ -35,7 +36,9 @@ describe('local AES-GCM protection', () => {
 	});
 
 	it('rejects tampered ciphertext (GCM auth)', async () => {
-		const env = JSON.parse(await protectPrivateKey(PEM, cfg));
+		const env = JSON.parse(await protectPrivateKey(PEM, cfg)) as {
+			ciphertext: string;
+		};
 		const buf = Buffer.from(env.ciphertext, 'base64');
 		buf[0] ^= 0xff;
 		env.ciphertext = buf.toString('base64');
@@ -56,14 +59,16 @@ describe('legacy plaintext migration', () => {
 describe('kms scheme dispatch (injected adapter)', () => {
 	// Reversible fake KMS so we exercise dispatch without AWS.
 	const kms = {
-		encrypt: async (b: Buffer) => Buffer.concat([Buffer.from('ENC:'), b]),
-		decrypt: async (b: Buffer) => b.subarray(4),
+		encrypt: (b: Buffer) =>
+			Promise.resolve(Buffer.concat([Buffer.from('ENC:'), b])),
+		decrypt: (b: Buffer) => Promise.resolve(b.subarray(4)),
 	};
 	const cfg = { scheme: 'kms', keyId: 'alias/test', kms } as const;
 
 	it('round-trips via the KMS adapter', async () => {
 		const envelope = await protectPrivateKey(PEM, cfg);
-		expect(JSON.parse(envelope).scheme).toBe('kms');
+		const parsed = JSON.parse(envelope) as { scheme: string };
+		expect(parsed.scheme).toBe('kms');
 		await expect(unprotectPrivateKey(envelope, cfg)).resolves.toBe(PEM);
 	});
 });

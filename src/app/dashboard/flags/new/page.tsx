@@ -56,7 +56,7 @@ export default function NewFlagPage() {
 				type: payload.type,
 				defaultValues: payload.defaultValues,
 				description: payload.description,
-				group: payload.group || null,
+				group: payload.group,
 			});
 			markChangesDetected();
 			router.push('/dashboard/flags');
@@ -88,7 +88,7 @@ export default function NewFlagPage() {
 				saving={saving}
 				saveError={saveError}
 				existingGroups={existingGroups}
-				onSubmit={handleSubmit}
+				onSubmit={(payload) => void handleSubmit(payload)}
 			/>
 		</Box>
 	);

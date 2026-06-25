@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const { faker } = require('@faker-js/faker');
 
 // Set consistent seed for reproducible tests

@@ -1,6 +1,15 @@
 import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+interface StoredDefaults {
+	development?: unknown;
+	beta?: unknown;
+	production?: unknown;
+	defaultValue?: unknown;
+	[key: string]: unknown;
+}
 
 async function migrateFlagsToV2() {
 	console.log('🔍 Checking flags for schema v2 compliance...');
@@ -18,10 +27,13 @@ async function migrateFlagsToV2() {
 
 	console.log(`Found ${flags.length} flags to check.`);
 
-	const flagsToMigrate = [];
+	const flagsToMigrate: Array<(typeof flags)[number]> = [];
 
 	for (const flag of flags) {
-		const defaultValues = flag.defaultValues as any;
+		const defaultValues = flag.defaultValues as unknown as
+			| StoredDefaults
+			| null
+			| undefined;
 
 		// Check if this flag has the old schema (single defaultValue) or incomplete v2 schema
 		const needsMigration =
@@ -50,10 +62,13 @@ async function migrateFlagsToV2() {
 	console.log(`\n🔧 Migrating ${flagsToMigrate.length} flags to schema v2...`);
 
 	for (const flag of flagsToMigrate) {
-		const defaultValues = flag.defaultValues as any;
+		const defaultValues = flag.defaultValues as unknown as
+			| StoredDefaults
+			| null
+			| undefined;
 
 		// Try to determine what the default value should be
-		let newDefaultValue;
+		let newDefaultValue: unknown;
 
 		if (
 			defaultValues &&
@@ -103,7 +118,7 @@ async function migrateFlagsToV2() {
 		await prisma.flag.update({
 			where: { id: flag.id },
 			data: {
-				defaultValues: newDefaultValues,
+				defaultValues: newDefaultValues as Prisma.InputJsonValue,
 				variants: {}, // Reset variants to empty object for each environment
 			},
 		});
@@ -128,7 +143,7 @@ async function main() {
 }
 
 if (require.main === module) {
-	main();
+	void main();
 }
 
 export { migrateFlagsToV2 };

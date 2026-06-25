@@ -1,38 +1,50 @@
 // Utility functions for comparing configurations
 
+// A config item (flag/test/rollout) as it appears in a published artifact. The
+// shape is only loosely known here (it comes from S3 JSON), so values are
+// `unknown`; we only ever read an optional `name`.
+// A config section (flags/tests/rollouts) as it appears in a published
+// artifact. Values are only loosely known here (they come from S3 JSON), so
+// they are `unknown` and narrowed when a specific field is read. Using
+// `Record<string, unknown>` keeps the real `ConfigArtifact` (from types/core)
+// assignable to these parameters.
+type ConfigItemMap = Record<string, unknown>;
+
 export interface ConfigArtifact {
 	schema_version: number;
 	config_version: string | null;
 	published_at: string | null;
 	app_identifier: string;
+	// Schema v1 keeps flags at the top level.
+	flags?: ConfigItemMap;
 	development?: {
-		flags: Record<string, any>;
-		test_rollouts?: Record<string, any>;
+		flags: ConfigItemMap;
+		test_rollouts?: ConfigItemMap;
 	};
 	beta?: {
-		flags: Record<string, any>;
-		test_rollouts?: Record<string, any>;
+		flags: ConfigItemMap;
+		test_rollouts?: ConfigItemMap;
 	};
 	production?: {
-		flags: Record<string, any>;
-		test_rollouts?: Record<string, any>;
+		flags: ConfigItemMap;
+		test_rollouts?: ConfigItemMap;
 	};
-	tests?: Record<string, any>;
-	rollouts?: Record<string, any>;
+	tests?: ConfigItemMap;
+	rollouts?: ConfigItemMap;
 }
 
 // Helper functions to extract data from both schema versions
-function extractFlags(config: ConfigArtifact): Record<string, any> {
+function extractFlags(config: ConfigArtifact): ConfigItemMap {
 	// Schema v1 has flags at the top level
-	return (config as any).flags || {};
+	return config.flags ?? {};
 }
 
-function extractTests(config: ConfigArtifact): Record<string, any> {
-	return config.tests || {};
+function extractTests(config: ConfigArtifact): ConfigItemMap {
+	return config.tests ?? {};
 }
 
-function extractRollouts(config: ConfigArtifact): Record<string, any> {
-	return config.rollouts || {};
+function extractRollouts(config: ConfigArtifact): ConfigItemMap {
+	return config.rollouts ?? {};
 }
 
 // Compare two configs and return whether they are different
@@ -103,11 +115,7 @@ export function getConfigChanges(
 
 	if (!publishedConfig) {
 		// All current items are "added"
-		const currentFlags = extractFlags(currentConfig);
-		const currentTest = extractTests(currentConfig);
-		const currentRollouts = extractRollouts(currentConfig);
-
-		Object.keys(currentFlags).forEach((key) => {
+		Object.keys(extractFlags(currentConfig)).forEach((key) => {
 			changes.push({
 				type: 'flag',
 				action: 'added',
@@ -119,148 +127,99 @@ export function getConfigChanges(
 		return changes;
 	}
 
-	// Compare flags
-	const currentFlags = extractFlags(currentConfig);
-	const publishedFlags = extractFlags(publishedConfig);
-
-	// Check for added/modified flags
-	Object.keys(currentFlags).forEach((key) => {
-		if (!publishedFlags[key]) {
-			changes.push({
-				type: 'flag',
-				action: 'added',
-				key,
-				name: `Flag: ${key}`,
-			});
-		} else if (
-			JSON.stringify(currentFlags[key]) !== JSON.stringify(publishedFlags[key])
-		) {
-			const details = getObjectDifferences(
-				currentFlags[key],
-				publishedFlags[key],
-			);
-			changes.push({
-				type: 'flag',
-				action: 'modified',
-				key,
-				name: `Flag: ${key}`,
-				details,
-			});
-		}
-	});
-
-	// Check for removed flags
-	Object.keys(publishedFlags).forEach((key) => {
-		if (!currentFlags[key]) {
-			changes.push({
-				type: 'flag',
-				action: 'removed',
-				key,
-				name: `Flag: ${key}`,
-			});
-		}
-	});
-
-	// Compare tests
-	const currentTests = extractTests(currentConfig);
-	const publishedTests = extractTests(publishedConfig);
-
-	// Check for added/modified tests
-	Object.keys(currentTests).forEach((key) => {
-		if (!publishedTests[key]) {
-			changes.push({
-				type: 'test',
-				action: 'added',
-				key,
-				name: `Test: ${currentTests[key].name || key}`,
-			});
-		} else if (
-			JSON.stringify(currentTests[key]) !== JSON.stringify(publishedTests[key])
-		) {
-			const details = getObjectDifferences(
-				currentTests[key],
-				publishedTests[key],
-			);
-			changes.push({
-				type: 'test',
-				action: 'modified',
-				key,
-				name: `Test: ${currentTests[key].name || key}`,
-				details,
-			});
-		}
-	});
-
-	// Check for removed tests
-	Object.keys(publishedTests).forEach((key) => {
-		if (!currentTests[key]) {
-			changes.push({
-				type: 'test',
-				action: 'removed',
-				key,
-				name: `Test: ${publishedTests[key].name || key}`,
-			});
-		}
-	});
-
-	// Compare rollouts
-	const currentRollouts = extractRollouts(currentConfig);
-	const publishedRollouts = extractRollouts(publishedConfig);
-
-	// Check for added/modified rollouts
-	Object.keys(currentRollouts).forEach((key) => {
-		if (!publishedRollouts[key]) {
-			changes.push({
-				type: 'rollout',
-				action: 'added',
-				key,
-				name: `Rollout: ${currentRollouts[key].name || key}`,
-			});
-		} else if (
-			JSON.stringify(currentRollouts[key]) !==
-			JSON.stringify(publishedRollouts[key])
-		) {
-			const details = getObjectDifferences(
-				currentRollouts[key],
-				publishedRollouts[key],
-			);
-			changes.push({
-				type: 'rollout',
-				action: 'modified',
-				key,
-				name: `Rollout: ${currentRollouts[key].name || key}`,
-				details,
-			});
-		}
-	});
-
-	// Check for removed rollouts
-	Object.keys(publishedRollouts).forEach((key) => {
-		if (!currentRollouts[key]) {
-			changes.push({
-				type: 'rollout',
-				action: 'removed',
-				key,
-				name: `Rollout: ${publishedRollouts[key].name || key}`,
-			});
-		}
-	});
+	diffSection(
+		'flag',
+		'Flag',
+		extractFlags(currentConfig),
+		extractFlags(publishedConfig),
+		changes,
+	);
+	diffSection(
+		'test',
+		'Test',
+		extractTests(currentConfig),
+		extractTests(publishedConfig),
+		changes,
+	);
+	diffSection(
+		'rollout',
+		'Rollout',
+		extractRollouts(currentConfig),
+		extractRollouts(publishedConfig),
+		changes,
+	);
 
 	return changes;
 }
 
+// Diff one section (flags/tests/rollouts) of the config and append the changes.
+// Flags are labelled by key; tests/rollouts prefer the item's `name`.
+function diffSection(
+	kind: ConfigChange['type'],
+	label: string,
+	current: ConfigItemMap,
+	published: ConfigItemMap,
+	changes: ConfigChange[],
+): void {
+	const nameFor = (key: string, item: unknown): string => {
+		if (kind === 'flag') {
+			return `${label}: ${key}`;
+		}
+		const name = (item as { name?: string } | undefined)?.name;
+		return `${label}: ${name ?? key}`;
+	};
+
+	for (const key of Object.keys(current)) {
+		const cur = current[key];
+		const pub = published[key];
+		if (!pub) {
+			changes.push({
+				type: kind,
+				action: 'added',
+				key,
+				name: nameFor(key, cur),
+			});
+		} else if (JSON.stringify(cur) !== JSON.stringify(pub)) {
+			changes.push({
+				type: kind,
+				action: 'modified',
+				key,
+				name: nameFor(key, cur),
+				details: getObjectDifferences(
+					(cur ?? {}) as Record<string, unknown>,
+					pub as Record<string, unknown>,
+				),
+			});
+		}
+	}
+
+	for (const key of Object.keys(published)) {
+		if (!current[key]) {
+			changes.push({
+				type: kind,
+				action: 'removed',
+				key,
+				name: nameFor(key, published[key]),
+			});
+		}
+	}
+}
+
 // Helper function to sort object keys for consistent comparison
-function sortObject(obj: Record<string, any>): Record<string, any> {
+function sortObject(obj: Record<string, unknown>): Record<string, unknown> {
 	return Object.keys(obj)
 		.sort()
-		.reduce<Record<string, any>>((result, key) => {
+		.reduce<Record<string, unknown>>((result, key) => {
 			result[key] = obj[key];
 			return result;
 		}, {});
 }
 
 // Helper function to get differences between two objects
-function getObjectDifferences(current: any, published: any): string[] {
+function getObjectDifferences(
+	current: Record<string, unknown>,
+	published: Record<string, unknown>,
+): string[] {
 	const differences: string[] = [];
 
 	// Simple implementation - just check top-level properties

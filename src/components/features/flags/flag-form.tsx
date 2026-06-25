@@ -6,9 +6,12 @@
 // derives key / live JSON / pending-changes; the page supplies initial values and the
 // submit / archive / delete callbacks (which keep the existing API + validation logic).
 
+import type { SxProps, Theme } from '@mui/material';
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import Link from 'next/link';
+import type { ChangeEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import type { FlagType } from '@/components/features/flags/flag-value-input';
 import FlagValueInput, {
 	getDefaultValueForType,
 	processValueForType,
@@ -23,6 +26,7 @@ import {
 	surface,
 	technicalButtonSx,
 } from '@/theme/designTokens';
+import type { FlagValue } from '@/types';
 
 type EnvKey = 'development' | 'beta' | 'production';
 
@@ -33,7 +37,7 @@ export interface FlagFormValues {
 	description: string;
 	group: string;
 	archived?: boolean;
-	defaultValues: Record<EnvKey, any>;
+	defaultValues: Record<EnvKey, FlagValue>;
 }
 
 export interface FlagFormSubmit {
@@ -42,7 +46,7 @@ export interface FlagFormSubmit {
 	type: string;
 	description: string;
 	group: string;
-	defaultValues: Record<EnvKey, any>;
+	defaultValues: Record<EnvKey, FlagValue>;
 }
 
 interface FlagFormProps {
@@ -79,7 +83,7 @@ const TYPE_TAG: Record<string, string> = {
 const ENV_ORDER: EnvKey[] = ['production', 'beta', 'development'];
 
 // Field label (Nunito caps).
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: { children: ReactNode }) {
 	return (
 		<Typography
 			component="div"
@@ -97,7 +101,7 @@ function Label({ children }: { children: React.ReactNode }) {
 	);
 }
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -105,24 +109,42 @@ function Ms({ name, sx }: { name: string; sx?: any }) {
 	);
 }
 
-// Format a stored value for display in the pending-changes diff.
-function fmt(type: string, v: any): string {
-	if (type === 'bool') {
+// Reproduces String()'s coercion (objects become "[object Object]") while
+// keeping the type checker aware that every branch yields a string.
+function coerce(v: FlagValue | null | undefined): string {
+	if (v == null) {
 		return String(v);
 	}
+	if (typeof v === 'string') {
+		return v;
+	}
+	if (typeof v === 'number' || typeof v === 'boolean') {
+		return String(v);
+	}
+	return Object.prototype.toString.call(v);
+}
+
+// Format a stored value for display in the pending-changes diff.
+function fmt(type: string, v: FlagValue | null | undefined): string {
+	const s = coerce(v);
+	if (type === 'bool') {
+		return s;
+	}
 	if (type === 'string') {
-		return v === '' || v == null ? '""' : `"${v}"`;
+		return v === '' || v == null ? '""' : `"${s}"`;
 	}
 	if (type === 'int' || type === 'double') {
-		return v === '' || v == null ? '0' : String(v);
+		return v === '' || v == null ? '0' : s;
 	}
+
 	if (type === 'date') {
-		return v || '—';
+		return s || '—';
 	}
+
 	if (type === 'json') {
-		return v || '{}';
+		return s || '{}';
 	}
-	return String(v);
+	return s;
 }
 
 export default function FlagForm({
@@ -143,27 +165,27 @@ export default function FlagForm({
 	const [type, setType] = useState(initial.type);
 	const [description, setDescription] = useState(initial.description);
 	const [group, setGroup] = useState(initial.group);
-	const [defaultValues, setDefaultValues] = useState<Record<EnvKey, any>>(
+	const [defaultValues, setDefaultValues] = useState<Record<EnvKey, FlagValue>>(
 		initial.defaultValues,
 	);
 
 	// The key is immutable once a flag exists: editing the display name must not
 	// rename it. In create mode the key is still derived from the display name.
-	const keyText = isEdit ? initial.key : normalizeKey(displayName) || '';
+	const keyText = isEdit ? initial.key : normalizeKey(displayName);
 	const keyValidation = validateKey(keyText);
 	const keyChanged = isEdit && keyText !== initial.key && keyText.length > 0;
 	const keyAvailable = !isEdit ? keyText.length > 0 : keyChanged;
 
 	const setTypeAndReset = (t: string) => {
 		setType(t);
-		const d = getDefaultValueForType(t as any);
+		const d = getDefaultValueForType(t as FlagType);
 		setDefaultValues({ development: d, beta: d, production: d });
 	};
-	const setEnv = (env: EnvKey, v: any) =>
+	const setEnv = (env: EnvKey, v: FlagValue) =>
 		setDefaultValues((prev) => ({ ...prev, [env]: v }));
 
 	const valuesValid = ENV_ORDER.every(
-		(env) => validateValue(defaultValues[env], type as any).isValid,
+		(env) => validateValue(defaultValues[env], type as FlagType).isValid,
 	);
 
 	// Pending changes (edit only)
@@ -175,7 +197,9 @@ export default function FlagForm({
 		if (displayName !== initial.displayName) {
 			out.push({
 				field: 'NAME',
+
 				from: initial.displayName || '∅',
+
 				to: displayName || '∅',
 			});
 		}
@@ -186,7 +210,7 @@ export default function FlagForm({
 			out.push({ field: 'TYPE', from: initial.type, to: type });
 		}
 		ENV_ORDER.forEach((env) => {
-			if (String(defaultValues[env]) !== String(initial.defaultValues[env])) {
+			if (coerce(defaultValues[env]) !== coerce(initial.defaultValues[env])) {
 				out.push({
 					field: `${env.toUpperCase()} DEFAULT`,
 					from: fmt(initial.type, initial.defaultValues[env]),
@@ -197,14 +221,18 @@ export default function FlagForm({
 		if (description !== initial.description) {
 			out.push({
 				field: 'DESCRIPTION',
+
 				from: initial.description || '∅',
+
 				to: description || '∅',
 			});
 		}
 		if (group !== initial.group) {
 			out.push({
 				field: 'GROUP',
+
 				from: initial.group || '∅',
+
 				to: group || '∅',
 			});
 		}
@@ -225,12 +253,19 @@ export default function FlagForm({
 	const canSubmit = dirty && !keyValidation.error && valuesValid && !saving;
 
 	const jsonPreview = useMemo(() => {
-		const processed: Record<string, any> = {};
+		const processed: Record<string, FlagValue> = {};
 		ENV_ORDER.forEach((env) => {
-			processed[env] = processValueForType(defaultValues[env], type as any);
+			processed[env] = processValueForType(
+				defaultValues[env],
+				type as FlagType,
+			);
 		});
 		return JSON.stringify(
-			{ key: keyText || 'new_flag', type, defaults: processed },
+			{
+				key: keyText || 'new_flag',
+				type,
+				defaults: processed,
+			},
 			null,
 			2,
 		);
@@ -240,10 +275,16 @@ export default function FlagForm({
 		if (!canSubmit) {
 			return;
 		}
-		const processed: Record<EnvKey, any> = {
-			development: processValueForType(defaultValues.development, type as any),
-			beta: processValueForType(defaultValues.beta, type as any),
-			production: processValueForType(defaultValues.production, type as any),
+		const processed: Record<EnvKey, FlagValue> = {
+			development: processValueForType(
+				defaultValues.development,
+				type as FlagType,
+			),
+			beta: processValueForType(defaultValues.beta, type as FlagType),
+			production: processValueForType(
+				defaultValues.production,
+				type as FlagType,
+			),
 		};
 		onSubmit({
 			key: keyText,
@@ -374,7 +415,9 @@ export default function FlagForm({
 						<Box
 							component="input"
 							value={displayName}
-							onChange={(e: any) => setDisplayName(e.target.value)}
+							onChange={(e: ChangeEvent<HTMLInputElement>) =>
+								setDisplayName(e.target.value)
+							}
 							placeholder="e.g. Metering enabled"
 							sx={{
 								mt: 1,
@@ -673,7 +716,7 @@ export default function FlagForm({
 										</Typography>
 										<Box sx={{ ml: 'auto', minWidth: 0 }}>
 											<FlagValueInput
-												flagType={type as any}
+												flagType={type as FlagType}
 												value={defaultValues[env]}
 												onChange={(v) => setEnv(env, v)}
 												fullWidth={false}
@@ -715,7 +758,9 @@ export default function FlagForm({
 						<Box
 							component="textarea"
 							value={description}
-							onChange={(e: any) => setDescription(e.target.value)}
+							onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+								setDescription(e.target.value)
+							}
 							placeholder="What does this flag control?"
 							sx={{
 								width: '100%',
@@ -749,7 +794,9 @@ export default function FlagForm({
 						<Box
 							component="input"
 							value={group}
-							onChange={(e: any) => setGroup(e.target.value)}
+							onChange={(e: ChangeEvent<HTMLInputElement>) =>
+								setGroup(e.target.value)
+							}
 							placeholder="e.g. Checkout & Billing"
 							list="flag-group-options"
 							sx={{

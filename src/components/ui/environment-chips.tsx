@@ -64,21 +64,12 @@ export function getEnvironmentBandColors(
 	environment: Environment,
 ): EnvironmentBandColors {
 	const c = envColors[environment];
-	if (!c) {
-		return {
-			bg: '#EFE8D9',
-			border: '#E4DBC8',
-			dot: '#A79F8C',
-			text: '#6B6452',
-			short: environment,
-		};
-	}
 	return {
 		bg: c.headerBg,
 		border: c.border,
 		dot: c.dot,
 		text: c.text,
-		short: ENV_SHORT[environment] ?? environment,
+		short: ENV_SHORT[environment],
 	};
 }
 

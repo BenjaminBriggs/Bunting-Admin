@@ -8,6 +8,7 @@
 // import { buntingTheme } from './buntingTheme';
 // <ThemeProvider theme={buntingTheme}><CssBaseline />{children}</ThemeProvider>
 
+import type { Components, Theme } from '@mui/material/styles';
 import { alpha, createTheme } from '@mui/material/styles';
 
 // --- Design tokens (kept local; ./designTokens re-exports the env palette + helpers) ---
@@ -386,7 +387,7 @@ export function createBuntingTheme() {
 					},
 				},
 			},
-		} as any,
+		} satisfies Components<Omit<Theme, 'components'>>,
 	});
 }
 

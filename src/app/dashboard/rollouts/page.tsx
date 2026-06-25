@@ -10,8 +10,16 @@ import {
 	Slider,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material';
 import Link from 'next/link';
+import type React from 'react';
 import { useEffect, useState } from 'react';
+import { CardChips } from '@/components/features/test-rollouts/CardChips';
+import {
+	groupByGroup,
+	GroupHeader,
+	hasNamedGroups,
+} from '@/components/ui/group-section';
 import {
 	archiveTestRollout,
 	fetchFlags,
@@ -21,22 +29,10 @@ import {
 } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
-import {
-	danger,
-	ink,
-	monoFontFamily,
-	surface,
-	typeColors,
-} from '@/theme/designTokens';
-import { CardChips } from '@/components/features/test-rollouts/CardChips';
-import {
-	groupByGroup,
-	GroupHeader,
-	hasNamedGroups,
-} from '@/components/ui/group-section';
+import { ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
 
 // Material Symbols glyph.
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -88,7 +84,7 @@ export default function RolloutsPage() {
 			}
 		};
 
-		loadRollouts();
+		void loadRollouts();
 	}, [selectedApp]);
 
 	const filteredRollouts = rollouts.filter(
@@ -181,7 +177,7 @@ export default function RolloutsPage() {
 	} as const;
 
 	const renderRolloutCard = (rollout: TestRollout) => {
-		const pct = rollout.percentage || 0;
+		const pct = rollout.percentage ?? 0;
 		const busy = updatingRollouts.has(rollout.id);
 		return (
 			<Box
@@ -264,7 +260,7 @@ export default function RolloutsPage() {
 								);
 							}}
 							onChangeCommitted={(_, value) => {
-								handlePercentageChange(rollout.id, value);
+								void handlePercentageChange(rollout.id, value);
 							}}
 							disabled={busy}
 							min={0}
@@ -310,7 +306,7 @@ export default function RolloutsPage() {
 				</Box>
 
 				<CardChips
-					conditions={rollout.conditions ?? []}
+					conditions={rollout.conditions}
 					flags={rollout.flagIds.map((id) => ({
 						id,
 						name: flagLabels[id] ?? id,
@@ -340,7 +336,9 @@ export default function RolloutsPage() {
 				<Box
 					component="input"
 					value={searchTerm}
-					onChange={(e: any) => setSearchTerm(e.target.value)}
+					onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+						setSearchTerm(e.target.value)
+					}
 					placeholder="Search rollouts by name or key…"
 					sx={{
 						border: 'none',
@@ -453,7 +451,7 @@ export default function RolloutsPage() {
 						</Box>
 					</Box>
 					{archivedRollouts.map((rollout) => {
-						const pct = rollout.percentage || 0;
+						const pct = rollout.percentage ?? 0;
 						const complete = pct >= 100;
 						return (
 							<Box
@@ -556,9 +554,11 @@ export default function RolloutsPage() {
 				</MenuItem>
 				<Box sx={{ height: '1px', bgcolor: '#F1EBDD', m: '5px 4px' }} />
 				<MenuItem
-					onClick={() =>
-						menuRolloutId && handleArchive(menuRolloutId, 'cancel')
-					}
+					onClick={() => {
+						if (menuRolloutId) {
+							void handleArchive(menuRolloutId, 'cancel');
+						}
+					}}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
@@ -569,9 +569,11 @@ export default function RolloutsPage() {
 					</Typography>
 				</MenuItem>
 				<MenuItem
-					onClick={() =>
-						menuRolloutId && handleArchive(menuRolloutId, 'complete')
-					}
+					onClick={() => {
+						if (menuRolloutId) {
+							void handleArchive(menuRolloutId, 'complete');
+						}
+					}}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="check_circle" sx={{ fontSize: 19, color: '#3F7A2D' }} />

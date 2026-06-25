@@ -250,7 +250,7 @@ export function ConfigurationSection({
 			return (
 				<Box sx={{ py: 2 }}>
 					{content}
-					{variant === 'default' && <Divider sx={{ mt: 3 }} />}
+					<Divider sx={{ mt: 3 }} />
 				</Box>
 			);
 	}
@@ -295,7 +295,7 @@ export function ConfigurationGroup({
 }: ConfigurationGroupProps) {
 	const content = (
 		<Stack spacing={spacing}>
-			{(title || description) && (
+			{(Boolean(title) || Boolean(description)) && (
 				<Box sx={{ mb: 2 }}>
 					{title && (
 						<Typography variant="h5" sx={{ mb: 1 }}>

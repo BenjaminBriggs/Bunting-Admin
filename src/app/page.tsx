@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 
 export default function HomePage() {
 	const router = useRouter();
-	const { data: session, status } = useSession();
+	const { status } = useSession();
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
@@ -24,10 +24,8 @@ export default function HomePage() {
 			}
 
 			// Authenticated, go to dashboard (dashboard will handle app checks)
-			if (status === 'authenticated') {
-				router.replace('/dashboard');
-				setLoading(false);
-			}
+			router.replace('/dashboard');
+			setLoading(false);
 		};
 
 		handleRouting();

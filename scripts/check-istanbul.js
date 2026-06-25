@@ -12,7 +12,7 @@ try {
 
 	console.log(
 		'babel-plugin-istanbul -> test-exclude:',
-		out || '(no dependency reported)',
+		out ?? '(no dependency reported)',
 	);
 } catch (error) {
 	console.error('Failed to read babel-plugin-istanbul dependency metadata');

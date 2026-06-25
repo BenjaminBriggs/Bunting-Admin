@@ -1,6 +1,9 @@
+import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import {
 	updateTestRolloutSchema,
 	zodErrorResponse,
@@ -27,7 +30,7 @@ export async function GET(
 
 		return NextResponse.json(testRollout);
 	} catch (error) {
-		console.error('Failed to fetch test/rollout:', error);
+		logger.error({ err: error }, 'Failed to fetch test/rollout');
 		return NextResponse.json(
 			{ error: 'Failed to fetch test/rollout' },
 			{ status: 500 },
@@ -40,7 +43,15 @@ export async function PUT(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	const actor = await actorFromHeaders(request.headers);
 	try {
+		// variants/rolloutValues are z.any() in the schema (opaque JSON blobs), so
+		// the parsed object carries them as `any`. Re-type the whole parsed result
+		// as unknown-valued blobs so they flow cleanly into the JSON column input.
+		const parsed = updateTestRolloutSchema.parse(await request.json()) as Omit<
+			ReturnType<typeof updateTestRolloutSchema.parse>,
+			'variants' | 'rolloutValues'
+		> & { variants?: unknown; rolloutValues?: unknown };
 		const {
 			name,
 			description,
@@ -51,7 +62,7 @@ export async function PUT(
 			archived,
 			variants,
 			rolloutValues,
-		} = updateTestRolloutSchema.parse(await request.json());
+		} = parsed;
 
 		const testRollout = await prisma.testRollout.update({
 			where: {
@@ -62,13 +73,23 @@ export async function PUT(
 				description,
 				group: group ?? null,
 				percentage,
-				conditions: conditions || [],
-				flagIds: flagIds || [],
-				archived: archived || false,
-				variants: variants || null,
-				rolloutValues: rolloutValues || null,
+				conditions: conditions ?? [],
+				flagIds: flagIds ?? [],
+				archived: archived ?? false,
+				variants: (variants ?? null) as Prisma.InputJsonValue,
+				rolloutValues: (rolloutValues ?? null) as Prisma.InputJsonValue,
 				updatedAt: new Date(),
 			},
+		});
+
+		const entityType = testRollout.type === 'TEST' ? 'test' : 'rollout';
+		await logActivity({
+			actor,
+			action: 'update',
+			entityType,
+			entityId: testRollout.id,
+			appId: testRollout.appId,
+			summary: `Updated ${entityType} ${testRollout.name}`,
 		});
 
 		return NextResponse.json(testRollout);
@@ -77,7 +98,7 @@ export async function PUT(
 		if (validationError) {
 			return validationError;
 		}
-		console.error('Failed to update test/rollout:', error);
+		logger.error({ err: error }, 'Failed to update test/rollout');
 		return NextResponse.json(
 			{ error: 'Failed to update test/rollout' },
 			{ status: 500 },
@@ -90,16 +111,31 @@ export async function DELETE(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	const actor = await actorFromHeaders(request.headers);
 	try {
+		const record = await prisma.testRollout.findUnique({ where: { id } });
+
 		await prisma.testRollout.delete({
 			where: {
 				id,
 			},
 		});
 
+		if (record) {
+			const entityType = record.type === 'TEST' ? 'test' : 'rollout';
+			await logActivity({
+				actor,
+				action: 'delete',
+				entityType,
+				entityId: id,
+				appId: record.appId,
+				summary: `Deleted ${entityType}`,
+			});
+		}
+
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('Failed to delete test/rollout:', error);
+		logger.error({ err: error }, 'Failed to delete test/rollout');
 		return NextResponse.json(
 			{ error: 'Failed to delete test/rollout' },
 			{ status: 500 },

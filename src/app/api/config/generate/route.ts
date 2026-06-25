@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AppNotFoundError, generateConfigFromDb } from '@/lib/config-generator';
+import { logger } from '@/lib/logger';
 
 const generateConfigSchema = z.object({
 	appId: z.string(),
@@ -10,7 +11,7 @@ const generateConfigSchema = z.object({
 // POST /api/config/generate - Generate current config JSON from database
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appId } = generateConfigSchema.parse(body);
 
 		const config = await generateConfigFromDb(appId);
@@ -29,12 +30,9 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		console.error('Error generating config:', error);
+		logger.error({ err: error }, 'Error generating config');
 		return NextResponse.json(
-			{
-				error: 'Failed to generate config',
-				details: error instanceof Error ? error.message : 'Unknown error',
-			},
+			{ error: 'Failed to generate config' },
 			{ status: 500 },
 		);
 	}

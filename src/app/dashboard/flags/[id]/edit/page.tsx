@@ -13,7 +13,6 @@ import { useCallback, useEffect, useState } from 'react';
 import FlagForm, {
 	type FlagFormSubmit,
 } from '@/components/features/flags/flag-form';
-import { getDefaultValueForType } from '@/components/features/flags/flag-value-input';
 import {
 	deleteFlag,
 	fetchFlag,
@@ -22,6 +21,7 @@ import {
 	updateFlag,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
+import type { FlagType as FlagTypeValue } from '@/types';
 
 type EnvKey = 'development' | 'beta' | 'production';
 
@@ -29,7 +29,7 @@ export default function EditFlagPage() {
 	const params = useParams();
 	const router = useRouter();
 	const { markChangesDetected } = useChanges();
-	const flagId = params?.id as string;
+	const flagId = params.id as string;
 
 	const [loading, setLoading] = useState(true);
 	const [flag, setFlag] = useState<FlagType | null>(null);
@@ -40,7 +40,6 @@ export default function EditFlagPage() {
 
 	const loadFlag = useCallback(async () => {
 		try {
-			setLoading(true);
 			const flagData = await fetchFlag(flagId);
 			setFlag(flagData);
 		} catch (err) {
@@ -51,8 +50,27 @@ export default function EditFlagPage() {
 	}, [flagId]);
 
 	useEffect(() => {
-		loadFlag();
-	}, [loadFlag]);
+		let active = true;
+		fetchFlag(flagId)
+			.then((flagData) => {
+				if (active) {
+					setFlag(flagData);
+				}
+			})
+			.catch((err: unknown) => {
+				if (active) {
+					setError(err instanceof Error ? err.message : 'Failed to load flag');
+				}
+			})
+			.finally(() => {
+				if (active) {
+					setLoading(false);
+				}
+			});
+		return () => {
+			active = false;
+		};
+	}, [flagId]);
 
 	// Once the flag loads we know its app — pull sibling group names for autocomplete.
 	useEffect(() => {
@@ -81,9 +99,9 @@ export default function EditFlagPage() {
 			await updateFlag(flagId, {
 				key: payload.key,
 				displayName: payload.displayName,
-				type: payload.type as any,
+				type: payload.type as FlagTypeValue,
 				defaultValues: payload.defaultValues,
-				variants: flag.variants || {},
+				variants: flag.variants,
 				description: payload.description,
 				group: payload.group || null,
 				archived: flag.archived,
@@ -104,6 +122,7 @@ export default function EditFlagPage() {
 			return;
 		}
 		try {
+			setLoading(true);
 			await updateFlag(flagId, { archived: !flag.archived });
 			markChangesDetected();
 			await loadFlag();
@@ -155,7 +174,7 @@ export default function EditFlagPage() {
 		return (
 			<Box sx={{ textAlign: 'center', py: 8 }}>
 				<Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
-					{error || 'Flag not found'}
+					{error ?? 'Flag not found'}
 				</Alert>
 				<Button variant="outlined" component={Link} href="/dashboard/flags">
 					Back to Flags
@@ -165,8 +184,7 @@ export default function EditFlagPage() {
 	}
 
 	const flagTypeLower = flag.type.toLowerCase();
-	const envDefault = (env: EnvKey) =>
-		flag.defaultValues?.[env] ?? getDefaultValueForType(flagTypeLower as any);
+	const envDefault = (env: EnvKey) => flag.defaultValues[env];
 
 	return (
 		<Box sx={{ py: 1 }}>
@@ -183,8 +201,8 @@ export default function EditFlagPage() {
 					displayName: flag.displayName,
 					key: flag.key,
 					type: flagTypeLower,
-					description: flag.description || '',
-					group: flag.group || '',
+					description: flag.description ?? '',
+					group: flag.group ?? '',
 					archived: flag.archived,
 					defaultValues: {
 						development: envDefault('development'),
@@ -195,9 +213,9 @@ export default function EditFlagPage() {
 				saving={saving}
 				saveError={saveError}
 				existingGroups={existingGroups}
-				onSubmit={handleSubmit}
-				onArchiveToggle={handleArchiveToggle}
-				onDelete={handleDelete}
+				onSubmit={(payload) => void handleSubmit(payload)}
+				onArchiveToggle={() => void handleArchiveToggle()}
+				onDelete={() => void handleDelete()}
 			/>
 		</Box>
 	);

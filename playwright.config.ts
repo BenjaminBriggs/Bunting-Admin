@@ -6,7 +6,7 @@ export default defineConfig({
 		? [['github'], ['list']]
 		: [['html', { open: 'never' }], ['list']],
 	use: {
-		baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+		baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
 		trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
 		viewport: { width: 1280, height: 720 },
 	},

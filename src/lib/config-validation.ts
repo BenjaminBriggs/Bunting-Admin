@@ -5,6 +5,8 @@
  * This addresses the issue where invalid flag types like "boolean" weren't caught.
  */
 
+import type { FlagValue } from '@/types';
+
 export interface ValidationResult {
 	errors: ValidationError[];
 	warnings: ValidationWarning[];
@@ -35,19 +37,28 @@ const ENVIRONMENTS = ['development', 'beta', 'production'] as const;
 export type ValidFlagType = (typeof VALID_FLAG_TYPES)[number];
 export type Environment = (typeof ENVIRONMENTS)[number];
 
+// Narrow an unknown value to a plain object for property inspection.
+function asRecord(value: unknown): Record<string, unknown> {
+	return typeof value === 'object' && value !== null
+		? (value as Record<string, unknown>)
+		: {};
+}
+
 /**
  * Validates a complete configuration object for errors and warnings.
  * This is the core validation logic that should catch type mismatches.
  */
-export function validateConfig(config: any): ValidationResult {
+export function validateConfig(config: unknown): ValidationResult {
 	const errors: ValidationError[] = [];
 	const warnings: ValidationWarning[] = [];
 
 	// Validate flags
-	Object.entries(config.flags || {}).forEach(([key, flag]: [string, any]) => {
+	Object.entries(asRecord(asRecord(config).flags)).forEach(([key, raw]) => {
+		const flag = asRecord(raw);
 		// Check for environment-specific default values (schema v2)
 		ENVIRONMENTS.forEach((env) => {
-			if (flag[env]?.default === undefined || flag[env].default === null) {
+			const envCfg = asRecord(flag[env]);
+			if (envCfg.default === undefined || envCfg.default === null) {
 				errors.push({
 					type: 'missing_default',
 					message: `Flag "${key}" is missing a default value for environment "${env}"`,
@@ -60,7 +71,7 @@ export function validateConfig(config: any): ValidationResult {
 		if (!isValidFlagType(flag.type)) {
 			errors.push({
 				type: 'invalid_type',
-				message: `Flag "${key}" has invalid type "${flag.type}"`,
+				message: `Flag "${key}" has invalid type "${String(flag.type)}"`,
 				flagKey: key,
 			});
 		}
@@ -68,9 +79,10 @@ export function validateConfig(config: any): ValidationResult {
 		// Validate JSON flags for all environments
 		if (flag.type === 'json') {
 			ENVIRONMENTS.forEach((env) => {
-				if (flag[env] && typeof flag[env].default === 'string') {
+				const envDefault = asRecord(flag[env]).default;
+				if (typeof envDefault === 'string') {
 					try {
-						JSON.parse(flag[env].default);
+						JSON.parse(envDefault);
 					} catch {
 						errors.push({
 							type: 'invalid_json',
@@ -90,7 +102,7 @@ export function validateConfig(config: any): ValidationResult {
  * Type guard to check if a string is a valid flag type.
  * This prevents bugs like "boolean" vs "bool".
  */
-export function isValidFlagType(type: any): type is ValidFlagType {
+export function isValidFlagType(type: unknown): type is ValidFlagType {
 	return (
 		typeof type === 'string' && VALID_FLAG_TYPES.includes(type as ValidFlagType)
 	);
@@ -99,14 +111,15 @@ export function isValidFlagType(type: any): type is ValidFlagType {
 /**
  * Validates a single flag's type and structure.
  */
-export function validateFlag(flag: any): ValidationResult {
+export function validateFlag(flag: unknown): ValidationResult {
 	const errors: ValidationError[] = [];
 	const warnings: ValidationWarning[] = [];
 
-	if (!isValidFlagType(flag.type)) {
+	const type = asRecord(flag).type;
+	if (!isValidFlagType(type)) {
 		errors.push({
 			type: 'invalid_type',
-			message: `Invalid flag type "${flag.type}". Must be one of: ${VALID_FLAG_TYPES.join(', ')}`,
+			message: `Invalid flag type "${String(type)}". Must be one of: ${VALID_FLAG_TYPES.join(', ')}`,
 		});
 	}
 
@@ -116,7 +129,10 @@ export function validateFlag(flag: any): ValidationResult {
 /**
  * Validates that a flag value matches its declared type.
  */
-export function validateFlagValue(type: ValidFlagType, value: any): boolean {
+export function validateFlagValue(
+	type: ValidFlagType,
+	value: unknown,
+): boolean {
 	switch (type) {
 		case 'bool':
 			return typeof value === 'boolean';
@@ -163,7 +179,7 @@ export function normalizeFlagType(type: string): string {
 /**
  * Generates appropriate default values for testing.
  */
-export function getDefaultValueForType(type: ValidFlagType): any {
+export function getDefaultValueForType(type: ValidFlagType): FlagValue {
 	switch (type) {
 		case 'bool':
 			return false;
@@ -177,7 +193,5 @@ export function getDefaultValueForType(type: ValidFlagType): any {
 			return new Date().toISOString();
 		case 'json':
 			return '{}';
-		default:
-			return null;
 	}
 }

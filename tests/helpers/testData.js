@@ -1,3 +1,4 @@
+/* global expect -- this helper is invoked from jest tests, where `expect` is a runtime global; the filename is not matched by the jest test-file glob */
 const { getTestDatabase } = require('./database');
 const TestDataFactories = require('./factories');
 
@@ -103,13 +104,15 @@ class TestDataHelpers {
 				return defaultValue + 1;
 			case 'double':
 				return parseFloat((defaultValue + 1.1).toFixed(3));
-			case 'date':
+			case 'date': {
 				const date = new Date(defaultValue);
 				date.setDate(date.getDate() + 1);
 				return date.toISOString();
-			case 'json':
+			}
+			case 'json': {
 				const parsed = JSON.parse(defaultValue);
 				return JSON.stringify({ ...parsed, override: true });
+			}
 			default:
 				return null;
 		}

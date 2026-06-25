@@ -1,6 +1,9 @@
+import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 // POST /api/test-rollouts/[id]/archive
 export async function POST(
@@ -8,10 +11,11 @@ export async function POST(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	const actor = await actorFromHeaders(request.headers);
 	try {
-		const { type } = await request.json();
+		const { type } = (await request.json()) as { type?: unknown };
 
-		if (!['cancel', 'complete'].includes(type)) {
+		if (type !== 'cancel' && type !== 'complete') {
 			return NextResponse.json(
 				{
 					error: 'Type must be either "cancel" or "complete"',
@@ -32,7 +36,7 @@ export async function POST(
 			);
 		}
 
-		const updateData: any = {
+		const updateData: Prisma.TestRolloutUncheckedUpdateInput = {
 			archived: true,
 			archivedAt: new Date(),
 		};
@@ -50,10 +54,23 @@ export async function POST(
 			data: updateData,
 		});
 
+		const entityType = testRollout.type === 'TEST' ? 'test' : 'rollout';
+		await logActivity({
+			actor,
+			action: 'archive',
+			entityType,
+			entityId: id,
+			appId: testRollout.appId,
+			summary: `Archived ${entityType} (${type})`,
+		});
+
 		return NextResponse.json(updated);
-	} catch (error: any) {
-		console.error('Error archiving test/rollout:', error);
-		if (error.code === 'P2025') {
+	} catch (error) {
+		logger.error({ err: error }, 'Error archiving test/rollout');
+		if (
+			error instanceof Prisma.PrismaClientKnownRequestError &&
+			error.code === 'P2025'
+		) {
 			return NextResponse.json(
 				{ error: 'Test/Rollout not found' },
 				{ status: 404 },

@@ -62,7 +62,19 @@ export default [
 			'@typescript-eslint/no-unsafe-call': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/no-unsafe-return': 'warn',
-			'@typescript-eslint/no-unused-vars': 'warn',
+			// Honour the `_`-prefix convention for intentionally-unused bindings and
+			// the `{ used, ...rest }` strip idiom. The base no-unused-vars is disabled
+			// for TS files (below) so it doesn't double-report or false-flag types/enums.
+			'@typescript-eslint/no-unused-vars': [
+				'warn',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_',
+					caughtErrorsIgnorePattern: '^_',
+					destructuredArrayIgnorePattern: '^_',
+					ignoreRestSiblings: true,
+				},
+			],
 			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 			'@typescript-eslint/require-await': 'warn',
 		},
@@ -81,6 +93,16 @@ export default [
 			'no-useless-escape': 'warn',
 			'react-hooks/immutability': 'warn',
 			'react-hooks/set-state-in-effect': 'warn',
+		},
+	},
+	{
+		// On TS files the base no-unused-vars is superseded by the type-aware
+		// @typescript-eslint/no-unused-vars (configured above) — disable the base
+		// rule here so it doesn't double-report or false-flag types/enums. Must come
+		// last to win over the all-files ratchet block above.
+		files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'],
+		rules: {
+			'no-unused-vars': 'off',
 		},
 	},
 ];

@@ -4,14 +4,16 @@
 // Mirrors FlagForm: owns editable state, derives key / live JSON / pending-changes;
 // the page supplies initial values and the submit / complete / delete callbacks.
 
+import type { SxProps, Theme } from '@mui/material';
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import Link from 'next/link';
+import type { ChangeEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { validateKey } from '@/lib/utils';
 import {
 	conditionTemplates,
 	operatorLabels,
 } from '@/components/features/rules/rule-templates';
+import { validateKey } from '@/lib/utils';
 import {
 	codeSurface,
 	ink,
@@ -67,7 +69,7 @@ const FIELD_OPTS: Array<{ type: ConditionType; label: string }> =
 
 // Operators valid for a given condition type (matches SDK evaluation).
 const operatorsForType = (type: ConditionType): ConditionOperator[] =>
-	CONDITION_OPERATORS[type] ?? ['equals'];
+	CONDITION_OPERATORS[type];
 
 function slug(s: string): string {
 	return (s || '')
@@ -93,7 +95,7 @@ function Ms({
 	onClick,
 }: {
 	name: string;
-	sx?: any;
+	sx?: SxProps<Theme>;
 	onClick?: () => void;
 }) {
 	return (
@@ -102,7 +104,7 @@ function Ms({
 		</Box>
 	);
 }
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: { children: ReactNode }) {
 	return (
 		<Typography
 			component="div"
@@ -144,14 +146,12 @@ export default function TestForm({
 	const [name, setName] = useState(initial.name);
 	const [groups, setGroups] = useState<TestGroupValue[]>(initial.groups);
 	const [adjustSplit, setAdjustSplit] = useState(initial.adjustSplit);
-	const [audienceOn, setAudienceOn] = useState(
-		(initial.conditions?.length ?? 0) > 0,
-	);
+	const [audienceOn, setAudienceOn] = useState(initial.conditions.length > 0);
 	const [conditions, setConditions] = useState<Condition[]>(initial.conditions);
 	const [description, setDescription] = useState(initial.description);
 	const [group, setGroup] = useState(initial.group);
 
-	const keyText = slug(name) || (isEdit ? initial.key : '');
+	const keyText = slug(name);
 	const keyChanged = isEdit && keyText !== initial.key && keyText.length > 0;
 	const keyValidation = validateKey(keyText);
 	const keyAvailable =
@@ -284,7 +284,11 @@ export default function TestForm({
 		}
 		const out: Array<{ field: string; from: string; to: string }> = [];
 		if (name !== initial.name) {
-			out.push({ field: 'NAME', from: initial.name || '∅', to: name || '∅' });
+			out.push({
+				field: 'NAME',
+				from: initial.name,
+				to: name,
+			});
 		}
 		if (keyChanged) {
 			out.push({ field: 'KEY', from: initial.key, to: keyText });
@@ -300,7 +304,7 @@ export default function TestForm({
 			});
 		}
 		const origAud = audienceLabel(
-			(initial.conditions?.length ?? 0) > 0,
+			initial.conditions.length > 0,
 			initial.conditions,
 		);
 		if (audienceLabel(audienceOn, conditions) !== origAud) {
@@ -313,15 +317,15 @@ export default function TestForm({
 		if (description !== initial.description) {
 			out.push({
 				field: 'HYPOTHESIS',
-				from: initial.description || '∅',
-				to: description || '∅',
+				from: initial.description,
+				to: description,
 			});
 		}
 		if (group !== initial.group) {
 			out.push({
 				field: 'GROUP',
-				from: initial.group || '∅',
-				to: group || '∅',
+				from: initial.group,
+				to: group,
 			});
 		}
 		return out;
@@ -355,7 +359,7 @@ export default function TestForm({
 					};
 		return JSON.stringify(
 			{
-				key: keyText || 'new_test',
+				key: keyText === '' ? 'new_test' : keyText,
 				groups: effGroups.map((g) => ({ name: g.name, weight: g.weight })),
 				audience,
 			},
@@ -519,7 +523,9 @@ export default function TestForm({
 					<Box
 						component="input"
 						value={name}
-						onChange={(e: any) => setName(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLInputElement>) =>
+							setName(e.target.value)
+						}
 						placeholder="e.g. Paywall copy"
 						sx={{ ...fieldSx, mt: 1 }}
 					/>
@@ -550,7 +556,7 @@ export default function TestForm({
 								py: 0.375,
 							}}
 						>
-							{keyText || '—'}
+							{keyText === '' ? '—' : keyText}
 						</Box>
 						{keyValidation.error ? (
 							<Typography
@@ -726,7 +732,9 @@ export default function TestForm({
 								<Box
 									component="input"
 									value={g.name}
-									onChange={(e: any) => setGroupName(i, e.target.value)}
+									onChange={(e: ChangeEvent<HTMLInputElement>) =>
+										setGroupName(i, e.target.value)
+									}
 									placeholder="Group name"
 									sx={{
 										flex: 1,
@@ -748,7 +756,9 @@ export default function TestForm({
 										<Box
 											component="input"
 											value={String(effGroups[i].weight)}
-											onChange={(e: any) => setGroupWeight(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLInputElement>) =>
+												setGroupWeight(i, e.target.value)
+											}
 											inputMode="numeric"
 											sx={{
 												width: 58,
@@ -966,7 +976,9 @@ export default function TestForm({
 										<Box
 											component="select"
 											value={c.type}
-											onChange={(e: any) => setCondType(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+												setCondType(i, e.target.value as ConditionType)
+											}
 											sx={{ ...condSelSx, flex: 1 }}
 										>
 											{FIELD_OPTS.map((f) => (
@@ -978,19 +990,23 @@ export default function TestForm({
 										<Box
 											component="select"
 											value={c.operator}
-											onChange={(e: any) => setCondOp(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+												setCondOp(i, e.target.value as ConditionOperator)
+											}
 											sx={{ ...condSelSx, width: 84 }}
 										>
 											{operatorsForType(c.type).map((op) => (
 												<option key={op} value={op}>
-													{operatorLabels[op] || op}
+													{operatorLabels[op] ?? op}
 												</option>
 											))}
 										</Box>
 										<Box
 											component="input"
 											value={c.values.join(', ')}
-											onChange={(e: any) => setCondValue(i, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLInputElement>) =>
+												setCondValue(i, e.target.value)
+											}
 											placeholder="value"
 											sx={{
 												flex: 1,
@@ -1056,7 +1072,9 @@ export default function TestForm({
 					<Box
 						component="textarea"
 						value={description}
-						onChange={(e: any) => setDescription(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+							setDescription(e.target.value)
+						}
 						placeholder="What are you testing, and what do you expect to win?"
 						sx={{
 							...fieldSx,
@@ -1081,7 +1099,9 @@ export default function TestForm({
 					<Box
 						component="input"
 						value={group}
-						onChange={(e: any) => setGroup(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLInputElement>) =>
+							setGroup(e.target.value)
+						}
 						placeholder="e.g. Checkout & Billing"
 						sx={fieldSx}
 					/>

@@ -2,6 +2,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import { getConfigBucket, getS3Client } from '@/lib/storage';
 
 const downloadConfigSchema = z.object({
@@ -13,7 +14,7 @@ const s3Client = getS3Client();
 // POST /api/config/download - Download published config file
 export async function POST(request: NextRequest) {
 	try {
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { appIdentifier } = downloadConfigSchema.parse(body);
 
 		const bucketName = getConfigBucket();
@@ -35,10 +36,12 @@ export async function POST(request: NextRequest) {
 		}
 
 		const configContent = await response.Body.transformToString();
-		const config = JSON.parse(configContent);
+		const config = JSON.parse(configContent) as {
+			config_version?: string | null;
+		};
 
 		// Generate filename with version
-		const filename = `${appIdentifier}-v${config.config_version || 'latest'}.json`;
+		const filename = `${appIdentifier}-v${config.config_version ?? 'latest'}.json`;
 
 		// Return the config as a downloadable file
 		return new NextResponse(JSON.stringify(config, null, 2), {
@@ -57,12 +60,9 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Error downloading config:', error);
+		logger.error({ err: error }, 'Error downloading config');
 		return NextResponse.json(
-			{
-				error: 'Failed to download configuration',
-				details: error instanceof Error ? error.message : 'Unknown error',
-			},
+			{ error: 'Failed to download configuration' },
 			{ status: 500 },
 		);
 	}

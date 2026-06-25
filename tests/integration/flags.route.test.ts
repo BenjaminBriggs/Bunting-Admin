@@ -47,7 +47,11 @@ describe('flags route', () => {
 		expect(res.ok).toBe(true);
 		expect(res.status).toBe(201);
 
-		const json = await res.json();
+		const json = (await res.json()) as {
+			key: string;
+			appId: string;
+			variants: { development: unknown[] };
+		};
 		expect(json.key).toBe('new-flag');
 		expect(json.appId).toBe(app.id);
 		expect(json.variants.development).toEqual([]);

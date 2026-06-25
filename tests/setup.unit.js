@@ -1,3 +1,4 @@
+/* global jest, afterAll -- jest provides these globals at runtime; this setup filename is not matched by the jest test-file glob */
 // Keep unit tests snappy
 jest.setTimeout(5000);
 

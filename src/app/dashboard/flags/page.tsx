@@ -8,8 +8,9 @@ import {
 	Stack,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { FlagRow } from '@/components';
 import { fetchFlags, type Flag as FlagType } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
@@ -23,7 +24,7 @@ import {
 // Flags with no group land in this bucket, always shown last.
 const UNGROUPED = 'Ungrouped';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -172,7 +173,7 @@ export default function FlagsPage() {
 			}
 		};
 
-		loadFlags();
+		void loadFlags();
 	}, [selectedApp]);
 
 	const matchesSearch = (flag: FlagType) => {
@@ -195,7 +196,7 @@ export default function FlagsPage() {
 	const groupedActive = useMemo(() => {
 		const buckets = new Map<string, FlagType[]>();
 		for (const flag of activeFlags) {
-			const key = flag.group?.trim() || UNGROUPED;
+			const key = flag.group?.trim() ?? UNGROUPED;
 			const list = buckets.get(key) ?? [];
 			list.push(flag);
 			buckets.set(key, list);
@@ -256,7 +257,9 @@ export default function FlagsPage() {
 					component="input"
 					ref={searchInputRef}
 					value={searchTerm}
-					onChange={(e: any) => setSearchTerm(e.target.value)}
+					onChange={(e: ChangeEvent<HTMLInputElement>) =>
+						setSearchTerm(e.target.value)
+					}
 					placeholder="Search flags by name or key…"
 					sx={{
 						flex: 1,

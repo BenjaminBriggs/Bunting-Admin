@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import TestForm, {
 	type TestFormSubmit,
 	type TestGroupValue,
@@ -18,6 +18,7 @@ import {
 	archiveTestRollout,
 	deleteTest,
 	fetchTestRollout,
+	type TestRollout,
 	updateTestRollout,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
@@ -34,29 +35,26 @@ export default function EditTestPage() {
 	const params = useParams();
 	const router = useRouter();
 	const { markChangesDetected } = useChanges();
-	const testId = params?.id as string;
+	const testId = params.id as string;
 
 	const [loading, setLoading] = useState(true);
-	const [test, setTest] = useState<any>(null);
+	const [test, setTest] = useState<TestRollout | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [saveError, setSaveError] = useState<string | null>(null);
 
-	const loadTest = useCallback(async () => {
-		try {
-			setLoading(true);
-			const data = await fetchTestRollout(testId);
-			setTest(data);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to load test');
-		} finally {
-			setLoading(false);
-		}
-	}, [testId]);
-
 	useEffect(() => {
-		loadTest();
-	}, [loadTest]);
+		void (async () => {
+			try {
+				const data = await fetchTestRollout(testId);
+				setTest(data);
+			} catch (err) {
+				setError(err instanceof Error ? err.message : 'Failed to load test');
+			} finally {
+				setLoading(false);
+			}
+		})();
+	}, [testId]);
 
 	const handleSubmit = async (payload: TestFormSubmit) => {
 		if (!test) {
@@ -81,7 +79,7 @@ export default function EditTestPage() {
 				group: payload.group || null,
 				variants,
 				conditions: payload.conditions,
-				flagIds: test.flagIds || [],
+				flagIds: test.flagIds,
 				archived: test.archived,
 			});
 			markChangesDetected();
@@ -151,7 +149,7 @@ export default function EditTestPage() {
 		return (
 			<Box sx={{ textAlign: 'center', py: 8 }}>
 				<Alert severity="error" sx={{ mb: 3, maxWidth: 600, mx: 'auto' }}>
-					{error || 'Test not found'}
+					{error ?? 'Test not found'}
 				</Alert>
 				<Button variant="outlined" component={Link} href="/dashboard/tests">
 					Back to Tests
@@ -160,13 +158,13 @@ export default function EditTestPage() {
 		);
 	}
 
-	const groups: TestGroupValue[] = Object.entries(test.variants || {}).map(
-		([name, data]: [string, any]) => ({
+	const groups: TestGroupValue[] = Object.entries(test.variants ?? {}).map(
+		([name, data]: [string, TestVariant]) => ({
 			name,
-			weight: data.percentage || 0,
+			weight: data.percentage,
 		}),
 	);
-	const conditions: Condition[] = test.conditions || [];
+	const conditions: Condition[] = test.conditions;
 
 	return (
 		<Box sx={{ py: 1 }}>
@@ -189,15 +187,15 @@ export default function EditTestPage() {
 								],
 					adjustSplit: groups.length > 0 ? !isEvenSplit(groups) : false,
 					conditions,
-					description: test.description || '',
-					group: test.group || '',
+					description: test.description ?? '',
+					group: test.group ?? '',
 					archived: test.archived,
 				}}
 				saving={saving}
 				saveError={saveError}
-				onSubmit={handleSubmit}
-				onComplete={handleComplete}
-				onDelete={handleDelete}
+				onSubmit={(payload) => void handleSubmit(payload)}
+				onComplete={() => void handleComplete()}
+				onDelete={() => void handleDelete()}
 			/>
 		</Box>
 	);

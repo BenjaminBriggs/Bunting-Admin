@@ -1,10 +1,11 @@
 'use client';
 
 import { Box, CircularProgress, Typography } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useState } from 'react';
 import { createApp } from '@/lib/api';
 import { ink, monoFontFamily } from '@/theme/designTokens';
 
@@ -17,7 +18,7 @@ interface SetupData {
 	};
 }
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -285,7 +286,9 @@ export default function SetupPage() {
 									<Box
 										component="input"
 										value={setupData.appName}
-										onChange={(e: any) => handleNameChange(e.target.value)}
+										onChange={(e: ChangeEvent<HTMLInputElement>) =>
+											handleNameChange(e.target.value)
+										}
 										placeholder="e.g. Feast iOS"
 										sx={{
 											...inputReset,
@@ -314,7 +317,7 @@ export default function SetupPage() {
 									<Box
 										component="input"
 										value={setupData.appIdentifier}
-										onChange={(e: any) =>
+										onChange={(e: ChangeEvent<HTMLInputElement>) =>
 											setSetupData((prev) => ({
 												...prev,
 												appIdentifier: e.target.value,
@@ -542,7 +545,7 @@ export default function SetupPage() {
 						) : (
 							<Box
 								component="button"
-								onClick={handleCreate}
+								onClick={() => void handleCreate()}
 								disabled={loading}
 								sx={{
 									display: 'inline-flex',

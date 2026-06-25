@@ -114,6 +114,18 @@ export async function createOrUpdateUser(userData: {
 		},
 	});
 
+	// Persist the bootstrapped first admin into the access list. Subsequent
+	// sign-ins are authorized against the access list (not the first-user rule),
+	// so without this the very first admin would be locked out on their next
+	// login once a user row exists.
+	if (firstUser) {
+		await db.accessList.upsert({
+			where: { type_value: { type: 'EMAIL', value: email.toLowerCase() } },
+			update: {},
+			create: { type: 'EMAIL', value: email.toLowerCase(), role: 'ADMIN' },
+		});
+	}
+
 	return {
 		id: user.id,
 		role: user.role,
@@ -127,6 +139,8 @@ export async function updateUserActivity(userId: string): Promise<void> {
 			data: { lastActiveAt: new Date() },
 		});
 	} catch (error) {
+		// This module is reachable from edge middleware (via auth → auth-session),
+		// so it must not import the pino logger (a Node-only module). Use console.
 		console.error('Failed to update user activity:', error);
 		// Don't throw - this is not critical
 	}

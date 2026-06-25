@@ -8,6 +8,7 @@ import {
 	TextField,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -34,8 +35,9 @@ import {
 	technicalButtonSx,
 	typeColors,
 } from '@/theme/designTokens';
+import type { ConfigArtifact } from '@/types';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -149,19 +151,17 @@ export default function PublishPage() {
 					getPublishHistory(appId).catch(() => []),
 				]);
 
+				const publishedConfig: ConfigArtifact | null =
+					publishedConfigResult.config ?? null;
+
 				setValidation(validationResult);
 				setPublishHistory(historyResult);
 				setCurrentConfig(currentConfig);
-				setPublishedConfig(publishedConfigResult.config);
+				setPublishedConfig(publishedConfig);
 
-				const configChanges = getConfigChanges(
-					currentConfig,
-					publishedConfigResult.config,
-				);
+				const configChanges = getConfigChanges(currentConfig, publishedConfig);
 				setChanges(configChanges);
-				setHasChangesDetected(
-					hasConfigChanges(currentConfig, publishedConfigResult.config),
-				);
+				setHasChangesDetected(hasConfigChanges(currentConfig, publishedConfig));
 			} catch (err) {
 				console.error('Failed to load app data:', err);
 				setError(
@@ -175,11 +175,14 @@ export default function PublishPage() {
 	);
 
 	useEffect(() => {
-		if (selectedApp) {
-			loadAppData(selectedApp.id);
-		} else {
-			setLoading(false);
-		}
+		const load = async () => {
+			if (selectedApp) {
+				await loadAppData(selectedApp.id);
+			} else {
+				setLoading(false);
+			}
+		};
+		void load();
 	}, [selectedApp, loadAppData]);
 
 	const handlePublish = async () => {
@@ -483,7 +486,7 @@ export default function PublishPage() {
 										{warningCount} warning{warningCount === 1 ? '' : 's'} ·{' '}
 										{errorCount} blocking error{errorCount === 1 ? '' : 's'}
 									</Typography>
-									{(validation?.warnings[0] || validation?.errors[0]) && (
+									{(validation?.warnings[0] ?? validation?.errors[0]) && (
 										<Typography
 											sx={{
 												font: "500 12px 'JetBrains Mono'",
@@ -491,10 +494,7 @@ export default function PublishPage() {
 												mt: 0.25,
 											}}
 										>
-											{
-												(validation?.errors[0] || validation?.warnings[0])
-													?.message
-											}
+											{(validation.errors[0] ?? validation.warnings[0]).message}
 										</Typography>
 									)}
 								</Box>
@@ -768,7 +768,7 @@ export default function PublishPage() {
 								</Box>
 							))}
 							<Button
-								onClick={handlePublish}
+								onClick={() => void handlePublish()}
 								disabled={!canPublish || isPublishing}
 								fullWidth
 								startIcon={

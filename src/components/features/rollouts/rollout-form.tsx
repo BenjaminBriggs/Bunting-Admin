@@ -5,8 +5,10 @@
 // supplies initial values + the submit / complete / delete callbacks (preserving the
 // existing createRollout / updateTestRollout / archiveTestRollout / deleteRollout logic).
 
+import type { SxProps, Theme } from '@mui/material';
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
 import Link from 'next/link';
+import type { ChangeEvent, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import {
 	conditionTemplates,
@@ -59,7 +61,7 @@ const TYPE_OPTIONS = conditionTemplates.map((t) => ({
 	label: t.label,
 }));
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: { children: ReactNode }) {
 	return (
 		<Typography
 			component="div"
@@ -83,7 +85,7 @@ function Ms({
 	onClick,
 }: {
 	name: string;
-	sx?: any;
+	sx?: SxProps<Theme>;
 	onClick?: () => void;
 }) {
 	return (
@@ -179,11 +181,12 @@ export default function RolloutForm({
 	const derivedKey = normalizeKey(name);
 	const keyText = isEdit ? initial.key : derivedKey;
 	const keyValidation = validateKey(keyText);
-	const keyChanged = false;
 	const keyAvailable = !isEdit && derivedKey.length > 0;
 
 	const operatorsForType = (type: string): ConditionOperator[] =>
-		CONDITION_OPERATORS[type as ConditionType] ?? ['equals'];
+		Object.prototype.hasOwnProperty.call(CONDITION_OPERATORS, type)
+			? CONDITION_OPERATORS[type as ConditionType]
+			: ['equals'];
 
 	const setAudience = (on: boolean) => {
 		if (on) {
@@ -252,10 +255,11 @@ export default function RolloutForm({
 		}
 		const out: Array<{ field: string; from: string; to: string }> = [];
 		if (name !== initial.name) {
-			out.push({ field: 'NAME', from: initial.name || '∅', to: name || '∅' });
-		}
-		if (keyChanged) {
-			out.push({ field: 'KEY', from: initial.key, to: keyText });
+			out.push({
+				field: 'NAME',
+				from: initial.name,
+				to: name,
+			});
 		}
 		if (percentage !== initial.percentage) {
 			out.push({
@@ -274,29 +278,19 @@ export default function RolloutForm({
 		if (description !== initial.description) {
 			out.push({
 				field: 'DESCRIPTION',
-				from: initial.description || '∅',
-				to: description || '∅',
+				from: initial.description,
+				to: description,
 			});
 		}
 		if (group !== initial.group) {
 			out.push({
 				field: 'GROUP',
-				from: initial.group || '∅',
-				to: group || '∅',
+				from: initial.group,
+				to: group,
 			});
 		}
 		return out;
-	}, [
-		isEdit,
-		name,
-		keyChanged,
-		keyText,
-		percentage,
-		conditions,
-		description,
-		group,
-		initial,
-	]);
+	}, [isEdit, name, percentage, conditions, description, group, initial]);
 
 	const dirty = isEdit ? changes.length > 0 : keyText.length > 0;
 	const canSubmit = dirty && !keyValidation.error && !saving;
@@ -314,7 +308,11 @@ export default function RolloutForm({
 						})),
 					};
 		return JSON.stringify(
-			{ key: keyText || 'new_rollout', percentage, audience },
+			{
+				key: keyText,
+				percentage,
+				audience,
+			},
 			null,
 			2,
 		);
@@ -450,7 +448,9 @@ export default function RolloutForm({
 					<Box
 						component="input"
 						value={name}
-						onChange={(e: any) => setName(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLInputElement>) =>
+							setName(e.target.value)
+						}
 						placeholder="e.g. New checkout flow"
 						sx={{ ...fieldSx, mt: 1 }}
 					/>
@@ -481,7 +481,7 @@ export default function RolloutForm({
 								py: 0.375,
 							}}
 						>
-							{keyText || '—'}
+							{keyText}
 						</Box>
 						{keyValidation.error ? (
 							<Typography
@@ -507,55 +507,6 @@ export default function RolloutForm({
 							)
 						)}
 					</Box>
-					{keyChanged && (
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'flex-start',
-								gap: 1.25,
-								bgcolor: '#FCEFD2',
-								border: '1px solid #F3E2BD',
-								borderRadius: '11px',
-								p: '11px 13px',
-								mt: 1.5,
-							}}
-						>
-							<Ms name="warning" sx={{ fontSize: 19, color: '#9A6F1C' }} />
-							<Typography
-								sx={{
-									fontWeight: 600,
-									fontSize: 12,
-									color: '#5E4A18',
-									lineHeight: 1.5,
-								}}
-							>
-								Renaming changes the key from{' '}
-								<Box
-									component="span"
-									sx={{
-										fontFamily: monoFontFamily,
-										fontSize: 11,
-										color: '#9A6F1C',
-									}}
-								>
-									{initial.key}
-								</Box>{' '}
-								to{' '}
-								<Box
-									component="span"
-									sx={{
-										fontFamily: monoFontFamily,
-										fontSize: 11,
-										color: '#9A6F1C',
-									}}
-								>
-									{keyText}
-								</Box>
-								. Any flag using this rollout keeps the link, but code
-								referencing the key must be updated.
-							</Typography>
-						</Box>
-					)}
 
 					{/* percentage */}
 					<Box sx={{ mt: 3 }}>
@@ -614,7 +565,7 @@ export default function RolloutForm({
 									min={0}
 									max={100}
 									value={percentage}
-									onChange={(e: any) =>
+									onChange={(e: ChangeEvent<HTMLInputElement>) =>
 										setPercentage(clampPct(parseInt(e.target.value, 10)))
 									}
 									sx={{
@@ -704,13 +655,10 @@ export default function RolloutForm({
 							<Box
 								component="input"
 								value={percentage}
-								onChange={(e: any) =>
+								onChange={(e: ChangeEvent<HTMLInputElement>) =>
 									setPercentage(
 										clampPct(
-											parseInt(
-												String(e.target.value).replace(/[^0-9]/g, ''),
-												10,
-											),
+											parseInt(e.target.value.replace(/[^0-9]/g, ''), 10),
 										),
 									)
 								}
@@ -822,7 +770,9 @@ export default function RolloutForm({
 										<Box
 											component="select"
 											value={c.type}
-											onChange={(e: any) => setCondType(index, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+												setCondType(index, e.target.value)
+											}
 											sx={{ ...selectSx, flex: 1 }}
 										>
 											{TYPE_OPTIONS.map((t) => (
@@ -834,7 +784,7 @@ export default function RolloutForm({
 										<Box
 											component="select"
 											value={c.operator}
-											onChange={(e: any) =>
+											onChange={(e: ChangeEvent<HTMLSelectElement>) =>
 												setCondOperator(index, e.target.value)
 											}
 											sx={{ ...selectSx, width: 130 }}
@@ -848,7 +798,9 @@ export default function RolloutForm({
 										<Box
 											component="input"
 											value={c.values[0] ?? ''}
-											onChange={(e: any) => setCondValue(index, e.target.value)}
+											onChange={(e: ChangeEvent<HTMLInputElement>) =>
+												setCondValue(index, e.target.value)
+											}
 											placeholder="value"
 											sx={valueInputSx}
 										/>
@@ -903,7 +855,9 @@ export default function RolloutForm({
 					<Box
 						component="textarea"
 						value={description}
-						onChange={(e: any) => setDescription(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+							setDescription(e.target.value)
+						}
 						placeholder="What is this rollout gating?"
 						sx={{
 							...fieldSx,
@@ -928,7 +882,9 @@ export default function RolloutForm({
 					<Box
 						component="input"
 						value={group}
-						onChange={(e: any) => setGroup(e.target.value)}
+						onChange={(e: ChangeEvent<HTMLInputElement>) =>
+							setGroup(e.target.value)
+						}
 						placeholder="e.g. Checkout & Billing"
 						sx={fieldSx}
 					/>

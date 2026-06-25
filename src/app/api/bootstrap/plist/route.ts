@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
+import { escapeXml } from '@/lib/xml';
 
 /**
  * Generate BuntingConfig.plist for iOS/macOS SDK
@@ -75,11 +77,11 @@ export async function GET(request: NextRequest) {
 				pem: key.publicKey,
 			}));
 		} else {
-			// Fall back to app.publicKeys
+			// Fall back to app.publicKeys (a Prisma JSON column that may be null).
 			const appPublicKeys = app.publicKeys as Array<{
 				kid: string;
 				pem: string;
-			}>;
+			}> | null;
 			if (!appPublicKeys || appPublicKeys.length === 0) {
 				return NextResponse.json(
 					{ error: 'No signing keys found for this app' },
@@ -89,14 +91,14 @@ export async function GET(request: NextRequest) {
 			publicKeysArray = appPublicKeys;
 		}
 
-		// Parse fetch policy with defaults
+		// Parse fetch policy with defaults (JSON column, may be null).
 		const fetchPolicy =
 			(app.fetchPolicy as {
 				min_interval_seconds?: number;
 				hard_ttl_days?: number;
-			}) || {};
-		const minIntervalSeconds = fetchPolicy.min_interval_seconds || 21600; // 6 hours default
-		const hardTtlDays = fetchPolicy.hard_ttl_days || 7; // 7 days default
+			} | null) ?? {};
+		const minIntervalSeconds = fetchPolicy.min_interval_seconds ?? 21600; // 6 hours default
+		const hardTtlDays = fetchPolicy.hard_ttl_days ?? 7; // 7 days default
 
 		// publicKeysArray is already defined above
 
@@ -106,16 +108,16 @@ export async function GET(request: NextRequest) {
 <plist version="1.0">
 <dict>
 \t<key>endpoint_url</key>
-\t<string>${app.artifactUrl}</string>
+\t<string>${escapeXml(app.artifactUrl)}</string>
 \t<key>public_keys</key>
 \t<array>
 ${publicKeysArray
 	.map(
 		(key) => `\t\t<dict>
 \t\t\t<key>kid</key>
-\t\t\t<string>${key.kid}</string>
+\t\t\t<string>${escapeXml(key.kid)}</string>
 \t\t\t<key>pem</key>
-\t\t\t<string>${key.pem}</string>
+\t\t\t<string>${escapeXml(key.pem)}</string>
 \t\t</dict>`,
 	)
 	.join('\n')}
@@ -141,7 +143,7 @@ ${publicKeysArray
 
 		return response;
 	} catch (error) {
-		console.error('Failed to generate plist:', error);
+		logger.error({ err: error }, 'Failed to generate plist');
 		return NextResponse.json(
 			{ error: 'Failed to generate bootstrap plist' },
 			{ status: 500 },
@@ -150,7 +152,7 @@ ${publicKeysArray
 }
 
 // Handle CORS preflight
-export async function OPTIONS(request: NextRequest) {
+export function OPTIONS(_request: NextRequest) {
 	return new NextResponse(null, {
 		status: 200,
 		headers: {

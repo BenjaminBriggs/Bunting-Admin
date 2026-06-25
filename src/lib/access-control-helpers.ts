@@ -80,7 +80,7 @@ export async function clearUsers() {
 
 	if (users.length > 1) {
 		// Keep the first user, delete the rest
-		const [firstUser, ...otherUsers] = users;
+		const [_firstUser, ...otherUsers] = users;
 		return await db.user.deleteMany({
 			where: {
 				id: { in: otherUsers.map((u) => u.id) },

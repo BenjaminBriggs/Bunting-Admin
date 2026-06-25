@@ -1,7 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logActivity } from '@/lib/activity-log';
+import { requireAdmin } from '@/lib/authz';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 const updateKeySchema = z.object({
 	isActive: z.boolean().optional(),
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 			key: signingKey,
 		});
 	} catch (error) {
-		console.error('Failed to get signing key:', error);
+		logger.error({ err: error }, 'Failed to get signing key');
 		return NextResponse.json(
 			{ error: 'Failed to retrieve signing key' },
 			{ status: 500 },
@@ -70,6 +73,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PUT(request: NextRequest, { params }: RouteParams) {
 	const { id: keyId } = await params;
 	try {
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
+		}
+
 		const { searchParams } = new URL(request.url);
 		const appId = searchParams.get('appId');
 
@@ -80,7 +88,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 			);
 		}
 
-		const body = await request.json();
+		const body: unknown = await request.json();
 		const { isActive } = updateKeySchema.parse(body);
 
 		// Verify key exists
@@ -113,6 +121,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 			});
 		});
 
+		const actor = authz.email;
+		await logActivity({
+			actor,
+			action: 'update',
+			entityType: 'signing_key',
+			entityId: keyId,
+			appId,
+			summary: 'Updated signing key',
+		});
+
 		return NextResponse.json({
 			message: 'Signing key updated successfully',
 			keyId,
@@ -126,7 +144,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 			);
 		}
 
-		console.error('Failed to update signing key:', error);
+		logger.error({ err: error }, 'Failed to update signing key');
 		return NextResponse.json(
 			{ error: 'Failed to update signing key' },
 			{ status: 500 },
@@ -138,6 +156,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
 	const { id: keyId } = await params;
 	try {
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
+		}
+
 		const { searchParams } = new URL(request.url);
 		const appId = searchParams.get('appId');
 
@@ -173,12 +196,22 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 			where: { appId_kid: { appId, kid: keyId } },
 		});
 
+		const actor = authz.email;
+		await logActivity({
+			actor,
+			action: 'delete',
+			entityType: 'signing_key',
+			entityId: keyId,
+			appId,
+			summary: 'Deleted signing key',
+		});
+
 		return NextResponse.json({
 			message: 'Signing key deleted successfully',
 			keyId,
 		});
 	} catch (error) {
-		console.error('Failed to delete signing key:', error);
+		logger.error({ err: error }, 'Failed to delete signing key');
 		return NextResponse.json(
 			{ error: 'Failed to delete signing key' },
 			{ status: 500 },

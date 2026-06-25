@@ -7,6 +7,7 @@ import {
 	CircularProgress,
 	Typography,
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -20,7 +21,7 @@ import {
 	technicalButtonSx,
 } from '@/theme/designTokens';
 
-function Ms({ name, sx }: { name: string; sx?: any }) {
+function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 	return (
 		<Box component="span" className="ms" sx={sx}>
 			{name}
@@ -49,8 +50,8 @@ export default function DashboardPage() {
 
 	const totalStats = apps.reduce(
 		(acc, app) => ({
-			flags: acc.flags + (app._count?.flags || 0),
-			testRollouts: acc.testRollouts + (app._count?.test_rollouts || 0),
+			flags: acc.flags + (app._count?.flags ?? 0),
+			testRollouts: acc.testRollouts + (app._count?.test_rollouts ?? 0),
 		}),
 		{ flags: 0, testRollouts: 0 },
 	);
@@ -257,7 +258,7 @@ export default function DashboardPage() {
 								<Box sx={{ display: 'flex', gap: 2.25, textAlign: 'center' }}>
 									<Box>
 										<Typography sx={{ font: "800 16px 'Baloo 2'" }}>
-											{app._count?.flags || 0}
+											{app._count?.flags ?? 0}
 										</Typography>
 										<Typography
 											sx={{ font: "600 10px 'Nunito'", color: '#8B8472' }}
@@ -267,7 +268,7 @@ export default function DashboardPage() {
 									</Box>
 									<Box>
 										<Typography sx={{ font: "800 16px 'Baloo 2'" }}>
-											{app._count?.test_rollouts || 0}
+											{app._count?.test_rollouts ?? 0}
 										</Typography>
 										<Typography
 											sx={{ font: "600 10px 'Nunito'", color: '#8B8472' }}
