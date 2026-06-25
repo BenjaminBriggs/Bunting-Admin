@@ -2,7 +2,7 @@
 
 # Shared base — Prisma needs openssl on Alpine; corepack provides pnpm (pinned via
 # the "packageManager" field in package.json).
-FROM node:24-alpine AS base
+FROM node:26-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 RUN corepack enable
