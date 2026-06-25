@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
 	testDir: './e2e',
+	// The full-stack smoke (login → app → flags → publish) needs the OIDC/dex
+	// stack and is driven by `make smoke` via playwright.smoke.config.ts. Keep it
+	// out of the default CI e2e run, which builds a prod app in proxy mode.
+	testIgnore: '**/smoke-key-paths.spec.ts',
 	reporter: process.env.CI
 		? [['github'], ['list']]
 		: [['html', { open: 'never' }], ['list']],

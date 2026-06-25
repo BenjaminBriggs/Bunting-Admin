@@ -332,6 +332,7 @@ export default function FlagsPage() {
 							href="/dashboard/flags/new"
 							startIcon={<Ms name="add" sx={{ fontSize: 18 }} />}
 							sx={technicalButtonSx()}
+							data-testid="new-flag"
 						>
 							Create Flag
 						</Button>

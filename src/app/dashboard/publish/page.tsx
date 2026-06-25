@@ -389,7 +389,7 @@ export default function PublishPage() {
 			)}
 
 			{publishSuccess && (
-				<Alert severity="success" sx={{ mt: 3 }}>
+				<Alert severity="success" sx={{ mt: 3 }} data-testid="publish-success">
 					{publishSuccess}
 				</Alert>
 			)}
@@ -769,6 +769,7 @@ export default function PublishPage() {
 							))}
 							<Button
 								onClick={() => void handlePublish()}
+								data-testid="publish-button"
 								disabled={!canPublish || isPublishing}
 								fullWidth
 								startIcon={

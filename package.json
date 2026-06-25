@@ -29,6 +29,8 @@
 		"test:integration": "jest --selectProjects integration --runInBand",
 		"test:json-spec": "jest tests/json-spec-validation.test.js --verbose",
 		"test:e2e": "playwright test",
+		"smoke": "./scripts/smoke.sh",
+		"smoke:test": "playwright test --config playwright.smoke.config.ts",
 		"e2e:build": "next build",
 		"e2e:start": "next start -p 3000",
 		"e2e": "start-server-and-test e2e:start http://localhost:3000 'playwright test'",
