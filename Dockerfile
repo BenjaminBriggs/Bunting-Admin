@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1
 
 # Shared base — Prisma needs openssl on Alpine; corepack provides pnpm (pinned via
-# the "packageManager" field in package.json).
-FROM node:24-alpine AS base
+# the "packageManager" field in package.json). Node 26 no longer bundles corepack,
+# so install it explicitly before enabling.
+FROM node:26-alpine AS base
 WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
-RUN corepack enable
+RUN npm install -g corepack@latest && corepack enable
 
 # Install dependencies once, reuse for dev and build.
 FROM base AS deps
