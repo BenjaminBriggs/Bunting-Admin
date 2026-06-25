@@ -20,6 +20,10 @@
 				"name": "next"
 			}
 		],
+		// TS 6 deprecates baseUrl (removed in TS 7), but it is load-bearing here:
+		// dropping it breaks resolution of the side-effect `./globals.css` import.
+		// Silence the deprecation until the TS 7 module-resolution migration.
+		"ignoreDeprecations": "6.0",
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
