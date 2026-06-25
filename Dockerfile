@@ -21,15 +21,13 @@ RUN pnpm exec prisma generate
 EXPOSE 3000
 CMD ["pnpm", "run", "dev"]
 
-# Production build — emits the standalone server. Stage the Prisma client/engine into
-# a real directory (cp -L dereferences pnpm's symlinked store) for the runner to copy.
+# Production build — emits the standalone server. `next build` traces the Prisma
+# client and its query engine (.so) into .next/standalone/node_modules, preserving
+# pnpm's store layout, so no manual staging of the engine is needed.
 FROM deps AS build
 ENV NODE_ENV=production
 COPY . .
-RUN pnpm exec prisma generate && pnpm run build && \
-	mkdir -p /prisma-runtime/.prisma /prisma-runtime/@prisma && \
-	cp -rL node_modules/.prisma/client /prisma-runtime/.prisma/client && \
-	cp -rL node_modules/@prisma/client /prisma-runtime/@prisma/client
+RUN pnpm exec prisma generate && pnpm run build
 
 # Production runtime — minimal, non-root.
 FROM base AS runner
@@ -37,13 +35,12 @@ ENV NODE_ENV=production
 ENV PORT=3000
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 COPY --from=build /app/public ./public
+# The standalone bundle ships its own node_modules (incl. @prisma/client + the
+# query engine); copy it wholesale and do not overlay a flattened Prisma tree on
+# top, which would clash with the pnpm symlinks it already contains.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/prisma ./prisma
-# Next's tracer does not reliably bundle the Prisma engine; copy it explicitly
-# (dereferenced from pnpm's store in the build stage above).
-COPY --from=build /prisma-runtime/.prisma ./node_modules/.prisma
-COPY --from=build /prisma-runtime/@prisma ./node_modules/@prisma
 USER nextjs
 EXPOSE 3000
 CMD ["node", "server.js"]
