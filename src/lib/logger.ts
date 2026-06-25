@@ -5,8 +5,10 @@
  * Loki, Datadog, etc.). There is no external service or vendor SDK; self-hosters
  * get structured logs out of the box and can ship them wherever they like.
  *
- * Do NOT import this from client components — pino is a Node module. Browser-side
- * logging should keep using `console.*`.
+ * Do NOT import this from client components OR from any module reachable by the
+ * edge middleware (e.g. `auth`, `auth-session`, `access-control`) — pino is a
+ * Node-only module and will fail to bundle for the edge/browser runtimes. Those
+ * call sites must use `console.*` instead.
  *
  * Level is controlled by `LOG_LEVEL` (trace|debug|info|warn|error|fatal),
  * defaulting to `info` in production and `debug` otherwise.

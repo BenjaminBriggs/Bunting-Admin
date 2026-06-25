@@ -1,4 +1,3 @@
-import { logger } from '@/lib/logger';
 import { db } from './db';
 
 export async function checkUserAccess(email: string): Promise<boolean> {
@@ -140,7 +139,9 @@ export async function updateUserActivity(userId: string): Promise<void> {
 			data: { lastActiveAt: new Date() },
 		});
 	} catch (error) {
-		logger.error({ err: error }, 'Failed to update user activity');
+		// This module is reachable from edge middleware (via auth → auth-session),
+		// so it must not import the pino logger (a Node-only module). Use console.
+		console.error('Failed to update user activity:', error);
 		// Don't throw - this is not critical
 	}
 }
