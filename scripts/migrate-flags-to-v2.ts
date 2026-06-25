@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import 'dotenv/config';
+import { prisma } from '@/lib/db';
+import type { Prisma } from '@/generated/prisma/client';
 
 interface StoredDefaults {
 	development?: unknown;

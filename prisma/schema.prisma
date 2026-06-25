@@ -3,12 +3,16 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  // App is CommonJS (no "type":"module"; next.config.js uses module.exports).
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // Prisma 7: the connection URL lives in prisma.config.ts (Migrate) and is
+  // passed to PrismaClient via the driver adapter (see src/lib/db.ts).
 }
 
 model App {

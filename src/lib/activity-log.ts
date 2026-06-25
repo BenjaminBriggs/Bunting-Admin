@@ -9,7 +9,7 @@
  * Writes are best-effort: a failure to record the trail must never fail the
  * underlying mutation. Failures are logged, not thrown.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '@/generated/prisma/client';
 import { getRequestRole } from './authz';
 import { prisma } from './db';
 import { logger } from './logger';

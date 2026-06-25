@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';

@@ -9,10 +9,9 @@
  * Or:  npx tsx scripts/migrate-operators.ts
  */
 
-import { PrismaClient } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import 'dotenv/config';
+import { prisma } from '@/lib/db';
+import type { Prisma } from '@/generated/prisma/client';
 
 const OPERATOR_MAP: Record<string, string> = {
 	does_not_equal: 'does_not_equals',
