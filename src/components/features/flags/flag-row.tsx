@@ -771,7 +771,9 @@ export default function FlagRow({ flag, archived = false }: FlagRowProps) {
 									activeRollouts={getActiveRollouts(env)}
 									onVariantAdd={() => handleVariantAdd(env)}
 									onVariantEdit={(variant) => handleVariantEdit(variant, env)}
-									onVariantDelete={(variant) => handleVariantDelete(variant, env)}
+									onVariantDelete={(variant) =>
+										handleVariantDelete(variant, env)
+									}
 									onTestRolloutAdd={() => handleTestRolloutAdd(env)}
 									onTestRolloutEdit={(type, id) =>
 										handleTestRolloutEdit(type, id, env)

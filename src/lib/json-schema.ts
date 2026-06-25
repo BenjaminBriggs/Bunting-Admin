@@ -224,14 +224,7 @@ export function validateConfigArtifact(config: any): {
 
 	// Validate flag types
 	if (config.flags) {
-		const validFlagTypes = [
-			'bool',
-			'string',
-			'int',
-			'double',
-			'date',
-			'json',
-		];
+		const validFlagTypes = ['bool', 'string', 'int', 'double', 'date', 'json'];
 		for (const [key, flag] of Object.entries(config.flags)) {
 			if (flag && typeof flag === 'object') {
 				if (!validFlagTypes.includes((flag as any).type)) {

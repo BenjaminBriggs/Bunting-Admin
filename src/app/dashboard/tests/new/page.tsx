@@ -53,7 +53,9 @@ export default function NewTestPage() {
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
-			setSaveError(err instanceof Error ? err.message : 'Failed to create test');
+			setSaveError(
+				err instanceof Error ? err.message : 'Failed to create test',
+			);
 		} finally {
 			setSaving(false);
 		}

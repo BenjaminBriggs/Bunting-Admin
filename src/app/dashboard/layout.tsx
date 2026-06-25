@@ -226,7 +226,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 					)}
 				</Box>
 				{/* Main Menu */}
-				<List sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+				<List
+					sx={{
+						flexGrow: 1,
+						display: 'flex',
+						flexDirection: 'column',
+						gap: '3px',
+					}}
+				>
 					{menuItems.map((item, index) => {
 						const selected = isSelected(item.path);
 						const accent = item.type ? typeColors[item.type] : null;

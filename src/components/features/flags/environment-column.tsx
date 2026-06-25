@@ -200,7 +200,9 @@ export default function EnvironmentColumn({
 					borderColor: c.border,
 				}}
 			>
-				<Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.dot }} />
+				<Box
+					sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: c.dot }}
+				/>
 				<Typography
 					sx={{
 						fontFamily: 'var(--font-baloo)',
@@ -215,7 +217,9 @@ export default function EnvironmentColumn({
 			</Box>
 
 			{/* Content */}
-			<Box sx={{ p: 2.25, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+			<Box
+				sx={{ p: 2.25, flexGrow: 1, display: 'flex', flexDirection: 'column' }}
+			>
 				{/* Rollouts & Tests Section */}
 				<Box sx={{ mb: 1.75 }}>
 					<Box
@@ -227,7 +231,11 @@ export default function EnvironmentColumn({
 					>
 						<Typography sx={sectionLabelSx}>Tests &amp; Rollouts</Typography>
 						{activeRollouts.length === 0 && activeTests.length === 0 && (
-							<IconButton size="small" onClick={onTestRolloutAdd} sx={addButtonSx}>
+							<IconButton
+								size="small"
+								onClick={onTestRolloutAdd}
+								sx={addButtonSx}
+							>
 								<Add sx={{ fontSize: 17 }} />
 							</IconButton>
 						)}
@@ -312,7 +320,9 @@ export default function EnvironmentColumn({
 						}}
 					>
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-							<Typography sx={{ ...sectionLabelSx, fontWeight: 700, color: '#3A352C' }}>
+							<Typography
+								sx={{ ...sectionLabelSx, fontWeight: 700, color: '#3A352C' }}
+							>
 								Variants
 							</Typography>
 							{variants.length > 0 && (
@@ -376,7 +386,11 @@ export default function EnvironmentColumn({
 								<IconButton
 									size="small"
 									onClick={() => onVariantDelete(variant)}
-									sx={{ color: '#B4AC9A', flexShrink: 0, '&:hover': { color: '#C8503C' } }}
+									sx={{
+										color: '#B4AC9A',
+										flexShrink: 0,
+										'&:hover': { color: '#C8503C' },
+									}}
 								>
 									<Delete sx={{ fontSize: 16 }} />
 								</IconButton>
@@ -386,7 +400,14 @@ export default function EnvironmentColumn({
 				</Box>
 
 				{/* Default Section */}
-				<Box sx={{ mt: 'auto', pt: 2, borderTop: '1px solid', borderColor: '#F1EBDD' }}>
+				<Box
+					sx={{
+						mt: 'auto',
+						pt: 2,
+						borderTop: '1px solid',
+						borderColor: '#F1EBDD',
+					}}
+				>
 					<Typography
 						sx={{
 							fontFamily: 'var(--font-nunito)',

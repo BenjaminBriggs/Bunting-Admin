@@ -1,6 +1,12 @@
 'use client';
 
-import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Typography,
+} from '@mui/material';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -66,7 +72,9 @@ export default function EditFlagPage() {
 	}, [flag?.appId]);
 
 	const handleSubmit = async (payload: FlagFormSubmit) => {
-		if (!flag) {return;}
+		if (!flag) {
+			return;
+		}
 		setSaving(true);
 		setSaveError(null);
 		try {
@@ -83,25 +91,33 @@ export default function EditFlagPage() {
 			markChangesDetected();
 			router.push('/dashboard/flags');
 		} catch (err) {
-			setSaveError(err instanceof Error ? err.message : 'Failed to update flag');
+			setSaveError(
+				err instanceof Error ? err.message : 'Failed to update flag',
+			);
 		} finally {
 			setSaving(false);
 		}
 	};
 
 	const handleArchiveToggle = async () => {
-		if (!flag) {return;}
+		if (!flag) {
+			return;
+		}
 		try {
 			await updateFlag(flagId, { archived: !flag.archived });
 			markChangesDetected();
 			await loadFlag();
 		} catch (err) {
-			setSaveError(err instanceof Error ? err.message : 'Failed to archive flag');
+			setSaveError(
+				err instanceof Error ? err.message : 'Failed to archive flag',
+			);
 		}
 	};
 
 	const handleDelete = async () => {
-		if (!flag) {return;}
+		if (!flag) {
+			return;
+		}
 		if (
 			confirm(
 				'Are you sure you want to delete this flag? This action cannot be undone.',
@@ -121,7 +137,14 @@ export default function EditFlagPage() {
 
 	if (loading) {
 		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+			<Box
+				sx={{
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					py: 8,
+				}}
+			>
 				<CircularProgress sx={{ mr: 2 }} />
 				<Typography>Loading flag…</Typography>
 			</Box>

@@ -75,26 +75,36 @@ describe('decodeFingerprint — documented vectors', () => {
 	});
 
 	it('decode accepts surrounding whitespace', () => {
-		expect(decodeFingerprint(sample, '  2026-06-17.2.1A46  ').flags.show_store.value).toBe(true);
+		expect(
+			decodeFingerprint(sample, '  2026-06-17.2.1A46  ').flags.show_store.value,
+		).toBe(true);
 	});
 });
 
 describe('decodeFingerprint — errors', () => {
 	it('rejects a version mismatch', () => {
-		expect(() => decodeFingerprint(sample, '2099-01-01.1.1070')).toThrow(/version mismatch/);
+		expect(() => decodeFingerprint(sample, '2099-01-01.1.1070')).toThrow(
+			/version mismatch/,
+		);
 	});
 
 	it('rejects a corrupt CRC', () => {
 		// 1A46 is valid; flip the CRC byte.
-		expect(() => decodeFingerprint(sample, '2026-06-17.2.1A47')).toThrow(/checksum mismatch/);
+		expect(() => decodeFingerprint(sample, '2026-06-17.2.1A47')).toThrow(
+			/checksum mismatch/,
+		);
 	});
 
 	it('rejects malformed hex', () => {
-		expect(() => decodeFingerprint(sample, '2026-06-17.2.XYZ')).toThrow(/malformed/);
+		expect(() => decodeFingerprint(sample, '2026-06-17.2.XYZ')).toThrow(
+			/malformed/,
+		);
 	});
 
 	it('rejects a missing payload', () => {
-		expect(() => decodeFingerprint(sample, '2026-06-17.2')).toThrow(FingerprintError);
+		expect(() => decodeFingerprint(sample, '2026-06-17.2')).toThrow(
+			FingerprintError,
+		);
 	});
 });
 
@@ -128,7 +138,9 @@ describe('encode/decode round-trip with tests and rollouts', () => {
 				beta: { default: false },
 				production: {
 					default: false,
-					variants: [{ type: 'rollout', order: 1, value: true, rollout: 'new_nav_ramp' }],
+					variants: [
+						{ type: 'rollout', order: 1, value: true, rollout: 'new_nav_ramp' },
+					],
 				},
 			},
 		},
@@ -145,19 +157,30 @@ describe('encode/decode round-trip with tests and rollouts', () => {
 			},
 		},
 		rollouts: {
-			new_nav_ramp: { name: 'new_nav_ramp', type: 'rollout', salt: 's', conditions: [], percentage: 20 },
+			new_nav_ramp: {
+				name: 'new_nav_ramp',
+				type: 'rollout',
+				salt: 's',
+				conditions: [],
+				percentage: 20,
+			},
 		},
 	};
 
 	it('resolves a user in the test treatment group with the rollout enabled', () => {
 		// paywall_copy paths: [default, control, treatment] → index 2 = treatment
 		// new_nav paths: [default(false), rollout-in(true)] → index 1 = in
-		const code = encodeFingerprint(artifact, 'production', { paywall_copy: 2, new_nav: 1 });
+		const code = encodeFingerprint(artifact, 'production', {
+			paywall_copy: 2,
+			new_nav: 1,
+		});
 		const decoded = decodeFingerprint(artifact, code);
 
 		expect(decoded.env).toBe('production');
 		expect(decoded.flags.paywall_copy.value).toBe('shiny');
-		expect(decoded.flags.paywall_copy.reason).toBe('test "paywall_q3" group "treatment"');
+		expect(decoded.flags.paywall_copy.reason).toBe(
+			'test "paywall_q3" group "treatment"',
+		);
 		expect(decoded.flags.new_nav.value).toBe(true);
 		expect(decoded.flags.new_nav.reason).toBe('rollout "new_nav_ramp"');
 	});

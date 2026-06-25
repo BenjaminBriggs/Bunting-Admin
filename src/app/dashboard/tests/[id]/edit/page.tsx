@@ -1,6 +1,12 @@
 'use client';
 
-import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Typography,
+} from '@mui/material';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -81,7 +87,9 @@ export default function EditTestPage() {
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
-			setSaveError(err instanceof Error ? err.message : 'Failed to update test');
+			setSaveError(
+				err instanceof Error ? err.message : 'Failed to update test',
+			);
 		} finally {
 			setSaving(false);
 		}
@@ -96,7 +104,9 @@ export default function EditTestPage() {
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
-			setSaveError(err instanceof Error ? err.message : 'Failed to complete test');
+			setSaveError(
+				err instanceof Error ? err.message : 'Failed to complete test',
+			);
 		}
 	};
 
@@ -114,14 +124,23 @@ export default function EditTestPage() {
 				markChangesDetected();
 				router.push('/dashboard/tests');
 			} catch (err) {
-				setSaveError(err instanceof Error ? err.message : 'Failed to delete test');
+				setSaveError(
+					err instanceof Error ? err.message : 'Failed to delete test',
+				);
 			}
 		}
 	};
 
 	if (loading) {
 		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+			<Box
+				sx={{
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					py: 8,
+				}}
+			>
 				<CircularProgress sx={{ mr: 2 }} />
 				<Typography>Loading test…</Typography>
 			</Box>
@@ -161,10 +180,13 @@ export default function EditTestPage() {
 				initial={{
 					name: test.name,
 					key: test.key,
-					groups: groups.length > 0 ? groups : [
-						{ name: 'Treatment', weight: 50 },
-						{ name: 'Control', weight: 50 },
-					],
+					groups:
+						groups.length > 0
+							? groups
+							: [
+									{ name: 'Treatment', weight: 50 },
+									{ name: 'Control', weight: 50 },
+								],
 					adjustSplit: groups.length > 0 ? !isEvenSplit(groups) : false,
 					conditions,
 					description: test.description || '',

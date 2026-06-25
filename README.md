@@ -32,18 +32,18 @@ Bunting Admin is a self-hosted feature flag dashboard for Apple platform apps. I
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 15 (App Router) |
-| UI | React 19, MUI v7 |
-| Language | TypeScript 5 |
-| Database | PostgreSQL 13+ (local dev: 17 via Docker) |
-| ORM | Prisma |
-| Auth | NextAuth / Auth.js v5 — JWT sessions, 14-day expiry |
-| Storage | S3 / S3-compatible (local dev: MinIO) |
-| Signing | `jose` — RS256 JWS |
-| Runtime | Node 24 |
-| Package manager | pnpm 11 |
+| Layer           | Technology                                          |
+| --------------- | --------------------------------------------------- |
+| Framework       | Next.js 15 (App Router)                             |
+| UI              | React 19, MUI v7                                    |
+| Language        | TypeScript 5                                        |
+| Database        | PostgreSQL 13+ (local dev: 17 via Docker)           |
+| ORM             | Prisma                                              |
+| Auth            | NextAuth / Auth.js v5 — JWT sessions, 14-day expiry |
+| Storage         | S3 / S3-compatible (local dev: MinIO)               |
+| Signing         | `jose` — RS256 JWS                                  |
+| Runtime         | Node 24                                             |
+| Package manager | pnpm 11                                             |
 
 ---
 
@@ -66,14 +66,14 @@ Open http://localhost:3000. Sign in with the local Dex OIDC provider (`admin@bun
 
 **Local service URLs**
 
-| Service | URL | Credentials |
-|---|---|---|
-| Bunting Admin | http://localhost:3000 | — |
-| MinIO console | http://localhost:9001 | `admin` / `admin123` |
-| MinIO API | http://localhost:9000 | — |
-| PostgreSQL | `localhost:5432` | `admin` / `admin123` |
-| Dex OIDC | http://auth.localhost:5556/dex | `admin@bunting.dev` / `password` |
-| Prisma Studio | http://localhost:5555 | run `pnpm run db:studio` |
+| Service       | URL                            | Credentials                      |
+| ------------- | ------------------------------ | -------------------------------- |
+| Bunting Admin | http://localhost:3000          | —                                |
+| MinIO console | http://localhost:9001          | `admin` / `admin123`             |
+| MinIO API     | http://localhost:9000          | —                                |
+| PostgreSQL    | `localhost:5432`               | `admin` / `admin123`             |
+| Dex OIDC      | http://auth.localhost:5556/dex | `admin@bunting.dev` / `password` |
+| Prisma Studio | http://localhost:5555          | run `pnpm run db:studio`         |
 
 See [docs/local-development.md](docs/local-development.md) for full details and environment notes.
 
@@ -126,18 +126,18 @@ make clean            # remove .next, coverage, node_modules
 
 Full index: [docs/README.md](docs/README.md)
 
-| Document | Description |
-|---|---|
-| [Concepts](docs/concepts.md) | Flags vs. tests vs. rollouts, environment-first model, bucketing, glossary |
-| [Config Artifact Spec](docs/config-artifact-spec.md) | Canonical JSON contract consumed by the SDK |
-| [Product Overview](docs/product-overview.md) | Capabilities, workflows, and dashboard tour |
-| [Local Development](docs/local-development.md) | Docker setup guide |
-| [Deployment](docs/deployment.md) | One-click hosting and CDN setup |
-| [Production Deployment](docs/production-deployment.md) | Hardening, auth, and storage configuration |
-| [Security](docs/security.md) | Auth model, key management, and signing pipeline |
-| [API Reference](docs/api-reference.md) | REST endpoints and request/response shapes |
-| [Testing](docs/testing.md) | Test types, coverage requirements, and commands |
-| [Troubleshooting](docs/troubleshooting.md) | Common issues and fixes |
+| Document                                               | Description                                                                |
+| ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| [Concepts](docs/concepts.md)                           | Flags vs. tests vs. rollouts, environment-first model, bucketing, glossary |
+| [Config Artifact Spec](docs/config-artifact-spec.md)   | Canonical JSON contract consumed by the SDK                                |
+| [Product Overview](docs/product-overview.md)           | Capabilities, workflows, and dashboard tour                                |
+| [Local Development](docs/local-development.md)         | Docker setup guide                                                         |
+| [Deployment](docs/deployment.md)                       | One-click hosting and CDN setup                                            |
+| [Production Deployment](docs/production-deployment.md) | Hardening, auth, and storage configuration                                 |
+| [Security](docs/security.md)                           | Auth model, key management, and signing pipeline                           |
+| [API Reference](docs/api-reference.md)                 | REST endpoints and request/response shapes                                 |
+| [Testing](docs/testing.md)                             | Test types, coverage requirements, and commands                            |
+| [Troubleshooting](docs/troubleshooting.md)             | Common issues and fixes                                                    |
 
 ---
 

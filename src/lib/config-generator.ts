@@ -96,14 +96,12 @@ export async function generateConfigFromDb(
 			}),
 		);
 
-		const betaVariants = (flag.variants.beta || []).map(
-			(variant: any) => ({
-				type: 'conditional',
-				order: variant.order || 0,
-				value: variant.value,
-				conditions: (variant.conditions || []).map(normalizeCondition),
-			}),
-		);
+		const betaVariants = (flag.variants.beta || []).map((variant: any) => ({
+			type: 'conditional',
+			order: variant.order || 0,
+			value: variant.value,
+			conditions: (variant.conditions || []).map(normalizeCondition),
+		}));
 
 		const productionVariants = (flag.variants.production || []).map(
 			(variant: any) => ({

@@ -39,9 +39,7 @@ export function groupByGroup<T extends { group?: string | null }>(
 }
 
 /** True once at least one item carries a real group label. */
-export function hasNamedGroups(
-	groups: Array<{ name: string }>,
-): boolean {
+export function hasNamedGroups(groups: Array<{ name: string }>): boolean {
 	return groups.some((g) => g.name !== UNGROUPED);
 }
 
@@ -78,7 +76,10 @@ export function GroupHeader({
 				sx={{ fontSize: 22, color: muted ? '#9A9483' : '#6B6452' }}
 			/>
 			<Typography
-				sx={{ font: "800 17px 'Baloo 2'", color: muted ? '#9A9483' : ink.primary }}
+				sx={{
+					font: "800 17px 'Baloo 2'",
+					color: muted ? '#9A9483' : ink.primary,
+				}}
 			>
 				{name}
 			</Typography>

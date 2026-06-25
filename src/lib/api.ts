@@ -314,10 +314,7 @@ export interface DecodedFingerprintResponse {
 	env: 'development' | 'beta' | 'production';
 	publishedAt: string;
 	appIdentifier: string;
-	flags: Record<
-		string,
-		{ type: string; value: unknown; reason: string }
-	>;
+	flags: Record<string, { type: string; value: unknown; reason: string }>;
 }
 
 export async function decodeFingerprint(

@@ -28,7 +28,12 @@
  * See docs/config-fingerprint-spec.md for the full contract.
  */
 
-import type { ConfigArtifact, EnvironmentFlag, FlagType, FlagValue } from '@/types/core';
+import type {
+	ConfigArtifact,
+	EnvironmentFlag,
+	FlagType,
+	FlagValue,
+} from '@/types/core';
 
 export const FINGERPRINT_FORMAT = 1;
 
@@ -151,7 +156,9 @@ class BitReader {
 			return 0;
 		}
 		if (this.pos + width > this.bits.length) {
-			throw new FingerprintError('fingerprint payload is shorter than the artifact requires');
+			throw new FingerprintError(
+				'fingerprint payload is shorter than the artifact requires',
+			);
 		}
 		let v = 0;
 		for (let i = 0; i < width; i++) {
@@ -185,16 +192,23 @@ export function encodeFingerprint(
 	}
 	const payload = writer.toBytes();
 	const bytes = [...payload, crc8(payload)];
-	const hex = bytes.map((b) => b.toString(16).toUpperCase().padStart(2, '0')).join('');
+	const hex = bytes
+		.map((b) => b.toString(16).toUpperCase().padStart(2, '0'))
+		.join('');
 	return `${artifact.config_version}.${hex}`;
 }
 
 /** Split a code into its config version and hex payload. */
-export function splitFingerprint(code: string): { version: string; hex: string } {
+export function splitFingerprint(code: string): {
+	version: string;
+	hex: string;
+} {
 	const trimmed = code.trim();
 	const dot = trimmed.lastIndexOf('.');
 	if (dot <= 0 || dot === trimmed.length - 1) {
-		throw new FingerprintError('invalid fingerprint: expected "<version>.<HEX>"');
+		throw new FingerprintError(
+			'invalid fingerprint: expected "<version>.<HEX>"',
+		);
 	}
 	return { version: trimmed.slice(0, dot), hex: trimmed.slice(dot + 1) };
 }
@@ -227,7 +241,9 @@ export function decodeFingerprint(
 
 	const crc = bytes.pop() as number;
 	if (crc8(bytes) !== crc) {
-		throw new FingerprintError('checksum mismatch — the code is corrupt or mistyped');
+		throw new FingerprintError(
+			'checksum mismatch — the code is corrupt or mistyped',
+		);
 	}
 
 	const reader = new BitReader(bytes);
@@ -255,7 +271,9 @@ export function decodeFingerprint(
 	// Anything left beyond the final byte's zero padding means the code does not
 	// match this artifact's flag layout.
 	if (reader.remaining() >= 8) {
-		throw new FingerprintError('fingerprint payload is longer than the artifact requires');
+		throw new FingerprintError(
+			'fingerprint payload is longer than the artifact requires',
+		);
 	}
 
 	return { env, flags };

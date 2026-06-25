@@ -2,7 +2,11 @@
 
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppNotFoundError, generateCurrentConfig, getPublishedConfig } from './api';
+import {
+	AppNotFoundError,
+	generateCurrentConfig,
+	getPublishedConfig,
+} from './api';
 import { useApp } from './app-context';
 import type { ConfigChange } from './config-comparison';
 import { getConfigChanges, hasConfigChanges } from './config-comparison';

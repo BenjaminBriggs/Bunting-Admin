@@ -1,13 +1,24 @@
 'use client';
 
-import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Typography,
+} from '@mui/material';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { type App } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { formatTimestamp } from '@/lib/utils';
-import { ink, monoFontFamily, surface, technicalButtonSx } from '@/theme/designTokens';
+import {
+	ink,
+	monoFontFamily,
+	surface,
+	technicalButtonSx,
+} from '@/theme/designTokens';
 
 function Ms({ name, sx }: { name: string; sx?: any }) {
 	return (
@@ -78,7 +89,9 @@ export default function DashboardPage() {
 			<Typography sx={{ font: "800 28px 'Baloo 2'", color: ink.primary }}>
 				{value}
 			</Typography>
-			<Typography sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mt: 0.25 }}>
+			<Typography
+				sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mt: 0.25 }}
+			>
 				{label}
 			</Typography>
 		</Box>
@@ -100,7 +113,9 @@ export default function DashboardPage() {
 					<Typography variant="h4" component="h1">
 						Dashboard
 					</Typography>
-					<Typography sx={{ font: "600 14px 'Nunito'", color: '#8B8472', mt: 0.75 }}>
+					<Typography
+						sx={{ font: "600 14px 'Nunito'", color: '#8B8472', mt: 0.75 }}
+					>
 						Here&rsquo;s what&rsquo;s happening across your apps.
 					</Typography>
 				</Box>
@@ -121,7 +136,16 @@ export default function DashboardPage() {
 			</Box>
 
 			{/* applications */}
-			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 4, mb: 2, mx: 0.25 }}>
+			<Box
+				sx={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 1.5,
+					mt: 4,
+					mb: 2,
+					mx: 0.25,
+				}}
+			>
 				<Typography variant="h5" component="h2">
 					Your applications
 				</Typography>
@@ -164,7 +188,9 @@ export default function DashboardPage() {
 					<Typography sx={{ font: "700 18px 'Baloo 2'", mb: 0.5 }}>
 						No applications yet
 					</Typography>
-					<Typography sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mb: 3 }}>
+					<Typography
+						sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mb: 3 }}
+					>
 						Create your first application to start managing feature flags.
 					</Typography>
 					<Button
@@ -188,7 +214,8 @@ export default function DashboardPage() {
 								borderRadius: '16px',
 								p: '17px 19px',
 								cursor: 'pointer',
-								transition: 'box-shadow .15s ease, border-color .15s ease, transform .15s ease',
+								transition:
+									'box-shadow .15s ease, border-color .15s ease, transform .15s ease',
 								'&:hover': {
 									borderColor: '#E4DBC8',
 									boxShadow: '0 8px 24px rgba(40,33,20,.09)',
@@ -218,7 +245,11 @@ export default function DashboardPage() {
 										{app.name}
 									</Typography>
 									<Typography
-										sx={{ font: `500 11px ${monoFontFamily}`, color: '#A79F8C', mt: '1px' }}
+										sx={{
+											font: `500 11px ${monoFontFamily}`,
+											color: '#A79F8C',
+											mt: '1px',
+										}}
 									>
 										{app.identifier}
 									</Typography>
@@ -228,7 +259,9 @@ export default function DashboardPage() {
 										<Typography sx={{ font: "800 16px 'Baloo 2'" }}>
 											{app._count?.flags || 0}
 										</Typography>
-										<Typography sx={{ font: "600 10px 'Nunito'", color: '#8B8472' }}>
+										<Typography
+											sx={{ font: "600 10px 'Nunito'", color: '#8B8472' }}
+										>
 											flags
 										</Typography>
 									</Box>
@@ -236,12 +269,17 @@ export default function DashboardPage() {
 										<Typography sx={{ font: "800 16px 'Baloo 2'" }}>
 											{app._count?.test_rollouts || 0}
 										</Typography>
-										<Typography sx={{ font: "600 10px 'Nunito'", color: '#8B8472' }}>
+										<Typography
+											sx={{ font: "600 10px 'Nunito'", color: '#8B8472' }}
+										>
 											tests
 										</Typography>
 									</Box>
 								</Box>
-								<Ms name="chevron_right" sx={{ fontSize: 24, color: '#C2BAA8', ml: 0.75 }} />
+								<Ms
+									name="chevron_right"
+									sx={{ fontSize: 24, color: '#C2BAA8', ml: 0.75 }}
+								/>
 							</Box>
 							<Box
 								sx={{

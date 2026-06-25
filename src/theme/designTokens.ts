@@ -77,7 +77,10 @@ export interface EnvColors {
 	dot: string;
 }
 
-export const envColors: Record<'production' | 'beta' | 'development', EnvColors> = {
+export const envColors: Record<
+	'production' | 'beta' | 'development',
+	EnvColors
+> = {
 	production: {
 		label: 'Production',
 		text: '#623ca1',
@@ -107,7 +110,8 @@ export const envColors: Record<'production' | 'beta' | 'development', EnvColors>
 // --- Typography voices ---
 export const monoFontFamily =
 	"var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace";
-export const displayFontFamily = "var(--font-baloo), 'Baloo 2', system-ui, sans-serif";
+export const displayFontFamily =
+	"var(--font-baloo), 'Baloo 2', system-ui, sans-serif";
 
 // Dark code-block surface for live JSON previews.
 export const codeSurface = {
@@ -139,7 +143,11 @@ export function technicalButtonSx(opts?: {
 			boxShadow: 'none',
 			backgroundColor: disabled ? '#C2BAA8' : accent ? '#E89327' : '#000',
 		},
-		'&.Mui-disabled': { color: '#fff', backgroundColor: '#C2BAA8', opacity: 0.55 },
+		'&.Mui-disabled': {
+			color: '#fff',
+			backgroundColor: '#C2BAA8',
+			opacity: 0.55,
+		},
 	};
 }
 

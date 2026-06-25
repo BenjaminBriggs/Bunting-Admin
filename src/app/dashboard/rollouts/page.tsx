@@ -21,7 +21,13 @@ import {
 } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
 import { useChanges } from '@/lib/changes-context';
-import { danger, ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
+import {
+	danger,
+	ink,
+	monoFontFamily,
+	surface,
+	typeColors,
+} from '@/theme/designTokens';
 import { CardChips } from '@/components/features/test-rollouts/CardChips';
 import {
 	groupByGroup,
@@ -52,9 +58,9 @@ export default function RolloutsPage() {
 	);
 	const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 	const [menuRolloutId, setMenuRolloutId] = useState<string | null>(null);
-	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(
-		{},
-	);
+	const [collapsedGroups, setCollapsedGroups] = useState<
+		Record<string, boolean>
+	>({});
 
 	useEffect(() => {
 		const loadRollouts = async () => {
@@ -199,14 +205,22 @@ export default function RolloutsPage() {
 						<Typography sx={{ font: "700 19px 'Baloo 2'" }}>
 							{rollout.name}
 						</Typography>
-						<Typography sx={{ font: `500 12px ${monoFontFamily}`, color: '#A79F8C', mt: 0.625 }}>
+						<Typography
+							sx={{
+								font: `500 12px ${monoFontFamily}`,
+								color: '#A79F8C',
+								mt: 0.625,
+							}}
+						>
 							{rollout.key}
 						</Typography>
 					</Box>
 					<Box
 						component="span"
 						className="ms"
-						onClick={(e: React.MouseEvent<HTMLElement>) => openMenu(e, rollout.id)}
+						onClick={(e: React.MouseEvent<HTMLElement>) =>
+							openMenu(e, rollout.id)
+						}
 						sx={{
 							fontSize: 22,
 							color: '#A79F8C',
@@ -233,7 +247,9 @@ export default function RolloutsPage() {
 						<Typography sx={{ font: "600 12px 'Nunito'", color: '#8B8472' }}>
 							Rollout percentage
 						</Typography>
-						<Typography sx={{ font: `700 22px ${monoFontFamily}`, color: ink.primary }}>
+						<Typography
+							sx={{ font: `700 22px ${monoFontFamily}`, color: ink.primary }}
+						>
 							{pct}%
 						</Typography>
 					</Box>
@@ -243,9 +259,7 @@ export default function RolloutsPage() {
 							onChange={(_, value) => {
 								setRollouts((prev) =>
 									prev.map((r) =>
-										r.id === rollout.id
-											? { ...r, percentage: value }
-											: r,
+										r.id === rollout.id ? { ...r, percentage: value } : r,
 									),
 								);
 							}}
@@ -340,12 +354,21 @@ export default function RolloutsPage() {
 			</Box>
 
 			{/* section header */}
-			<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, m: '30px 2px 18px' }}>
+			<Box
+				sx={{
+					display: 'flex',
+					alignItems: 'baseline',
+					gap: 1.5,
+					m: '30px 2px 18px',
+				}}
+			>
 				<Typography sx={{ font: "800 25px 'Baloo 2'", color: ink.primary }}>
 					Active Rollouts
 				</Typography>
 				<Box sx={countPillSx}>{activeRollouts.length}</Box>
-				<Typography sx={{ ml: 'auto', font: "600 12px 'Nunito'", color: '#A79F8C' }}>
+				<Typography
+					sx={{ ml: 'auto', font: "600 12px 'Nunito'", color: '#A79F8C' }}
+				>
 					drag a slider to ramp · saves live
 				</Typography>
 			</Box>
@@ -360,11 +383,16 @@ export default function RolloutsPage() {
 						textAlign: 'center',
 					}}
 				>
-					<Ms name="rocket_launch" sx={{ fontSize: 44, color: typeColors.rollout.solid }} />
+					<Ms
+						name="rocket_launch"
+						sx={{ fontSize: 44, color: typeColors.rollout.solid }}
+					/>
 					<Typography sx={{ font: "700 18px 'Baloo 2'", mt: 1 }}>
 						{searchTerm ? 'No rollouts match your search' : 'No rollouts yet'}
 					</Typography>
-					<Typography sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.5, mb: 2 }}>
+					<Typography
+						sx={{ font: "600 13px 'Nunito'", color: '#8B8472', mt: 0.5, mb: 2 }}
+					>
 						{searchTerm
 							? 'Try adjusting your search terms'
 							: 'Create your first rollout to start a gradual release'}
@@ -403,11 +431,24 @@ export default function RolloutsPage() {
 			{/* archived */}
 			{archivedRollouts.length > 0 && (
 				<>
-					<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, m: '30px 2px 16px' }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'baseline',
+							gap: 1.5,
+							m: '30px 2px 16px',
+						}}
+					>
 						<Typography sx={{ font: "800 21px 'Baloo 2'", color: '#9A9483' }}>
 							Archived
 						</Typography>
-						<Box sx={{ ...countPillSx, font: "800 13px 'Baloo 2'", color: '#A79F8C' }}>
+						<Box
+							sx={{
+								...countPillSx,
+								font: "800 13px 'Baloo 2'",
+								color: '#A79F8C',
+							}}
+						>
 							{archivedRollouts.length}
 						</Box>
 					</Box>
@@ -430,14 +471,29 @@ export default function RolloutsPage() {
 								}}
 							>
 								<Box sx={{ flex: 1, minWidth: 0 }}>
-									<Typography sx={{ font: "700 18px 'Baloo 2'", color: '#7E776A' }}>
+									<Typography
+										sx={{ font: "700 18px 'Baloo 2'", color: '#7E776A' }}
+									>
 										{rollout.name}
 									</Typography>
-									<Typography sx={{ font: `500 12px ${monoFontFamily}`, color: '#B4AC9A', mt: 0.5 }}>
+									<Typography
+										sx={{
+											font: `500 12px ${monoFontFamily}`,
+											color: '#B4AC9A',
+											mt: 0.5,
+										}}
+									>
 										{rollout.key} · shipped at {pct}%
 									</Typography>
 								</Box>
-								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.125, width: 170 }}>
+								<Box
+									sx={{
+										display: 'flex',
+										alignItems: 'center',
+										gap: 1.125,
+										width: 170,
+									}}
+								>
 									<Box
 										sx={{
 											flex: 1,
@@ -479,7 +535,9 @@ export default function RolloutsPage() {
 				onClose={closeMenu}
 				anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
 				transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-				slotProps={{ paper: { sx: { minWidth: 196, borderRadius: '13px', p: 0.75 } } }}
+				slotProps={{
+					paper: { sx: { minWidth: 196, borderRadius: '13px', p: 0.75 } },
+				}}
 			>
 				<MenuItem
 					component={Link}
@@ -492,24 +550,34 @@ export default function RolloutsPage() {
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="edit" sx={{ fontSize: 19, color: ink.soft }} />
-					<Typography sx={{ font: "700 13px 'Nunito'" }}>Edit rollout</Typography>
+					<Typography sx={{ font: "700 13px 'Nunito'" }}>
+						Edit rollout
+					</Typography>
 				</MenuItem>
 				<Box sx={{ height: '1px', bgcolor: '#F1EBDD', m: '5px 4px' }} />
 				<MenuItem
-					onClick={() => menuRolloutId && handleArchive(menuRolloutId, 'cancel')}
+					onClick={() =>
+						menuRolloutId && handleArchive(menuRolloutId, 'cancel')
+					}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
-					<Typography sx={{ font: `600 13px ${monoFontFamily}`, color: '#3A352C' }}>
+					<Typography
+						sx={{ font: `600 13px ${monoFontFamily}`, color: '#3A352C' }}
+					>
 						Cancel (0%)
 					</Typography>
 				</MenuItem>
 				<MenuItem
-					onClick={() => menuRolloutId && handleArchive(menuRolloutId, 'complete')}
+					onClick={() =>
+						menuRolloutId && handleArchive(menuRolloutId, 'complete')
+					}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="check_circle" sx={{ fontSize: 19, color: '#3F7A2D' }} />
-					<Typography sx={{ font: `600 13px ${monoFontFamily}`, color: '#3F7A2D' }}>
+					<Typography
+						sx={{ font: `600 13px ${monoFontFamily}`, color: '#3F7A2D' }}
+					>
 						Complete (100%)
 					</Typography>
 				</MenuItem>

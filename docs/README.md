@@ -32,13 +32,13 @@ Step-by-step instructions for common tasks.
 
 Exact specifications and API details.
 
-| Document                                                 | Description                                                                                                            |
-| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| [Config Artifact Specification](config-artifact-spec.md) | Canonical JSON contract between Bunting Admin and the SDK — flag schema, bucketing algorithm, signing, and JSON Schema |
+| Document                                                 | Description                                                                                                             |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [Config Artifact Specification](config-artifact-spec.md) | Canonical JSON contract between Bunting Admin and the SDK — flag schema, bucketing algorithm, signing, and JSON Schema  |
 | [Config Fingerprint Code](config-fingerprint-spec.md)    | Short per-client code encoding a user's exact resolved flag config for a given version — format, encoding, and decoding |
-| [API Reference](api-reference.md)                        | REST API endpoints, request/response shapes, and authentication                                                        |
-| [Security](security.md)                                  | Auth model, key management, signing pipeline, and hardening recommendations                                            |
-| [CHANGELOG](../CHANGELOG.md)                             | Version history and breaking changes                                                                                   |
+| [API Reference](api-reference.md)                        | REST API endpoints, request/response shapes, and authentication                                                         |
+| [Security](security.md)                                  | Auth model, key management, signing pipeline, and hardening recommendations                                             |
+| [CHANGELOG](../CHANGELOG.md)                             | Version history and breaking changes                                                                                    |
 
 ---
 
@@ -46,7 +46,7 @@ Exact specifications and API details.
 
 Background and concepts for understanding how Bunting works.
 
-| Document                                | Description                                                                                                                                                       |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Product Overview](product-overview.md) | Capabilities, typical workflows, and dashboard tour                                                                                                               |
+| Document                                | Description                                                                                                                                           |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Product Overview](product-overview.md) | Capabilities, typical workflows, and dashboard tour                                                                                                   |
 | [Concepts](concepts.md)                 | Flags vs. tests vs. rollouts, the environment-first model, the authoring → signing → fetch → evaluate pipeline, deterministic bucketing, and glossary |
