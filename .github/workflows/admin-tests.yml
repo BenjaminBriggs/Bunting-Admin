@@ -149,13 +149,18 @@ jobs:
           NEXTAUTH_SECRET: e2e-secret
           NEXTAUTH_URL: http://localhost:3000
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bunting_e2e
-          DISABLE_DEV_AUTH: 'true'
         run: pnpm run e2e:build
 
+      # The production server runs the startup config validation, so the smoke
+      # test needs a complete (if dummy) prod config to boot. Proxy mode avoids
+      # needing a live OIDC provider; the smoke test only loads the public `/`.
       - name: Run Playwright smoke tests
         env:
+          AUTH_MODE: proxy
           NEXTAUTH_SECRET: e2e-secret
           NEXTAUTH_URL: http://localhost:3000
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bunting_e2e
-          DISABLE_DEV_AUTH: 'true'
+          S3_BUCKET: e2e-bucket
+          S3_REGION: us-east-1
+          SIGNING_KEY_SECRET: e2e-signing-secret
         run: pnpm run e2e
