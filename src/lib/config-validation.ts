@@ -81,7 +81,6 @@ export function validateConfig(config: any): ValidationResult {
 				}
 			});
 		}
-
 	});
 
 	return { errors, warnings };

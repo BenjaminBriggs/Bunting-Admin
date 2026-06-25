@@ -1,6 +1,12 @@
 'use client';
 
-import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
+import {
+	Alert,
+	Box,
+	Button,
+	CircularProgress,
+	Typography,
+} from '@mui/material';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -108,7 +114,14 @@ export default function EditRolloutPage() {
 
 	if (loading) {
 		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+			<Box
+				sx={{
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					py: 8,
+				}}
+			>
 				<CircularProgress sx={{ mr: 2 }} />
 				<Typography>Loading rollout…</Typography>
 			</Box>

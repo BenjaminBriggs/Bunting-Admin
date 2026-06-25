@@ -16,7 +16,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchRollouts, fetchTests } from '@/lib/api';
 import { useApp } from '@/lib/app-context';
-import { envColors, ink, monoFontFamily, surface, typeColors } from '@/theme/designTokens';
+import {
+	envColors,
+	ink,
+	monoFontFamily,
+	surface,
+	typeColors,
+} from '@/theme/designTokens';
 import type { DBTestRollout, Environment } from '@/types';
 import FlagValueInput, {
 	getDefaultValueForType,
@@ -39,7 +45,10 @@ type Segment = 'rollout' | 'test';
 // Segment accent: the accent communicates the *core type* (Rollout vs Test), so it
 // reads the brand type colours — Rollout green, Test teal. The subtitle keeps the
 // actual environment identity (which is a separate colour dimension).
-const SEGMENT_ACCENT: Record<Segment, { accent: string; tint: string; icon: string }> = {
+const SEGMENT_ACCENT: Record<
+	Segment,
+	{ accent: string; tint: string; icon: string }
+> = {
 	rollout: {
 		accent: typeColors.rollout.text,
 		tint: typeColors.rollout.bg,
@@ -177,9 +186,7 @@ export default function TestRolloutAssignmentModal({
 	};
 
 	const handleCreateNew = () => {
-		const path = isRollout
-			? '/dashboard/rollouts/new'
-			: '/dashboard/tests/new';
+		const path = isRollout ? '/dashboard/rollouts/new' : '/dashboard/tests/new';
 		onClose();
 		router.push(`${path}?flagId=${flagId}`);
 	};
@@ -351,9 +358,7 @@ export default function TestRolloutAssignmentModal({
 									transition: 'all .14s ease',
 									bgcolor: active ? '#fff' : 'transparent',
 									color: active ? ink.primary : '#8B8472',
-									boxShadow: active
-										? '0 1px 3px rgba(40,33,20,.14)'
-										: 'none',
+									boxShadow: active ? '0 1px 3px rgba(40,33,20,.14)' : 'none',
 								}}
 							>
 								<Ms name={SEGMENT_ACCENT[value].icon} sx={{ fontSize: 18 }} />
@@ -438,13 +443,22 @@ export default function TestRolloutAssignmentModal({
 									py: 1.375,
 									fontWeight: 700,
 									boxShadow: 'none',
-									'&:hover': { bgcolor: accent, opacity: 0.9, boxShadow: 'none' },
+									'&:hover': {
+										bgcolor: accent,
+										opacity: 0.9,
+										boxShadow: 'none',
+									},
 								}}
 							>
 								{isRollout ? 'Create a new rollout' : 'Create a new test'}
 							</Button>
 							<Typography
-								sx={{ fontWeight: 600, fontSize: 11, color: ink.faint, mt: 1.5 }}
+								sx={{
+									fontWeight: 600,
+									fontSize: 11,
+									color: ink.faint,
+									mt: 1.5,
+								}}
 							>
 								It’ll open with this flag pre-selected.
 							</Typography>
@@ -527,7 +541,10 @@ export default function TestRolloutAssignmentModal({
 														flexShrink: 0,
 													}}
 												>
-													<Ms name={segIcon} sx={{ fontSize: 17, color: accent }} />
+													<Ms
+														name={segIcon}
+														sx={{ fontSize: 17, color: accent }}
+													/>
 												</Box>
 												<Box sx={{ flex: 1, minWidth: 0 }}>
 													<Typography
@@ -669,7 +686,9 @@ export default function TestRolloutAssignmentModal({
 									</Box>
 									<Stack spacing={1}>
 										{selectedGroups.map((g) => {
-											const idx = Object.keys(selected?.variants || {}).indexOf(g);
+											const idx = Object.keys(selected?.variants || {}).indexOf(
+												g,
+											);
 											const color = isControl(g)
 												? CONTROL_COLOR
 												: PALETTE[(idx < 0 ? 0 : idx) % PALETTE.length];
@@ -754,7 +773,11 @@ export default function TestRolloutAssignmentModal({
 						fontWeight: 700,
 						boxShadow: 'none',
 						'&:hover': { bgcolor: accent, opacity: 0.9, boxShadow: 'none' },
-						'&.Mui-disabled': { bgcolor: '#C2BAA8', color: '#fff', opacity: 0.55 },
+						'&.Mui-disabled': {
+							bgcolor: '#C2BAA8',
+							color: '#fff',
+							opacity: 0.55,
+						},
 					}}
 				>
 					{confirmLabel}

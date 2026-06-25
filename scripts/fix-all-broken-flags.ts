@@ -46,9 +46,7 @@ async function fixAllBrokenFlags() {
 						? defaultValues.development
 						: existingValue,
 				beta:
-					defaultValues.beta !== undefined
-						? defaultValues.beta
-						: existingValue,
+					defaultValues.beta !== undefined ? defaultValues.beta : existingValue,
 				production:
 					defaultValues.production !== undefined
 						? defaultValues.production

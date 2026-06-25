@@ -142,19 +142,19 @@ List all flags for an app, ordered by `updatedAt` descending. Includes `app.name
 
 **Response 200** — array of `Flag` objects.
 
-| Field                     | Type                                                                                                   | Notes                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| `id`                      | string                                                                                                 | cuid                                  |
-| `key`                     | string                                                                                                 | normalized snake_case, unique per app |
-| `displayName`             | string                                                                                                 |                                       |
-| `type`                    | `"BOOL"` \| `"STRING"` \| `"INT"` \| `"DOUBLE"` \| `"DATE"` \| `"JSON"`                                | Prisma enum (uppercase)               |
-| `description`             | string?                                                                                                |                                       |
-| `archived`                | boolean                                                                                                |                                       |
-| `archivedAt`              | string?                                                                                                | ISO8601                               |
+| Field                     | Type                                                                                                | Notes                                 |
+| ------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `id`                      | string                                                                                              | cuid                                  |
+| `key`                     | string                                                                                              | normalized snake_case, unique per app |
+| `displayName`             | string                                                                                              |                                       |
+| `type`                    | `"BOOL"` \| `"STRING"` \| `"INT"` \| `"DOUBLE"` \| `"DATE"` \| `"JSON"`                             | Prisma enum (uppercase)               |
+| `description`             | string?                                                                                             |                                       |
+| `archived`                | boolean                                                                                             |                                       |
+| `archivedAt`              | string?                                                                                             | ISO8601                               |
 | `defaultValues`           | `{development: any, beta: any, production: any}`                                                    |                                       |
 | `variants`                | `{development: ConditionalVariant[], beta: ConditionalVariant[], production: ConditionalVariant[]}` |                                       |
-| `appId`                   | string                                                                                                 |                                       |
-| `createdAt` / `updatedAt` | ISO8601 string                                                                                         |                                       |
+| `appId`                   | string                                                                                              |                                       |
+| `createdAt` / `updatedAt` | ISO8601 string                                                                                      |                                       |
 
 ---
 
@@ -170,7 +170,7 @@ Create a flag.
 | `displayName`   | string                                                                  | yes                          |
 | `type`          | `"bool"` \| `"string"` \| `"int"` \| `"double"` \| `"date"` \| `"json"` | yes — lowercase wire format  |
 | `description`   | string                                                                  | no                           |
-| `defaultValues` | `{development: any, beta: any, production: any}`                     | yes                          |
+| `defaultValues` | `{development: any, beta: any, production: any}`                        | yes                          |
 | `appId`         | string                                                                  | yes                          |
 
 `variants` is initialized to `{development: [], beta: [], production: []}` by the server.
@@ -203,7 +203,7 @@ Update a flag. All fields are optional. Setting `archived: true` also sets `arch
 | `displayName`   | string?                                                                  |
 | `type`          | `"bool"` \| `"string"` \| `"int"` \| `"double"` \| `"date"` \| `"json"`? |
 | `description`   | string \| null?                                                          |
-| `defaultValues` | `{development: any, beta: any, production: any}`?                     |
+| `defaultValues` | `{development: any, beta: any, production: any}`?                        |
 | `variants`      | `Record<string, unknown[]>`? — env-keyed array                           |
 | `archived`      | boolean?                                                                 |
 
@@ -365,16 +365,16 @@ Update a rollout.
 
 **Request body** (Zod-validated via `updateRolloutSchema`)
 
-| Field           | Type                                             |
-| --------------- | ------------------------------------------------ |
-| `key`           | string?                                          |
-| `name`          | string?                                          |
-| `description`   | string \| null?                                  |
-| `conditions`    | `Condition[]`?                                   |
-| `percentage`    | integer 0–100?                                   |
+| Field           | Type                                          |
+| --------------- | --------------------------------------------- |
+| `key`           | string?                                       |
+| `name`          | string?                                       |
+| `description`   | string \| null?                               |
+| `conditions`    | `Condition[]`?                                |
+| `percentage`    | integer 0–100?                                |
 | `rolloutValues` | partial `{development?, beta?, production?}`? |
-| `flagIds`       | `string[]`?                                      |
-| `archived`      | boolean?                                         |
+| `flagIds`       | `string[]`?                                   |
+| `archived`      | boolean?                                      |
 
 **Response 200** — updated `TestRollout` object.
 
@@ -656,15 +656,15 @@ Fetch the publish history for an app.
 
 **Response 200** — array of `PublishHistoryItem`:
 
-| Field         | Type                                                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------ |
-| `id`          | string                                                                                           |
-| `version`     | string (`YYYY-MM-DD.N`)                                                                          |
-| `publishedAt` | ISO8601 string                                                                                   |
-| `publishedBy` | string                                                                                           |
-| `changelog`   | string                                                                                           |
-| `flagCount`   | number                                                                                           |
-| `changes`     | `{type: "flag", action: "added"\|"modified"\|"removed", key: string, name: string}[]?`           |
+| Field         | Type                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------- |
+| `id`          | string                                                                                 |
+| `version`     | string (`YYYY-MM-DD.N`)                                                                |
+| `publishedAt` | ISO8601 string                                                                         |
+| `publishedBy` | string                                                                                 |
+| `changelog`   | string                                                                                 |
+| `flagCount`   | number                                                                                 |
+| `changes`     | `{type: "flag", action: "added"\|"modified"\|"removed", key: string, name: string}[]?` |
 
 ---
 

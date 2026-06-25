@@ -136,9 +136,7 @@ describe('Config Validation', () => {
 
 			const result = validateConfig(config);
 			expect(result.errors).toHaveLength(2);
-			expect(result.errors.some((e) => e.message.includes('beta'))).toBe(
-				true,
-			);
+			expect(result.errors.some((e) => e.message.includes('beta'))).toBe(true);
 			expect(result.errors.some((e) => e.message.includes('production'))).toBe(
 				true,
 			);

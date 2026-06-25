@@ -274,7 +274,10 @@ export default function UserManagement() {
 							'&:focus-within': { borderColor: ink.primary },
 						}}
 					>
-						<Ms name="alternate_email" sx={{ fontSize: 20, color: '#B4AC9A' }} />
+						<Ms
+							name="alternate_email"
+							sx={{ fontSize: 20, color: '#B4AC9A' }}
+						/>
 						<Box
 							component="input"
 							required
@@ -338,7 +341,9 @@ export default function UserManagement() {
 						Add
 					</Box>
 				</Box>
-				<Typography sx={{ font: "500 12px 'Nunito'", color: ink.muted, mt: 1.375 }}>
+				<Typography
+					sx={{ font: "500 12px 'Nunito'", color: ink.muted, mt: 1.375 }}
+				>
 					A whole-domain grant lets anyone with that email domain sign in at the
 					chosen role.
 				</Typography>
@@ -350,11 +355,29 @@ export default function UserManagement() {
 			</Box>
 
 			{/* Members */}
-			<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.375, mt: 3.5, mb: 1.625, mx: 0.25 }}>
+			<Box
+				sx={{
+					display: 'flex',
+					alignItems: 'baseline',
+					gap: 1.375,
+					mt: 3.5,
+					mb: 1.625,
+					mx: 0.25,
+				}}
+			>
 				<Typography variant="h5" sx={{ fontSize: 19 }}>
 					Members
 				</Typography>
-				<Box sx={{ font: "700 12px 'Baloo 2'", color: '#9A9483', bgcolor: '#EFE8D9', borderRadius: '20px', px: 1.25, py: 0.25 }}>
+				<Box
+					sx={{
+						font: "700 12px 'Baloo 2'",
+						color: '#9A9483',
+						bgcolor: '#EFE8D9',
+						borderRadius: '20px',
+						px: 1.25,
+						py: 0.25,
+					}}
+				>
 					{activeUsers.length}
 				</Box>
 			</Box>
@@ -395,16 +418,30 @@ export default function UserManagement() {
 							</Box>
 							<Box sx={{ flex: 1, minWidth: 0 }}>
 								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.125 }}>
-									<Typography sx={{ font: "700 14px 'Nunito'", color: ink.primary }} noWrap>
+									<Typography
+										sx={{ font: "700 14px 'Nunito'", color: ink.primary }}
+										noWrap
+									>
 										{user.email}
 									</Typography>
 									{isYou && (
-										<Box sx={{ font: `700 9px ${monoFontFamily}`, color: ink.soft, bgcolor: surface.token, borderRadius: '6px', px: 0.875, py: 0.375 }}>
+										<Box
+											sx={{
+												font: `700 9px ${monoFontFamily}`,
+												color: ink.soft,
+												bgcolor: surface.token,
+												borderRadius: '6px',
+												px: 0.875,
+												py: 0.375,
+											}}
+										>
 											YOU
 										</Box>
 									)}
 								</Box>
-								<Typography sx={{ font: "500 12px 'Nunito'", color: ink.muted, mt: 0.25 }}>
+								<Typography
+									sx={{ font: "500 12px 'Nunito'", color: ink.muted, mt: 0.25 }}
+								>
 									Active · joined {formatRelative(user.createdAt)} · active{' '}
 									{formatRelative(user.lastActiveAt)}
 								</Typography>
@@ -430,9 +467,7 @@ export default function UserManagement() {
 							) : (
 								<Select
 									value={user.role}
-									onChange={(e) =>
-										updateUserRole(user.id, e.target.value)
-									}
+									onChange={(e) => updateUserRole(user.id, e.target.value)}
 									variant="standard"
 									disableUnderline
 									renderValue={(val) => ROLE_STYLE[val].label}
@@ -456,7 +491,14 @@ export default function UserManagement() {
 					);
 				})}
 				{activeUsers.length === 0 && (
-					<Typography sx={{ font: "600 13px 'Nunito'", color: ink.muted, textAlign: 'center', py: 2 }}>
+					<Typography
+						sx={{
+							font: "600 13px 'Nunito'",
+							color: ink.muted,
+							textAlign: 'center',
+							py: 2,
+						}}
+					>
 						No members yet.
 					</Typography>
 				)}
@@ -465,11 +507,29 @@ export default function UserManagement() {
 			{/* Pending invites */}
 			{invitedUsers.length > 0 && (
 				<>
-					<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.375, mt: 3.5, mb: 1.625, mx: 0.25 }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'baseline',
+							gap: 1.375,
+							mt: 3.5,
+							mb: 1.625,
+							mx: 0.25,
+						}}
+					>
 						<Typography variant="h5" sx={{ fontSize: 19, color: '#9A9483' }}>
 							Pending invites
 						</Typography>
-						<Box sx={{ font: "700 12px 'Baloo 2'", color: '#A79F8C', bgcolor: '#EFE8D9', borderRadius: '20px', px: 1.25, py: 0.25 }}>
+						<Box
+							sx={{
+								font: "700 12px 'Baloo 2'",
+								color: '#A79F8C',
+								bgcolor: '#EFE8D9',
+								borderRadius: '20px',
+								px: 1.25,
+								py: 0.25,
+							}}
+						>
 							{invitedUsers.length}
 						</Box>
 					</Box>
@@ -505,16 +565,38 @@ export default function UserManagement() {
 									/>
 								</Box>
 								<Box sx={{ flex: 1, minWidth: 0 }}>
-									<Typography sx={{ font: `700 14px ${monoFontFamily}`, color: ink.primary }} noWrap>
+									<Typography
+										sx={{
+											font: `700 14px ${monoFontFamily}`,
+											color: ink.primary,
+										}}
+										noWrap
+									>
 										{inv.email}
 									</Typography>
-									<Typography sx={{ font: "500 12px 'Nunito'", color: ink.muted, mt: 0.25 }}>
+									<Typography
+										sx={{
+											font: "500 12px 'Nunito'",
+											color: ink.muted,
+											mt: 0.25,
+										}}
+									>
 										{inv.type === 'DOMAIN'
 											? `Whole domain · anyone signing in becomes ${ROLE_STYLE[inv.role].label}`
 											: `Invited · becomes ${ROLE_STYLE[inv.role].label} on first sign-in`}
 									</Typography>
 								</Box>
-								<Box sx={{ font: `700 9px ${monoFontFamily}`, color: '#9A6F1C', bgcolor: '#FCEFD2', border: '1px solid #F3E2BD', borderRadius: '6px', px: 1, py: 0.5 }}>
+								<Box
+									sx={{
+										font: `700 9px ${monoFontFamily}`,
+										color: '#9A6F1C',
+										bgcolor: '#FCEFD2',
+										border: '1px solid #F3E2BD',
+										borderRadius: '6px',
+										px: 1,
+										py: 0.5,
+									}}
+								>
 									{inv.type === 'DOMAIN' ? 'DOMAIN' : 'INVITED'}
 								</Box>
 								<Box
@@ -543,27 +625,50 @@ export default function UserManagement() {
 			{/* Roles legend */}
 			<Box sx={{ ...CARD_SX, mt: 3.25 }}>
 				<Typography sx={{ ...MONO_LABEL_SX, mb: 1.75 }}>ROLES</Typography>
-				<Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 1.75 }}>
+				<Box
+					sx={{
+						display: 'grid',
+						gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+						gap: 1.75,
+					}}
+				>
 					<Box>
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.875 }}>
-							<Ms name="shield_person" sx={{ fontSize: 18, color: '#C8503C' }} />
+							<Ms
+								name="shield_person"
+								sx={{ fontSize: 18, color: '#C8503C' }}
+							/>
 							<Typography sx={{ font: "800 13px 'Baloo 2'" }}>Admin</Typography>
 						</Box>
-						<Typography sx={{ font: "500 12px 'Nunito'", color: '#8B8472', mt: 0.625 }}>
+						<Typography
+							sx={{ font: "500 12px 'Nunito'", color: '#8B8472', mt: 0.625 }}
+						>
 							Full access, plus user management &amp; app deletion.
 						</Typography>
 					</Box>
 					<Box>
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.875 }}>
 							<Ms name="code" sx={{ fontSize: 18, color: '#9A6F1C' }} />
-							<Typography sx={{ font: "800 13px 'Baloo 2'" }}>Developer</Typography>
+							<Typography sx={{ font: "800 13px 'Baloo 2'" }}>
+								Developer
+							</Typography>
 						</Box>
-						<Typography sx={{ font: "500 12px 'Nunito'", color: '#8B8472', mt: 0.625 }}>
+						<Typography
+							sx={{ font: "500 12px 'Nunito'", color: '#8B8472', mt: 0.625 }}
+						>
 							Edit flags, tests &amp; rollouts, and publish configs.
 						</Typography>
 					</Box>
 				</Box>
-				<Typography sx={{ font: "500 12px 'Nunito'", color: ink.muted, mt: 1.875, borderTop: '1px solid #F1EBDD', pt: 1.625 }}>
+				<Typography
+					sx={{
+						font: "500 12px 'Nunito'",
+						color: ink.muted,
+						mt: 1.875,
+						borderTop: '1px solid #F1EBDD',
+						pt: 1.625,
+					}}
+				>
 					You can't change your own role, and only pending invites can be
 					removed.
 				</Typography>

@@ -25,7 +25,9 @@ const decodeSchema = z.object({
 const s3Client = getS3Client();
 
 function isNotFound(error: any): boolean {
-	return error?.name === 'NoSuchKey' || error?.$metadata?.httpStatusCode === 404;
+	return (
+		error?.name === 'NoSuchKey' || error?.$metadata?.httpStatusCode === 404
+	);
 }
 
 async function fetchArtifact(

@@ -81,10 +81,21 @@ function evenSplit(groups: TestGroupValue[]): TestGroupValue[] {
 	const n = groups.length;
 	const base = Math.floor(100 / n);
 	const rem = 100 - base * n;
-	return groups.map((g, i) => ({ name: g.name, weight: base + (i < rem ? 1 : 0) }));
+	return groups.map((g, i) => ({
+		name: g.name,
+		weight: base + (i < rem ? 1 : 0),
+	}));
 }
 
-function Ms({ name, sx, onClick }: { name: string; sx?: any; onClick?: () => void }) {
+function Ms({
+	name,
+	sx,
+	onClick,
+}: {
+	name: string;
+	sx?: any;
+	onClick?: () => void;
+}) {
 	return (
 		<Box component="span" className="ms" sx={sx} onClick={onClick}>
 			{name}
@@ -160,7 +171,8 @@ export default function TestForm({
 		.map((_, i) => i)
 		.sort(
 			(a, b) =>
-				(isControl(groups[a].name) ? 0 : 1) - (isControl(groups[b].name) ? 0 : 1),
+				(isControl(groups[a].name) ? 0 : 1) -
+				(isControl(groups[b].name) ? 0 : 1),
 		);
 	const orderedGroups = displayOrder.map((i) => ({ g: groups[i], i }));
 	const orderedEff = displayOrder.map((i) => ({ g: effGroups[i], i }));
@@ -186,8 +198,15 @@ export default function TestForm({
 	};
 	const setGroupWeight = (i: number, v: string) => {
 		const n =
-			v === '' ? 0 : Math.max(0, Math.min(100, parseInt(v.replace(/[^0-9]/g, ''), 10) || 0));
-		setGroups((prev) => prev.map((g, j) => (j === i ? { ...g, weight: n } : g)));
+			v === ''
+				? 0
+				: Math.max(
+						0,
+						Math.min(100, parseInt(v.replace(/[^0-9]/g, ''), 10) || 0),
+					);
+		setGroups((prev) =>
+			prev.map((g, j) => (j === i ? { ...g, weight: n } : g)),
+		);
 	};
 	const distribute = () => {
 		setGroups((prev) => evenSplit(prev));
@@ -206,9 +225,7 @@ export default function TestForm({
 	const setAudience = (on: boolean) => {
 		setAudienceOn(on);
 		if (on && conditions.length === 0) {
-			setConditions([
-				{ type: 'platform', operator: 'in', values: ['iOS'] },
-			]);
+			setConditions([{ type: 'platform', operator: 'in', values: ['iOS'] }]);
 		}
 	};
 	const addCondition = () => {
@@ -236,7 +253,9 @@ export default function TestForm({
 		);
 	};
 	const setCondOp = (i: number, operator: ConditionOperator) => {
-		setConditions((prev) => prev.map((c, j) => (j === i ? { ...c, operator } : c)));
+		setConditions((prev) =>
+			prev.map((c, j) => (j === i ? { ...c, operator } : c)),
+		);
 	};
 	const setCondValue = (i: number, raw: string) => {
 		setConditions((prev) =>
@@ -246,7 +265,10 @@ export default function TestForm({
 				}
 				const values =
 					c.operator === 'in' || c.operator === 'not_in'
-						? raw.split(',').map((v) => v.trim()).filter(Boolean)
+						? raw
+								.split(',')
+								.map((v) => v.trim())
+								.filter(Boolean)
 						: raw === ''
 							? []
 							: [raw];
@@ -267,9 +289,15 @@ export default function TestForm({
 		if (keyChanged) {
 			out.push({ field: 'KEY', from: initial.key, to: keyText });
 		}
-		const origEff = initial.adjustSplit ? initial.groups : evenSplit(initial.groups);
+		const origEff = initial.adjustSplit
+			? initial.groups
+			: evenSplit(initial.groups);
 		if (groupsLabel(effGroups) !== groupsLabel(origEff)) {
-			out.push({ field: 'GROUPS', from: groupsLabel(origEff), to: groupsLabel(effGroups) });
+			out.push({
+				field: 'GROUPS',
+				from: groupsLabel(origEff),
+				to: groupsLabel(effGroups),
+			});
 		}
 		const origAud = audienceLabel(
 			(initial.conditions?.length ?? 0) > 0,
@@ -290,7 +318,11 @@ export default function TestForm({
 			});
 		}
 		if (group !== initial.group) {
-			out.push({ field: 'GROUP', from: initial.group || '∅', to: group || '∅' });
+			out.push({
+				field: 'GROUP',
+				from: initial.group || '∅',
+				to: group || '∅',
+			});
 		}
 		return out;
 	}, [
@@ -396,7 +428,10 @@ export default function TestForm({
 							color: ink.muted,
 						}}
 					>
-						<Link href="/dashboard/tests" style={{ color: 'inherit', textDecoration: 'none' }}>
+						<Link
+							href="/dashboard/tests"
+							style={{ color: 'inherit', textDecoration: 'none' }}
+						>
 							Tests
 						</Link>
 						<Ms name="chevron_right" sx={{ fontSize: 15 }} />
@@ -405,7 +440,15 @@ export default function TestForm({
 					<Typography variant="h4" sx={{ mt: 1 }}>
 						{isEdit ? 'Edit test' : 'Create a test'}
 					</Typography>
-					<Typography sx={{ fontWeight: 600, fontSize: 13, color: '#8B8472', mt: 0.5, maxWidth: 560 }}>
+					<Typography
+						sx={{
+							fontWeight: 600,
+							fontSize: 13,
+							color: '#8B8472',
+							mt: 0.5,
+							maxWidth: 560,
+						}}
+					>
 						{isEdit
 							? 'Adjust groups, split or audience. Attach it to a flag from the Flags page to go live.'
 							: 'Define the groups and how traffic splits. Map group values per-flag afterwards from the Flags page.'}
@@ -416,7 +459,12 @@ export default function TestForm({
 						<Button
 							variant="outlined"
 							size="small"
-							startIcon={<Ms name="check_circle" sx={{ fontSize: 17, color: '#3F7A2D' }} />}
+							startIcon={
+								<Ms
+									name="check_circle"
+									sx={{ fontSize: 17, color: '#3F7A2D' }}
+								/>
+							}
 							onClick={onComplete}
 						>
 							Complete
@@ -440,7 +488,15 @@ export default function TestForm({
 				</Alert>
 			)}
 
-			<Box sx={{ display: 'flex', gap: 2.75, alignItems: 'flex-start', mt: 2.75, flexWrap: 'wrap' }}>
+			<Box
+				sx={{
+					display: 'flex',
+					gap: 2.75,
+					alignItems: 'flex-start',
+					mt: 2.75,
+					flexWrap: 'wrap',
+				}}
+			>
 				{/* LEFT: form */}
 				<Box
 					sx={{
@@ -455,7 +511,10 @@ export default function TestForm({
 				>
 					{/* name */}
 					<Label>
-						Test name <Box component="span" sx={{ color: '#C8503C' }}>*</Box>
+						Test name{' '}
+						<Box component="span" sx={{ color: '#C8503C' }}>
+							*
+						</Box>
 					</Label>
 					<Box
 						component="input"
@@ -464,8 +523,20 @@ export default function TestForm({
 						placeholder="e.g. Paywall copy"
 						sx={{ ...fieldSx, mt: 1 }}
 					/>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.875, mt: 1.125, flexWrap: 'wrap' }}>
-						<Typography sx={{ fontWeight: 600, fontSize: 11, color: ink.muted }}>key</Typography>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 0.875,
+							mt: 1.125,
+							flexWrap: 'wrap',
+						}}
+					>
+						<Typography
+							sx={{ fontWeight: 600, fontSize: 11, color: ink.muted }}
+						>
+							key
+						</Typography>
 						<Ms name="arrow_forward" sx={{ fontSize: 15, color: '#C2BAA8' }} />
 						<Box
 							sx={{
@@ -482,12 +553,23 @@ export default function TestForm({
 							{keyText || '—'}
 						</Box>
 						{keyValidation.error ? (
-							<Typography sx={{ fontWeight: 600, fontSize: 11, color: '#C8503C' }}>
+							<Typography
+								sx={{ fontWeight: 600, fontSize: 11, color: '#C8503C' }}
+							>
 								{keyValidation.error}
 							</Typography>
 						) : (
 							keyAvailable && (
-								<Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, fontWeight: 600, fontSize: 11, color: '#3F7A2D' }}>
+								<Box
+									sx={{
+										display: 'inline-flex',
+										alignItems: 'center',
+										gap: 0.5,
+										fontWeight: 600,
+										fontSize: 11,
+										color: '#3F7A2D',
+									}}
+								>
 									<Ms name="check_circle" sx={{ fontSize: 15 }} />
 									available
 								</Box>
@@ -508,13 +590,34 @@ export default function TestForm({
 							}}
 						>
 							<Ms name="warning" sx={{ fontSize: 19, color: '#9A6F1C' }} />
-							<Typography sx={{ fontWeight: 600, fontSize: 12, color: '#5E4A18', lineHeight: 1.5 }}>
+							<Typography
+								sx={{
+									fontWeight: 600,
+									fontSize: 12,
+									color: '#5E4A18',
+									lineHeight: 1.5,
+								}}
+							>
 								Renaming changes the key from{' '}
-								<Box component="span" sx={{ fontFamily: monoFontFamily, fontSize: 11, color: '#9A6F1C' }}>
+								<Box
+									component="span"
+									sx={{
+										fontFamily: monoFontFamily,
+										fontSize: 11,
+										color: '#9A6F1C',
+									}}
+								>
 									{initial.key}
 								</Box>{' '}
 								to{' '}
-								<Box component="span" sx={{ fontFamily: monoFontFamily, fontSize: 11, color: '#9A6F1C' }}>
+								<Box
+									component="span"
+									sx={{
+										fontFamily: monoFontFamily,
+										fontSize: 11,
+										color: '#9A6F1C',
+									}}
+								>
 									{keyText}
 								</Box>
 								. Analytics already collected stay under the old key.
@@ -523,7 +626,15 @@ export default function TestForm({
 					)}
 
 					{/* groups */}
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mt: 3.25, mb: 1.5 }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 1.25,
+							mt: 3.25,
+							mb: 1.5,
+						}}
+					>
 						<Label>Groups</Label>
 						<Box
 							onClick={toggleAdjust}
@@ -567,7 +678,16 @@ export default function TestForm({
 					</Box>
 
 					{/* split bar */}
-					<Box sx={{ display: 'flex', height: 14, borderRadius: '7px', overflow: 'hidden', gap: '2px', mb: 1.75 }}>
+					<Box
+						sx={{
+							display: 'flex',
+							height: 14,
+							borderRadius: '7px',
+							overflow: 'hidden',
+							gap: '2px',
+							mb: 1.75,
+						}}
+					>
 						{orderedEff.map(({ g, i }) => (
 							<Box
 								key={i}
@@ -594,7 +714,15 @@ export default function TestForm({
 									bgcolor: '#FCFAF3',
 								}}
 							>
-								<Box sx={{ width: 12, height: 12, borderRadius: '4px', bgcolor: PALETTE[i % PALETTE.length], flexShrink: 0 }} />
+								<Box
+									sx={{
+										width: 12,
+										height: 12,
+										borderRadius: '4px',
+										bgcolor: PALETTE[i % PALETTE.length],
+										flexShrink: 0,
+									}}
+								/>
 								<Box
 									component="input"
 									value={g.name}
@@ -614,7 +742,9 @@ export default function TestForm({
 									}}
 								/>
 								{adjustSplit ? (
-									<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.375 }}>
+									<Box
+										sx={{ display: 'flex', alignItems: 'center', gap: 0.375 }}
+									>
 										<Box
 											component="input"
 											value={String(effGroups[i].weight)}
@@ -627,18 +757,34 @@ export default function TestForm({
 												borderRadius: '9px',
 												bgcolor: '#fff',
 												p: '8px 6px 8px 10px',
-												font: "600 13px " + monoFontFamily,
+												font: '600 13px ' + monoFontFamily,
 												color: ink.primary,
 												outline: 'none',
 												'&:focus': { borderColor: ink.primary },
 											}}
 										/>
-										<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 13, color: '#8B8472' }}>
+										<Typography
+											sx={{
+												fontFamily: monoFontFamily,
+												fontWeight: 700,
+												fontSize: 13,
+												color: '#8B8472',
+											}}
+										>
 											%
 										</Typography>
 									</Box>
 								) : (
-									<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 14, color: '#8B8472', width: 50, textAlign: 'right' }}>
+									<Typography
+										sx={{
+											fontFamily: monoFontFamily,
+											fontWeight: 700,
+											fontSize: 14,
+											color: '#8B8472',
+											width: 50,
+											textAlign: 'right',
+										}}
+									>
 										{effGroups[i].weight}%
 									</Typography>
 								)}
@@ -658,7 +804,15 @@ export default function TestForm({
 						))}
 					</Stack>
 
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1.625, flexWrap: 'wrap' }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'center',
+							gap: 1.5,
+							mt: 1.625,
+							flexWrap: 'wrap',
+						}}
+					>
 						<Box
 							onClick={addGroup}
 							sx={{
@@ -679,11 +833,20 @@ export default function TestForm({
 							<Ms name="add" sx={{ fontSize: 17 }} />
 							Add group
 						</Box>
-						<Typography sx={{ fontWeight: 600, fontSize: 11, color: '#B4AC9A' }}>
+						<Typography
+							sx={{ fontWeight: 600, fontSize: 11, color: '#B4AC9A' }}
+						>
 							{groups.length} of 5 · 2 minimum
 						</Typography>
 						{adjustSplit && (
-							<Box sx={{ ml: 'auto', display: 'inline-flex', alignItems: 'center', gap: 1.25 }}>
+							<Box
+								sx={{
+									ml: 'auto',
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: 1.25,
+								}}
+							>
 								<Box
 									onClick={distribute}
 									sx={{
@@ -718,7 +881,10 @@ export default function TestForm({
 										p: '6px 11px',
 									}}
 								>
-									<Ms name={valid ? 'check_circle' : 'error'} sx={{ fontSize: 15 }} />
+									<Ms
+										name={valid ? 'check_circle' : 'error'}
+										sx={{ fontSize: 15 }}
+									/>
 									Total {total}%
 								</Box>
 							</Box>
@@ -729,7 +895,16 @@ export default function TestForm({
 					<Box sx={{ mt: 3.25, mb: 1.25 }}>
 						<Label>Audience</Label>
 					</Box>
-					<Box sx={{ display: 'flex', gap: 0.875, bgcolor: '#F4F1E9', borderRadius: '11px', p: 0.5, width: 'max-content' }}>
+					<Box
+						sx={{
+							display: 'flex',
+							gap: 0.875,
+							bgcolor: '#F4F1E9',
+							borderRadius: '11px',
+							p: 0.5,
+							width: 'max-content',
+						}}
+					>
 						{[
 							{ on: false, label: 'Everyone' },
 							{ on: true, label: 'Only matching users' },
@@ -756,14 +931,38 @@ export default function TestForm({
 						})}
 					</Box>
 					{audienceOn && (
-						<Box sx={{ border: `1.5px solid ${surface.border}`, borderRadius: '13px', p: 1.875, mt: 1.625, bgcolor: '#FCFAF3' }}>
-							<Typography sx={{ fontWeight: 600, fontSize: 11, color: '#8B8472', mb: 1.375 }}>
+						<Box
+							sx={{
+								border: `1.5px solid ${surface.border}`,
+								borderRadius: '13px',
+								p: 1.875,
+								mt: 1.625,
+								bgcolor: '#FCFAF3',
+							}}
+						>
+							<Typography
+								sx={{
+									fontWeight: 600,
+									fontSize: 11,
+									color: '#8B8472',
+									mb: 1.375,
+								}}
+							>
 								Only enrol users matching{' '}
-								<Box component="span" sx={{ fontWeight: 800, color: '#3A352C' }}>all</Box> of these:
+								<Box
+									component="span"
+									sx={{ fontWeight: 800, color: '#3A352C' }}
+								>
+									all
+								</Box>{' '}
+								of these:
 							</Typography>
 							<Stack spacing={1.125}>
 								{conditions.map((c, i) => (
-									<Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<Box
+										key={i}
+										sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+									>
 										<Box
 											component="select"
 											value={c.type}
@@ -799,7 +998,7 @@ export default function TestForm({
 												borderRadius: '9px',
 												bgcolor: '#fff',
 												p: '8px 11px',
-												font: "500 13px " + monoFontFamily,
+												font: '500 13px ' + monoFontFamily,
 												color: ink.primary,
 												outline: 'none',
 												'&:focus': { borderColor: ink.primary },
@@ -808,7 +1007,13 @@ export default function TestForm({
 										<Ms
 											name="close"
 											onClick={() => removeCondition(i)}
-											sx={{ fontSize: 19, color: '#C8503C', p: 0.875, borderRadius: '8px', cursor: 'pointer' }}
+											sx={{
+												fontSize: 19,
+												color: '#C8503C',
+												p: 0.875,
+												borderRadius: '8px',
+												cursor: 'pointer',
+											}}
 										/>
 									</Box>
 								))}
@@ -840,7 +1045,10 @@ export default function TestForm({
 					<Box sx={{ mt: 3.25, mb: 1.125 }}>
 						<Label>
 							Hypothesis{' '}
-							<Box component="span" sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}>
+							<Box
+								component="span"
+								sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}
+							>
 								· optional
 							</Box>
 						</Label>
@@ -850,14 +1058,22 @@ export default function TestForm({
 						value={description}
 						onChange={(e: any) => setDescription(e.target.value)}
 						placeholder="What are you testing, and what do you expect to win?"
-						sx={{ ...fieldSx, minHeight: 64, resize: 'vertical', lineHeight: 1.5 }}
+						sx={{
+							...fieldSx,
+							minHeight: 64,
+							resize: 'vertical',
+							lineHeight: 1.5,
+						}}
 					/>
 
 					{/* group (admin-only organisation; not published) */}
 					<Box sx={{ mt: 3, mb: 1.125 }}>
 						<Label>
 							Group{' '}
-							<Box component="span" sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}>
+							<Box
+								component="span"
+								sx={{ fontWeight: 600, color: '#B4AC9A', letterSpacing: 0 }}
+							>
 								· optional · organises the tests list only
 							</Box>
 						</Label>
@@ -871,14 +1087,25 @@ export default function TestForm({
 					/>
 
 					{/* footer */}
-					<Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.25, mt: 3, pt: 2.25, borderTop: '1px solid #F1EBDD' }}>
+					<Box
+						sx={{
+							display: 'flex',
+							justifyContent: 'flex-end',
+							gap: 1.25,
+							mt: 3,
+							pt: 2.25,
+							borderTop: '1px solid #F1EBDD',
+						}}
+					>
 						<Button variant="outlined" component={Link} href={cancelHref}>
 							Cancel
 						</Button>
 						<Button
 							onClick={handleSubmit}
 							disabled={!canSubmit}
-							startIcon={<Ms name={isEdit ? 'check' : 'science'} sx={{ fontSize: 18 }} />}
+							startIcon={
+								<Ms name={isEdit ? 'check' : 'science'} sx={{ fontSize: 18 }} />
+							}
 							sx={technicalButtonSx({ disabled: !canSubmit })}
 						>
 							{isEdit ? 'Save changes' : 'Create test'}
@@ -899,29 +1126,105 @@ export default function TestForm({
 					}}
 				>
 					{isEdit && (
-						<Box sx={{ bgcolor: '#fff', border: `1px solid ${surface.border}`, borderRadius: '16px', p: '18px 20px', boxShadow: '0 1px 2px rgba(40,33,20,.03)' }}>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.625 }}>
-								<Ms name="pending_actions" sx={{ fontSize: 18, color: '#7E776A' }} />
-								<Typography variant="h6" sx={{ fontSize: 14 }}>Pending changes</Typography>
-								<Box sx={{ ml: 'auto', fontFamily: monoFontFamily, fontWeight: 700, fontSize: 11, color: '#9A9483', bgcolor: '#EFE8D9', borderRadius: '20px', px: 1, py: 0.25 }}>
+						<Box
+							sx={{
+								bgcolor: '#fff',
+								border: `1px solid ${surface.border}`,
+								borderRadius: '16px',
+								p: '18px 20px',
+								boxShadow: '0 1px 2px rgba(40,33,20,.03)',
+							}}
+						>
+							<Box
+								sx={{
+									display: 'flex',
+									alignItems: 'center',
+									gap: 1,
+									mb: 1.625,
+								}}
+							>
+								<Ms
+									name="pending_actions"
+									sx={{ fontSize: 18, color: '#7E776A' }}
+								/>
+								<Typography variant="h6" sx={{ fontSize: 14 }}>
+									Pending changes
+								</Typography>
+								<Box
+									sx={{
+										ml: 'auto',
+										fontFamily: monoFontFamily,
+										fontWeight: 700,
+										fontSize: 11,
+										color: '#9A9483',
+										bgcolor: '#EFE8D9',
+										borderRadius: '20px',
+										px: 1,
+										py: 0.25,
+									}}
+								>
 									{changes.length}
 								</Box>
 							</Box>
 							{changes.length === 0 ? (
-								<Typography sx={{ fontWeight: 600, fontSize: 12, color: '#B4AC9A', textAlign: 'center', py: 1 }}>
+								<Typography
+									sx={{
+										fontWeight: 600,
+										fontSize: 12,
+										color: '#B4AC9A',
+										textAlign: 'center',
+										py: 1,
+									}}
+								>
 									No changes yet.
 								</Typography>
 							) : (
 								<Stack spacing={1.125}>
 									{changes.map((c) => (
 										<Box key={c.field}>
-											<Box sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 9, color: '#9A6F1C', bgcolor: '#FCEFD2', borderRadius: '5px', px: 0.75, py: 0.25, display: 'inline-block' }}>
+											<Box
+												sx={{
+													fontFamily: monoFontFamily,
+													fontWeight: 700,
+													fontSize: 9,
+													color: '#9A6F1C',
+													bgcolor: '#FCEFD2',
+													borderRadius: '5px',
+													px: 0.75,
+													py: 0.25,
+													display: 'inline-block',
+												}}
+											>
 												{c.field}
 											</Box>
-											<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.375, flexWrap: 'wrap', fontFamily: monoFontFamily, fontWeight: 500, fontSize: 11 }}>
-												<Box component="span" sx={{ color: '#B4AC9A', textDecoration: 'line-through' }}>{c.from}</Box>
-												<Ms name="arrow_forward" sx={{ fontSize: 14, color: '#C2BAA8' }} />
-												<Box component="span" sx={{ color: ink.primary }}>{c.to}</Box>
+											<Box
+												sx={{
+													display: 'flex',
+													alignItems: 'center',
+													gap: 0.75,
+													mt: 0.375,
+													flexWrap: 'wrap',
+													fontFamily: monoFontFamily,
+													fontWeight: 500,
+													fontSize: 11,
+												}}
+											>
+												<Box
+													component="span"
+													sx={{
+														color: '#B4AC9A',
+														textDecoration: 'line-through',
+													}}
+												>
+													{c.from}
+												</Box>
+												<Ms
+													name="arrow_forward"
+													sx={{ fontSize: 14, color: '#C2BAA8' }}
+												/>
+												<Box component="span" sx={{ color: ink.primary }}>
+													{c.to}
+												</Box>
 											</Box>
 										</Box>
 									))}
@@ -929,13 +1232,42 @@ export default function TestForm({
 							)}
 						</Box>
 					)}
-					<Box sx={{ bgcolor: '#fff', border: `1px solid ${surface.border}`, borderRadius: '16px', p: '18px 20px', boxShadow: '0 1px 2px rgba(40,33,20,.03)' }}>
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.375 }}>
+					<Box
+						sx={{
+							bgcolor: '#fff',
+							border: `1px solid ${surface.border}`,
+							borderRadius: '16px',
+							p: '18px 20px',
+							boxShadow: '0 1px 2px rgba(40,33,20,.03)',
+						}}
+					>
+						<Box
+							sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.375 }}
+						>
 							<Ms name="data_object" sx={{ fontSize: 17, color: '#7E776A' }} />
-							<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 700, fontSize: 11, letterSpacing: '.04em', color: ink.soft }}>
+							<Typography
+								sx={{
+									fontFamily: monoFontFamily,
+									fontWeight: 700,
+									fontSize: 11,
+									letterSpacing: '.04em',
+									color: ink.soft,
+								}}
+							>
 								PREVIEW
 							</Typography>
-							<Box sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 10, color: '#3F7A2D', bgcolor: '#E9F4E0', borderRadius: '6px', px: 0.875, py: 0.25 }}>
+							<Box
+								sx={{
+									fontFamily: monoFontFamily,
+									fontWeight: 600,
+									fontSize: 10,
+									color: '#3F7A2D',
+									bgcolor: '#E9F4E0',
+									borderRadius: '6px',
+									px: 0.875,
+									py: 0.25,
+								}}
+							>
 								live
 							</Box>
 						</Box>
@@ -958,10 +1290,28 @@ export default function TestForm({
 							{json}
 						</Box>
 					</Box>
-					<Box sx={{ bgcolor: '#fff', border: '1px solid #DCE6E3', borderRadius: '16px', p: '15px 17px', display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
+					<Box
+						sx={{
+							bgcolor: '#fff',
+							border: '1px solid #DCE6E3',
+							borderRadius: '16px',
+							p: '15px 17px',
+							display: 'flex',
+							alignItems: 'flex-start',
+							gap: 1.25,
+						}}
+					>
 						<Ms name="info" sx={{ fontSize: 19, color: '#3E8E84' }} />
-						<Typography sx={{ fontWeight: 500, fontSize: 12, lineHeight: 1.55, color: '#46615C' }}>
-							Each group serves its own flag value — you map those values per-flag when you attach the test from the Flags page.
+						<Typography
+							sx={{
+								fontWeight: 500,
+								fontSize: 12,
+								lineHeight: 1.55,
+								color: '#46615C',
+							}}
+						>
+							Each group serves its own flag value — you map those values
+							per-flag when you attach the test from the Flags page.
 						</Typography>
 					</Box>
 				</Box>

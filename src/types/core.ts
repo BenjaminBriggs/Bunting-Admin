@@ -47,13 +47,7 @@ export interface FlagVariant {
 	rollout?: string;
 }
 
-export type FlagType =
-	| 'bool'
-	| 'string'
-	| 'int'
-	| 'double'
-	| 'date'
-	| 'json';
+export type FlagType = 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
 
 export type FlagValue = boolean | string | number | object;
 

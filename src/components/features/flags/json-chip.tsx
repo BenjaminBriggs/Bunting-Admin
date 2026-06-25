@@ -217,7 +217,11 @@ export function JsonModal({
 						<Button onClick={onClose} sx={{ color: ink.soft }}>
 							Cancel
 						</Button>
-						<Button onClick={handleSave} variant="contained" disabled={!isValid}>
+						<Button
+							onClick={handleSave}
+							variant="contained"
+							disabled={!isValid}
+						>
 							Save
 						</Button>
 					</>

@@ -247,9 +247,7 @@ export default function FlagTestAssignmentModal({
 			onSave();
 			onClose();
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : 'Failed to assign flag',
-			);
+			setError(err instanceof Error ? err.message : 'Failed to assign flag');
 		} finally {
 			setSaving(false);
 		}
@@ -259,7 +257,8 @@ export default function FlagTestAssignmentModal({
 	const groupsForTest = (testId: string): TestGroupValue[] => {
 		const rows = groupValues.filter((gv) => gv.testId === testId);
 		return [...rows].sort(
-			(a, b) => (isControl(a.groupName) ? 1 : 0) - (isControl(b.groupName) ? 1 : 0),
+			(a, b) =>
+				(isControl(a.groupName) ? 1 : 0) - (isControl(b.groupName) ? 1 : 0),
 		);
 	};
 
@@ -335,14 +334,22 @@ export default function FlagTestAssignmentModal({
 					>
 						<Ms name="info" sx={{ fontSize: 19, color: env.text, mt: '1px' }} />
 						<Typography
-							sx={{ fontWeight: 600, fontSize: 13, color: env.text, lineHeight: 1.5 }}
+							sx={{
+								fontWeight: 600,
+								fontSize: 13,
+								color: env.text,
+								lineHeight: 1.5,
+							}}
 						>
 							Configure the value{' '}
 							<Box component="span" sx={{ fontWeight: 800 }}>
 								{flagName}
 							</Box>{' '}
 							(
-							<Box component="span" sx={{ fontFamily: monoFontFamily, fontWeight: 700 }}>
+							<Box
+								component="span"
+								sx={{ fontFamily: monoFontFamily, fontWeight: 700 }}
+							>
 								{flagType}
 							</Box>
 							) serves in {env.label} for each selected test group and rollout.
@@ -354,8 +361,13 @@ export default function FlagTestAssignmentModal({
 					{/* Rollouts */}
 					{selectedRollouts.length > 0 && (
 						<Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
-								<Ms name="rocket_launch" sx={{ fontSize: 19, color: '#9A6F1C' }} />
+							<Box
+								sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}
+							>
+								<Ms
+									name="rocket_launch"
+									sx={{ fontSize: 19, color: '#9A6F1C' }}
+								/>
 								<Typography variant="h6" sx={{ fontSize: 16 }}>
 									Rollouts
 								</Typography>
@@ -393,7 +405,9 @@ export default function FlagTestAssignmentModal({
 					{/* A/B Tests */}
 					{selectedTests.length > 0 && (
 						<Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+							<Box
+								sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}
+							>
 								<Ms name="science" sx={{ fontSize: 19, color: '#9A6F1C' }} />
 								<Typography variant="h6" sx={{ fontSize: 16 }}>
 									A/B Tests
@@ -414,7 +428,9 @@ export default function FlagTestAssignmentModal({
 												p: '14px 15px',
 											}}
 										>
-											<Typography sx={{ fontWeight: 700, fontSize: 14, mb: 1.25 }}>
+											<Typography
+												sx={{ fontWeight: 700, fontSize: 14, mb: 1.25 }}
+											>
 												{test.name}
 											</Typography>
 											<Box sx={{ mb: 1 }}>
@@ -465,7 +481,11 @@ export default function FlagTestAssignmentModal({
 																flagType={flagType as any}
 																value={gv.value}
 																onChange={(v) =>
-																	handleGroupValueChange(gv.testId, gv.groupName, v)
+																	handleGroupValueChange(
+																		gv.testId,
+																		gv.groupName,
+																		v,
+																	)
 																}
 																fullWidth={false}
 																size="small"
@@ -484,7 +504,11 @@ export default function FlagTestAssignmentModal({
 			</DialogContent>
 
 			<DialogActions
-				sx={{ p: '15px 22px', bgcolor: '#FCFAF3', borderTop: '1px solid #F1EBDD' }}
+				sx={{
+					p: '15px 22px',
+					bgcolor: '#FCFAF3',
+					borderTop: '1px solid #F1EBDD',
+				}}
 			>
 				<Button variant="outlined" onClick={onClose}>
 					Cancel
@@ -508,7 +532,11 @@ export default function FlagTestAssignmentModal({
 						fontWeight: 700,
 						boxShadow: 'none',
 						'&:hover': { bgcolor: env.text, opacity: 0.9, boxShadow: 'none' },
-						'&.Mui-disabled': { bgcolor: '#C2BAA8', color: '#fff', opacity: 0.55 },
+						'&.Mui-disabled': {
+							bgcolor: '#C2BAA8',
+							color: '#fff',
+							opacity: 0.55,
+						},
 					}}
 				>
 					{saving

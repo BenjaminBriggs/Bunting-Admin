@@ -34,9 +34,7 @@ export default function NewFlagPage() {
 			.then((flags) => {
 				const groups = [
 					...new Set(
-						flags
-							.map((f) => f.group?.trim())
-							.filter((g): g is string => !!g),
+						flags.map((f) => f.group?.trim()).filter((g): g is string => !!g),
 					),
 				].sort((a, b) => a.localeCompare(b));
 				setExistingGroups(groups);
@@ -45,7 +43,9 @@ export default function NewFlagPage() {
 	}, [selectedApp]);
 
 	const handleSubmit = async (payload: FlagFormSubmit) => {
-		if (!selectedApp) {return;}
+		if (!selectedApp) {
+			return;
+		}
 		setSaving(true);
 		setSaveError(null);
 		try {

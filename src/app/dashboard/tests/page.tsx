@@ -1,6 +1,12 @@
 'use client';
 
-import { Box, CircularProgress, Menu, MenuItem, Typography } from '@mui/material';
+import {
+	Box,
+	CircularProgress,
+	Menu,
+	MenuItem,
+	Typography,
+} from '@mui/material';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -52,9 +58,9 @@ export default function TestsPage() {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 	const [menuTest, setMenuTest] = useState<TestRollout | null>(null);
-	const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(
-		{},
-	);
+	const [collapsedGroups, setCollapsedGroups] = useState<
+		Record<string, boolean>
+	>({});
 
 	const loadTests = useCallback(async () => {
 		if (!selectedApp) {
@@ -162,7 +168,12 @@ export default function TestsPage() {
 
 	if (loading && tests.length === 0) {
 		return (
-			<Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+			<Box
+				display="flex"
+				justifyContent="center"
+				alignItems="center"
+				minHeight="400px"
+			>
 				<CircularProgress />
 			</Box>
 		);
@@ -188,7 +199,10 @@ export default function TestsPage() {
 					transition: 'box-shadow .15s ease, border-color .15s ease',
 					'&:hover': isArchived
 						? undefined
-						: { borderColor: '#E4DBC8', boxShadow: '0 6px 20px rgba(40,33,20,.07)' },
+						: {
+								borderColor: '#E4DBC8',
+								boxShadow: '0 6px 20px rgba(40,33,20,.07)',
+							},
 				}}
 			>
 				<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
@@ -233,19 +247,53 @@ export default function TestsPage() {
 
 				{split.length > 0 && (
 					<Box sx={{ mt: 2.25 }}>
-						<Typography sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mb: 1.125 }}>
+						<Typography
+							sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mb: 1.125 }}
+						>
 							Traffic split
 						</Typography>
-						<Box sx={{ display: 'flex', height: 13, borderRadius: '7px', overflow: 'hidden', gap: '2px' }}>
+						<Box
+							sx={{
+								display: 'flex',
+								height: 13,
+								borderRadius: '7px',
+								overflow: 'hidden',
+								gap: '2px',
+							}}
+						>
 							{split.map((g) => (
-								<Box key={g.name} sx={{ width: `${g.pct}%`, bgcolor: g.color }} />
+								<Box
+									key={g.name}
+									sx={{ width: `${g.pct}%`, bgcolor: g.color }}
+								/>
 							))}
 						</Box>
-						<Box sx={{ display: 'flex', gap: 2.25, mt: 1.375, flexWrap: 'wrap' }}>
+						<Box
+							sx={{ display: 'flex', gap: 2.25, mt: 1.375, flexWrap: 'wrap' }}
+						>
 							{split.map((g) => (
-								<Box key={g.name} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.875 }}>
-									<Box sx={{ width: 9, height: 9, borderRadius: '3px', bgcolor: g.color }} />
-									<Typography sx={{ font: "600 13px 'Nunito'", color: g.isControl ? '#8B8472' : '#3A352C' }}>
+								<Box
+									key={g.name}
+									sx={{
+										display: 'inline-flex',
+										alignItems: 'center',
+										gap: 0.875,
+									}}
+								>
+									<Box
+										sx={{
+											width: 9,
+											height: 9,
+											borderRadius: '3px',
+											bgcolor: g.color,
+										}}
+									/>
+									<Typography
+										sx={{
+											font: "600 13px 'Nunito'",
+											color: g.isControl ? '#8B8472' : '#3A352C',
+										}}
+									>
 										{g.name}
 									</Typography>
 									<Typography
@@ -324,7 +372,14 @@ export default function TestsPage() {
 			</Box>
 
 			{/* active */}
-			<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, m: '30px 2px 18px' }}>
+			<Box
+				sx={{
+					display: 'flex',
+					alignItems: 'baseline',
+					gap: 1.5,
+					m: '30px 2px 18px',
+				}}
+			>
 				<Typography sx={{ font: "800 25px 'Baloo 2'", color: ink.primary }}>
 					Active Tests
 				</Typography>
@@ -340,7 +395,9 @@ export default function TestsPage() {
 				>
 					{active.length}
 				</Box>
-				<Typography sx={{ ml: 'auto', font: "600 12px 'Nunito'", color: '#A79F8C' }}>
+				<Typography
+					sx={{ ml: 'auto', font: "600 12px 'Nunito'", color: '#A79F8C' }}
+				>
 					traffic splits evenly across groups
 				</Typography>
 			</Box>
@@ -367,12 +424,17 @@ export default function TestsPage() {
 							mb: 1.5,
 						}}
 					>
-						<Ms name="science" sx={{ fontSize: 28, color: typeColors.test.solid }} />
+						<Ms
+							name="science"
+							sx={{ fontSize: 28, color: typeColors.test.solid }}
+						/>
 					</Box>
 					<Typography sx={{ font: "700 16px 'Baloo 2'", mb: 0.5 }}>
 						{searchTerm ? 'No tests match your search' : 'No tests yet'}
 					</Typography>
-					<Typography sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mb: 2.5 }}>
+					<Typography
+						sx={{ font: "600 12px 'Nunito'", color: '#8B8472', mb: 2.5 }}
+					>
 						{searchTerm
 							? 'Try adjusting your search terms'
 							: 'Create your first A/B test to start experimenting'}
@@ -422,7 +484,14 @@ export default function TestsPage() {
 			{/* archived */}
 			{archived.length > 0 && (
 				<>
-					<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, m: '30px 2px 16px' }}>
+					<Box
+						sx={{
+							display: 'flex',
+							alignItems: 'baseline',
+							gap: 1.5,
+							m: '30px 2px 16px',
+						}}
+					>
 						<Typography sx={{ font: "800 21px 'Baloo 2'", color: '#9A9483' }}>
 							Archived
 						</Typography>
@@ -459,23 +528,50 @@ export default function TestsPage() {
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="edit" sx={{ fontSize: 19, color: '#6B6452' }} />
-					<Typography sx={{ font: "700 13px 'Nunito'", color: ink.primary }}>Edit test</Typography>
+					<Typography sx={{ font: "700 13px 'Nunito'", color: ink.primary }}>
+						Edit test
+					</Typography>
 				</MenuItem>
-				<MenuItem onClick={() => handleArchive('cancel')} sx={{ borderRadius: '9px', gap: 1.375 }}>
+				<MenuItem
+					onClick={() => handleArchive('cancel')}
+					sx={{ borderRadius: '9px', gap: 1.375 }}
+				>
 					<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
-					<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 13, color: '#3A352C' }}>
+					<Typography
+						sx={{
+							fontFamily: monoFontFamily,
+							fontWeight: 600,
+							fontSize: 13,
+							color: '#3A352C',
+						}}
+					>
 						Cancel (0%)
 					</Typography>
 				</MenuItem>
-				<MenuItem onClick={() => handleArchive('complete')} sx={{ borderRadius: '9px', gap: 1.375 }}>
+				<MenuItem
+					onClick={() => handleArchive('complete')}
+					sx={{ borderRadius: '9px', gap: 1.375 }}
+				>
 					<Ms name="check_circle" sx={{ fontSize: 19, color: '#3F7A2D' }} />
-					<Typography sx={{ fontFamily: monoFontFamily, fontWeight: 600, fontSize: 13, color: '#3F7A2D' }}>
+					<Typography
+						sx={{
+							fontFamily: monoFontFamily,
+							fontWeight: 600,
+							fontSize: 13,
+							color: '#3F7A2D',
+						}}
+					>
 						Complete (100%)
 					</Typography>
 				</MenuItem>
-				<MenuItem onClick={handleDelete} sx={{ borderRadius: '9px', gap: 1.375 }}>
+				<MenuItem
+					onClick={handleDelete}
+					sx={{ borderRadius: '9px', gap: 1.375 }}
+				>
 					<Ms name="delete" sx={{ fontSize: 19, color: '#C8503C' }} />
-					<Typography sx={{ font: "700 13px 'Nunito'", color: '#C8503C' }}>Delete</Typography>
+					<Typography sx={{ font: "700 13px 'Nunito'", color: '#C8503C' }}>
+						Delete
+					</Typography>
 				</MenuItem>
 			</Menu>
 		</Box>

@@ -63,7 +63,9 @@ function typeLabel(type: string): string {
 	return conditionTemplates.find((t) => t.type === type)?.label ?? type;
 }
 function operatorsForType(type: string): string[] {
-	return conditionTemplates.find((t) => t.type === type)?.operators ?? ['equals'];
+	return (
+		conditionTemplates.find((t) => t.type === type)?.operators ?? ['equals']
+	);
 }
 function placeholderForType(type: string): string {
 	const t = conditionTemplates.find((c) => c.type === type);
@@ -281,7 +283,9 @@ export function VariantCreatorModal({
 			}
 		}
 		if (conditions.length === 0) {
-			newErrors.push('At least one condition is required for conditional variants');
+			newErrors.push(
+				'At least one condition is required for conditional variants',
+			);
 		}
 		if (conditions.some((c) => c.values.length === 0)) {
 			newErrors.push('Every condition needs at least one value');
@@ -413,7 +417,9 @@ export function VariantCreatorModal({
 				</Box>
 				<Box sx={{ flex: 1 }}>
 					<Typography variant="h6" sx={{ fontSize: 17 }}>
-						{existingVariant ? 'Edit conditional variant' : 'Add conditional variant'}
+						{existingVariant
+							? 'Edit conditional variant'
+							: 'Add conditional variant'}
 					</Typography>
 					<Typography sx={{ fontWeight: 600, fontSize: 11, color: ink.muted }}>
 						flag variant ·{' '}
@@ -465,7 +471,14 @@ export function VariantCreatorModal({
 
 					{/* targeting rule — inline condition rows */}
 					<Box>
-						<Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.125, mb: 1.5 }}>
+						<Box
+							sx={{
+								display: 'flex',
+								alignItems: 'baseline',
+								gap: 1.125,
+								mb: 1.5,
+							}}
+						>
 							<Typography sx={labelSx}>Targeting rule</Typography>
 							<Box
 								sx={{
@@ -482,7 +495,12 @@ export function VariantCreatorModal({
 								{conditions.length}
 							</Box>
 							<Typography
-								sx={{ ml: 'auto', fontWeight: 600, fontSize: 11, color: ink.muted }}
+								sx={{
+									ml: 'auto',
+									fontWeight: 600,
+									fontSize: 11,
+									color: ink.muted,
+								}}
 							>
 								all must match
 							</Typography>
@@ -516,7 +534,9 @@ export function VariantCreatorModal({
 											>
 												AND
 											</Box>
-											<Box sx={{ flex: 1, height: '1px', bgcolor: '#F1EBDD' }} />
+											<Box
+												sx={{ flex: 1, height: '1px', bgcolor: '#F1EBDD' }}
+											/>
 										</Box>
 									)}
 									<Box
@@ -590,7 +610,11 @@ export function VariantCreatorModal({
 													sx={{ ...valueInputSx, minWidth: 60 }}
 												/>
 												<Typography
-													sx={{ fontSize: 11, fontWeight: 600, color: ink.muted }}
+													sx={{
+														fontSize: 11,
+														fontWeight: 600,
+														color: ink.muted,
+													}}
 												>
 													and
 												</Typography>
@@ -689,7 +713,10 @@ export function VariantCreatorModal({
 											size="small"
 											onClick={() => removeCondition(index)}
 										>
-											<Ms name="delete" sx={{ fontSize: 18, color: '#B4AC9A' }} />
+											<Ms
+												name="delete"
+												sx={{ fontSize: 18, color: '#B4AC9A' }}
+											/>
 										</IconButton>
 									</Box>
 								</Box>
@@ -737,10 +764,18 @@ export function VariantCreatorModal({
 					>
 						<Ms
 							name="bolt"
-							sx={{ fontSize: 16, color: '#9A6F1C', verticalAlign: '-3px', mr: 0.625 }}
+							sx={{
+								fontSize: 16,
+								color: '#9A6F1C',
+								verticalAlign: '-3px',
+								mr: 0.625,
+							}}
 						/>
 						Serve{' '}
-						<Box component="span" sx={{ fontFamily: monoFontFamily, fontWeight: 700 }}>
+						<Box
+							component="span"
+							sx={{ fontFamily: monoFontFamily, fontWeight: 700 }}
+						>
 							{serveDisplay}
 						</Box>{' '}
 						when {summary}.
