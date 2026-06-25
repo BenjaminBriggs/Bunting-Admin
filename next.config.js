@@ -39,9 +39,8 @@ const securityHeaders = [
 const nextConfig = {
 	// Emit a self-contained server for the production Docker image.
 	output: 'standalone',
-	eslint: {
-		dirs: ['src'],
-	},
+	// Next 16 removed the `next lint` command and the `eslint` config key; ESLint
+	// now runs standalone via `pnpm run lint`.
 	typescript: {
 		ignoreBuildErrors: false,
 	},
