@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { escapeXml } from '@/lib/xml';
 
 /**
@@ -77,9 +78,10 @@ export async function GET(request: NextRequest) {
 			}));
 		} else {
 			// Fall back to app.publicKeys (a Prisma JSON column that may be null).
-			const appPublicKeys = app.publicKeys as
-				| Array<{ kid: string; pem: string }>
-				| null;
+			const appPublicKeys = app.publicKeys as Array<{
+				kid: string;
+				pem: string;
+			}> | null;
 			if (!appPublicKeys || appPublicKeys.length === 0) {
 				return NextResponse.json(
 					{ error: 'No signing keys found for this app' },
@@ -141,7 +143,7 @@ ${publicKeysArray
 
 		return response;
 	} catch (error) {
-		console.error('Failed to generate plist:', error);
+		logger.error({ err: error }, 'Failed to generate plist');
 		return NextResponse.json(
 			{ error: 'Failed to generate bootstrap plist' },
 			{ status: 500 },

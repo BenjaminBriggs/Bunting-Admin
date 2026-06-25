@@ -6,6 +6,7 @@
  * synchronous: the admin has no async data source for it.
  */
 
+import { logger } from '@/lib/logger';
 import type {
 	Condition,
 	ConditionOperator,
@@ -74,8 +75,9 @@ export function evaluateFlag(
 			if (testName) {
 				// Note: Test evaluation requires additional test configuration
 				// This would need to be passed in or looked up
-				console.warn(
-					`Test variant evaluation not fully implemented: ${testName}`,
+				logger.warn(
+					{ testName },
+					'Test variant evaluation not fully implemented',
 				);
 			}
 		} else {
@@ -84,8 +86,9 @@ export function evaluateFlag(
 			if (rolloutName) {
 				// Note: Rollout evaluation requires additional rollout configuration
 				// This would need to be passed in or looked up
-				console.warn(
-					`Rollout variant evaluation not fully implemented: ${rolloutName}`,
+				logger.warn(
+					{ rolloutName },
+					'Rollout variant evaluation not fully implemented',
 				);
 			}
 		}
@@ -178,7 +181,7 @@ export function evaluateCondition(
 		default:
 			// All ConditionType values are handled above; this guards malformed
 			// runtime data whose `type` escapes the union.
-			console.warn(`Unknown condition type: ${String(type)}`);
+			logger.warn({ type: String(type) }, 'Unknown condition type');
 			return false;
 	}
 }
@@ -255,8 +258,9 @@ function evaluateListCondition(
 function evaluateCustomCondition(condition: Condition): boolean {
 	// Custom condition evaluation would be implemented by the SDK
 	// This is a placeholder for the concept
-	console.warn(
-		`Custom condition evaluation not implemented: ${condition.type}/${condition.values[0] ?? ''}`,
+	logger.warn(
+		{ type: condition.type, value: condition.values[0] ?? '' },
+		'Custom condition evaluation not implemented',
 	);
 	return false;
 }
@@ -327,6 +331,6 @@ export function testFlagEvaluation(): void {
 	};
 
 	const result = evaluateFlag(mockFlag, 'development', context);
-	console.log('Evaluation result:', result);
+	logger.info({ result }, 'Evaluation result');
 	// Should return: { value: true, variant: {...}, reason: 'conditional' }
 }

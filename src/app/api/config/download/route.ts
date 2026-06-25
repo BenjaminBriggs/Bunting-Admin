@@ -2,6 +2,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import { getConfigBucket, getS3Client } from '@/lib/storage';
 
 const downloadConfigSchema = z.object({
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Error downloading config:', error);
+		logger.error({ err: error }, 'Error downloading config');
 		return NextResponse.json(
 			{ error: 'Failed to download configuration' },
 			{ status: 500 },

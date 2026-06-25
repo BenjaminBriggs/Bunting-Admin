@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 // GET /api/keys/public - Get public keys for SDK verification
 export async function GET(request: NextRequest) {
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
 
 		return response;
 	} catch (error) {
-		console.error('Failed to get public keys:', error);
+		logger.error({ err: error }, 'Failed to get public keys');
 		return NextResponse.json(
 			{ error: 'Failed to retrieve public keys' },
 			{ status: 500 },

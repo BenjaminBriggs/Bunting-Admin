@@ -118,6 +118,25 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// Change trail for entity mutations (flags, tests, rollouts, apps, keys, users,
+// access list). Distinct from AuditLog, which is the publish ledger. Rows are
+// intentionally NOT foreign-keyed to App so the trail survives entity deletion.
+model ActivityLog {
+  id         String   @id @default(cuid())
+  actor      String // Email of the user who made the change, or 'system'/'unknown'
+  action     String // create | update | delete | archive | rotate
+  entityType String   @map("entity_type") // flag | test | rollout | app | signing_key | user | access_list
+  entityId   String   @map("entity_id")
+  appId      String?  @map("app_id") // App scope when applicable; null for global entities
+  summary    String? // Human-readable one-line description
+  changes    Json? // Optional {before?, after?} snapshot
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([appId, createdAt])
+  @@index([entityType, entityId])
+  @@map("activity_logs")
+}
+
 enum FlagType {
   BOOL   @map("bool")
   STRING @map("string")

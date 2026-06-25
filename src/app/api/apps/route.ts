@@ -2,9 +2,11 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
+import { logger } from '@/lib/logger';
 import { artifactUrlFor, getConfigBucket, getS3Client } from '@/lib/storage';
 
 const createAppSchema = z.object({
@@ -87,7 +89,7 @@ async function publishInitialConfig(appId: string): Promise<void> {
 			},
 		});
 	} catch (error) {
-		console.error('Error publishing initial config:', error);
+		logger.error({ err: error }, 'Error publishing initial config');
 		throw error;
 	}
 }
@@ -109,7 +111,7 @@ export async function GET() {
 
 		return NextResponse.json(apps);
 	} catch (error) {
-		console.error('Error fetching apps:', error);
+		logger.error({ err: error }, 'Error fetching apps');
 		return NextResponse.json(
 			{ error: 'Failed to fetch apps' },
 			{ status: 500 },
@@ -163,12 +165,12 @@ export async function POST(request: NextRequest) {
 			try {
 				await prisma.app.delete({ where: { id: app.id } });
 			} catch (rollbackError) {
-				console.error(
-					'Failed to roll back app after initial config failure:',
-					rollbackError,
+				logger.error(
+					{ err: rollbackError },
+					'Failed to roll back app after initial config failure',
 				);
 			}
-			console.error('Failed to publish initial config:', error);
+			logger.error({ err: error }, 'Failed to publish initial config');
 			return NextResponse.json(
 				{
 					error:
@@ -177,6 +179,16 @@ export async function POST(request: NextRequest) {
 				{ status: 500 },
 			);
 		}
+
+		const actor = await actorFromHeaders(request.headers);
+		await logActivity({
+			actor,
+			action: 'create',
+			entityType: 'app',
+			entityId: app.id,
+			appId: app.id,
+			summary: `Created app ${app.name}`,
+		});
 
 		return NextResponse.json(app, { status: 201 });
 	} catch (error) {
@@ -187,7 +199,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Error creating app:', error);
+		logger.error({ err: error }, 'Error creating app');
 		return NextResponse.json(
 			{ error: 'Failed to create app' },
 			{ status: 500 },

@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { updateTestSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/tests/[id]
@@ -24,7 +26,7 @@ export async function GET(
 
 		return NextResponse.json(test);
 	} catch (error) {
-		console.error('Error fetching test:', error);
+		logger.error({ err: error }, 'Error fetching test');
 		return NextResponse.json(
 			{ error: 'Failed to fetch test' },
 			{ status: 500 },
@@ -38,6 +40,7 @@ export async function PUT(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	const actor = await actorFromHeaders(request.headers);
 	try {
 		const updateData = updateTestSchema.parse(
 			await request.json(),
@@ -51,13 +54,22 @@ export async function PUT(
 			data: updateData,
 		});
 
+		await logActivity({
+			actor,
+			action: 'update',
+			entityType: 'test',
+			entityId: test.id,
+			appId: test.appId,
+			summary: `Updated test ${test.name}`,
+		});
+
 		return NextResponse.json(test);
 	} catch (error) {
 		const validationError = zodErrorResponse(error);
 		if (validationError) {
 			return validationError;
 		}
-		console.error('Error updating test:', error);
+		logger.error({ err: error }, 'Error updating test');
 		if (
 			error instanceof Prisma.PrismaClientKnownRequestError &&
 			error.code === 'P2025'
@@ -77,7 +89,12 @@ export async function DELETE(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	const actor = await actorFromHeaders(request.headers);
 	try {
+		const record = await prisma.testRollout.findUnique({
+			where: { id, type: 'TEST' },
+		});
+
 		await prisma.testRollout.delete({
 			where: {
 				id,
@@ -85,9 +102,18 @@ export async function DELETE(
 			},
 		});
 
+		await logActivity({
+			actor,
+			action: 'delete',
+			entityType: 'test',
+			entityId: id,
+			appId: record?.appId,
+			summary: `Deleted test`,
+		});
+
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('Error deleting test:', error);
+		logger.error({ err: error }, 'Error deleting test');
 		if (
 			error instanceof Prisma.PrismaClientKnownRequestError &&
 			error.code === 'P2025'

@@ -9,6 +9,7 @@ import {
 	FingerprintError,
 	splitFingerprint,
 } from '@/lib/fingerprint';
+import { logger } from '@/lib/logger';
 import {
 	getConfigBucket,
 	getS3Client,
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
 		if (error instanceof FingerprintError) {
 			return NextResponse.json({ error: error.message }, { status: 422 });
 		}
-		console.error('Error decoding fingerprint:', error);
+		logger.error({ err: error }, 'Error decoding fingerprint');
 		return NextResponse.json(
 			{ error: 'Failed to decode fingerprint' },
 			{ status: 500 },

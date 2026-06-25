@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import {
 	canDelete,
@@ -8,6 +9,7 @@ import {
 	deleteBlockReason,
 	isPublished,
 } from '@/lib/flag-lifecycle';
+import { logger } from '@/lib/logger';
 import { updateFlagSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/flags/[id] - Get a specific flag
@@ -32,7 +34,7 @@ export async function GET(
 
 		return NextResponse.json(flag);
 	} catch (error) {
-		console.error('Error fetching flag:', error);
+		logger.error({ err: error }, 'Error fetching flag');
 		return NextResponse.json(
 			{ error: 'Failed to fetch flag' },
 			{ status: 500 },
@@ -47,6 +49,7 @@ export async function PUT(
 ) {
 	const { id } = await params;
 	try {
+		const actor = await actorFromHeaders(request.headers);
 		// Parsing whitelists updatable fields and strips id/appId/timestamps,
 		// closing the mass-assignment hole from spreading the raw body.
 		// The parsed `type` is the lowercase wire enum; it is remapped to the
@@ -119,13 +122,34 @@ export async function PUT(
 			},
 		});
 
+		const action =
+			updateData.archived === true
+				? 'archive'
+				: updateData.archived === false
+					? 'unarchive'
+					: 'update';
+		const summary =
+			action === 'archive'
+				? `Archived flag ${flag.key}`
+				: action === 'unarchive'
+					? `Unarchived flag ${flag.key}`
+					: `Updated flag ${flag.key}`;
+		await logActivity({
+			actor,
+			action,
+			entityType: 'flag',
+			entityId: flag.id,
+			appId: flag.appId,
+			summary,
+		});
+
 		return NextResponse.json(flag);
 	} catch (error) {
 		const validationError = zodErrorResponse(error);
 		if (validationError) {
 			return validationError;
 		}
-		console.error('Error updating flag:', error);
+		logger.error({ err: error }, 'Error updating flag');
 		if (
 			error instanceof Prisma.PrismaClientKnownRequestError &&
 			error.code === 'P2025'
@@ -146,6 +170,7 @@ export async function DELETE(
 ) {
 	const { id } = await params;
 	try {
+		const actor = await actorFromHeaders(request.headers);
 		const existing = await prisma.flag.findUnique({ where: { id } });
 		if (!existing) {
 			return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
@@ -165,9 +190,18 @@ export async function DELETE(
 			where: { id },
 		});
 
+		await logActivity({
+			actor,
+			action: 'delete',
+			entityType: 'flag',
+			entityId: existing.id,
+			appId: existing.appId,
+			summary: `Deleted flag ${existing.key}`,
+		});
+
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('Error deleting flag:', error);
+		logger.error({ err: error }, 'Error deleting flag');
 		if (
 			error instanceof Prisma.PrismaClientKnownRequestError &&
 			error.code === 'P2025'

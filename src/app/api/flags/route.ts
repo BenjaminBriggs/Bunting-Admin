@@ -1,7 +1,9 @@
 import type { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { createFlagSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/flags - List all flags for an app
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(flags);
 	} catch (error) {
-		console.error('Error fetching flags:', error);
+		logger.error({ err: error }, 'Error fetching flags');
 		return NextResponse.json(
 			{ error: 'Failed to fetch flags' },
 			{ status: 500 },
@@ -37,6 +39,7 @@ export async function GET(request: NextRequest) {
 // POST /api/flags - Create a new flag with environment defaults
 export async function POST(request: NextRequest) {
 	try {
+		const actor = await actorFromHeaders(request.headers);
 		const { key, displayName, type, description, group, defaultValues, appId } =
 			createFlagSchema.parse(await request.json());
 
@@ -94,13 +97,22 @@ export async function POST(request: NextRequest) {
 			},
 		});
 
+		await logActivity({
+			actor,
+			action: 'create',
+			entityType: 'flag',
+			entityId: flag.id,
+			appId: flag.appId,
+			summary: `Created flag ${flag.key}`,
+		});
+
 		return NextResponse.json(flag, { status: 201 });
 	} catch (error) {
 		const validationError = zodErrorResponse(error);
 		if (validationError) {
 			return validationError;
 		}
-		console.error('Error creating flag:', error);
+		logger.error({ err: error }, 'Error creating flag');
 		return NextResponse.json(
 			{ error: 'Failed to create flag' },
 			{ status: 500 },

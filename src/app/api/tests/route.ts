@@ -1,7 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { generateSalt } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { createTestSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/tests?appId=xxx
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
 
 		return NextResponse.json(tests);
 	} catch (error) {
-		console.error('Error fetching tests:', error);
+		logger.error({ err: error }, 'Error fetching tests');
 		return NextResponse.json(
 			{ error: 'Failed to fetch tests' },
 			{ status: 500 },
@@ -34,6 +36,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/tests
 export async function POST(request: NextRequest) {
+	const actor = await actorFromHeaders(request.headers);
 	try {
 		const {
 			key,
@@ -128,13 +131,22 @@ export async function POST(request: NextRequest) {
 			},
 		});
 
+		await logActivity({
+			actor,
+			action: 'create',
+			entityType: 'test',
+			entityId: test.id,
+			appId: test.appId,
+			summary: `Created test ${test.name}`,
+		});
+
 		return NextResponse.json(test, { status: 201 });
 	} catch (error) {
 		const validationError = zodErrorResponse(error);
 		if (validationError) {
 			return validationError;
 		}
-		console.error('Error creating test:', error);
+		logger.error({ err: error }, 'Error creating test');
 		return NextResponse.json(
 			{ error: 'Failed to create test' },
 			{ status: 500 },

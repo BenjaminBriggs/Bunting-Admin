@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 // PUT /api/rollouts/[id]/percentage
 export async function PUT(
@@ -9,6 +11,7 @@ export async function PUT(
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;
+	const actor = await actorFromHeaders(request.headers);
 	try {
 		const { percentage } = (await request.json()) as { percentage?: unknown };
 
@@ -30,9 +33,18 @@ export async function PUT(
 			data: { percentage },
 		});
 
+		await logActivity({
+			actor,
+			action: 'update',
+			entityType: 'rollout',
+			entityId: rollout.id,
+			appId: rollout.appId,
+			summary: `Set rollout ${rollout.name} to ${percentage}%`,
+		});
+
 		return NextResponse.json(rollout);
 	} catch (error) {
-		console.error('Error updating rollout percentage:', error);
+		logger.error({ err: error }, 'Error updating rollout percentage');
 		if (
 			error instanceof Prisma.PrismaClientKnownRequestError &&
 			error.code === 'P2025'

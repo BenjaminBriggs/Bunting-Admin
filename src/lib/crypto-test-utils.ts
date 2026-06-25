@@ -5,6 +5,7 @@
  * and verification flow, as well as validation helpers.
  */
 
+import { logger } from '@/lib/logger';
 import { generateRSAKeyPair } from './crypto';
 import { prisma } from './db';
 import {
@@ -79,7 +80,7 @@ export async function cleanupTestApp(appId: string): Promise<void> {
 			where: { id: appId },
 		});
 	} catch (error) {
-		console.error('Failed to cleanup test app:', error);
+		logger.error({ err: error }, 'Failed to cleanup test app');
 		throw error;
 	}
 }
@@ -412,7 +413,7 @@ export async function runEndToEndCryptoTest(): Promise<EndToEndTestResult> {
 			try {
 				await cleanupTestApp(testAppId);
 			} catch (cleanupError) {
-				console.error('Failed to cleanup test app:', cleanupError);
+				logger.error({ err: cleanupError }, 'Failed to cleanup test app');
 			}
 		}
 	}

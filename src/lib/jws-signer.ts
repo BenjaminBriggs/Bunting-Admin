@@ -6,6 +6,7 @@
  */
 
 import { importPKCS8, importSPKI, jwtVerify, SignJWT } from 'jose';
+import { logger } from '@/lib/logger';
 import { generateRSAKeyPair } from './crypto';
 import { prisma } from './db';
 import { signDetached } from './detached-signature';
@@ -60,7 +61,7 @@ export async function ensureSigningKey(appId: string): Promise<void> {
 			},
 		});
 	} catch (error) {
-		console.error('Failed to ensure signing key:', error);
+		logger.error({ err: error }, 'Failed to ensure signing key');
 		throw new Error('Failed to ensure signing key exists');
 	}
 }
@@ -113,7 +114,7 @@ export async function signConfig(
 			algorithm: signingKey.algorithm,
 		};
 	} catch (error) {
-		console.error('Config signing failed:', error);
+		logger.error({ err: error }, 'Config signing failed');
 		throw new Error(
 			`Failed to sign config: ${error instanceof Error ? error.message : 'Unknown error'}`,
 		);
@@ -210,7 +211,7 @@ export async function verifyConfigSignature(
 			error: 'Signature verification failed with all available keys',
 		};
 	} catch (error) {
-		console.error('Signature verification failed:', error);
+		logger.error({ err: error }, 'Signature verification failed');
 		return {
 			verified: false,
 			error: `Verification error: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -250,7 +251,7 @@ export async function getPublicKeysForApp(appId: string): Promise<
 			isActive: key.isActive,
 		}));
 	} catch (error) {
-		console.error('Failed to get public keys:', error);
+		logger.error({ err: error }, 'Failed to get public keys');
 		throw new Error('Failed to retrieve public keys');
 	}
 }
@@ -278,7 +279,7 @@ export async function rotateSigningKeys(
 			});
 		});
 	} catch (error) {
-		console.error('Key rotation failed:', error);
+		logger.error({ err: error }, 'Key rotation failed');
 		throw new Error(
 			`Failed to rotate keys: ${error instanceof Error ? error.message : 'Unknown error'}`,
 		);

@@ -12,6 +12,7 @@ import {
 	testSignatureVerification,
 	validateJWSFormat,
 } from '@/lib/crypto-test-utils';
+import { logger } from '@/lib/logger';
 
 /**
  * Guard the diagnostic endpoint: it does not exist in production (it mutates the
@@ -113,16 +114,16 @@ export async function GET(request: NextRequest) {
 					timestamp: new Date().toISOString(),
 					summary: {
 						overallSuccess: fullTestResult.overall.success,
-						passedTests: (
-							Object.values(fullTestResult) as TestResult[]
-						).filter((r) => r.success).length,
+						passedTests: (Object.values(fullTestResult) as TestResult[]).filter(
+							(r) => r.success,
+						).length,
 						totalTests: Object.keys(fullTestResult).length,
 					},
 				});
 			}
 		}
 	} catch (error) {
-		console.error('Crypto test failed:', error);
+		logger.error({ err: error }, 'Crypto test failed');
 		return NextResponse.json(
 			{
 				error: 'Crypto test failed',
@@ -209,7 +210,7 @@ export async function POST(request: NextRequest) {
 
 		return NextResponse.json(response);
 	} catch (error) {
-		console.error('JWS validation test failed:', error);
+		logger.error({ err: error }, 'JWS validation test failed');
 		return NextResponse.json(
 			{
 				error: 'JWS validation test failed',

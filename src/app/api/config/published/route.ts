@@ -2,6 +2,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 import { getConfigBucket, getS3Client } from '@/lib/storage';
 
 const getPublishedConfigSchema = z.object({
@@ -49,10 +50,7 @@ export async function POST(request: NextRequest) {
 				name?: string;
 				$metadata?: { httpStatusCode?: number };
 			};
-			if (
-				err.name === 'NoSuchKey' ||
-				err.$metadata?.httpStatusCode === 404
-			) {
+			if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
 				// No published config exists yet
 				return NextResponse.json({
 					config: null,
@@ -60,7 +58,7 @@ export async function POST(request: NextRequest) {
 				});
 			}
 
-			console.error('S3 error:', s3Error);
+			logger.error({ err: s3Error }, 'S3 error');
 			return NextResponse.json(
 				{ error: 'Failed to fetch published config from S3' },
 				{ status: 500 },
@@ -74,7 +72,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Error fetching published config:', error);
+		logger.error({ err: error }, 'Error fetching published config');
 		return NextResponse.json(
 			{ error: 'Failed to fetch published config' },
 			{ status: 500 },

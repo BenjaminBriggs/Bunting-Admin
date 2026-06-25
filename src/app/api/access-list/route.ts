@@ -1,8 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logActivity } from '@/lib/activity-log';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 const createAccessEntrySchema = z.object({
 	type: z.enum(['EMAIL', 'DOMAIN']),
@@ -33,7 +35,7 @@ export async function GET(_request: NextRequest) {
 
 		return NextResponse.json(accessList);
 	} catch (error) {
-		console.error('Failed to fetch access list:', error);
+		logger.error({ err: error }, 'Failed to fetch access list');
 		return NextResponse.json(
 			{ error: 'Internal server error' },
 			{ status: 500 },
@@ -102,6 +104,16 @@ export async function POST(request: NextRequest) {
 			},
 		});
 
+		const actor = session.user.email;
+		await logActivity({
+			actor,
+			action: 'create',
+			entityType: 'access_list',
+			entityId: accessEntry.id,
+			appId: null,
+			summary: `Added ${accessEntry.value} as ${role}`,
+		});
+
 		return NextResponse.json(accessEntry);
 	} catch (error) {
 		if (error instanceof z.ZodError) {
@@ -111,7 +123,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Failed to create access entry:', error);
+		logger.error({ err: error }, 'Failed to create access entry');
 		return NextResponse.json(
 			{ error: 'Internal server error' },
 			{ status: 500 },
@@ -137,13 +149,23 @@ export async function DELETE(request: NextRequest) {
 			);
 		}
 
-		await db.accessList.delete({
+		const deleted = await db.accessList.delete({
 			where: { id },
+		});
+
+		const actor = session.user.email;
+		await logActivity({
+			actor,
+			action: 'delete',
+			entityType: 'access_list',
+			entityId: id,
+			appId: null,
+			summary: `Removed ${deleted.value}`,
 		});
 
 		return NextResponse.json({ success: true });
 	} catch (error) {
-		console.error('Failed to delete access entry:', error);
+		logger.error({ err: error }, 'Failed to delete access entry');
 		return NextResponse.json(
 			{ error: 'Internal server error' },
 			{ status: 500 },

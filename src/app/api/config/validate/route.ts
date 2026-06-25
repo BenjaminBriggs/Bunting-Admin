@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { AppNotFoundError, generateConfigFromDb } from '@/lib/config-generator';
 import { validateConfig } from '@/lib/config-validation';
+import { logger } from '@/lib/logger';
 
 const validateConfigSchema = z.object({
 	appId: z.string(),
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		console.error('Error validating config:', error);
+		logger.error({ err: error }, 'Error validating config');
 		return NextResponse.json(
 			{ error: 'Failed to validate configuration' },
 			{ status: 500 },

@@ -1,10 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { logActivity } from '@/lib/activity-log';
 import { requireAdmin } from '@/lib/authz';
 import { generateRSAKeyPair, KeySecurity } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
 import { storePrivateKey } from '@/lib/key-protection';
+import { logger } from '@/lib/logger';
 
 const createKeySchema = z.object({
 	appId: z.string(),
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
 			})),
 		});
 	} catch (error) {
-		console.error('Failed to list signing keys:', error);
+		logger.error({ err: error }, 'Failed to list signing keys');
 		return NextResponse.json(
 			{ error: 'Failed to retrieve signing keys' },
 			{ status: 500 },
@@ -98,7 +100,7 @@ export async function POST(request: NextRequest) {
 		const protectedPrivateKey = await storePrivateKey(keyPair.privateKey);
 
 		// If this key should be active, deactivate other keys first
-		await prisma.$transaction(async (tx) => {
+		const createdKey = await prisma.$transaction(async (tx) => {
 			if (isActive) {
 				await tx.signingKey.updateMany({
 					where: { appId, isActive: true },
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
 			}
 
 			// Create the new signing key
-			await tx.signingKey.create({
+			return tx.signingKey.create({
 				data: {
 					appId,
 					kid: keyPair.kid,
@@ -117,6 +119,16 @@ export async function POST(request: NextRequest) {
 					isActive,
 				},
 			});
+		});
+
+		const actor = authz.email;
+		await logActivity({
+			actor,
+			action: 'create',
+			entityType: 'signing_key',
+			entityId: createdKey.id,
+			appId,
+			summary: 'Created signing key',
 		});
 
 		// Return public information only
@@ -138,7 +150,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Failed to create signing key:', error);
+		logger.error({ err: error }, 'Failed to create signing key');
 		return NextResponse.json(
 			{ error: 'Failed to create signing key' },
 			{ status: 500 },
@@ -192,6 +204,16 @@ export async function PUT(request: NextRequest) {
 			});
 		});
 
+		const actor = authz.email;
+		await logActivity({
+			actor,
+			action: 'rotate',
+			entityType: 'signing_key',
+			entityId: newKey.id,
+			appId,
+			summary: 'Rotated signing key',
+		});
+
 		return NextResponse.json({
 			message: 'Key rotation completed successfully',
 			activeKeyId: newKeyId,
@@ -204,7 +226,7 @@ export async function PUT(request: NextRequest) {
 			);
 		}
 
-		console.error('Failed to rotate signing keys:', error);
+		logger.error({ err: error }, 'Failed to rotate signing keys');
 		return NextResponse.json(
 			{ error: 'Failed to rotate signing keys' },
 			{ status: 500 },

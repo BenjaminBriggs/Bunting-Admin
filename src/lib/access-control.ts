@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { db } from './db';
 
 export async function checkUserAccess(email: string): Promise<boolean> {
@@ -139,7 +140,7 @@ export async function updateUserActivity(userId: string): Promise<void> {
 			data: { lastActiveAt: new Date() },
 		});
 	} catch (error) {
-		console.error('Failed to update user activity:', error);
+		logger.error({ err: error }, 'Failed to update user activity');
 		// Don't throw - this is not critical
 	}
 }

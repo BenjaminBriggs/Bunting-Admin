@@ -1,7 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { artifactUrlFor } from '@/lib/storage';
 
 const updateAppSchema = z.object({
@@ -48,7 +50,7 @@ export async function GET(
 
 		return NextResponse.json(app);
 	} catch (error) {
-		console.error('Error fetching app:', error);
+		logger.error({ err: error }, 'Error fetching app');
 		return NextResponse.json({ error: 'Failed to fetch app' }, { status: 500 });
 	}
 }
@@ -107,6 +109,16 @@ export async function PUT(
 			},
 		});
 
+		const actor = await actorFromHeaders(request.headers);
+		await logActivity({
+			actor,
+			action: 'update',
+			entityType: 'app',
+			entityId: id,
+			appId: id,
+			summary: `Updated app ${updatedApp.name}`,
+		});
+
 		return NextResponse.json(updatedApp);
 	} catch (error) {
 		if (error instanceof z.ZodError) {
@@ -116,7 +128,7 @@ export async function PUT(
 			);
 		}
 
-		console.error('Error updating app:', error);
+		logger.error({ err: error }, 'Error updating app');
 		return NextResponse.json(
 			{ error: 'Failed to update app' },
 			{ status: 500 },
@@ -146,9 +158,19 @@ export async function DELETE(
 			where: { id },
 		});
 
+		const actor = await actorFromHeaders(request.headers);
+		await logActivity({
+			actor,
+			action: 'delete',
+			entityType: 'app',
+			entityId: id,
+			appId: id,
+			summary: `Deleted app ${existingApp.name}`,
+		});
+
 		return NextResponse.json({ message: 'App deleted successfully' });
 	} catch (error) {
-		console.error('Error deleting app:', error);
+		logger.error({ err: error }, 'Error deleting app');
 		return NextResponse.json(
 			{ error: 'Failed to delete app' },
 			{ status: 500 },

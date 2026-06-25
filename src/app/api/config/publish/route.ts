@@ -12,6 +12,7 @@ import { type ConfigArtifact, getConfigChanges } from '@/lib/config-comparison';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
+import { logger } from '@/lib/logger';
 import {
 	getConfigBucket,
 	getS3Client,
@@ -155,9 +156,9 @@ export async function POST(request: NextRequest) {
 					}),
 				);
 			} catch (archiveError) {
-				console.error(
-					'Failed to write versioned config archive:',
-					archiveError,
+				logger.error(
+					{ err: archiveError },
+					'Failed to write versioned config archive',
 				);
 			}
 
@@ -193,9 +194,9 @@ export async function POST(request: NextRequest) {
 							}),
 						);
 					} catch (cleanupError) {
-						console.error(
-							'Failed to delete orphaned signature during rollback:',
-							cleanupError,
+						logger.error(
+							{ err: cleanupError },
+							'Failed to delete orphaned signature during rollback',
 						);
 					}
 				}
@@ -205,9 +206,9 @@ export async function POST(request: NextRequest) {
 						where: { id: reservation.auditId },
 					});
 				} catch (cleanupError) {
-					console.error(
-						'Failed to release reserved version during rollback:',
-						cleanupError,
+					logger.error(
+						{ err: cleanupError },
+						'Failed to release reserved version during rollback',
 					);
 				}
 			}
@@ -247,7 +248,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Error publishing config:', error);
+		logger.error({ err: error }, 'Error publishing config');
 		return NextResponse.json(
 			{ error: 'Failed to publish configuration' },
 			{ status: 500 },

@@ -8,6 +8,7 @@
 import { randomBytes } from 'crypto';
 import { generateKeyPair } from 'crypto';
 import { promisify } from 'util';
+import { logger } from '@/lib/logger';
 
 const generateKeyPairAsync = promisify(generateKeyPair);
 
@@ -69,7 +70,7 @@ export async function generateRSAKeyPair(): Promise<KeyPair> {
 			algorithm: 'RS256',
 		};
 	} catch (error) {
-		console.error('Failed to generate RSA key pair:', error);
+		logger.error({ err: error }, 'Failed to generate RSA key pair');
 		throw new Error('RSA key pair generation failed');
 	}
 }

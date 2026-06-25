@@ -49,7 +49,7 @@ describe('generateConfigFromDb (integration)', () => {
 		expect(flag.development.variants).toEqual([]);
 	});
 
-	test('excludes archived flags', async () => {
+	test('ships archived flags marked deprecated', async () => {
 		const app = await seedApp(`gen-${Date.now()}-2`);
 
 		await prisma.flag.create({
@@ -80,7 +80,11 @@ describe('generateConfigFromDb (integration)', () => {
 		const config = await generateConfigFromDb(app.id);
 
 		expect(config.flags.live_flag).toBeDefined();
-		// Archived flags must not ship to the SDK.
-		expect(config.flags.archived_flag).toBeUndefined();
+		expect(config.flags.live_flag.deprecated).toBeUndefined();
+		// Archived flags still ship so existing clients keep resolving them; they
+		// carry `deprecated: true` so the SDK can signal the deprecation on read.
+		// See docs/config-artifact-spec.md and the SDK's didReadDeprecatedFlag.
+		expect(config.flags.archived_flag).toBeDefined();
+		expect(config.flags.archived_flag.deprecated).toBe(true);
 	});
 });

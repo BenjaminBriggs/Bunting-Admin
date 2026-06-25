@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 const getHistorySchema = z.object({
 	appId: z.string(),
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		console.error('Error fetching publish history:', error);
+		logger.error({ err: error }, 'Error fetching publish history');
 		return NextResponse.json(
 			{ error: 'Failed to fetch publish history' },
 			{ status: 500 },
