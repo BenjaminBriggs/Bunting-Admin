@@ -38,7 +38,6 @@ Exact specifications and API details.
 | [Config Fingerprint Code](config-fingerprint-spec.md)    | Short per-client code encoding a user's exact resolved flag config for a given version — format, encoding, and decoding |
 | [API Reference](api-reference.md)                        | REST API endpoints, request/response shapes, and authentication                                                         |
 | [Security](security.md)                                  | Auth model, key management, signing pipeline, and hardening recommendations                                             |
-| [CHANGELOG](../CHANGELOG.md)                             | Version history and breaking changes                                                                                    |
 
 ---
 

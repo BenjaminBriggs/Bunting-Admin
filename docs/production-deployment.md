@@ -66,10 +66,10 @@ DATABASE_URL="postgresql://user:pass@host:5432/bunting_admin?sslmode=require"
 
 Add `?sslmode=require` for hosted providers that enforce TLS. Aurora Serverless v2 and Neon work without any additional config.
 
-**Migrations in production:** use `prisma migrate deploy` (not `db push`) so changes are tracked:
+**Migrations in production:** use `prisma migrate deploy` (not `db push`, and not `make db-migrate`, which runs the interactive `prisma migrate dev`) so changes are tracked:
 
 ```bash
-make db-migrate
+pnpm run db:deploy
 ```
 
 Run this before each new release, not as part of the app startup command.
@@ -146,7 +146,6 @@ async function handler(event) {
 	if (request.uri.endsWith('/config.json')) {
 		// Fetch the companion .sig from origin and inject the header.
 		// Implementation depends on your CloudFront + Lambda@Edge setup.
-		// See the scripts/ directory for a reference implementation.
 		const sigUri = request.uri + '.sig';
 		// ... fetch sigUri and set response.headers['x-bunting-signature']
 	}
@@ -239,7 +238,7 @@ Control verbosity with `LOG_LEVEL` (`trace|debug|info|warn|error|fatal`); it def
 
 ## Post-deploy checklist
 
-- [ ] `DATABASE_URL` points to production Postgres; migrations applied with `make db-migrate`
+- [ ] `DATABASE_URL` points to production Postgres; migrations applied with `pnpm run db:deploy` (`prisma migrate deploy`)
 - [ ] `S3_BUCKET` / `S3_REGION` set; IAM role (or explicit keys) grants `s3:GetObject`, `s3:PutObject`, `s3:ListBucket`
 - [ ] `CDN_BASE_URL` points to your CDN, not S3 directly
 - [ ] CDN injects `x-bunting-signature` header from `.sig` companion file

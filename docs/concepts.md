@@ -22,7 +22,7 @@ These three concepts map to the three top-level collections in the config artifa
 
 ### Flags
 
-A **flag** is a typed key with a default value and an optional list of variant rules. Types are: `boolean`, `string`, `integer`, `double`, `date`, and `json`.
+A **flag** is a typed key with a default value and an optional list of variant rules. Types are: `bool`, `string`, `int`, `double`, `date`, and `json`.
 
 Every flag defines separate defaults for `development`, `beta`, and `production`. This is the environment-first model: a flag never has a single global default; it always has three.
 
@@ -100,7 +100,7 @@ The salt is generated randomly by the admin when a test or rollout is created an
 
 Using different salts across tests means a user who is in the "control" group for one experiment has an independent, uncorrelated assignment for another.
 
-> **⚠️ Known bug — admin/SDK bucketing mismatch.** The admin's `src/lib/bucketing.ts` parses only the first 8 hex characters (first 4 bytes) of the hash as a 32-bit integer, while the SDK and the artifact spec use the first 8 bytes as a 64-bit integer. They read different bytes, so they assign the **same user to different buckets** for the same `(salt, localId)` — admin previews do not match real SDK assignment. This is a bug to fix in the admin (align to the 64-bit canonical form), not a documentation choice.
+The admin's `src/lib/bucketing.ts` reads the first 8 bytes (16 hex characters) of the hash as a big-endian unsigned 64-bit integer, matching the SDK (`Bucketing.swift`) and the artifact spec — so admin previews assign the same user to the same bucket the SDK does for a given `(salt, localId)`.
 
 ---
 

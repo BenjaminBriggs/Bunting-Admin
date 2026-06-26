@@ -123,7 +123,7 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 
 ### RBAC and first-admin
 
-- The first user to sign in is granted `ADMIN` regardless of access list entries.
+- The first user to sign in is granted `ADMIN` regardless of access list entries, and is written into the `AccessList` table as an `ADMIN` email entry so the bootstrap survives their next sign-in.
 - Subsequent users get `DEVELOPER` unless their email or `@domain` appears in the `AccessList` table with an explicit role.
 - Admins can manage the access list under Settings → Team in the dashboard.
 
@@ -133,8 +133,8 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 
 **Authorization** (role checks) is enforced per-route in node-runtime handlers via `requireAdmin` (`src/lib/authz.ts`), which resolves the caller's role from the `User` table (oidc mode) or the access list (proxy mode):
 
-- **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production).
-- **Any authenticated user (incl. DEVELOPER):** `apps`, `flags`, `tests`, `rollouts` — per [authentication.md](../../docs/authentication.md) §Roles, developers may author flags/tests/rollouts/apps but may not publish or manage keys/users.
+- **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production). The `users` and `access-list` routes check the session role directly rather than via `requireAdmin`; the rest use `requireAdmin`.
+- **Any authenticated user (incl. DEVELOPER):** `apps`, `flags`, `tests`, `rollouts`, key reads (`keys` GET, `keys/[id]` GET, `keys/public`), and `config/decode` — per [authentication.md](../../docs/authentication.md) §Roles, developers may author flags/tests/rollouts/apps but may not publish or manage keys/users.
 
 Defense-in-depth at the network layer (reverse proxy, IAP, or private network) is still recommended, but the application layer no longer leaves routes unauthenticated.
 
@@ -150,11 +150,11 @@ All API route handler inputs are validated with Zod schemas before touching the 
 
 Bunting Admin does not implement:
 
-| Concern                        | Operator responsibility                                                                                                      |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| Rate limiting                  | Apply at the reverse proxy or API gateway layer                                                                              |
-| Audit-log retention            | The `audit_logs` / `publications` tables grow unbounded; set a retention policy or scheduled pruning                         |
-| Database backups               | Use your Postgres provider's snapshot / PITR capability                                                                      |
-| Network isolation (proxy mode) | Ensure the app cannot be reached except through the proxy                                                                    |
-| Secret rotation                | Rotate `NEXTAUTH_SECRET` and `SIGNING_KEY_SECRET` on a schedule; re-encrypt signing keys after rotating `SIGNING_KEY_SECRET` |
-| TLS                            | Terminate at the reverse proxy; never expose port 3000 directly                                                              |
+| Concern                        | Operator responsibility                                                                                                                                         |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rate limiting                  | Apply at the reverse proxy or API gateway layer                                                                                                                 |
+| Audit-log retention            | The `audit_logs` (publish ledger), `activity_logs` (entity change trail), and `publications` tables grow unbounded; set a retention policy or scheduled pruning |
+| Database backups               | Use your Postgres provider's snapshot / PITR capability                                                                                                         |
+| Network isolation (proxy mode) | Ensure the app cannot be reached except through the proxy                                                                                                       |
+| Secret rotation                | Rotate `NEXTAUTH_SECRET` and `SIGNING_KEY_SECRET` on a schedule; re-encrypt signing keys after rotating `SIGNING_KEY_SECRET`                                    |
+| TLS                            | Terminate at the reverse proxy; never expose port 3000 directly                                                                                                 |

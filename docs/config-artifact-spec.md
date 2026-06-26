@@ -47,7 +47,7 @@ Examples: `new_picker_enabled`, `button_color_test`, `beta_users`, `store/use_ne
 
 Each flag has a `type`, an optional `description`, an optional `deprecated` flag, and an `environment` object for each of `development`, `beta`, and `production`.
 
-Supported types: `boolean`, `string`, `integer`, `double`, `date`, `json`.
+Supported types: `bool`, `string`, `int`, `double`, `date`, `json`.
 
 - `date` values use ISO 8601 date strings (`YYYY-MM-DD`).
 - `json` values are embedded JSON objects (not strings); the SDK exposes them as `Data`.
@@ -56,7 +56,7 @@ Supported types: `boolean`, `string`, `integer`, `double`, `date`, `json`.
 ```json
 "flags": {
   "store/use_new_paywall_design": {
-    "type": "boolean",
+    "type": "bool",
     "description": "Enables the new paywall UI",
     "development": {
       "default": true,
@@ -107,7 +107,6 @@ Matches when all listed `conditions` evaluate to `true`.
 	"value": true,
 	"conditions": [
 		{
-			"id": "region-eu",
 			"type": "region",
 			"values": ["EU"],
 			"operator": "in"
@@ -153,12 +152,14 @@ Conditions appear inside `conditional` variant objects.
 
 ```json
 {
-	"id": "<unique_condition_id>",
 	"type": "<condition_type>",
 	"values": ["..."],
 	"operator": "<operator>"
 }
 ```
+
+> The admin's condition editor carries a client-side `id` for React keys, but the
+> generator strips it before publishing — `id` does **not** appear in the artifact.
 
 ### Condition types and operators
 
@@ -168,20 +169,18 @@ Operators: `equals`, `does_not_equals`, `between`, `greater_than_or_equal`, `gre
 
 ```json
 {
-	"id": "osv-gte-18",
 	"type": "os_version",
 	"values": ["18.0"],
 	"operator": "greater_than_or_equal"
 }
 ```
 
-**List conditions** (`platform`, `device_model`, `region`, `locale`):
+**List conditions** (`platform`, `device_model`, `region`, `language`):
 
 Operators: `in`, `not_in`
 
 ```json
 {
-	"id": "platform-apple",
 	"type": "platform",
 	"values": ["iOS", "macOS"],
 	"operator": "in"
@@ -192,7 +191,6 @@ Operators: `in`, `not_in`
 
 ```json
 {
-	"id": "custom-premium",
 	"type": "custom_attribute",
 	"values": ["is_premium_user"],
 	"operator": "custom"
@@ -215,21 +213,21 @@ A/B experiments with deterministic user bucketing.
     "type": "test",
     "salt": "btn_color_v1",
     "conditions": [],
-    "variants": {
-      "control": { "percentage": 50 },
-      "blue_theme": { "percentage": 50 }
-    }
+    "groups": [
+      { "name": "control", "percentage": 50 },
+      { "name": "blue_theme", "percentage": 50 }
+    ]
   }
 }
 ```
 
-| Field        | Required | Description                                                                       |
-| ------------ | -------- | --------------------------------------------------------------------------------- |
-| `name`       | yes      | Human-readable display name.                                                      |
-| `type`       | yes      | Always `"test"`.                                                                  |
-| `salt`       | yes      | Unique, immutable random string. Changing it remaps all users.                    |
-| `conditions` | no       | Entry conditions; only users matching all conditions participate.                 |
-| `variants`   | yes      | Map of variant name to `{ percentage: number }`. Percentages should sum to ≤ 100. |
+| Field        | Required | Description                                                                                                                                        |
+| ------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`       | yes      | Human-readable display name.                                                                                                                       |
+| `type`       | yes      | Always `"test"`.                                                                                                                                   |
+| `salt`       | yes      | Unique, immutable random string. Changing it remaps all users.                                                                                     |
+| `conditions` | yes      | Entry conditions; only users matching all conditions participate (`[]` when none).                                                                 |
+| `groups`     | no       | Array of `{ name, percentage }`. Omitted when the test has no groups. Percentages should sum to ≤ 100. The SDK buckets users into a group by name. |
 
 ---
 
@@ -255,7 +253,7 @@ Percentage-based gradual feature exposures.
 | `name`       | yes      | Human-readable display name.                                |
 | `type`       | yes      | Always `"rollout"`.                                         |
 | `salt`       | yes      | Unique, immutable random string.                            |
-| `conditions` | no       | Entry conditions.                                           |
+| `conditions` | yes      | Entry conditions (`[]` when none).                          |
 | `percentage` | yes      | Integer 0–100. Users with bucket ≤ percentage are included. |
 
 ---
@@ -275,7 +273,7 @@ Example: `btn_color_v1:550e8400-e29b-41d4-a716-446655440000`
 3. Take the first 8 bytes of the digest and interpret them as an unsigned big-endian 64-bit integer.
 4. `bucket = (int_value % 100) + 1` — result is an integer from 1 to 100 inclusive.
 
-> **⚠️ Known bug — admin implementation diverges.** `src/lib/bucketing.ts` uses the first 4 bytes (8 hex chars parsed as a 32-bit integer) instead of the canonical 8-byte/64-bit algorithm above. Because it reads different bytes of the hash, it assigns the **same user to a different bucket** than the SDK does for the same `(salt, localId)`. The 8-byte/64-bit form here is canonical; the admin must be fixed to match it. Until then, admin-side bucket previews are not authoritative for real SDK behavior.
+The admin (`src/lib/bucketing.ts`) and the SDK (`Bucketing.swift`) both implement this 8-byte/64-bit form, so admin-side bucket previews match real SDK behavior for the same `(salt, localId)`.
 
 **Salts are immutable.** Once a test or rollout is published, its `salt` must never change — doing so remaps all users and breaks experiment continuity. The admin generates salts randomly at creation time.
 
@@ -388,7 +386,7 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 				"properties": {
 					"type": {
 						"type": "string",
-						"enum": ["boolean", "string", "integer", "double", "date", "json"]
+						"enum": ["bool", "string", "int", "double", "date", "json"]
 					},
 					"description": { "type": "string" },
 					"development": { "$ref": "#/definitions/environment" },
@@ -401,7 +399,7 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 			"type": "object",
 			"additionalProperties": {
 				"type": "object",
-				"required": ["name", "type", "salt"],
+				"required": ["name", "type", "salt", "conditions"],
 				"properties": {
 					"name": { "type": "string" },
 					"description": { "type": "string" },
@@ -411,7 +409,17 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 						"type": "array",
 						"items": { "$ref": "#/definitions/condition" }
 					},
-					"variants": { "type": "object" }
+					"groups": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"required": ["name", "percentage"],
+							"properties": {
+								"name": { "type": "string" },
+								"percentage": { "type": "integer" }
+							}
+						}
+					}
 				}
 			}
 		},
@@ -419,7 +427,7 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 			"type": "object",
 			"additionalProperties": {
 				"type": "object",
-				"required": ["name", "type", "salt", "percentage"],
+				"required": ["name", "type", "salt", "conditions", "percentage"],
 				"properties": {
 					"name": { "type": "string" },
 					"description": { "type": "string" },
@@ -466,9 +474,8 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 		},
 		"condition": {
 			"type": "object",
-			"required": ["id", "type", "values", "operator"],
+			"required": ["type", "values", "operator"],
 			"properties": {
-				"id": { "type": "string" },
 				"type": { "type": "string" },
 				"values": { "type": "array" },
 				"operator": { "type": "string" }
@@ -503,7 +510,7 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 
 	"flags": {
 		"store/use_new_paywall_design": {
-			"type": "boolean",
+			"type": "bool",
 			"description": "Enables the redesigned paywall screen",
 			"development": { "default": true, "variants": [] },
 			"beta": { "default": false, "variants": [] },
@@ -527,10 +534,10 @@ CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
 			"type": "test",
 			"salt": "btn_color_v1",
 			"conditions": [],
-			"variants": {
-				"control": { "percentage": 50 },
-				"blue_theme": { "percentage": 50 }
-			}
+			"groups": [
+				{ "name": "control", "percentage": 50 },
+				{ "name": "blue_theme", "percentage": 50 }
+			]
 		}
 	},
 

@@ -25,8 +25,9 @@ Bunting Admin is a self-hosted feature flag dashboard for Apple platform apps. I
 - **Signed publishing** — detached JWS (RS256) over exact config bytes; `kid` header supports key rotation
 - **SDK bootstrap** — downloadable `BuntingConfig.plist` with endpoint URL, public keys, and fetch policy
 - **Multi-app workspace** — manage multiple apps from a single instance
-- **Auth** — OAuth (Google, GitHub, Microsoft) + email magic links (Resend); roles `ADMIN` / `DEVELOPER`; first sign-in becomes admin
+- **Auth** — generic OIDC or named OAuth providers (Google, GitHub, Microsoft) + email magic links (Resend), or trusted reverse-proxy headers (`AUTH_MODE=proxy`); roles `ADMIN` / `DEVELOPER`; first sign-in becomes admin
 - **Key management** — RSA key generation, rotation, and encrypted-at-rest private keys (AWS KMS or local AES-256-GCM)
+- **Operations** — `/api/health` liveness/readiness probe, structured JSON logging (pino, `LOG_LEVEL`), and an admin change trail (`/api/activity`) recording every flag/test/rollout/app/key/user mutation
 
 ---
 
@@ -34,22 +35,22 @@ Bunting Admin is a self-hosted feature flag dashboard for Apple platform apps. I
 
 | Layer           | Technology                                          |
 | --------------- | --------------------------------------------------- |
-| Framework       | Next.js 15 (App Router)                             |
+| Framework       | Next.js 16 (App Router)                             |
 | UI              | React 19, MUI v7                                    |
-| Language        | TypeScript 5                                        |
+| Language        | TypeScript 6                                        |
 | Database        | PostgreSQL 13+ (local dev: 17 via Docker)           |
-| ORM             | Prisma                                              |
+| ORM             | Prisma 7 (`@prisma/adapter-pg` driver adapter)      |
 | Auth            | NextAuth / Auth.js v5 — JWT sessions, 14-day expiry |
 | Storage         | S3 / S3-compatible (local dev: MinIO)               |
 | Signing         | `jose` — RS256 JWS                                  |
-| Runtime         | Node 24                                             |
+| Runtime         | Node 22+ (Docker image: Node 26)                    |
 | Package manager | pnpm 11                                             |
 
 ---
 
 ## Quick Start (Local Development)
 
-**Prerequisites:** Node 24, pnpm 11, Docker Desktop.
+**Prerequisites:** Node 22+, pnpm 11, Docker Desktop.
 
 ```bash
 # 1. Install dependencies
@@ -94,10 +95,8 @@ See [docs/local-development.md](docs/local-development.md) for full details and 
 ## One-Click Deployment
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BenjaminBriggs/Bunting-Admin)
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/BenjaminBriggs/Bunting-Admin)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/BenjaminBriggs/Bunting-Admin)
 
-After deployment, open `/setup` on your domain to configure authentication and storage. See [docs/deployment.md](docs/deployment.md) and [docs/production-deployment.md](docs/production-deployment.md).
+Authentication and storage are configured via environment variables before the app boots (see [`.env.example`](.env.example)); in production the app refuses to start if required config is missing. After deployment, sign in — the first account becomes admin — and create your first app at `/setup/app`. See [docs/deployment.md](docs/deployment.md) and [docs/production-deployment.md](docs/production-deployment.md).
 
 ---
 
@@ -112,6 +111,7 @@ make test             # all tests
 make test-unit        # unit tests
 make test-integration # integration tests (requires Postgres)
 pnpm test:e2e         # Playwright e2e tests (no make target)
+make smoke            # full-stack core-flow smoke (fresh stack → login → app → flags → publish)
 make lint             # ESLint
 make format           # Prettier check
 make type-check       # tsc --noEmit

@@ -6,7 +6,7 @@ This project layers its automated checks so you can target the right suite for t
 
 - **Unit tests** live under `tests/unit` and focus on pure logic (e.g. schema/crypto helpers).
 - **Integration tests** sit in `tests/integration` and exercise API route handlers directly against Prisma.
-- **UI tests** live in `tests/ui` and run in JSDOM with React Testing Library.
+- **UI tests** live in `tests/ui` and use JSDOM (via a per-file `@jest-environment jsdom` docblock) with React Testing Library. Note: `jest.config.js` only defines the `unit` and `integration` projects, so `tests/ui` is **not** picked up by `jest` / `make test` today — run such files directly (e.g. `pnpm exec jest tests/ui`) until a `ui` project is added.
 - **End-to-end tests** are in `e2e` and run with Playwright against a built Next.js app.
 
 Integration suites share `tests/setup.integration.js` for MSW, deterministic timers, and database cleanup. Pure unit suites use `tests/setup.unit.js` so they stay database-free.
@@ -26,11 +26,14 @@ DATABASE_URL=postgresql://admin:admin123@127.0.0.1:5432/bunting_test make test-i
 # all suites with coverage (requires Postgres running)
 DATABASE_URL=postgresql://admin:admin123@127.0.0.1:5432/bunting_test pnpm run test:cov
 
-# playwright smoke (build + run)
+# playwright e2e against an already-running server on :3000
 NEXTAUTH_SECRET=dev-secret make test-e2e
+
+# or build + start + run in one step (no separate server needed)
+NEXTAUTH_SECRET=dev-secret pnpm run e2e
 ```
 
-> **Tip:** Local Postgres is bundled in `docker-compose.yml`. Start it with `docker compose up -d postgres`, then create `bunting_test` and run `pnpm dlx prisma db push` to sync the schema.
+> **Tip:** Local Postgres is bundled in `docker-compose.yml`. Start it with `docker compose up -d postgres`, then create `bunting_test` and run `pnpm exec prisma db push` (or `pnpm run db:push`) to sync the schema. Prisma 7 reads the connection URL from `prisma.config.ts` (which loads `DATABASE_URL` via `dotenv`), so set that env var for the target database.
 
 ## Database Utilities
 
@@ -42,11 +45,11 @@ Mock external HTTP calls by editing `tests/msw/server.ts`. Use `server.use(...)`
 
 ## Coverage Strategy
 
-Coverage is currently scoped to `src/lib/db.ts` while we stabilise the suite. Each time you add meaningful tests to a module, widen `collectCoverageFrom` (and optionally `coverageThreshold`) in `jest.config.js`. Keep the global 90% bar when you expand the scope.
+Coverage reports on all of `src/lib` (`collectCoverageFrom: ['src/lib/**/*.{ts,tsx}']` in `jest.config.js`, with `src/app` ignored). The global thresholds are a "don't regress" baseline set just below current measured coverage — branches 70%, functions 40%, lines/statements 22% — not a hard quality bar. Ratchet these up as `src/lib` coverage grows.
 
 ## E2E Flow
 
-CI runs `make test-e2e` in a dedicated job. The script builds the app, launches `next start` on port 3000 via `start-server-and-test`, and executes Playwright smoke specs. Locally you can reuse the same target; remember to run `pnpm dlx playwright install` once to download browsers.
+`make test-e2e` runs `playwright test` against a server that is already listening on port 3000 (the default Playwright config has no `webServer`). The `pnpm run e2e` script does the full cycle in one step: `e2e:build` builds the app, then `start-server-and-test` launches `next start` on port 3000 (`e2e:start`) and runs `playwright test` against it. The default config (`playwright.config.ts`) ignores `smoke-key-paths.spec.ts` and runs the remaining specs (currently `e2e/smoke.spec.ts`). Remember to run `pnpm exec playwright install` once to download browsers.
 
 ## Core-Flow Smoke Test (`make smoke`)
 

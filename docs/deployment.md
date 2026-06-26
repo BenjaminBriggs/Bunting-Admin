@@ -4,23 +4,18 @@ Bunting Admin ships with preconfigured templates so you can launch the dashboard
 
 ## One-Click Hosting
 
-Choose the provider that fits your stack—each option clones this repo and wires the defaults for you:
-
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/BenjaminBriggs/Bunting-Admin)
+One-click deploy to Render — it clones this repo and wires the defaults for you:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BenjaminBriggs/Bunting-Admin)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/BenjaminBriggs/Bunting-Admin)
-
-After the build completes, open the deployed URL and the setup wizard will guide you through authentication.
+Authentication and storage are configured entirely through environment variables — there is no in-app setup wizard. Set them on your hosting platform before the first boot; see [`.env.example`](../.env.example) and [production-deployment.md](production-deployment.md) for the full list.
 
 ## Post-Deployment Checklist
 
-1. **Open the setup wizard** at `/setup` on your deployed domain.
-2. **Choose your authentication providers** (Google, GitHub, Microsoft) and/or email magic links.
-3. **Add OAuth credentials** for each provider you enable.
-4. **Optionally connect a platform API** to store secrets in your infrastructure.
-5. **Finish the wizard** and sign in. The first account becomes an admin automatically.
+1. **Configure authentication** via env vars. `AUTH_MODE` selects `oidc` (bring your own OpenID Connect IdP — the default) or `proxy` (a trusted reverse-proxy authenticates users). In `oidc` mode at least one provider must be set or the app refuses to boot.
+2. **Configure object storage** (`S3_BUCKET`, `S3_REGION`, `CDN_BASE_URL`, and optionally `S3_ENDPOINT`/keys) and a signing-key protection scheme (`SIGNING_KEY_KMS_KEY_ID` or `SIGNING_KEY_SECRET`).
+3. **Open the deployed URL and sign in.** The first user to sign in is granted the `ADMIN` role automatically.
+4. **Create your first app** at `/setup/app` (the only setup step in the UI).
 
 ## OAuth Provider Guides
 
@@ -29,30 +24,30 @@ After the build completes, open the deployed URL and the setup wizard will guide
 1. Visit the [Google Cloud Console](https://console.cloud.google.com) and select a project.
 2. Create an OAuth 2.0 Client ID for a web application.
 3. Add your app domain to the Authorized JavaScript origins and redirect URI (`/api/auth/callback/google`).
-4. Copy the Client ID and Client Secret into the setup wizard.
+4. Set the Client ID and Client Secret as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
 
 ### GitHub
 
 1. Open **Settings → Developer settings → OAuth Apps**.
 2. Create a new OAuth App with the callback URL `https://<your-domain>/api/auth/callback/github`.
-3. Copy the Client ID and Secret.
+3. Set the Client ID and Secret as `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
 
 ### Microsoft
 
 1. In the [Azure Portal](https://portal.azure.com), open **App registrations** and create a new application.
 2. Configure a web redirect URI that ends with `/api/auth/callback/azure-ad`.
-3. Copy the Client ID, Client Secret, and Tenant ID.
+3. Set the Client ID, Client Secret, and Tenant ID as `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` / `MICROSOFT_TENANT_ID`.
 
 ### Email Magic Links (Resend)
 
 1. Create an account at [Resend](https://resend.com) and generate an API key.
-2. Supply the key (and sending domain if configured) in the wizard.
+2. Set the key as `RESEND_API_KEY` and the sending address as `EMAIL_FROM`.
 
 ## Access Control
 
-- The first user to sign in is granted **Admin** access.
-- Additional users start with **Developer** access.
-- Admins can promote/demote accounts from the dashboard under **Settings → Team**.
+- The first user to sign in is granted the **ADMIN** role.
+- Additional users start with the **DEVELOPER** role (unless their email or domain is pre-listed in the access list).
+- Admins manage access and roles from the dashboard under **Settings** (the access controls are visible to ADMIN users only).
 
 Once authentication is configured, continue setting up your first application via the dashboard. For a product tour, see `docs/product-overview.md`.
 
@@ -74,6 +69,6 @@ Use a CloudFront Function or Lambda@Edge to:
 
 ### Local Development (MinIO)
 
-For local development, you can run a thin proxy that fetches both files and merges the signature into the response header. A sample proxy script is available in `scripts/local-proxy.js`.
+For local development, MinIO serves the config and `.sig` objects directly without injecting the `x-bunting-signature` header, so SDK signature verification will not pass against a raw MinIO origin. To exercise verification locally, front MinIO with a thin proxy that fetches both files and merges the signature into the response header.
 
 > **Note:** Until CDN header injection is configured, SDK clients will fail signature verification on every config fetch. They will fall back to cached config if available, or to the bundled seed config.

@@ -8,15 +8,15 @@ All routes are under `/api`. Requests and responses use `application/json` unles
 
 ## Authentication
 
-Auth is handled by NextAuth.js (JWT session strategy, 14-day expiry). Supported providers are configured via environment variables: Google, GitHub, Microsoft (Azure AD), a generic OIDC provider, and Resend (magic-link email).
+**Authentication** is enforced globally in `src/middleware.ts` (edge runtime): every request except the public routes (`/api/auth/*`, `/api/health`, `/auth/*`, static assets, and `/`) must carry a valid identity, or the middleware returns `401` (for `/api/*`) or redirects to sign-in (otherwise) before reaching any handler. Two auth modes are selected by `AUTH_MODE` (default `oidc`); see [docs/security.md](security.md) for the full configuration.
 
-**Sign-in flow:** `GET/POST /api/auth/[...nextauth]` — fully managed by NextAuth. Not documented further here.
+In `oidc` mode, auth is handled by NextAuth.js (JWT session strategy). Supported providers are configured via environment variables: Google, GitHub, Microsoft (Azure AD), a generic OIDC provider, and Resend (magic-link email). The sign-in flow `GET/POST /api/auth/[...nextauth]` is fully managed by NextAuth and not documented further here. In `proxy` mode, identity is read from a trusted reverse-proxy header (optionally a signed JWT).
 
-**Access control:** On first sign-in, the first user in the database is automatically granted `ADMIN`. All subsequent users must appear in the access list (by email or domain) before they can sign in. Roles are `ADMIN` or `DEVELOPER`.
+**Access control:** On first sign-in, the first user in the database is automatically granted `ADMIN` (and is added to the access list). Subsequent users default to `DEVELOPER` unless their email or domain appears in the access list with an explicit role. Roles are `ADMIN` or `DEVELOPER`.
 
-Most routes that enforce auth require the session user to have the `ADMIN` role; those routes are marked **Admin only** in each section. Routes that call `auth()` but perform no role check are marked **Authenticated**.
+**Authorization** (role checks) is enforced per-route in the node-runtime handlers. ADMIN-only routes are marked **Admin only** in each section; they call `requireAdmin` (`src/lib/authz.ts`) or check the session role directly and return `403` (or `401` in the direct-session routes) for non-admins. All other routes are open to any authenticated user (including `DEVELOPER`): per [authentication.md](../../docs/authentication.md) §Roles, developers may author apps/flags/tests/rollouts but may not publish or manage keys/users/access-list.
 
-> Note: The Apps, Flags, Tests, Rollouts, Test-Rollouts, Config, Bootstrap, and Keys endpoints do **not** currently call `auth()`. They are effectively unauthenticated in the current implementation. The Users and Access-list endpoints do enforce ADMIN auth.
+The **Admin only** routes are: `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic.
 
 ---
 
@@ -567,6 +567,8 @@ Generate the config artifact JSON from the current database state without publis
 
 ### `POST /api/config/publish`
 
+**Admin only** (via `requireAdmin`). Also rate-limited in middleware (20 requests/minute per client IP; `429` with `Retry-After` when exceeded).
+
 Validate, sign, version, and upload the config artifact to S3.
 
 **Request body**
@@ -668,6 +670,36 @@ Fetch the publish history for an app.
 
 ---
 
+### `POST /api/config/decode`
+
+Decode a client config fingerprint against the retained artifact for its version, returning the resolved per-flag values. Authenticated (any role).
+
+**Request body** (Zod-validated)
+
+```json
+{ "appId": "string", "code": "string" }
+```
+
+`code` is the fingerprint string from a client; its embedded version selects the artifact to decode against.
+
+**Response 200**
+
+```json
+{
+	"version": "string",
+	"env": "string",
+	"publishedAt": "ISO8601",
+	"appIdentifier": "string",
+	"flags": {
+		/* resolved flag values */
+	}
+}
+```
+
+**Errors:** `400` invalid request, `404` if app not found or no retained artifact exists for that version (only versions published after per-version archiving was enabled can be decoded), `422` if the fingerprint is malformed for the artifact.
+
+---
+
 ## Bootstrap
 
 ### `GET /api/bootstrap/plist?appId=<id>` or `?appIdentifier=<id>`
@@ -691,6 +723,8 @@ Also handles `OPTIONS` preflight with CORS headers.
 ---
 
 ## Keys
+
+The mutating key endpoints (`POST /api/keys`, `PUT /api/keys`, `PUT /api/keys/[id]`, `DELETE /api/keys/[id]`) are **Admin only** (via `requireAdmin`; `403` for non-admins). The read endpoints (`GET /api/keys`, `GET /api/keys/[id]`, `GET /api/keys/public`) require any authenticated session.
 
 ### `GET /api/keys?appId=<id>`
 
@@ -947,7 +981,64 @@ Remove an access-list entry by ID (query parameter).
 
 ---
 
+## Activity
+
+**Admin only** — requires an authenticated session with `role = "ADMIN"` (via `requireAdmin`; returns `403` for non-admins, `401` if unauthenticated).
+
+### `GET /api/activity`
+
+Read the entity change trail (creates/updates/deletes/archives/rotations of flags, tests, rollouts, apps, keys, users, access-list entries). Backed by the `activity_logs` table, which is distinct from the publish ledger (`audit_logs`).
+
+**Query params** (all optional)
+
+| Param        | Type   | Notes                                                                              |
+| ------------ | ------ | ---------------------------------------------------------------------------------- |
+| `appId`      | string | scope to one app                                                                   |
+| `entityType` | string | `flag` \| `test` \| `rollout` \| `app` \| `signing_key` \| `user` \| `access_list` |
+| `entityId`   | string | a specific entity's history (pair with `entityType`)                               |
+| `limit`      | number | default 100, clamped to 1–500                                                      |
+
+**Response 200** — array of `ActivityLog` entries (most recent first):
+
+| Field        | Type           | Notes                                                     |
+| ------------ | -------------- | --------------------------------------------------------- |
+| `id`         | string         |                                                           |
+| `actor`      | string         | email, or `system`/`unknown`                              |
+| `action`     | string         | `create` \| `update` \| `delete` \| `archive` \| `rotate` |
+| `entityType` | string         |                                                           |
+| `entityId`   | string         |                                                           |
+| `appId`      | string?        | null for global entities                                  |
+| `summary`    | string?        | human-readable one-liner                                  |
+| `changes`    | object?        | optional `{before?, after?}` snapshot                     |
+| `createdAt`  | ISO8601 string |                                                           |
+
+---
+
+## Ops
+
+### `GET /api/health`
+
+Liveness plus database reachability. **Public** — whitelisted in middleware, so it requires no authentication.
+
+**Response 200** (process up and DB answers `SELECT 1`)
+
+```json
+{ "status": "ok", "db": "up" }
+```
+
+**Response 503** (database unreachable)
+
+```json
+{ "status": "degraded", "db": "down" }
+```
+
+The 503 body is intentionally opaque and leaks no connection details.
+
+---
+
 ## Dev/Test Utilities
+
+**Admin only**, and **disabled in production** — both handlers return `404` when `NODE_ENV === "production"`, and otherwise require an authenticated session with `role = "ADMIN"` (via `requireAdmin`).
 
 ### `GET /api/crypto/test?type=<type>`
 

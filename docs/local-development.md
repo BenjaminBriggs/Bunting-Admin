@@ -4,7 +4,7 @@ Spin up Bunting Admin locally with Docker-backed services and the standard Next.
 
 ## Prerequisites
 
-- Node.js 24
+- Node.js 22+ (CI runs on 22 and 24; `package.json` requires `>=22`)
 - pnpm 11 (`npm install -g pnpm@11`)
 - Docker Desktop (or compatible Docker Engine) and Docker Compose
 

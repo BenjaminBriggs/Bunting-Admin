@@ -108,4 +108,4 @@ Common causes:
 
 **`S3_BUCKET is not configured`:** The `S3_BUCKET` environment variable is missing.
 
-**Publish succeeds but config version is not incrementing:** The `YYYY-MM-DD.N` counter is derived from existing `AuditLog` rows for the same app/environment/date. If the database was wiped and re-migrated, the counter resets. This is safe — version collisions are prevented by the unique constraint on `(appId, environment, version)`.
+**Publish succeeds but config version is not incrementing:** The `YYYY-MM-DD.N` counter is derived from existing `AuditLog` rows for the same app and date. If the database was wiped and re-migrated, the counter resets. The allocation is serialized by a per-app Postgres advisory lock (`pg_advisory_xact_lock`) so two concurrent publishes can't mint the same `N`.
