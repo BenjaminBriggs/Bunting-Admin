@@ -213,6 +213,7 @@ export default function SignInForm({ providers }: { providers: Providers }) {
 									disabled={isLoading}
 									startIcon={<VpnKey />}
 									fullWidth
+									data-testid="sso-signin"
 								>
 									Continue with SSO
 								</Button>

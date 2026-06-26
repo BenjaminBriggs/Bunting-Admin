@@ -1,9 +1,23 @@
-import { db } from './db';
+/**
+ * Lazily import the Prisma client so this module stays edge-safe.
+ *
+ * access-control is reachable from the edge middleware
+ * (middleware → auth-session → auth → access-control). A static `import { db }`
+ * pulls in the Prisma 7 `pg` driver adapter, which evaluates Node-only APIs
+ * (`node:util/types`) at module load and crashes the edge runtime. These
+ * functions only ever run in the Node runtime, so the dynamic import never
+ * executes under edge.
+ */
+async function getDb() {
+	return (await import('./db')).db;
+}
 
 export async function checkUserAccess(email: string): Promise<boolean> {
 	if (!email) {
 		return false;
 	}
+
+	const db = await getDb();
 
 	// Check direct email match
 	const emailAccess = await db.accessList.findFirst({
@@ -40,6 +54,8 @@ export async function getUserRoleFromAccessList(
 		return 'DEVELOPER';
 	}
 
+	const db = await getDb();
+
 	// Check email first (more specific)
 	const emailAccess = await db.accessList.findFirst({
 		where: {
@@ -71,6 +87,7 @@ export async function getUserRoleFromAccessList(
 }
 
 export async function isFirstUser(): Promise<boolean> {
+	const db = await getDb();
 	const userCount = await db.user.count();
 	return userCount === 0;
 }
@@ -82,6 +99,8 @@ export async function createOrUpdateUser(userData: {
 	image?: string | null;
 }): Promise<{ id: string; role: 'ADMIN' | 'DEVELOPER' }> {
 	const { email, name, image } = userData;
+
+	const db = await getDb();
 
 	// Check if this is the first user
 	const firstUser = await isFirstUser();
@@ -134,13 +153,15 @@ export async function createOrUpdateUser(userData: {
 
 export async function updateUserActivity(userId: string): Promise<void> {
 	try {
+		const db = await getDb();
 		await db.user.update({
 			where: { id: userId },
 			data: { lastActiveAt: new Date() },
 		});
 	} catch (error) {
 		// This module is reachable from edge middleware (via auth → auth-session),
-		// so it must not import the pino logger (a Node-only module). Use console.
+		// so it must not statically import the pino logger or the Prisma client
+		// (both are Node-only). Use console; `db` is imported lazily via getDb().
 		console.error('Failed to update user activity:', error);
 		// Don't throw - this is not critical
 	}

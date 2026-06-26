@@ -1,4 +1,4 @@
-.PHONY: help install setup dev build start lint format type-check test test-unit test-integration test-e2e db-generate db-migrate clean
+.PHONY: help install setup dev build start lint format type-check test test-unit test-integration test-e2e smoke db-generate db-migrate clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -38,6 +38,9 @@ test-integration: ## Run integration tests
 
 test-e2e: ## Run Playwright e2e tests
 	pnpm run test:e2e
+
+smoke: ## Full-stack smoke: fresh stack → login → app → flags → publish → teardown
+	./scripts/smoke.sh
 
 db-generate: ## Regenerate the Prisma client
 	pnpm run db:generate

@@ -285,6 +285,7 @@ export default function SetupPage() {
 								<Box sx={fieldSx}>
 									<Box
 										component="input"
+										data-testid="app-name"
 										value={setupData.appName}
 										onChange={(e: ChangeEvent<HTMLInputElement>) =>
 											handleNameChange(e.target.value)
@@ -316,6 +317,7 @@ export default function SetupPage() {
 									<Ms name="tag" sx={{ fontSize: 20, color: '#B4AC9A' }} />
 									<Box
 										component="input"
+										data-testid="app-identifier"
 										value={setupData.appIdentifier}
 										onChange={(e: ChangeEvent<HTMLInputElement>) =>
 											setSetupData((prev) => ({
@@ -525,6 +527,7 @@ export default function SetupPage() {
 						{atDetails ? (
 							<Box
 								component="button"
+								data-testid="setup-next"
 								onClick={handleNext}
 								sx={{
 									display: 'inline-flex',
@@ -545,6 +548,7 @@ export default function SetupPage() {
 						) : (
 							<Box
 								component="button"
+								data-testid="create-app"
 								onClick={() => void handleCreate()}
 								disabled={loading}
 								sx={{

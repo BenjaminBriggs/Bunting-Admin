@@ -5,6 +5,7 @@
  * cryptographic operations required for the JWS security implementation.
  */
 
+import 'server-only';
 import { randomBytes } from 'crypto';
 import { generateKeyPair } from 'crypto';
 import { promisify } from 'util';

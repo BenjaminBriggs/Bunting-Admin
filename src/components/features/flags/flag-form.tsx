@@ -414,6 +414,7 @@ export default function FlagForm({
 						</Label>
 						<Box
 							component="input"
+							data-testid="flag-name"
 							value={displayName}
 							onChange={(e: ChangeEvent<HTMLInputElement>) =>
 								setDisplayName(e.target.value)
@@ -602,6 +603,7 @@ export default function FlagForm({
 										return (
 											<Box
 												key={t.value}
+												data-testid={`flag-type-${t.value}`}
 												onClick={() => setTypeAndReset(t.value)}
 												sx={{
 													display: 'flex',
@@ -714,7 +716,12 @@ export default function FlagForm({
 										>
 											{c.label}
 										</Typography>
-										<Box sx={{ ml: 'auto', minWidth: 0 }}>
+										<Box
+											sx={{ ml: 'auto', minWidth: 0 }}
+											{...(env === 'development'
+												? { 'data-testid': 'flag-default-value' }
+												: {})}
+										>
 											<FlagValueInput
 												flagType={type as FlagType}
 												value={defaultValues[env]}
@@ -835,6 +842,7 @@ export default function FlagForm({
 						{!locked && (
 							<Button
 								onClick={handleSubmit}
+								data-testid="flag-save"
 								disabled={!canSubmit}
 								startIcon={
 									<Ms name={isEdit ? 'check' : 'add'} sx={{ fontSize: 18 }} />

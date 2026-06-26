@@ -30,6 +30,8 @@
 		"test:integration": "jest --selectProjects integration --runInBand",
 		"test:json-spec": "jest tests/json-spec-validation.test.js --verbose",
 		"test:e2e": "playwright test",
+		"smoke": "./scripts/smoke.sh",
+		"smoke:test": "playwright test --config playwright.smoke.config.ts",
 		"e2e:build": "next build",
 		"e2e:start": "next start -p 3000",
 		"e2e": "start-server-and-test e2e:start http://localhost:3000 'playwright test'",
@@ -66,6 +68,7 @@
 		"pino": "^10.3.1",
 		"react": "^19.2.7",
 		"react-dom": "^19.2.7",
+		"server-only": "^0.0.1",
 		"typescript": "^6.0.3",
 		"zod": "^4.1.0"
 	},

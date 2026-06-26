@@ -5,6 +5,7 @@
  * ensuring config integrity and authenticity for SDK clients.
  */
 
+import 'server-only';
 import { importPKCS8, importSPKI, jwtVerify, SignJWT } from 'jose';
 import { logger } from '@/lib/logger';
 import { generateRSAKeyPair } from './crypto';

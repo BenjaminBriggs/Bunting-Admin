@@ -13,6 +13,7 @@
  * re-encrypted on the next write.
  */
 
+import 'server-only';
 import {
 	createCipheriv,
 	createDecipheriv,
