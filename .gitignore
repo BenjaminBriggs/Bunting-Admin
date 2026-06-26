@@ -60,3 +60,6 @@ docs/superpowers/
 
 # Claude Code local-only notes (references the out-of-repo Bunting parent docs)
 CLAUDE.local.md
+
+# Prisma 7 generated client
+/src/generated/prisma

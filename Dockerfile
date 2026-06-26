@@ -8,10 +8,13 @@ WORKDIR /app
 RUN apk add --no-cache openssl libc6-compat
 RUN npm install -g corepack@latest && corepack enable
 
-# Install dependencies once, reuse for dev and build.
+# Install dependencies once, reuse for dev and build. Skip lifecycle scripts:
+# the `postinstall` hook runs `prisma generate`, which needs the schema (not
+# copied yet at this stage). The dev/build stages run `prisma generate`
+# explicitly after copying the source.
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Development target — used by docker-compose for hot reload (source bind-mounted).
 FROM deps AS dev
@@ -21,9 +24,10 @@ RUN pnpm exec prisma generate
 EXPOSE 3000
 CMD ["pnpm", "run", "dev"]
 
-# Production build — emits the standalone server. `next build` traces the Prisma
-# client and its query engine (.so) into .next/standalone/node_modules, preserving
-# pnpm's store layout, so no manual staging of the engine is needed.
+# Production build — emits the standalone server. The Prisma 7 client is
+# generated into src/generated/prisma and traced into .next/standalone by
+# `next build`; queries run through the pg driver adapter, so there is no native
+# query engine to stage.
 FROM deps AS build
 ENV NODE_ENV=production
 COPY . .
