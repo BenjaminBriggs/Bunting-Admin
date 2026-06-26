@@ -105,4 +105,50 @@ export default [
 			'no-unused-vars': 'off',
 		},
 	},
+	{
+		// Edge-safety guardrail. The edge middleware and every module it can reach
+		// at runtime must NOT statically import Node-only code. The Prisma client
+		// (@/lib/db → @prisma/adapter-pg → pg → node:util/types) and the pino logger
+		// crash the edge runtime when bundled into middleware. This has regressed
+		// twice (pino, then the Prisma 7 pg adapter). If one of these files truly
+		// needs the client/logger, import it LAZILY inside a function via dynamic
+		// import() — which this rule intentionally does not flag. See
+		// src/lib/access-control.ts (getDb) for the pattern.
+		files: [
+			'src/middleware.ts',
+			'src/lib/auth.ts',
+			'src/lib/auth-session.ts',
+			'src/lib/auth-env.ts',
+			'src/lib/auth-proxy.ts',
+			'src/lib/access-control.ts',
+		],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{ name: 'pino', message: 'Node-only — not edge-safe.' },
+						{ name: 'pg', message: 'Node-only — not edge-safe.' },
+						{
+							name: '@prisma/adapter-pg',
+							message: 'Node-only — not edge-safe.',
+						},
+						{ name: '@prisma/client', message: 'Node-only — not edge-safe.' },
+					],
+					patterns: [
+						{
+							regex: '(^|/)(db|logger)$',
+							message:
+								'Edge-reachable module: do not statically import @/lib/db or @/lib/logger — they pull Node-only deps (pg, pino) into the edge bundle and crash it. Import lazily inside a function via dynamic import() instead (see access-control.ts getDb).',
+						},
+						{
+							regex: '@/generated/prisma',
+							message:
+								'Edge-reachable module: do not import the generated Prisma client here; it pulls the pg driver into the edge bundle. Import @/lib/db lazily via dynamic import() instead.',
+						},
+					],
+				},
+			],
+		},
+	},
 ];
