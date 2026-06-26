@@ -38,13 +38,25 @@ FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+# Isolated migration toolchain in /migrate. The prisma CLI and dotenv are devDeps
+# omitted from the standalone trace, and npm's flat layout cannot be merged into
+# the standalone's pnpm-symlinked node_modules (file/dir + symlink conflicts), so
+# keep them in their own directory. prisma.config.ts + the schema/migrations are
+# copied here too; the entrypoint runs `prisma migrate deploy` from /migrate.
+WORKDIR /migrate
+RUN npm install --no-save --no-package-lock prisma@7.8.0 dotenv@17.4.2 \
+	&& npm cache clean --force
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma.config.ts ./
+
+# Application runtime — the minimal standalone bundle.
+WORKDIR /app
 COPY --from=build /app/public ./public
-# The standalone bundle ships its own node_modules (incl. @prisma/client + the
-# query engine); copy it wholesale and do not overlay a flattened Prisma tree on
-# top, which would clash with the pnpm symlinks it already contains.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/prisma ./prisma
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh && chown -R nextjs:nodejs /app /migrate
 USER nextjs
 EXPOSE 3000
-CMD ["node", "server.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

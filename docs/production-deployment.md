@@ -14,7 +14,7 @@ The `Dockerfile` produces a minimal, non-root production image via a multi-stage
 docker build --target runner -t bunting-admin:latest .
 ```
 
-The image exposes port `3000`. At startup it expects all required env vars to be present — it does not fall back to defaults for secrets.
+The image listens on `$PORT` (defaulting to `3000`). At startup it expects all required env vars to be present — it does not fall back to defaults for secrets. Its entrypoint runs `prisma migrate deploy` before starting the server, so the schema is applied automatically on boot (see the migration note below).
 
 ---
 
@@ -46,10 +46,10 @@ services:
       - '3000:3000'
 ```
 
-Run migrations before starting:
+The container applies migrations itself on startup (`prisma migrate deploy` via its entrypoint), so no separate migration step is needed for a single instance. If you run **multiple replicas**, disable that by overriding the entrypoint/command to `node server.js` and run migrations as a one-off release step instead, so concurrent boots don't race:
 
 ```bash
-DATABASE_URL="..." pnpm dlx prisma migrate deploy
+DATABASE_URL="..." pnpm run db:deploy   # prisma migrate deploy
 ```
 
 ---

@@ -1,22 +1,60 @@
+# Render blueprint — deploys the container image (Dockerfile), not the native
+# Node buildpack. The runner image's entrypoint runs `prisma migrate deploy`
+# before starting the server, so a fresh deploy reaches a schema-synced app.
+#
+# `sync: false` vars are NOT set automatically — Render prompts for them on first
+# deploy. In production the app refuses to boot unless auth, storage, and a
+# signing-key scheme are configured (see docs/production-deployment.md).
 services:
   - type: web
     name: bunting-admin
-    env: node
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: starter
-    buildCommand: npm install && npm run build
-    startCommand: npm run start
+    healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NEXTAUTH_SECRET
-        generateValue: true
-      - key: NEXTAUTH_URL
-        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: bunting-db
           property: connectionString
-    autoDeploy: true
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      # Public HTTPS URL of this service (e.g. https://bunting-admin.onrender.com).
+      - key: NEXTAUTH_URL
+        sync: false
+
+      # --- Authentication -------------------------------------------------
+      # oidc (default) needs a provider or the app won't boot. Set the OIDC_*
+      # vars below, or switch AUTH_MODE to `proxy` if a trusted reverse proxy
+      # authenticates users. See docs/security.md.
+      - key: AUTH_MODE
+        value: oidc
+      - key: OIDC_ISSUER
+        sync: false
+      - key: OIDC_CLIENT_ID
+        sync: false
+      - key: OIDC_CLIENT_SECRET
+        sync: false
+
+      # --- Object storage (config artifacts) ------------------------------
+      # A single S3-compatible bucket; front it with a CDN and set CDN_BASE_URL.
+      # Omit S3_ACCESS_KEY_ID/SECRET to use an instance role (set them for R2/B2).
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: CDN_BASE_URL
+        sync: false
+
+      # --- Signing-key encryption at rest ---------------------------------
+      # Local AES-256-GCM scheme. For production prefer AWS KMS: drop this and
+      # set SIGNING_KEY_KMS_KEY_ID instead (see docs/security.md).
+      - key: SIGNING_KEY_SECRET
+        generateValue: true
 
 databases:
   - name: bunting-db

@@ -4,11 +4,13 @@ Bunting Admin ships with preconfigured templates so you can launch the dashboard
 
 ## One-Click Hosting
 
-One-click deploy to Render — it clones this repo and wires the defaults for you:
+One-click deploy to Render — the [`render.yaml`](../render.yaml) blueprint provisions a Postgres database and deploys the **container image** (the `Dockerfile`, not a buildpack). The container's entrypoint runs `prisma migrate deploy` on every boot, so the schema is created and kept in sync automatically — no separate migration step.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BenjaminBriggs/Bunting-Admin)
 
-Authentication and storage are configured entirely through environment variables — there is no in-app setup wizard. Set them on your hosting platform before the first boot; see [`.env.example`](../.env.example) and [production-deployment.md](production-deployment.md) for the full list.
+Authentication and storage are configured entirely through environment variables — there is no in-app setup wizard. `render.yaml` generates `NEXTAUTH_SECRET` / `SIGNING_KEY_SECRET` and wires `DATABASE_URL`, but marks the auth (`OIDC_*` or `AUTH_MODE=proxy`), storage (`S3_BUCKET`, `S3_REGION`, `CDN_BASE_URL`), and `NEXTAUTH_URL` vars as `sync: false` — Render prompts for them on first deploy, and the app refuses to boot in production until they are set. See [`.env.example`](../.env.example) and [production-deployment.md](production-deployment.md) for the full list.
+
+> **Auto-migrate caveat:** running migrations from the container entrypoint suits a single instance (the Render starter plan). If you scale to multiple replicas, run `prisma migrate deploy` as a one-off release step instead, so concurrent boots don't race.
 
 ## Post-Deployment Checklist
 
