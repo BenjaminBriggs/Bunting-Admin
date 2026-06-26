@@ -13,7 +13,14 @@ const sharedProjectConfig = {
 		// transpiled for the CommonJS jest runtime.
 		'^.+\\.(js|jsx|ts|tsx|mjs)$': ['babel-jest', { presets: ['next/babel'] }],
 	},
-	moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
+	moduleNameMapper: {
+		'^@/(.*)$': '<rootDir>/src/$1',
+		// `server-only`/`client-only` throw unless the react-server/browser export
+		// condition is set (Next sets it; jest does not). Map to a no-op so server
+		// modules guarded with `import 'server-only'` stay importable in tests.
+		'^server-only$': '<rootDir>/tests/empty-module.js',
+		'^client-only$': '<rootDir>/tests/empty-module.js',
+	},
 };
 
 module.exports = {

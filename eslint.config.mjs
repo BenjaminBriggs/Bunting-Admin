@@ -52,7 +52,9 @@ export default [
 		rules: {
 			'@typescript-eslint/no-base-to-string': 'warn',
 			'@typescript-eslint/no-explicit-any': 'warn',
-			'@typescript-eslint/no-floating-promises': 'warn',
+			// Promoted out of the ratchet: 0 violations, and an unhandled async
+			// (a forgotten await on a DB write / publish) is a real bug.
+			'@typescript-eslint/no-floating-promises': 'error',
 			'@typescript-eslint/no-misused-promises': 'warn',
 			'@typescript-eslint/no-redundant-type-constituents': 'warn',
 			'@typescript-eslint/no-require-imports': 'warn',
@@ -147,6 +149,53 @@ export default [
 								'Edge-reachable module: do not import the generated Prisma client here; it pulls the pg driver into the edge bundle. Import @/lib/db lazily via dynamic import() instead.',
 						},
 					],
+				},
+			],
+		},
+	},
+	{
+		// Enforce the structured pino logger in server code: ban raw console.* in
+		// libraries and API routes (it bypasses leveling and secret redaction).
+		// Client components keep console (pino is Node-only); the edge-reachable
+		// auth files and the logger wrapper are exempted below.
+		files: ['src/lib/**/*.ts', 'src/app/api/**/*.{ts,tsx}'],
+		rules: {
+			'no-console': 'error',
+		},
+	},
+	{
+		// These can't use pino (edge-reachable, or the logger module itself), so
+		// console is the correct sink here.
+		files: [
+			'src/lib/logger.ts',
+			'src/lib/access-control.ts',
+			'src/lib/auth.ts',
+			'src/lib/auth-session.ts',
+			'src/lib/auth-env.ts',
+			'src/lib/auth-proxy.ts',
+		],
+		rules: {
+			'no-console': 'off',
+		},
+	},
+	{
+		// Security guardrail: ban the raw-string Prisma query methods. Use the
+		// tagged-template $queryRaw / $executeRaw (parameterised) instead — the
+		// `Unsafe` variants interpolate strings and invite SQL injection.
+		files: ['src/**/*.ts', 'src/**/*.tsx'],
+		ignores: ['src/generated/**'],
+		rules: {
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: "CallExpression[callee.property.name='$queryRawUnsafe']",
+					message:
+						'Use the tagged-template $queryRaw (parameterised); $queryRawUnsafe risks SQL injection.',
+				},
+				{
+					selector: "CallExpression[callee.property.name='$executeRawUnsafe']",
+					message:
+						'Use the tagged-template $executeRaw (parameterised); $executeRawUnsafe risks SQL injection.',
 				},
 			],
 		},
