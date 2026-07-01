@@ -151,4 +151,61 @@ run('POST /api/config/publish (integration)', () => {
 		const seq = (v: string) => Number.parseInt(v.split('.')[1], 10);
 		expect(seq(second.version)).toBe(seq(first.version) + 1);
 	});
+
+	// Regression for the live E2E finding: a json flag with a raw-object default
+	// (not a JSON-encoded string) is exactly what /api/config/validate flags as
+	// blocking, but /api/config/publish used to sign and upload it anyway —
+	// bricking decode for every SDK client. Verify the rejection is real: no
+	// version consumed, nothing uploaded, before any S3 interaction.
+	test('rejects a json flag with a raw-object default before any version reservation or upload', async () => {
+		const identifier = `pub-invalid-${Date.now()}`;
+		const app = await prisma.app.create({
+			data: {
+				name: 'Invalid Publish Test',
+				identifier,
+				artifactUrl: `http://localhost:9000/${process.env.S3_BUCKET}/${identifier}/`,
+				publicKeys: [],
+				fetchPolicy: { min_interval_seconds: 60, hard_ttl_days: 7 },
+				storageConfig: {},
+			},
+		});
+		await prisma.flag.create({
+			data: {
+				appId: app.id,
+				key: 'layout/home_sections',
+				displayName: 'Home Sections',
+				type: 'JSON',
+				// Raw object, not a JSON-encoded string — the artifact spec violation
+				// proven live against a real publish.
+				defaultValues: {
+					development: { sections: ['hero'] },
+					beta: '{}',
+					production: '{}',
+				},
+			},
+		});
+
+		const req = new NextRequest('http://local/api/config/publish', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				'x-forwarded-email': 'publisher@example.com',
+			},
+			body: JSON.stringify({ appId: app.id, changelog: 'bad json default' }),
+		});
+
+		const res = await POST(req);
+		expect(res.status).toBe(400);
+		const json = (await res.json()) as { error: string; errors: unknown[] };
+		expect(json.error).toMatch(/invalid/i);
+		expect(json.errors.length).toBeGreaterThan(0);
+
+		// No version was reserved.
+		const audits = await prisma.auditLog.findMany({ where: { appId: app.id } });
+		expect(audits).toHaveLength(0);
+
+		// Nothing was uploaded to S3.
+		await expect(s3Text(`${identifier}/config.json`)).rejects.toThrow();
+		await expect(s3Text(`${identifier}/config.json.sig`)).rejects.toThrow();
+	});
 });

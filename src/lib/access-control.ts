@@ -151,6 +151,51 @@ export async function createOrUpdateUser(userData: {
 	};
 }
 
+/**
+ * First-admin bootstrap for `AUTH_MODE=proxy`.
+ *
+ * Proxy mode has no NextAuth sign-in event to hook the OIDC bootstrap
+ * (`createOrUpdateUser`) into, and deliberately never writes `User` rows for
+ * proxy-authenticated requests — a header-authenticated request isn't a
+ * "sign-in", it's just a request. So this mirrors the OIDC bootstrap's
+ * *outcome* (first authenticated identity becomes ADMIN) using the
+ * `AccessList` alone, which proxy mode already treats as its source of
+ * truth for roles.
+ *
+ * Only fires when the access list is completely empty AND no ADMIN `User`
+ * row exists (covers a mixed oidc/proxy deployment where an OIDC admin
+ * already bootstrapped but, e.g., their access-list row was later removed —
+ * we still must not mint a second, different admin here).
+ *
+ * Race-safe: the emptiness check and insert happen inside one transaction
+ * serialized by a Postgres advisory lock (same technique as the publish
+ * route's version reservation), so two concurrent first requests can't both
+ * observe "empty" and both insert.
+ */
+export async function bootstrapFirstProxyAdmin(
+	email: string,
+): Promise<'ADMIN' | null> {
+	const db = await getDb();
+	const normalizedEmail = email.toLowerCase();
+
+	return db.$transaction(async (tx) => {
+		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('bunting_proxy_first_admin_bootstrap'))`;
+
+		const [accessListCount, adminUserCount] = await Promise.all([
+			tx.accessList.count(),
+			tx.user.count({ where: { role: 'ADMIN' } }),
+		]);
+		if (accessListCount > 0 || adminUserCount > 0) {
+			return null;
+		}
+
+		await tx.accessList.create({
+			data: { type: 'EMAIL', value: normalizedEmail, role: 'ADMIN' },
+		});
+		return 'ADMIN';
+	});
+}
+
 export async function updateUserActivity(userId: string): Promise<void> {
 	try {
 		const db = await getDb();
