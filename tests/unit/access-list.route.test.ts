@@ -13,6 +13,16 @@ const mockIdentityFromHeaders = jest.fn<
 >();
 const mockRoleFromAccessList = jest.fn<Promise<Role>, [string]>();
 const mockFindMany = jest.fn<Promise<unknown[]>, unknown[]>();
+const mockAccessFindFirst = jest.fn<Promise<unknown>, unknown[]>();
+const mockUserFindUnique = jest.fn<Promise<{ id: string } | null>, unknown[]>();
+type AccessEntry = {
+	id: string;
+	type: 'EMAIL' | 'DOMAIN';
+	value: string;
+	role: Role;
+	createdBy: { id: string; email: string; name: string | null } | null;
+};
+const mockAccessCreate = jest.fn<Promise<AccessEntry>, unknown[]>();
 const mockLogActivity = jest.fn<Promise<void>, unknown[]>();
 
 jest.mock('@/lib/auth-env', () => ({
@@ -37,7 +47,14 @@ jest.mock('@/lib/access-control', () => ({
 
 jest.mock('@/lib/db', () => ({
 	db: {
-		accessList: { findMany: (...args: unknown[]) => mockFindMany(...args) },
+		accessList: {
+			findMany: (...args: unknown[]) => mockFindMany(...args),
+			findFirst: (...args: unknown[]) => mockAccessFindFirst(...args),
+			create: (...args: unknown[]) => mockAccessCreate(...args),
+		},
+		user: {
+			findUnique: (...args: unknown[]) => mockUserFindUnique(...args),
+		},
 	},
 }));
 
@@ -49,10 +66,18 @@ jest.mock('@/lib/activity-log', () => ({
 // eslint-disable-next-line import/first -- jest.mock must register before import
 import { NextRequest } from 'next/server';
 // eslint-disable-next-line import/first -- jest.mock must register before import
-import { GET } from '@/app/api/access-list/route';
+import { GET, POST } from '@/app/api/access-list/route';
 
 function req(): NextRequest {
 	return new NextRequest('http://local/api/access-list');
+}
+
+function postReq(body: unknown): NextRequest {
+	return new NextRequest('http://local/api/access-list', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(body),
+	});
 }
 
 beforeEach(() => {
@@ -61,9 +86,13 @@ beforeEach(() => {
 	mockIdentityFromHeaders.mockReset();
 	mockRoleFromAccessList.mockReset();
 	mockFindMany.mockReset();
+	mockAccessFindFirst.mockReset();
+	mockUserFindUnique.mockReset();
+	mockAccessCreate.mockReset();
 	mockLogActivity.mockReset();
 	mockResolveAuthConfig.mockReturnValue({ mode: 'oidc' });
 	mockFindMany.mockResolvedValue([]);
+	mockAccessFindFirst.mockResolvedValue(null);
 });
 
 describe('GET /api/access-list — session mode (oidc)', () => {
@@ -119,5 +148,87 @@ describe('GET /api/access-list — proxy mode', () => {
 		const res = await GET(req());
 		expect(res.status).toBe(401);
 		expect(mockFindMany).not.toHaveBeenCalled();
+	});
+});
+
+describe('POST /api/access-list — proxy mode', () => {
+	beforeEach(() => {
+		mockResolveAuthConfig.mockReturnValue({ mode: 'proxy' });
+	});
+
+	it('succeeds with a null creator when the proxy admin has no User row', async () => {
+		mockIdentityFromHeaders.mockResolvedValue({ email: 'admin@x.com' });
+		mockRoleFromAccessList.mockResolvedValue('ADMIN');
+		// No NextAuth sign-in ever happened for this proxy identity, so there's
+		// no matching User row — createdById must fall back to undefined/null
+		// rather than throwing or 500ing.
+		mockUserFindUnique.mockResolvedValue(null);
+		mockAccessCreate.mockResolvedValue({
+			id: 'a1',
+			type: 'EMAIL',
+			value: 'new@x.com',
+			role: 'DEVELOPER',
+			createdBy: null,
+		});
+
+		const res = await POST(
+			postReq({ type: 'EMAIL', value: 'new@x.com', role: 'DEVELOPER' }),
+		);
+
+		expect(res.status).toBe(200);
+		const json = (await res.json()) as AccessEntry;
+		expect(json.createdBy).toBeNull();
+		expect(mockUserFindUnique).toHaveBeenCalledWith({
+			where: { email: 'admin@x.com' },
+			select: { id: true },
+		});
+		expect(mockAccessCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: {
+					type: 'EMAIL',
+					value: 'new@x.com',
+					role: 'DEVELOPER',
+					createdById: undefined,
+				},
+			}),
+		);
+	});
+});
+
+describe('POST /api/access-list — session mode (oidc)', () => {
+	it('populates createdBy when the actor has a matching User row', async () => {
+		mockAuth.mockResolvedValue({
+			user: { email: 'admin@x.com', role: 'ADMIN' },
+		});
+		mockUserFindUnique.mockResolvedValue({ id: 'user-1' });
+		mockAccessCreate.mockResolvedValue({
+			id: 'a2',
+			type: 'EMAIL',
+			value: 'new2@x.com',
+			role: 'DEVELOPER',
+			createdBy: { id: 'user-1', email: 'admin@x.com', name: null },
+		});
+
+		const res = await POST(
+			postReq({ type: 'EMAIL', value: 'new2@x.com', role: 'DEVELOPER' }),
+		);
+
+		expect(res.status).toBe(200);
+		const json = (await res.json()) as AccessEntry;
+		expect(json.createdBy).toEqual({
+			id: 'user-1',
+			email: 'admin@x.com',
+			name: null,
+		});
+		expect(mockAccessCreate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: {
+					type: 'EMAIL',
+					value: 'new2@x.com',
+					role: 'DEVELOPER',
+					createdById: 'user-1',
+				},
+			}),
+		);
 	});
 });

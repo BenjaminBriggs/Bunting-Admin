@@ -52,15 +52,16 @@ export async function PATCH(request: NextRequest) {
 		const { userId, role } = updateUserSchema.parse(body);
 
 		// Prevent changing your own role to DEVELOPER (would lock yourself out).
-		// Compared by email, not id: proxy mode has no session-carried user id.
+		// Compared by email, not id: proxy mode has no session-carried user id, so
+		// this extra lookup (rather than session.user.id) is required to identify
+		// "self" in both auth modes. `authz.email` is already normalized to
+		// lowercase by authz.ts; `target.email` is compared defensively in case a
+		// DB row predates that normalization.
 		const target = await db.user.findUnique({
 			where: { id: userId },
 			select: { email: true },
 		});
-		if (
-			target?.email.toLowerCase() === authz.email.toLowerCase() &&
-			role === 'DEVELOPER'
-		) {
+		if (target?.email.toLowerCase() === authz.email && role === 'DEVELOPER') {
 			return NextResponse.json(
 				{ error: 'Cannot change your own role to Developer' },
 				{ status: 400 },
