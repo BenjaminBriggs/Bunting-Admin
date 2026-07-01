@@ -58,5 +58,17 @@ module.exports = {
 			setupFilesAfterEnv: ['<rootDir>/tests/setup.integration.js'],
 			testTimeout: 30000,
 		},
+		{
+			...sharedProjectConfig,
+			displayName: 'ui',
+			testEnvironment: 'jsdom',
+			testMatch: [
+				'<rootDir>/tests/ui/**/*.test.js',
+				'<rootDir>/tests/ui/**/*.test.jsx',
+				'<rootDir>/tests/ui/**/*.test.ts',
+				'<rootDir>/tests/ui/**/*.test.tsx',
+			],
+			testTimeout: 10000,
+		},
 	],
 };
