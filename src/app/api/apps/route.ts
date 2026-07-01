@@ -7,7 +7,12 @@ import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
 import { logger } from '@/lib/logger';
-import { artifactUrlFor, getConfigBucket, getS3Client } from '@/lib/storage';
+import {
+	artifactUrlFor,
+	getConfigBucket,
+	getS3Client,
+	normalizeArtifactUrl,
+} from '@/lib/storage';
 
 const createAppSchema = z.object({
 	name: z.string(),
@@ -109,7 +114,15 @@ export async function GET() {
 			},
 		});
 
-		return NextResponse.json(apps);
+		// Normalize legacy directory-shaped artifactUrl values (stored with a
+		// trailing slash by an older version of artifactUrlFor) for any rows
+		// created before the config.json URL fix.
+		return NextResponse.json(
+			apps.map((app) => ({
+				...app,
+				artifactUrl: normalizeArtifactUrl(app.artifactUrl),
+			})),
+		);
 	} catch (error) {
 		logger.error({ err: error }, 'Error fetching apps');
 		return NextResponse.json(

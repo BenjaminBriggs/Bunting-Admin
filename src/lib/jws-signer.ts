@@ -6,7 +6,7 @@
  */
 
 import 'server-only';
-import { importPKCS8, importSPKI, jwtVerify, SignJWT } from 'jose';
+import { importPKCS8 } from 'jose';
 import { logger } from '@/lib/logger';
 import { generateRSAKeyPair } from './crypto';
 import { prisma } from './db';
@@ -17,13 +17,6 @@ export interface SigningResult {
 	signature: string; // Compact JWS string
 	keyId: string; // Key ID used for signing
 	algorithm: string; // Signing algorithm (RS256)
-}
-
-export interface VerificationResult {
-	verified: boolean;
-	payload?: unknown;
-	error?: string;
-	keyId?: string;
 }
 
 /**
@@ -68,61 +61,6 @@ export async function ensureSigningKey(appId: string): Promise<void> {
 }
 
 /**
- * Sign a configuration JSON with JWS using the active signing key for an app
- */
-export async function signConfig(
-	appId: string,
-	configJson: unknown,
-): Promise<SigningResult> {
-	try {
-		// Get the active signing key for this app
-		const signingKey = await prisma.signingKey.findFirst({
-			where: {
-				appId,
-				isActive: true,
-			},
-			orderBy: {
-				createdAt: 'desc', // Use the most recent active key
-			},
-		});
-
-		if (!signingKey) {
-			throw new Error(`No active signing key found for app ${appId}`);
-		}
-
-		// Decrypt (if enveloped) then import the private key for signing
-		const privateKeyPem = await loadPrivateKey(signingKey.privateKey);
-		const privateKey = await importPKCS8(privateKeyPem, signingKey.algorithm);
-
-		// Convert config to canonical JSON string (byte-for-byte signing)
-		const configString = JSON.stringify(configJson);
-
-		// Create JWS with proper header
-		const jwt = new SignJWT({ config: configString })
-			.setProtectedHeader({
-				alg: signingKey.algorithm,
-				kid: signingKey.kid,
-				typ: 'JWT',
-			})
-			.setIssuedAt()
-			.setExpirationTime('24h'); // Config expires after 24 hours
-
-		const signature = await jwt.sign(privateKey);
-
-		return {
-			signature,
-			keyId: signingKey.kid,
-			algorithm: signingKey.algorithm,
-		};
-	} catch (error) {
-		logger.error({ err: error }, 'Config signing failed');
-		throw new Error(
-			`Failed to sign config: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		);
-	}
-}
-
-/**
  * Sign the EXACT config bytes with a detached JWS (RFC 7797).
  *
  * This is what the publish pipeline uses: the signature binds to the precise
@@ -151,73 +89,6 @@ export async function signConfigDetached(
 	});
 
 	return { signature, keyId: signingKey.kid, algorithm: signingKey.algorithm };
-}
-
-/**
- * Verify a JWS signature against a config using a specific public key
- */
-export async function verifyConfigSignature(
-	configString: string,
-	signature: string,
-	appId: string,
-	keyId?: string,
-): Promise<VerificationResult> {
-	try {
-		// If keyId is provided, use that specific key; otherwise try all active keys
-		const whereClause = keyId
-			? { appId, kid: keyId }
-			: { appId, isActive: true };
-
-		const signingKeys = await prisma.signingKey.findMany({
-			where: whereClause,
-		});
-
-		if (signingKeys.length === 0) {
-			return {
-				verified: false,
-				error: keyId ? `Key ${keyId} not found` : 'No active keys found',
-			};
-		}
-
-		// Try verification with each available key
-		for (const signingKey of signingKeys) {
-			try {
-				const publicKey = await importSPKI(
-					signingKey.publicKey,
-					signingKey.algorithm,
-				);
-
-				const { payload } = await jwtVerify(signature, publicKey, {
-					algorithms: [signingKey.algorithm],
-				});
-
-				// Verify that the payload contains the config
-				const jwtPayload = payload as { config?: string };
-
-				if (jwtPayload.config === configString) {
-					return {
-						verified: true,
-						payload: JSON.parse(configString) as unknown,
-						keyId: signingKey.kid,
-					};
-				}
-			} catch {
-				// Continue trying other keys
-				continue;
-			}
-		}
-
-		return {
-			verified: false,
-			error: 'Signature verification failed with all available keys',
-		};
-	} catch (error) {
-		logger.error({ err: error }, 'Signature verification failed');
-		return {
-			verified: false,
-			error: `Verification error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		};
-	}
 }
 
 /**

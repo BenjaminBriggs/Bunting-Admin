@@ -128,6 +128,7 @@ export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
 // Predefined options for list-based conditions
 export const PLATFORM_OPTIONS = [
 	{ value: 'iOS', label: 'iOS' },
+	{ value: 'iPadOS', label: 'iPadOS' },
 	{ value: 'macOS', label: 'macOS' },
 	{ value: 'watchOS', label: 'watchOS' },
 	{ value: 'tvOS', label: 'tvOS' },

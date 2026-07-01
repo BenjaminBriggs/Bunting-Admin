@@ -8,12 +8,7 @@
 import { logger } from '@/lib/logger';
 import { generateRSAKeyPair } from './crypto';
 import { prisma } from './db';
-import {
-	getPublicKeysForApp,
-	type JWSHeader,
-	signConfig,
-	verifyConfigSignature,
-} from './jws-signer';
+import { getPublicKeysForApp, type JWSHeader } from './jws-signer';
 
 export interface TestResult {
 	success: boolean;
@@ -24,8 +19,6 @@ export interface TestResult {
 
 export interface EndToEndTestResult {
 	keyGeneration: TestResult;
-	configSigning: TestResult;
-	signatureVerification: TestResult;
 	publicKeyDistribution: TestResult;
 	overall: TestResult;
 }
@@ -137,144 +130,6 @@ export async function testKeyGeneration(): Promise<TestResult> {
 }
 
 /**
- * Test config signing process
- */
-export async function testConfigSigning(appId: string): Promise<TestResult> {
-	try {
-		// Create a test config
-		const testConfig = {
-			schema_version: 1,
-			config_version: '2025-01-01.1',
-			published_at: new Date().toISOString(),
-			app_identifier: 'test-app',
-			flags: {
-				test_flag: {
-					type: 'bool',
-					development: { default: true },
-					beta: { default: true },
-					production: { default: false },
-				},
-			},
-			tests: {},
-			rollouts: {},
-		};
-
-		const signingResult = await signConfig(appId, testConfig);
-
-		// Validate signing result
-		if (
-			!signingResult.signature ||
-			!signingResult.keyId ||
-			!signingResult.algorithm
-		) {
-			return {
-				success: false,
-				message: 'Signing result incomplete',
-				error: 'Missing signature, keyId, or algorithm',
-			};
-		}
-
-		// Validate JWS format (should be three base64url parts separated by dots)
-		const parts = signingResult.signature.split('.');
-		if (parts.length !== 3) {
-			return {
-				success: false,
-				message: 'Invalid JWS signature format',
-				error: 'JWS should have 3 parts separated by dots',
-			};
-		}
-
-		return {
-			success: true,
-			message: 'Config signing successful',
-			details: {
-				keyId: signingResult.keyId,
-				algorithm: signingResult.algorithm,
-				signatureLength: signingResult.signature.length,
-				signatureParts: parts.length,
-			},
-		};
-	} catch (error) {
-		return {
-			success: false,
-			message: 'Config signing failed',
-			error: error instanceof Error ? error.message : 'Unknown error',
-		};
-	}
-}
-
-/**
- * Test signature verification
- */
-export async function testSignatureVerification(
-	appId: string,
-): Promise<TestResult> {
-	try {
-		// Create a test config
-		const testConfig = {
-			schema_version: 1,
-			config_version: '2025-01-01.1',
-			published_at: new Date().toISOString(),
-			app_identifier: 'test-app',
-			flags: {
-				verification_test: {
-					type: 'string',
-					development: { default: 'test_value' },
-					beta: { default: 'test_value' },
-					production: { default: 'production_value' },
-				},
-			},
-			tests: {},
-			rollouts: {},
-		};
-
-		// Sign the config
-		const signingResult = await signConfig(appId, testConfig);
-		const configString = JSON.stringify(testConfig);
-
-		// Verify the signature
-		const verificationResult = await verifyConfigSignature(
-			configString,
-			signingResult.signature,
-			appId,
-		);
-
-		if (!verificationResult.verified) {
-			return {
-				success: false,
-				message: 'Signature verification failed',
-				error: verificationResult.error ?? 'Verification returned false',
-			};
-		}
-
-		// Validate that the payload matches
-		if (!verificationResult.payload) {
-			return {
-				success: false,
-				message: 'Verified signature but no payload returned',
-				error: 'Missing payload in verification result',
-			};
-		}
-
-		return {
-			success: true,
-			message: 'Signature verification successful',
-			details: {
-				keyId: verificationResult.keyId,
-				payloadMatches:
-					JSON.stringify(verificationResult.payload) === configString,
-			},
-		};
-	} catch (error) {
-		return {
-			success: false,
-			message: 'Signature verification test failed',
-			error: error instanceof Error ? error.message : 'Unknown error',
-		};
-	}
-}
-
-/**
  * Test public key distribution
  */
 export async function testPublicKeyDistribution(
@@ -341,20 +196,12 @@ export async function runEndToEndCryptoTest(): Promise<EndToEndTestResult> {
 
 		// Run all tests
 		const keyGeneration = await testKeyGeneration();
-		const configSigning = await testConfigSigning(testApp.appId);
-		const signatureVerification = await testSignatureVerification(
-			testApp.appId,
-		);
 		const publicKeyDistribution = await testPublicKeyDistribution(
 			testApp.appId,
 		);
 
 		// Determine overall result
-		const allPassed =
-			keyGeneration.success &&
-			configSigning.success &&
-			signatureVerification.success &&
-			publicKeyDistribution.success;
+		const allPassed = keyGeneration.success && publicKeyDistribution.success;
 
 		const overall: TestResult = {
 			success: allPassed,
@@ -362,36 +209,21 @@ export async function runEndToEndCryptoTest(): Promise<EndToEndTestResult> {
 				? 'All crypto tests passed successfully'
 				: 'One or more crypto tests failed',
 			details: {
-				passedTests: [
-					keyGeneration,
-					configSigning,
-					signatureVerification,
-					publicKeyDistribution,
-				].filter((t) => t.success).length,
-				totalTests: 4,
+				passedTests: [keyGeneration, publicKeyDistribution].filter(
+					(t) => t.success,
+				).length,
+				totalTests: 2,
 			},
 		};
 
 		return {
 			keyGeneration,
-			configSigning,
-			signatureVerification,
 			publicKeyDistribution,
 			overall,
 		};
 	} catch (error) {
 		return {
 			keyGeneration: {
-				success: false,
-				message: 'Test setup failed',
-				error: 'Could not create test app',
-			},
-			configSigning: {
-				success: false,
-				message: 'Test setup failed',
-				error: 'Could not create test app',
-			},
-			signatureVerification: {
 				success: false,
 				message: 'Test setup failed',
 				error: 'Could not create test app',

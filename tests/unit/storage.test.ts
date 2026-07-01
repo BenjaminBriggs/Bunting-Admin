@@ -1,17 +1,21 @@
-import { artifactUrlFor, buildS3Config } from '@/lib/storage';
+import {
+	artifactUrlFor,
+	buildS3Config,
+	normalizeArtifactUrl,
+} from '@/lib/storage';
 
 describe('artifactUrlFor', () => {
-	it('derives a directory URL from CDN_BASE_URL', () => {
+	it('derives the full config.json URL from CDN_BASE_URL', () => {
 		const env = { CDN_BASE_URL: 'https://cdn.example.com' };
 		expect(artifactUrlFor('com.acme.app', env)).toBe(
-			'https://cdn.example.com/com.acme.app/',
+			'https://cdn.example.com/com.acme.app/config.json',
 		);
 	});
 
 	it('trims a trailing slash on CDN_BASE_URL', () => {
 		const env = { CDN_BASE_URL: 'https://cdn.example.com/' };
 		expect(artifactUrlFor('com.acme.app', env)).toBe(
-			'https://cdn.example.com/com.acme.app/',
+			'https://cdn.example.com/com.acme.app/config.json',
 		);
 	});
 
@@ -21,14 +25,14 @@ describe('artifactUrlFor', () => {
 			S3_BUCKET: 'bunting-configs',
 		};
 		expect(artifactUrlFor('demo', env)).toBe(
-			'http://localhost:9000/bunting-configs/demo/',
+			'http://localhost:9000/bunting-configs/demo/config.json',
 		);
 	});
 
 	it('falls back to AWS virtual-host style when only bucket/region are set', () => {
 		const env = { S3_BUCKET: 'bunting-configs', S3_REGION: 'eu-west-1' };
 		expect(artifactUrlFor('demo', env)).toBe(
-			'https://bunting-configs.s3.eu-west-1.amazonaws.com/demo/',
+			'https://bunting-configs.s3.eu-west-1.amazonaws.com/demo/config.json',
 		);
 	});
 
@@ -36,6 +40,24 @@ describe('artifactUrlFor', () => {
 		expect(
 			artifactUrlFor('', { CDN_BASE_URL: 'https://cdn.example.com' }),
 		).toBe('');
+	});
+});
+
+describe('normalizeArtifactUrl', () => {
+	it('appends config.json to a legacy directory-shaped URL', () => {
+		expect(normalizeArtifactUrl('https://cdn.example.com/demo/')).toBe(
+			'https://cdn.example.com/demo/config.json',
+		);
+	});
+
+	it('leaves an already-correct config.json URL unchanged', () => {
+		expect(
+			normalizeArtifactUrl('https://cdn.example.com/demo/config.json'),
+		).toBe('https://cdn.example.com/demo/config.json');
+	});
+
+	it('passes through an empty string unchanged', () => {
+		expect(normalizeArtifactUrl('')).toBe('');
 	});
 });
 

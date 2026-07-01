@@ -15,7 +15,11 @@ function trimTrailingSlash(url: string): string {
 	return url.replace(/\/+$/, '');
 }
 
-/** Public directory URL the SDK fetches `config.json` / `config.json.sig` from. */
+/**
+ * Public URL of the `config.json` artifact the SDK fetches. The signature lives
+ * alongside it at this URL + ".sig" — the SDK derives that suffix itself, so this
+ * must point at the exact `config.json` object, not its containing directory.
+ */
 export function artifactUrlFor(
 	appIdentifier: string,
 	env: Env = process.env,
@@ -25,21 +29,35 @@ export function artifactUrlFor(
 	}
 
 	if (env.CDN_BASE_URL) {
-		return `${trimTrailingSlash(env.CDN_BASE_URL)}/${appIdentifier}/`;
+		return `${trimTrailingSlash(env.CDN_BASE_URL)}/${appIdentifier}/config.json`;
 	}
 
 	// Local/custom S3-compatible endpoint (e.g. MinIO): path-style URL.
 	if (env.S3_ENDPOINT && env.S3_BUCKET) {
-		return `${trimTrailingSlash(env.S3_ENDPOINT)}/${env.S3_BUCKET}/${appIdentifier}/`;
+		return `${trimTrailingSlash(env.S3_ENDPOINT)}/${env.S3_BUCKET}/${appIdentifier}/config.json`;
 	}
 
 	// Plain AWS S3: virtual-host style.
 	if (env.S3_BUCKET) {
 		const region = env.S3_REGION ?? 'us-east-1';
-		return `https://${env.S3_BUCKET}.s3.${region}.amazonaws.com/${appIdentifier}/`;
+		return `https://${env.S3_BUCKET}.s3.${region}.amazonaws.com/${appIdentifier}/config.json`;
 	}
 
 	return '';
+}
+
+/**
+ * Normalizes a possibly-legacy directory-shaped `artifactUrl` (stored with a
+ * trailing slash by older versions of `artifactUrlFor`) to the full
+ * `config.json` URL the SDK expects. Already-correct values pass through
+ * unchanged. Apply this wherever a stored `artifactUrl` is emitted to SDK-facing
+ * output, since existing rows may still hold the old directory shape.
+ */
+export function normalizeArtifactUrl(url: string): string {
+	if (!url) {
+		return url;
+	}
+	return url.endsWith('/') ? `${url}config.json` : url;
 }
 
 /**

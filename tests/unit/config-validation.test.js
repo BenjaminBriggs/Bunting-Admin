@@ -156,6 +156,133 @@ describe('Config Validation', () => {
 			expect(result.errors[0].type).toBe('invalid_json');
 			expect(result.errors[0].message).toContain('beta');
 		});
+
+		// The artifact spec requires json flag values to be JSON-encoded STRINGS.
+		// A raw object publishes cleanly through this validator but bricks the
+		// entire config for every SDK client, since the SDK fails to decode the
+		// whole artifact when a json value isn't a string.
+		test('rejects an object-valued json default', () => {
+			const config = {
+				flags: {
+					json_flag: {
+						type: 'json',
+						development: { default: { valid: 'json' } },
+						beta: { default: '{"valid": "json"}' },
+						production: { default: '{"valid": "json"}' },
+					},
+				},
+			};
+
+			const result = validateConfig(config);
+			const jsonErrors = result.errors.filter((e) => e.type === 'invalid_json');
+			expect(jsonErrors).toHaveLength(1);
+			expect(jsonErrors[0].message).toContain('development');
+			expect(jsonErrors[0].flagKey).toBe('json_flag');
+		});
+
+		test('rejects an object-valued json conditional variant value', () => {
+			const config = {
+				flags: {
+					json_flag: {
+						type: 'json',
+						development: { default: '{}' },
+						beta: { default: '{}' },
+						production: {
+							default: '{}',
+							variants: [
+								{
+									type: 'conditional',
+									order: 1,
+									value: { not: 'a string' },
+									conditions: [],
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const result = validateConfig(config);
+			const jsonErrors = result.errors.filter((e) => e.type === 'invalid_json');
+			expect(jsonErrors).toHaveLength(1);
+			expect(jsonErrors[0].message).toContain('production');
+			expect(jsonErrors[0].flagKey).toBe('json_flag');
+		});
+
+		test('rejects an object-valued json test-variant group value', () => {
+			const config = {
+				flags: {
+					json_flag: {
+						type: 'json',
+						development: { default: '{}' },
+						beta: { default: '{}' },
+						production: {
+							default: '{}',
+							variants: [
+								{
+									type: 'test',
+									order: 1,
+									test: 'json_ab',
+									values: {
+										control: '{"treatment": false}',
+										treatment: { treatment: true },
+									},
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const result = validateConfig(config);
+			const jsonErrors = result.errors.filter((e) => e.type === 'invalid_json');
+			expect(jsonErrors).toHaveLength(1);
+			expect(jsonErrors[0].message).toContain('treatment');
+			expect(jsonErrors[0].flagKey).toBe('json_flag');
+		});
+
+		test('accepts string-encoded json for defaults and all variant shapes', () => {
+			const config = {
+				flags: {
+					json_flag: {
+						type: 'json',
+						development: { default: '{}' },
+						beta: { default: '{}' },
+						production: {
+							default: '{}',
+							variants: [
+								{
+									type: 'conditional',
+									order: 1,
+									value: '{"a": 1}',
+									conditions: [],
+								},
+								{
+									type: 'test',
+									order: 2,
+									test: 'json_ab',
+									values: {
+										control: '{"treatment": false}',
+										treatment: '{"treatment": true}',
+									},
+								},
+								{
+									type: 'rollout',
+									order: 3,
+									value: '{"rolled": true}',
+									rollout: 'json_ramp',
+								},
+							],
+						},
+					},
+				},
+			};
+
+			const result = validateConfig(config);
+			expect(
+				result.errors.filter((e) => e.type === 'invalid_json'),
+			).toHaveLength(0);
+		});
 	});
 
 	// Helper function to generate appropriate default values for each type

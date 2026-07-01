@@ -56,6 +56,38 @@ describe('fingerprint primitives', () => {
 	it('crc8 matches the documented worked example (payload 0x1A → 0x46)', () => {
 		expect(crc8([0x1a])).toBe(0x46);
 	});
+
+	// bitWidth must be bit-identical to the SDK's integer-math implementation
+	// (ConfigFingerprint.bitWidth in bunting-sdk-swift) for every count, since the
+	// admin decodes SDK-produced fingerprints. Math.ceil(Math.log2(count)) is prone
+	// to float rounding right at powers of two on some engines/counts, so this
+	// checks parity against the mathematically-correct expected width directly.
+	function expectedBitWidth(count: number): number {
+		if (count <= 1) {
+			return 0;
+		}
+		let bits = 0;
+		let n = count - 1;
+		while (n > 0) {
+			bits += 1;
+			n >>= 1;
+		}
+		return bits;
+	}
+
+	it('matches the SDK integer-math width for counts 1..1025', () => {
+		for (let count = 1; count <= 1025; count++) {
+			expect(bitWidth(count)).toBe(expectedBitWidth(count));
+		}
+	});
+
+	it('matches exactly at powers of two', () => {
+		for (const count of [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]) {
+			expect(bitWidth(count)).toBe(expectedBitWidth(count));
+			// A power of two needs exactly log2(count) bits, not one more.
+			expect(bitWidth(count)).toBe(Math.log2(count));
+		}
+	});
 });
 
 describe('decodeFingerprint — documented vectors', () => {

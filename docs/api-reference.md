@@ -1044,7 +1044,7 @@ The 503 body is intentionally opaque and leaks no connection details.
 
 Run internal crypto validation tests. **Development/test utility — not intended for production use.**
 
-**Query param `type`:** `full` (default) \| `keygen` \| `signing` \| `verification` \| `publickeys`
+**Query param `type`:** `full` (default) \| `keygen` \| `publickeys`
 
 Response shape varies by test type. All include a `timestamp` field. `full` includes a `summary.overallSuccess` boolean.
 
@@ -1052,26 +1052,23 @@ Response shape varies by test type. All include a `timestamp` field. `full` incl
 
 ### `POST /api/crypto/test`
 
-Validate a JWS signature. **Development/test utility.**
+Validate a JWS signature's header format (does not verify the signature — the admin has no standalone verification path for a bare JWS; production verification is against the detached signature bound to a specific published `config.json`). **Development/test utility.**
 
 **Request body** (not Zod-validated)
 
 ```json
 {
-	"jws": "string",
-	"appId": "string",
-	"configJson": "string | object"
+	"jws": "string"
 }
 ```
 
-`jws` is required. `appId` + `configJson` are optional — if both are provided, the route attempts full signature verification against the app's stored keys.
+`jws` is required.
 
 **Response 200**
 
 ```json
 {
   "formatValidation": { ... },
-  "verification": { "success": true, "keyId": "string", ... },
   "timestamp": "ISO8601"
 }
 ```
