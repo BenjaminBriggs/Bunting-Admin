@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-log';
-import { auth } from '@/lib/auth';
+import { requireAdmin } from '@/lib/authz';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -12,12 +12,11 @@ const createAccessEntrySchema = z.object({
 	role: z.enum(['ADMIN', 'DEVELOPER']),
 });
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
 	try {
-		const session = await auth();
-
-		if (session?.user.role !== 'ADMIN') {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
 		}
 
 		const accessList = await db.accessList.findMany({
@@ -45,10 +44,9 @@ export async function GET(_request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
-		const session = await auth();
-
-		if (session?.user.role !== 'ADMIN') {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
 		}
 
 		const body: unknown = await request.json();
@@ -86,12 +84,20 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// `createdById` links to a `User` row, which only exists once the actor
+		// has signed in via NextAuth (oidc). In proxy mode the admin may only
+		// ever exist in the access list, so this is best-effort and nullable.
+		const creator = await db.user.findUnique({
+			where: { email: authz.email },
+			select: { id: true },
+		});
+
 		const accessEntry = await db.accessList.create({
 			data: {
 				type,
 				value: value.toLowerCase(),
 				role,
-				createdById: session.user.id,
+				createdById: creator?.id,
 			},
 			include: {
 				createdBy: {
@@ -104,7 +110,7 @@ export async function POST(request: NextRequest) {
 			},
 		});
 
-		const actor = session.user.email;
+		const actor = authz.email;
 		await logActivity({
 			actor,
 			action: 'create',
@@ -133,10 +139,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
 	try {
-		const session = await auth();
-
-		if (session?.user.role !== 'ADMIN') {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
 		}
 
 		const { searchParams } = new URL(request.url);
@@ -153,7 +158,7 @@ export async function DELETE(request: NextRequest) {
 			where: { id },
 		});
 
-		const actor = session.user.email;
+		const actor = authz.email;
 		await logActivity({
 			actor,
 			action: 'delete',

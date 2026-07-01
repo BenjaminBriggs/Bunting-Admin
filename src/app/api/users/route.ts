@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-log';
-import { auth } from '@/lib/auth';
+import { requireAdmin } from '@/lib/authz';
 import { db } from '@/lib/db';
 import { logger } from '@/lib/logger';
 
@@ -11,12 +11,11 @@ const updateUserSchema = z.object({
 	role: z.enum(['ADMIN', 'DEVELOPER']),
 });
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
 	try {
-		const session = await auth();
-
-		if (session?.user.role !== 'ADMIN') {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
 		}
 
 		const users = await db.user.findMany({
@@ -44,17 +43,24 @@ export async function GET(_request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
 	try {
-		const session = await auth();
-
-		if (session?.user.role !== 'ADMIN') {
-			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+		const authz = await requireAdmin(request.headers);
+		if (authz instanceof NextResponse) {
+			return authz;
 		}
 
 		const body: unknown = await request.json();
 		const { userId, role } = updateUserSchema.parse(body);
 
-		// Prevent changing your own role to DEVELOPER (would lock yourself out)
-		if (userId === session.user.id && role === 'DEVELOPER') {
+		// Prevent changing your own role to DEVELOPER (would lock yourself out).
+		// Compared by email, not id: proxy mode has no session-carried user id.
+		const target = await db.user.findUnique({
+			where: { id: userId },
+			select: { email: true },
+		});
+		if (
+			target?.email.toLowerCase() === authz.email.toLowerCase() &&
+			role === 'DEVELOPER'
+		) {
 			return NextResponse.json(
 				{ error: 'Cannot change your own role to Developer' },
 				{ status: 400 },
@@ -75,7 +81,7 @@ export async function PATCH(request: NextRequest) {
 			},
 		});
 
-		const actor = session.user.email;
+		const actor = authz.email;
 		await logActivity({
 			actor,
 			action: 'update',
