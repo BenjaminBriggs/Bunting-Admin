@@ -102,6 +102,8 @@ Using different salts across tests means a user who is in the "control" group fo
 
 The admin's `src/lib/bucketing.ts` reads the first 8 bytes (16 hex characters) of the hash as a big-endian unsigned 64-bit integer, matching the SDK (`Bucketing.swift`) and the artifact spec — so admin previews assign the same user to the same bucket the SDK does for a given `(salt, localId)`.
 
+**Preview limitation:** the admin's evaluation preview (`src/lib/flag-evaluation.ts`) mirrors the SDK's evaluation order for conditions it can evaluate on its own (platform, version, language, region, custom bucketing), but `custom_attribute` conditions always evaluate as non-matching in the preview — the admin has no host app to ask, since custom attribute values only exist at runtime via the SDK's callback (see [config-artifact-spec.md](config-artifact-spec.md) "Custom attribute"). Real evaluation of those conditions happens only in the SDK.
+
 ---
 
 ## Security model
@@ -171,9 +173,3 @@ the key fall back to last-known-good cache → bundled seed → code default.
 | **seed**            | A snapshot of the config artifact bundled inside the app at build time. Used as last-resort fallback.                                            |
 | **kid**             | Key ID included in the JWS header to identify which public key to use for verification. Enables key rotation.                                    |
 | **app_identifier**  | User-defined string that identifies an app within Bunting Admin. Independent of the bundle ID.                                                   |
-
----
-
-## Screenshots
-
-screenshot: TODO — see [docs/images/README.md](images/README.md) for capture instructions.

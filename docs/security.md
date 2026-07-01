@@ -133,7 +133,7 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 
 **Authorization** (role checks) is enforced per-route in node-runtime handlers via `requireAdmin` (`src/lib/authz.ts`), which resolves the caller's role from the `User` table (oidc mode) or the access list (proxy mode):
 
-- **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production). The `users` and `access-list` routes check the session role directly rather than via `requireAdmin`; the rest use `requireAdmin`.
+- **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production). All of these — including `users` and `access-list` — use `requireAdmin` uniformly.
 - **Any authenticated user (incl. DEVELOPER):** `apps`, `flags`, `tests`, `rollouts`, key reads (`keys` GET, `keys/[id]` GET, `keys/public`), and `config/decode` — per [authentication.md](../../docs/authentication.md) §Roles, developers may author flags/tests/rollouts/apps but may not publish or manage keys/users.
 
 Defense-in-depth at the network layer (reverse proxy, IAP, or private network) is still recommended, but the application layer no longer leaves routes unauthenticated.

@@ -349,7 +349,7 @@ The JWS `header` must include `alg: RS256` and `kid` for key rotation.
 
 ## Delivery and caching
 
-CDN URL pattern: `https://<cdn-host>/flags/<appIdentifier>/config.json`
+CDN URL pattern: `https://<cdn-host>/<appIdentifier>/config.json`
 
 - `config.json.sig` at the same path prefix for the signature.
 - Recommended headers: `Cache-Control: max-age=300, stale-while-revalidate=86400`.

@@ -35,11 +35,11 @@ Still stuck? Open a GitHub discussion or file an issue with logs and the command
 
 ### Signature verification failures (SDK side)
 
-The Swift SDK reports verification failures when it cannot validate `config.json` against the `x-bunting-signature` response header.
+The Swift SDK verifies every config fetch against a JWS signature. It prefers the `x-bunting-signature` response header, but if the header is absent it automatically falls back to fetching the companion `config.json.sig` object as a sibling of `config.json` — a missing header is expected and not itself a failure (see [deployment.md](deployment.md#cdn-configuration-for-sdk-signature-verification)).
 
-**Header missing:** The CDN is not injecting the signature. Confirm your CDN function reads `config.json.sig` from S3 and sets `x-bunting-signature` on every `config.json` response. Fetch the URL with `curl -I` and check for the header.
+**`.sig` fetch fails (404/403):** If the header is absent _and_ `config.json.sig` isn't reachable at the same path prefix as `config.json`, verification fails outright. Confirm the `.sig` object was uploaded alongside `config.json` and that your CDN/bucket policy serves it with the same public access as the config itself. Fetch both URLs with `curl -I` and check for `200`.
 
-**Header present but verification fails:** The bytes the CDN serves differ from the bytes that were signed. Common causes:
+**`.sig` reachable (or header present) but verification still fails:** The bytes served differ from the bytes that were signed. Common causes:
 
 - CDN is gzip/br compressing the body but serving the header for the uncompressed bytes, or vice versa. Ensure the CDN does not re-encode the body after signing.
 - A CDN cache layer is serving a stale `config.json` with the `.sig` from a newer publish. ETag-based invalidation must be atomic across both files.

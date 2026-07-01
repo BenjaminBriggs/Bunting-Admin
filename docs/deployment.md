@@ -55,22 +55,13 @@ Once authentication is configured, continue setting up your first application vi
 
 ## CDN Configuration for SDK Signature Verification
 
-The Bunting Swift SDK verifies config integrity by reading a `x-bunting-signature` HTTP response header containing the JWS-signed config. When you publish a config, Bunting Admin uploads two files to S3:
+The Bunting Swift SDK verifies every config fetch using a JWS signature. When you publish a config, Bunting Admin uploads two files to S3:
 
 - `{app-identifier}/config.json` — the config artifact
 - `{app-identifier}/config.json.sig` — the JWS signature string
 
-**You must configure your CDN to set the `x-bunting-signature` response header** from the contents of the companion `.sig` file on every `config.json` response. Without this, every SDK fetch will fail signature verification and fall back to cached config.
-
-### CloudFront Example
-
-Use a CloudFront Function or Lambda@Edge to:
-
-1. Fetch `config.json.sig` from S3 (or cache it alongside `config.json`)
-2. Set the `x-bunting-signature` response header to its contents
+The SDK first checks the `x-bunting-signature` response header; if it's absent, it automatically falls back to fetching `config.json.sig` as a sibling object. **A plain CDN in front of S3, with no custom logic, works correctly out of the box** — no header injection is required for signature verification to succeed. Injecting the header is an optional optimization that saves the SDK one HTTP request per config refresh. See [production-deployment.md](production-deployment.md#cdn-requirement--critical-for-signature-verification) for a working Lambda@Edge example and why CloudFront Functions can't do this (no outbound network access).
 
 ### Local Development (MinIO)
 
-For local development, MinIO serves the config and `.sig` objects directly without injecting the `x-bunting-signature` header, so SDK signature verification will not pass against a raw MinIO origin. To exercise verification locally, front MinIO with a thin proxy that fetches both files and merges the signature into the response header.
-
-> **Note:** Until CDN header injection is configured, SDK clients will fail signature verification on every config fetch. They will fall back to cached config if available, or to the bundled seed config.
+For local development, MinIO serves `config.json` and `.sig` directly without injecting the `x-bunting-signature` header. The SDK's sibling-`.sig` fallback handles this automatically — no proxy is needed to exercise verification locally, as long as both objects are reachable from the SDK.

@@ -14,7 +14,7 @@ In `oidc` mode, auth is handled by NextAuth.js (JWT session strategy). Supported
 
 **Access control:** On first sign-in, the first user in the database is automatically granted `ADMIN` (and is added to the access list). Subsequent users default to `DEVELOPER` unless their email or domain appears in the access list with an explicit role. Roles are `ADMIN` or `DEVELOPER`.
 
-**Authorization** (role checks) is enforced per-route in the node-runtime handlers. ADMIN-only routes are marked **Admin only** in each section; they call `requireAdmin` (`src/lib/authz.ts`) or check the session role directly and return `403` (or `401` in the direct-session routes) for non-admins. All other routes are open to any authenticated user (including `DEVELOPER`): per [authentication.md](../../docs/authentication.md) §Roles, developers may author apps/flags/tests/rollouts but may not publish or manage keys/users/access-list.
+**Authorization** (role checks) is enforced per-route in the node-runtime handlers. ADMIN-only routes are marked **Admin only** in each section; they all call `requireAdmin` (`src/lib/authz.ts`), which returns `403` for an authenticated non-admin or `401` if unauthenticated. All other routes are open to any authenticated user (including `DEVELOPER`): per [authentication.md](../../docs/authentication.md) §Roles, developers may author apps/flags/tests/rollouts but may not publish or manage keys/users/access-list.
 
 The **Admin only** routes are: `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic.
 
@@ -888,7 +888,7 @@ Also handles `OPTIONS` preflight with CORS headers.
 
 ## Users
 
-**Admin only** — all endpoints require an authenticated session with `role = "ADMIN"`.
+**Admin only** — all endpoints are gated via `requireAdmin`; returns `403` for non-admins, `401` if unauthenticated.
 
 ### `GET /api/users`
 
@@ -922,13 +922,13 @@ A user cannot demote their own account to `DEVELOPER`.
 
 **Response 200** — updated user object (same shape as GET list item).
 
-**Errors:** `400` if attempting self-demotion or validation failure, `401` if not ADMIN.
+**Errors:** `400` if attempting self-demotion or validation failure, `403` if not ADMIN, `401` if unauthenticated.
 
 ---
 
 ## Access List
 
-**Admin only** — all endpoints require an authenticated session with `role = "ADMIN"`.
+**Admin only** — all endpoints are gated via `requireAdmin`; returns `403` for non-admins, `401` if unauthenticated.
 
 ### `GET /api/access-list`
 
@@ -963,7 +963,7 @@ Values are stored lowercased. Duplicates (same `type` + `value`) are rejected.
 
 **Response 200** — created `AccessList` object.
 
-**Errors:** `400` for format or duplicate violations, `401` if not ADMIN.
+**Errors:** `400` for format or duplicate violations, `403` if not ADMIN, `401` if unauthenticated.
 
 ---
 
@@ -977,7 +977,7 @@ Remove an access-list entry by ID (query parameter).
 { "success": true }
 ```
 
-**Errors:** `400` if `id` param is missing, `401` if not ADMIN.
+**Errors:** `400` if `id` param is missing, `403` if not ADMIN, `401` if unauthenticated.
 
 ---
 

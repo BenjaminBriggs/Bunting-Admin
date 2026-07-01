@@ -119,41 +119,61 @@ CDN_BASE_URL=https://cdn.example.com
 
 ### CDN requirement — critical for signature verification
 
-**The SDK does not fetch artifacts directly from S3. You must front S3 with a CDN.**
+**The SDK does not fetch artifacts directly from S3. You must front S3 with a CDN** (for TLS, caching, and a stable public hostname).
 
-The Swift SDK verifies every config fetch using a detached JWS signature. The signature is published as a companion file (`config.json.sig`) alongside `config.json`. Your CDN must:
+The Swift SDK verifies every config fetch using a detached JWS signature, published as a companion file (`config.json.sig`) alongside `config.json`.
 
-1. Serve `config.json` from S3.
-2. Read the companion `config.json.sig` object.
-3. Inject its contents as the `x-bunting-signature` response header on every `config.json` response.
+**Default path (recommended, zero CDN logic):** the SDK checks the `x-bunting-signature` response header first; if it's absent, it automatically falls back to fetching `config.json.sig` as a sibling object next to `config.json`. A plain CDN in front of S3 — passing both objects through unmodified, with no header injection or custom logic — works correctly out of the box, as long as `config.json.sig` is readable at the same path prefix as `config.json`. The header is purely a one-request optimization; skipping it does not affect correctness or security, only latency (one extra HTTP round trip per config refresh).
 
-Without this header, every SDK fetch fails signature verification and the SDK falls back to its cached config (or the bundled seed on a fresh install).
+**Optional optimization:** a CDN that injects the `x-bunting-signature` header saves that extra request. Doing so requires compute at the edge, because the CDN has to make a second fetch (for `.sig`) and merge it into the first response — a plain caching CDN can't do this, and **CloudFront Functions can't either**: they run in a restricted JS runtime with no network access, so they cannot fetch the sibling `.sig` object. Lambda@Edge (or an equivalent edge-compute product on another CDN) is required.
 
 **ETag / caching:** S3 sets an ETag on each object. The CDN must pass it through unchanged — the SDK uses conditional `If-None-Match` fetches. Do not strip or rewrite ETags.
 
 Recommended `Cache-Control` for the CDN: `max-age=300, stale-while-revalidate=86400`.
 
-#### CloudFront example
+#### Lambda@Edge example (optional header injection)
 
-Use a CloudFront Function on the viewer-response event:
+An `origin-response` Lambda@Edge function that reads the sibling `.sig` object from S3 and sets the header:
 
 ```javascript
-// viewer-response CloudFront Function
-async function handler(event) {
-	const request = event.request;
-	const response = event.response;
+// origin-response Lambda@Edge function (Node.js 20.x runtime; @aws-sdk/client-s3 is preinstalled)
+// Lambda@Edge does not support environment variables — bake the bucket name in at deploy time.
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 
-	if (request.uri.endsWith('/config.json')) {
-		// Fetch the companion .sig from origin and inject the header.
-		// Implementation depends on your CloudFront + Lambda@Edge setup.
-		const sigUri = request.uri + '.sig';
-		// ... fetch sigUri and set response.headers['x-bunting-signature']
+const BUCKET = 'bunting-configs'; // <-- your S3 bucket name
+const s3 = new S3Client({ region: 'us-east-1' }); // <-- must match your bucket's region
+
+exports.handler = async (event) => {
+	const { request, response } = event.Records[0].cf;
+
+	if (response.status !== '200' || !request.uri.endsWith('/config.json')) {
+		return response;
 	}
+
+	try {
+		const sigKey = request.uri.slice(1) + '.sig'; // strip leading '/' for the S3 key
+		const sigObj = await s3.send(
+			new GetObjectCommand({ Bucket: BUCKET, Key: sigKey }),
+		);
+		const signature = await sigObj.Body.transformToString();
+		response.headers['x-bunting-signature'] = [
+			{ key: 'X-Bunting-Signature', value: signature },
+		];
+	} catch (err) {
+		// Fail open — the SDK falls back to fetching the .sig sibling itself.
+		console.error('Failed to inject signature header:', err);
+	}
+
 	return response;
-}
+};
 ```
 
-The recommended pattern is a Lambda@Edge origin-response function that fetches and caches `.sig` alongside `config.json`.
+Caveats:
+
+- Lambda@Edge functions must be authored and deployed in `us-east-1` regardless of which region your S3 bucket or CloudFront distribution use; CloudFront replicates them to edge locations for you.
+- The function's execution role needs `s3:GetObject` on `arn:aws:s3:::<bucket>/*.sig` (or a narrower prefix matching your artifact layout).
+- Attach it to the **origin-response** event (not viewer-response) so it only runs on cache misses, not every viewer request.
+- This is strictly an optimization. If it's misconfigured or the `.sig` fetch fails, the function fails open and the SDK's own sibling-`.sig` fallback still verifies the config correctly — it just costs one extra request.
 
 ---
 
@@ -236,12 +256,24 @@ Control verbosity with `LOG_LEVEL` (`trace|debug|info|warn|error|fatal`); it def
 
 ---
 
+## Single-instance assumptions
+
+Two behaviors described elsewhere in this guide are only correct when you run exactly one instance of the app. If you scale to multiple replicas, both need explicit handling:
+
+- **Rate limiting is per-instance and in-memory** (`src/lib/rate-limit.ts`). Each Node/edge isolate keeps its own counters, so N instances behind a load balancer give you an effective limit of N× the configured value, not the configured value. Counters also reset on every restart/redeploy. If you need a strict global limit, put a shared store (e.g. Redis) behind the rate limiter or enforce limits at a layer that sees all traffic (reverse proxy, API gateway).
+- **Migrations run automatically on container boot** via `prisma migrate deploy` in the entrypoint (see [Container image](#container-image) and [Docker Compose (production)](#docker-compose-production) above). This is safe with a single instance, but with multiple replicas booting concurrently, two containers can race to apply the same migration. Disable the auto-migration entrypoint for multi-replica deployments and run `pnpm run db:deploy` as a one-off job before rolling out new instances instead.
+
+If you're running a single instance, both defaults are fine as-is.
+
+---
+
 ## Post-deploy checklist
 
 - [ ] `DATABASE_URL` points to production Postgres; migrations applied with `pnpm run db:deploy` (`prisma migrate deploy`)
 - [ ] `S3_BUCKET` / `S3_REGION` set; IAM role (or explicit keys) grants `s3:GetObject`, `s3:PutObject`, `s3:ListBucket`
 - [ ] `CDN_BASE_URL` points to your CDN, not S3 directly
-- [ ] CDN injects `x-bunting-signature` header from `.sig` companion file
+- [ ] `config.json.sig` is reachable at the same path prefix as `config.json` (required — the SDK falls back to fetching it directly when the header below is absent)
+- [ ] (optional optimization) CDN injects `x-bunting-signature` header from `.sig` companion file — see [CDN requirement](#cdn-requirement--critical-for-signature-verification) above; a plain CDN works fine without this
 - [ ] CDN passes ETags through unchanged
 - [ ] `SIGNING_KEY_KMS_KEY_ID` (preferred) or `SIGNING_KEY_SECRET` is set; app refuses to sign without one
 - [ ] `NEXTAUTH_SECRET` is a high-entropy random value (`openssl rand -hex 32`)
