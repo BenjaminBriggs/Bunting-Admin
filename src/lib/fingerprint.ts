@@ -55,9 +55,25 @@ export interface DecodedFingerprint {
 
 export class FingerprintError extends Error {}
 
-/** Number of bits needed to index `count` paths. A single-path flag costs 0 bits. */
+/**
+ * Number of bits needed to index `count` paths. A single-path flag costs 0 bits.
+ *
+ * Equivalent to `ceil(log2(count))`, computed with integer math to avoid any
+ * floating-point rounding at powers of two. Must stay bit-identical to the SDK's
+ * `ConfigFingerprint.bitWidth` (`bunting-sdk-swift/Sources/Bunting/Evaluation/ConfigFingerprint.swift`),
+ * since the admin decodes SDK-produced fingerprints.
+ */
 export function bitWidth(count: number): number {
-	return count <= 1 ? 0 : Math.ceil(Math.log2(count));
+	if (count <= 1) {
+		return 0;
+	}
+	let bits = 0;
+	let n = count - 1;
+	while (n > 0) {
+		bits += 1;
+		n >>= 1;
+	}
+	return bits;
 }
 
 /** CRC-8, polynomial 0x07, init 0x00 (a.k.a. CRC-8/SMBUS). */

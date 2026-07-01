@@ -56,6 +56,45 @@ describe('fingerprint primitives', () => {
 	it('crc8 matches the documented worked example (payload 0x1A → 0x46)', () => {
 		expect(crc8([0x1a])).toBe(0x46);
 	});
+
+	// bitWidth must be bit-identical to the SDK's integer-math implementation
+	// (ConfigFingerprint.bitWidth in bunting-sdk-swift) for every count, since the
+	// admin decodes SDK-produced fingerprints. Math.ceil(Math.log2(count)) is prone
+	// to float rounding right at powers of two on some engines/counts.
+	//
+	// These expected widths are hand-computed from the definition (smallest w such
+	// that 2^w >= count), NOT derived by re-running bitWidth's own bit-shift loop —
+	// an oracle built from the implementation under test would only prove
+	// self-consistency, not correctness.
+	it('matches hand-computed widths at representative counts, including just above/below powers of two', () => {
+		const cases: Array<[count: number, expectedBits: number]> = [
+			[1, 0], // special-cased: a single path needs no selector bits
+			[2, 1], // 2^1 = 2
+			[3, 2], // just above 2^1; needs the next power, 2^2 = 4
+			[4, 2], // 2^2 = 4
+			[5, 3], // just above 2^2; needs 2^3 = 8
+			[8, 3], // 2^3 = 8
+			[9, 4], // just above 2^3; needs 2^4 = 16
+			[16, 4], // 2^4 = 16
+			[17, 5], // just above 2^4; needs 2^5 = 32
+			[255, 8], // just below 2^8 = 256
+			[256, 8], // 2^8 = 256
+			[257, 9], // just above 2^8; needs 2^9 = 512
+			[1024, 10], // 2^10 = 1024
+			[1025, 11], // just above 2^10; needs 2^11 = 2048
+		];
+
+		for (const [count, expectedBits] of cases) {
+			expect(bitWidth(count)).toBe(expectedBits);
+		}
+	});
+
+	it('matches exactly at powers of two', () => {
+		for (const count of [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]) {
+			// A power of two needs exactly log2(count) bits, not one more.
+			expect(bitWidth(count)).toBe(Math.log2(count));
+		}
+	});
 });
 
 describe('decodeFingerprint — documented vectors', () => {

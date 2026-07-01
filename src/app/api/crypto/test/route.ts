@@ -6,10 +6,8 @@ import {
 	cleanupTestApp,
 	createTestApp,
 	runEndToEndCryptoTest,
-	testConfigSigning,
 	testKeyGeneration,
 	testPublicKeyDistribution,
-	testSignatureVerification,
 	validateJWSFormat,
 } from '@/lib/crypto-test-utils';
 import { logger } from '@/lib/logger';
@@ -51,40 +49,6 @@ export async function GET(request: NextRequest) {
 					result: keyGenResult,
 					timestamp: new Date().toISOString(),
 				});
-			}
-
-			case 'signing': {
-				// Need an app for signing tests
-				const signingTestApp = await createTestApp();
-				try {
-					const signingResult = await testConfigSigning(signingTestApp.appId);
-					return NextResponse.json({
-						test: 'Config Signing',
-						result: signingResult,
-						testApp: signingTestApp.appIdentifier,
-						timestamp: new Date().toISOString(),
-					});
-				} finally {
-					await cleanupTestApp(signingTestApp.appId);
-				}
-			}
-
-			case 'verification': {
-				// Need an app for verification tests
-				const verificationTestApp = await createTestApp();
-				try {
-					const verificationResult = await testSignatureVerification(
-						verificationTestApp.appId,
-					);
-					return NextResponse.json({
-						test: 'Signature Verification',
-						result: verificationResult,
-						testApp: verificationTestApp.appIdentifier,
-						timestamp: new Date().toISOString(),
-					});
-				} finally {
-					await cleanupTestApp(verificationTestApp.appId);
-				}
 			}
 
 			case 'publickeys': {
@@ -142,12 +106,8 @@ export async function POST(request: NextRequest) {
 			return guard;
 		}
 
-		const body = (await request.json()) as {
-			jws?: unknown;
-			appId?: unknown;
-			configJson?: unknown;
-		};
-		const { jws, appId, configJson } = body;
+		const body = (await request.json()) as { jws?: unknown };
+		const { jws } = body;
 
 		if (!jws || typeof jws !== 'string') {
 			return NextResponse.json(
@@ -156,59 +116,16 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
-		// Validate JWS format
+		// Validate JWS format. This only inspects the header — the admin has no
+		// standalone verification path for a caller-supplied JWS (production
+		// verification uses the detached signature bound to a specific config.json
+		// upload, not a bare JWS + appId).
 		const formatResult = validateJWSFormat(jws);
 
-		const response: {
-			formatValidation: ReturnType<typeof validateJWSFormat>;
-			timestamp: string;
-			verification?: {
-				success: boolean;
-				message: string;
-				keyId?: string;
-				error?: string;
-			};
-		} = {
+		return NextResponse.json({
 			formatValidation: formatResult,
 			timestamp: new Date().toISOString(),
-		};
-
-		// If appId and configJson are provided, attempt verification
-		if (typeof appId === 'string' && configJson) {
-			try {
-				const { verifyConfigSignature } = await import('@/lib/jws-signer');
-				const configString =
-					typeof configJson === 'string'
-						? configJson
-						: JSON.stringify(configJson);
-
-				const verificationResult = await verifyConfigSignature(
-					configString,
-					jws,
-					appId,
-				);
-
-				response.verification = {
-					success: verificationResult.verified,
-					message: verificationResult.verified
-						? 'Signature verification successful'
-						: 'Signature verification failed',
-					keyId: verificationResult.keyId,
-					error: verificationResult.error,
-				};
-			} catch (verificationError) {
-				response.verification = {
-					success: false,
-					message: 'Signature verification failed',
-					error:
-						verificationError instanceof Error
-							? verificationError.message
-							: 'Unknown verification error',
-				};
-			}
-		}
-
-		return NextResponse.json(response);
+		});
 	} catch (error) {
 		logger.error({ err: error }, 'JWS validation test failed');
 		return NextResponse.json(

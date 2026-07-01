@@ -76,21 +76,56 @@ export function validateConfig(config: unknown): ValidationResult {
 			});
 		}
 
-		// Validate JSON flags for all environments
+		// Validate JSON flags for all environments. The artifact spec requires json
+		// values to be JSON-encoded STRINGS — a raw object publishes cleanly but
+		// bricks the entire config for every SDK client, since the SDK fails to
+		// decode the whole artifact when a json value isn't a string. This checks
+		// every place a json value can appear: the environment default, each
+		// variant's `value`, and each group value in a test variant's `values` map.
 		if (flag.type === 'json') {
-			ENVIRONMENTS.forEach((env) => {
-				const envDefault = asRecord(flag[env]).default;
-				if (typeof envDefault === 'string') {
-					try {
-						JSON.parse(envDefault);
-					} catch {
-						errors.push({
-							type: 'invalid_json',
-							message: `Flag "${key}" has invalid JSON default value for environment "${env}"`,
-							flagKey: key,
-						});
-					}
+			const checkJsonString = (value: unknown, where: string): void => {
+				if (typeof value !== 'string') {
+					errors.push({
+						type: 'invalid_json',
+						message: `Flag "${key}" has a non-string json value for ${where} — json values must be JSON-encoded strings`,
+						flagKey: key,
+					});
+					return;
 				}
+				try {
+					JSON.parse(value);
+				} catch {
+					errors.push({
+						type: 'invalid_json',
+						message: `Flag "${key}" has invalid JSON value for ${where}`,
+						flagKey: key,
+					});
+				}
+			};
+
+			ENVIRONMENTS.forEach((env) => {
+				const envCfg = asRecord(flag[env]);
+				if (envCfg.default !== undefined && envCfg.default !== null) {
+					checkJsonString(envCfg.default, `${env} default`);
+				}
+
+				const variants = Array.isArray(envCfg.variants) ? envCfg.variants : [];
+				variants.forEach((rawVariant: unknown, index: number) => {
+					const variant = asRecord(rawVariant);
+					if (variant.value !== undefined) {
+						checkJsonString(variant.value, `${env} variant ${index}`);
+					}
+					if (variant.values && typeof variant.values === 'object') {
+						Object.entries(variant.values as Record<string, unknown>).forEach(
+							([groupName, groupValue]) => {
+								checkJsonString(
+									groupValue,
+									`${env} variant ${index} test group "${groupName}"`,
+								);
+							},
+						);
+					}
+				});
 			});
 		}
 	});

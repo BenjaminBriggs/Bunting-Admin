@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { normalizeArtifactUrl } from '@/lib/storage';
 import { escapeXml } from '@/lib/xml';
 
 /**
@@ -108,7 +109,7 @@ export async function GET(request: NextRequest) {
 <plist version="1.0">
 <dict>
 \t<key>endpoint_url</key>
-\t<string>${escapeXml(app.artifactUrl)}</string>
+\t<string>${escapeXml(normalizeArtifactUrl(app.artifactUrl))}</string>
 \t<key>public_keys</key>
 \t<array>
 ${publicKeysArray

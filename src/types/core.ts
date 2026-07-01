@@ -53,7 +53,13 @@ export type FlagValue = boolean | string | number | object;
 
 export type Environment = 'development' | 'beta' | 'production';
 
-export type Platform = 'iOS' | 'iPadOS' | 'macOS' | 'watchOS' | 'tvOS';
+export type Platform =
+	| 'iOS'
+	| 'iPadOS'
+	| 'macOS'
+	| 'watchOS'
+	| 'tvOS'
+	| 'visionOS';
 
 // JSON Spec compliant condition system — operators must exactly match SDK ConditionOperator raw values
 export type ConditionType =
@@ -128,6 +134,7 @@ export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
 // Predefined options for list-based conditions
 export const PLATFORM_OPTIONS = [
 	{ value: 'iOS', label: 'iOS' },
+	{ value: 'iPadOS', label: 'iPadOS' },
 	{ value: 'macOS', label: 'macOS' },
 	{ value: 'watchOS', label: 'watchOS' },
 	{ value: 'tvOS', label: 'tvOS' },

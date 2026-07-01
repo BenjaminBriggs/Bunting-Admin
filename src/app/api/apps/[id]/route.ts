@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { artifactUrlFor } from '@/lib/storage';
+import { artifactUrlFor, normalizeArtifactUrl } from '@/lib/storage';
 
 const updateAppSchema = z.object({
 	name: z.string().optional(),
@@ -48,7 +48,12 @@ export async function GET(
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		return NextResponse.json(app);
+		// Normalize a legacy directory-shaped artifactUrl (trailing slash) for
+		// rows created before the config.json URL fix.
+		return NextResponse.json({
+			...app,
+			artifactUrl: normalizeArtifactUrl(app.artifactUrl),
+		});
 	} catch (error) {
 		logger.error({ err: error }, 'Error fetching app');
 		return NextResponse.json({ error: 'Failed to fetch app' }, { status: 500 });
@@ -119,7 +124,10 @@ export async function PUT(
 			summary: `Updated app ${updatedApp.name}`,
 		});
 
-		return NextResponse.json(updatedApp);
+		return NextResponse.json({
+			...updatedApp,
+			artifactUrl: normalizeArtifactUrl(updatedApp.artifactUrl),
+		});
 	} catch (error) {
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(
