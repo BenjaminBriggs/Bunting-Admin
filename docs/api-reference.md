@@ -582,11 +582,12 @@ Validate, sign, version, and upload the config artifact to S3.
 **Behavior:**
 
 1. Generates config from DB.
-2. Determines next version in `YYYY-MM-DD.N` format by inspecting today's audit log entries.
-3. Ensures an active signing key exists for the app, generating one if needed.
-4. Serializes the config once, then signs it with a detached JWS (RS256).
-5. Uploads `{appIdentifier}/config.json` and `{appIdentifier}/config.json.sig` to S3.
-6. Creates an `AuditLog` record.
+2. Runs the same blocking validation as `POST /api/config/validate` against the generated config. Any blocking error rejects the publish with `400` before anything else happens — no version is reserved, no signing key is created, and no S3 object is written. Non-blocking warnings do not block.
+3. Determines next version in `YYYY-MM-DD.N` format by inspecting today's audit log entries.
+4. Ensures an active signing key exists for the app, generating one if needed.
+5. Serializes the config once, then signs it with a detached JWS (RS256).
+6. Uploads `{appIdentifier}/config.json` and `{appIdentifier}/config.json.sig` to S3.
+7. Creates an `AuditLog` record.
 
 **Response 200**
 
@@ -597,6 +598,17 @@ Validate, sign, version, and upload the config artifact to S3.
 	"keyId": "string",
 	"signed": true,
 	"message": "Configuration published and signed successfully"
+}
+```
+
+**Response 400** — the config fails validation (same errors `POST /api/config/validate` would report):
+
+```json
+{
+	"error": "Configuration is invalid and cannot be published",
+	"details": "string (joined error messages)",
+	"errors": [{ "type": "string", "message": "string", "flagKey": "string?" }],
+	"warnings": [{ "type": "string", "message": "string", "flagKey": "string?" }]
 }
 ```
 

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/authz';
 import { type ConfigArtifact, getConfigChanges } from '@/lib/config-comparison';
 import { generateConfigFromDb } from '@/lib/config-generator';
+import { validateConfig } from '@/lib/config-validation';
 import { prisma } from '@/lib/db';
 import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
 import { logger } from '@/lib/logger';
@@ -46,6 +47,24 @@ export async function POST(request: NextRequest) {
 		// Generate current config
 		const baseConfig = await generateConfigFromDb(appId);
 		const appIdentifier = baseConfig.app_identifier;
+
+		// Validate BEFORE any side effect (S3 reads/writes, key creation, version
+		// reservation). A blocking error here must reject the publish outright —
+		// see /api/config/validate, which runs the identical check read-only.
+		// Publishing an artifact that fails this would sign and ship a config the
+		// SDK cannot decode.
+		const validation = validateConfig(baseConfig);
+		if (validation.errors.length > 0) {
+			return NextResponse.json(
+				{
+					error: 'Configuration is invalid and cannot be published',
+					details: validation.errors.map((e) => e.message).join('; '),
+					errors: validation.errors,
+					warnings: validation.warnings,
+				},
+				{ status: 400 },
+			);
+		}
 
 		// Previous published config (for the changelog diff).
 		const previousConfig = await getPublishedConfigFromS3(appIdentifier).catch(
