@@ -6,7 +6,7 @@ This project layers its automated checks so you can target the right suite for t
 
 - **Unit tests** live under `tests/unit` and focus on pure logic (e.g. schema/crypto helpers).
 - **Integration tests** sit in `tests/integration` and exercise API route handlers directly against Prisma.
-- **UI tests** live in `tests/ui` and use JSDOM (via a per-file `@jest-environment jsdom` docblock) with React Testing Library. Note: `jest.config.js` only defines the `unit` and `integration` projects, so `tests/ui` is **not** picked up by `jest` / `make test` today — run such files directly (e.g. `pnpm exec jest tests/ui`) until a `ui` project is added.
+- **UI tests** live in `tests/ui`, use JSDOM (`ui` project default; individual files may still carry a `@jest-environment jsdom` docblock), and run with React Testing Library. `jest.config.js` defines a `ui` project alongside `unit`/`integration`, so `tests/ui` is picked up by `jest` / `make test` like the other suites — select it on its own with `pnpm exec jest --selectProjects ui`.
 - **End-to-end tests** are in `e2e` and run with Playwright against a built Next.js app.
 
 Integration suites share `tests/setup.integration.js` for MSW, deterministic timers, and database cleanup. Pure unit suites use `tests/setup.unit.js` so they stay database-free.
@@ -34,6 +34,12 @@ NEXTAUTH_SECRET=dev-secret pnpm run e2e
 ```
 
 > **Tip:** Local Postgres is bundled in `docker-compose.yml`. Start it with `docker compose up -d postgres`, then create `bunting_test` and run `pnpm exec prisma db push` (or `pnpm run db:push`) to sync the schema. Prisma 7 reads the connection URL from `prisma.config.ts` (which loads `DATABASE_URL` via `dotenv`), so set that env var for the target database.
+
+> **Note:** integration tests share a live Postgres connection and are only safe to run sequentially — the `integration` project always needs `--runInBand` (as `test:integration` and CI both do). Running the full suite without it (e.g. a plain `pnpm test`/`pnpm run test:cov` against a real database) can produce transient failures under parallel workers; this is a pre-existing gap, not something specific to a given suite.
+
+## Continuous Integration
+
+`.github/workflows/admin-tests.yml`'s `test` job provisions a `postgres:17` service, pushes the schema with `pnpm exec prisma db push`, runs the unit suite with coverage (`pnpm run test:ci`), then runs the integration and UI projects together (`pnpm exec jest --selectProjects integration ui --runInBand`). `publish.route.test.ts` still self-skips in CI since no S3/MinIO service is configured there — it only runs when `S3_ENDPOINT` and signing env are present (see the comment at the top of that file).
 
 ## Database Utilities
 

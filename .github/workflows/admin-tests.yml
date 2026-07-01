@@ -16,7 +16,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: bunting_test
@@ -47,11 +47,22 @@ jobs:
       - name: Generate Prisma client
         run: pnpm exec prisma generate
 
-      - name: Run tests
+      - name: Push database schema
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bunting_test
+        run: pnpm exec prisma db push
+
+      - name: Run unit tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bunting_test
           NODE_ENV: test
         run: pnpm run test:ci
+
+      - name: Run integration and UI tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bunting_test
+          NODE_ENV: test
+        run: pnpm exec jest --selectProjects integration ui --runInBand
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
