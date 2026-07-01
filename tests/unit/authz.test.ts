@@ -10,6 +10,7 @@ const mockIdentityFromHeaders = jest.fn<
 	[Headers, AuthConfig]
 >();
 const mockRoleFromAccessList = jest.fn<Promise<Role>, [string]>();
+const mockBootstrapFirstProxyAdmin = jest.fn<Promise<Role | null>, [string]>();
 
 jest.mock('@/lib/auth-env', () => ({
 	resolveAuthConfig: (): AuthConfig => mockResolveAuthConfig(),
@@ -29,6 +30,8 @@ jest.mock('@/lib/auth-session', () => ({
 jest.mock('@/lib/access-control', () => ({
 	getUserRoleFromAccessList: (email: string): Promise<Role> =>
 		mockRoleFromAccessList(email),
+	bootstrapFirstProxyAdmin: (email: string): Promise<Role | null> =>
+		mockBootstrapFirstProxyAdmin(email),
 }));
 
 // Imported after the jest.mock calls so the mocked dependencies register first.
@@ -44,6 +47,7 @@ beforeEach(() => {
 	mockAuth.mockReset();
 	mockIdentityFromHeaders.mockReset();
 	mockRoleFromAccessList.mockReset();
+	mockBootstrapFirstProxyAdmin.mockReset();
 	mockResolveAuthConfig.mockReturnValue({ mode: 'oidc' });
 });
 
@@ -88,6 +92,40 @@ describe('getRequestRole — proxy mode (access list)', () => {
 			role: 'ADMIN',
 		});
 		expect(mockRoleFromAccessList).toHaveBeenCalledWith('proxy@x.com');
+	});
+
+	it('bootstraps the first proxy user as ADMIN when the access list has no match (fresh install)', async () => {
+		mockIdentityFromHeaders.mockResolvedValue({ email: 'first@x.com' });
+		mockRoleFromAccessList.mockResolvedValue('DEVELOPER');
+		mockBootstrapFirstProxyAdmin.mockResolvedValue('ADMIN');
+
+		expect(await getRequestRole(headers)).toEqual({
+			email: 'first@x.com',
+			role: 'ADMIN',
+		});
+		expect(mockBootstrapFirstProxyAdmin).toHaveBeenCalledWith('first@x.com');
+	});
+
+	it('falls back to DEVELOPER when bootstrap declines (access list already seeded)', async () => {
+		mockIdentityFromHeaders.mockResolvedValue({ email: 'nobody@x.com' });
+		mockRoleFromAccessList.mockResolvedValue('DEVELOPER');
+		mockBootstrapFirstProxyAdmin.mockResolvedValue(null);
+
+		expect(await getRequestRole(headers)).toEqual({
+			email: 'nobody@x.com',
+			role: 'DEVELOPER',
+		});
+	});
+
+	it('does not attempt to bootstrap when the access list already grants ADMIN', async () => {
+		mockIdentityFromHeaders.mockResolvedValue({ email: 'admin@x.com' });
+		mockRoleFromAccessList.mockResolvedValue('ADMIN');
+
+		expect(await getRequestRole(headers)).toEqual({
+			email: 'admin@x.com',
+			role: 'ADMIN',
+		});
+		expect(mockBootstrapFirstProxyAdmin).not.toHaveBeenCalled();
 	});
 });
 

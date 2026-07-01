@@ -8,7 +8,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getUserRoleFromAccessList } from './access-control';
+import {
+	bootstrapFirstProxyAdmin,
+	getUserRoleFromAccessList,
+} from './access-control';
 import { resolveAuthConfig } from './auth-env';
 import { identityFromHeaders } from './auth-session';
 
@@ -23,7 +26,10 @@ export type Role = 'ADMIN' | 'DEVELOPER';
  *   re-deriving from the `User` table would wrongly deny a valid admin whose row
  *   is missing (e.g. a JWT that outlived a DB reset).
  * - **proxy**: no NextAuth session exists; resolve the role from the access list
- *   by the proxied email (the documented role source for that mode).
+ *   by the proxied email (the documented role source for that mode). On a
+ *   fresh install (empty access list, no ADMIN yet) the first authenticated
+ *   proxy request bootstraps itself as ADMIN — see
+ *   `bootstrapFirstProxyAdmin` in access-control.ts.
  *
  * See ../docs/authentication.md §Access control.
  */
@@ -37,7 +43,13 @@ export async function getRequestRole(
 		if (!identity) {
 			return null;
 		}
-		const role = await getUserRoleFromAccessList(identity.email);
+		let role = await getUserRoleFromAccessList(identity.email);
+		if (role !== 'ADMIN') {
+			const bootstrapped = await bootstrapFirstProxyAdmin(identity.email);
+			if (bootstrapped) {
+				role = bootstrapped;
+			}
+		}
 		return { email: identity.email, role };
 	}
 
