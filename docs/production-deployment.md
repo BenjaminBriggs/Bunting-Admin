@@ -272,7 +272,8 @@ If you're running a single instance, both defaults are fine as-is.
 - [ ] `DATABASE_URL` points to production Postgres; migrations applied with `pnpm run db:deploy` (`prisma migrate deploy`)
 - [ ] `S3_BUCKET` / `S3_REGION` set; IAM role (or explicit keys) grants `s3:GetObject`, `s3:PutObject`, `s3:ListBucket`
 - [ ] `CDN_BASE_URL` points to your CDN, not S3 directly
-- [ ] CDN injects `x-bunting-signature` header from `.sig` companion file
+- [ ] `config.json.sig` is reachable at the same path prefix as `config.json` (required — the SDK falls back to fetching it directly when the header below is absent)
+- [ ] (optional optimization) CDN injects `x-bunting-signature` header from `.sig` companion file — see [CDN requirement](#cdn-requirement--critical-for-signature-verification) above; a plain CDN works fine without this
 - [ ] CDN passes ETags through unchanged
 - [ ] `SIGNING_KEY_KMS_KEY_ID` (preferred) or `SIGNING_KEY_SECRET` is set; app refuses to sign without one
 - [ ] `NEXTAUTH_SECRET` is a high-entropy random value (`openssl rand -hex 32`)
