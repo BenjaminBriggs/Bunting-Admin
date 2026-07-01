@@ -27,14 +27,13 @@ const txStub: TxStub = {
 	},
 };
 
-const mockTransaction = jest.fn(
-	async (cb: (tx: TxStub) => Promise<unknown>) => cb(txStub),
+const mockTransaction = jest.fn(async (cb: (tx: TxStub) => Promise<unknown>) =>
+	cb(txStub),
 );
 
 jest.mock('@/lib/db', () => ({
 	db: {
-		$transaction: (cb: (tx: TxStub) => Promise<unknown>) =>
-			mockTransaction(cb),
+		$transaction: (cb: (tx: TxStub) => Promise<unknown>) => mockTransaction(cb),
 	},
 }));
 

@@ -1,4 +1,7 @@
-type ConfigArtifact = { app_identifier: string; flags: Record<string, unknown> };
+type ConfigArtifact = {
+	app_identifier: string;
+	flags: Record<string, unknown>;
+};
 type ValidationResult = {
 	errors: Array<{ type: string; message: string; flagKey?: string }>;
 	warnings: Array<{ type: string; message: string; flagKey?: string }>;

@@ -44,8 +44,7 @@ jest.mock('@/lib/access-control', () => ({
 	getUserRoleFromAccessList: (email: string): Promise<Role> =>
 		mockRoleFromAccessList(email),
 	// Not under test here; a seeded access list means bootstrap always declines.
-	bootstrapFirstProxyAdmin: (): Promise<Role | null> =>
-		Promise.resolve(null),
+	bootstrapFirstProxyAdmin: (): Promise<Role | null> => Promise.resolve(null),
 }));
 
 jest.mock('@/lib/db', () => ({
