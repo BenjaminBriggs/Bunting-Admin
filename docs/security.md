@@ -123,7 +123,9 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 
 ### RBAC and first-admin
 
-- The first user to sign in is granted `ADMIN` regardless of access list entries, and is written into the `AccessList` table as an `ADMIN` email entry so the bootstrap survives their next sign-in.
+- **`oidc` mode:** the first user to sign in is granted `ADMIN` — but only on a genuinely fresh install, i.e. both the `User` table and the `AccessList` table are empty. If the access list already has any entry (for example because a `proxy`-mode instance bootstrapped first, see below), sign-in is checked against it like any subsequent user instead. The bootstrapped admin is written into the `AccessList` table as an `ADMIN` email entry so the bootstrap survives their next sign-in.
+- **`proxy` mode:** there's no discrete sign-in event to hook a bootstrap into, so the same outcome is reached directly against the access list instead: the first authenticated proxy request on an instance with a completely empty `AccessList` (and no `ADMIN` `User` row) is granted `ADMIN` and written into the `AccessList` table. Race-safe via a Postgres advisory lock, so two concurrent first requests can't both bootstrap as `ADMIN`.
+- Whichever mode bootstraps first "claims" the instance — the two paths are mutually exclusive by construction (each requires `AccessList` to still be empty).
 - Subsequent users get `DEVELOPER` unless their email or `@domain` appears in the `AccessList` table with an explicit role.
 - Admins can manage the access list under Settings → Team in the dashboard.
 
