@@ -49,6 +49,18 @@ export interface FlagVariant {
 
 export type FlagType = 'bool' | 'string' | 'int' | 'double' | 'date' | 'json';
 
+// Attempted narrowing to `boolean | string | number` (json values are
+// JSON-encoded strings on the wire per config-validation.ts and the
+// publish-time validation gate in publish/route.ts — nothing should ever
+// need a raw `object` here). Reverted: dropping `object` produces 6 distinct
+// `tsc` errors across 5 UI components (variant-creator-modal.tsx,
+// condition-creator-modal.tsx, flag-assignment-edit-modal.tsx, flag-row.tsx,
+// flag-test-assignment-modal.tsx), several of which are genuine structural
+// mismatches between differently-shaped `Record<string, FlagValue>` variant
+// maps rather than simple call-site casts — fixing them safely needs each
+// component's intended prop shape investigated individually, which is out
+// of scope here. Left as `object` with this note rather than force through
+// unverified type surgery across the UI.
 export type FlagValue = boolean | string | number | object;
 
 export type Environment = 'development' | 'beta' | 'production';
