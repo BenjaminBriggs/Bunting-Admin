@@ -102,7 +102,7 @@ Using different salts across tests means a user who is in the "control" group fo
 
 The admin's `src/lib/bucketing.ts` reads the first 8 bytes (16 hex characters) of the hash as a big-endian unsigned 64-bit integer, matching the SDK (`Bucketing.swift`) and the artifact spec — so admin previews assign the same user to the same bucket the SDK does for a given `(salt, localId)`.
 
-**Preview limitation:** the admin's evaluation preview (`src/lib/flag-evaluation.ts`) mirrors the SDK's evaluation order for conditions it can evaluate on its own (platform, version, language, region, custom bucketing), but `custom_attribute` conditions always evaluate as non-matching in the preview — the admin has no host app to ask, since custom attribute values only exist at runtime via the SDK's callback (see [config-artifact-spec.md](config-artifact-spec.md) "Custom attribute"). Real evaluation of those conditions happens only in the SDK.
+**Preview limitation:** the admin's evaluation preview (`src/lib/flag-evaluation.ts`) mirrors the SDK's evaluation order for conditions it can evaluate on its own (platform, device_class, version, language, region, custom bucketing). `custom_attribute` conditions targeting the reserved, SDK-populated `manufacturer` attribute are fully resolved by the preview, matching real SDK behavior; a `custom_attribute` condition targeting any other (non-reserved) attribute always evaluates as non-matching in the preview — the admin has no host app to ask, since those values only exist at runtime via the SDK's callback (see [config-artifact-spec.md](config-artifact-spec.md) "Custom attribute"). Real evaluation of non-reserved attributes happens only in the SDK.
 
 ---
 

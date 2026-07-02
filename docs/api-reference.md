@@ -716,7 +716,7 @@ Decode a client config fingerprint against the retained artifact for its version
 
 ### `GET /api/bootstrap/plist?appId=<id>` or `?appIdentifier=<id>`
 
-Generate and download a `BuntingConfig.plist` for the Bunting Swift SDK.
+Generate and download a `BuntingConfig.plist` for the Bunting Swift SDK. Unchanged by the platform-neutral JSON endpoint below — both are served side by side.
 
 **Query params:** `appId` or `appIdentifier` (one required)
 
@@ -724,6 +724,27 @@ Generate and download a `BuntingConfig.plist` for the Bunting Swift SDK.
 
 The plist contains:
 
+- `endpoint_url` — `app.artifactUrl`
+- `public_keys` — array of `{kid, pem}` from active `SigningKey` records; falls back to `app.publicKeys` if no DB keys exist
+- `fetch_policy` — `{min_interval_seconds, hard_ttl_days}` from `app.fetchPolicy` (defaults: 21600 / 7)
+
+**Errors:** `400` if neither param provided, `404` if app not found or no signing keys exist.
+
+Also handles `OPTIONS` preflight with CORS headers.
+
+---
+
+### `GET /api/bootstrap/json?appId=<id>` or `?appIdentifier=<id>`
+
+Generate and download a platform-neutral bootstrap document (`buildBootstrapDocument`, `src/lib/bootstrap.ts`) for any Bunting client — Apple's SDK renders the equivalent as `BuntingConfig.plist` above, Android consumes this JSON form directly, and web/other implementers use it as-is.
+
+**Query params:** `appId` or `appIdentifier` (one required)
+
+**Response 200** — `application/json` with `Content-Disposition: attachment; filename="bunting_config.json"`.
+
+The JSON document contains:
+
+- `app_identifier` — `app.identifier`. Present here in addition to the plist form, since non-Apple clients have no bundle identifier to fall back on.
 - `endpoint_url` — `app.artifactUrl`
 - `public_keys` — array of `{kid, pem}` from active `SigningKey` records; falls back to `app.publicKeys` if no DB keys exist
 - `fetch_policy` — `{min_interval_seconds, hard_ttl_days}` from `app.fetchPolicy` (defaults: 21600 / 7)
@@ -1096,7 +1117,7 @@ Used in flags (variants), tests, and rollouts.
 ```json
 {
   "id": "string",
-  "type": "app_version" | "os_version" | "build_number" | "platform" | "device_model" | "region" | "locale" | "custom_attribute",
+  "type": "app_version" | "os_version" | "build_number" | "platform" | "device_class" | "device_model" | "region" | "locale" | "custom_attribute",
   "operator": "equals" | "does_not_equals" | "in" | "not_in" | "greater_than" | "less_than" | "greater_than_or_equal" | "less_than_or_equal" | "between" | "custom",
   "values": ["string"]
 }
