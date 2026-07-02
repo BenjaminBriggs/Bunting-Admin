@@ -8,8 +8,8 @@
 [![Build](https://github.com/BenjaminBriggs/Bunting-Admin/workflows/Build/badge.svg)](https://github.com/BenjaminBriggs/Bunting-Admin/actions)
 [![License](https://img.shields.io/github/license/BenjaminBriggs/Bunting-Admin)](https://github.com/BenjaminBriggs/Bunting-Admin/blob/main/LICENSE)
 
-> [!WARNING]
-> Bunting Admin is under active development and not yet production-ready. Expect rapid iteration and occasional breaking changes.
+> [!NOTE]
+> Bunting Admin is release-ready for v1, with known limitations: it assumes a single-instance deployment (in-memory rate limiting, boot-time auto-migration on startup); you must front S3 with a CDN yourself (a plain CDN works — the SDK fetches the `.sig` signature file alongside `config.json`; header injection is optional); and publish-route S3 integration tests run in the full-stack smoke suite rather than CI.
 
 Bunting Admin is a self-hosted feature flag dashboard for Apple platform apps. It provides environment-first flag management (development / beta / production), A/B testing, and gradual rollouts. When you publish, the admin validates, versions, and cryptographically signs a static JSON config artifact (RS256 JWS) and uploads it to S3-compatible storage; the [Bunting Swift SDK](../bunting-sdk-swift) fetches and verifies the artifact offline on-device.
 
@@ -149,7 +149,7 @@ The companion **[bunting-sdk-swift](../bunting-sdk-swift)** repo contains the Sw
 
 ## Status
 
-Under active development. Not yet production-ready — expect rapid iteration and occasional breaking changes.
+Release-ready for v1. Known limitations: single-instance deployment assumptions (in-memory rate limiting, boot-time auto-migration); an operator-supplied CDN is required in front of S3 (a plain CDN works — the SDK fetches the `.sig` sibling alongside `config.json`; header injection is optional); and publish-route S3 integration tests run in the full-stack smoke rather than CI.
 
 ## License
 
