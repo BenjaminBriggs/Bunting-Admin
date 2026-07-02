@@ -34,6 +34,31 @@ const VALID_FLAG_TYPES = [
 ] as const;
 const ENVIRONMENTS = ['development', 'beta', 'production'] as const;
 
+// Condition value-set validation. platform/device_class values are exact-match
+// lowercase; the published artifact must contain concrete values only (group
+// tokens are expanded at generation, so any token reaching here is an error).
+// These are deliberately hardcoded string literals, independent of the UI's
+// PLATFORM_OPTIONS/DEVICE_CLASS_OPTIONS in @/types/core — this is the wire
+// contract, not a UI concern. A drift-guard test cross-checks the two stay
+// in sync.
+export const VALID_PLATFORM_VALUES = new Set([
+	'ios',
+	'android',
+	'macos',
+	'watchos',
+	'tvos',
+	'visionos',
+	'web',
+]);
+export const VALID_DEVICE_CLASS_VALUES = new Set([
+	'phone',
+	'tablet',
+	'desktop',
+	'tv',
+	'watch',
+	'headset',
+]);
+
 export type ValidFlagType = (typeof VALID_FLAG_TYPES)[number];
 export type Environment = (typeof ENVIRONMENTS)[number];
 
@@ -129,27 +154,6 @@ export function validateConfig(config: unknown): ValidationResult {
 			});
 		}
 	});
-
-	// Condition value-set validation. platform/device_class values are exact-match
-	// lowercase; the published artifact must contain concrete values only (group
-	// tokens are expanded at generation, so any token reaching here is an error).
-	const VALID_PLATFORM_VALUES = new Set([
-		'ios',
-		'android',
-		'macos',
-		'watchos',
-		'tvos',
-		'visionos',
-		'web',
-	]);
-	const VALID_DEVICE_CLASS_VALUES = new Set([
-		'phone',
-		'tablet',
-		'desktop',
-		'tv',
-		'watch',
-		'headset',
-	]);
 
 	const checkCondition = (
 		raw: unknown,

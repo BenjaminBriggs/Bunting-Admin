@@ -1,4 +1,9 @@
-import { validateConfig } from '@/lib/config-validation';
+import {
+	VALID_DEVICE_CLASS_VALUES,
+	VALID_PLATFORM_VALUES,
+	validateConfig,
+} from '@/lib/config-validation';
+import { DEVICE_CLASS_OPTIONS, PLATFORM_OPTIONS } from '@/types/core';
 
 const baseFlag = (conditions: unknown[]) => ({
 	type: 'bool',
@@ -90,5 +95,14 @@ describe('validateConfig — condition values', () => {
 				(e) => e.type === 'invalid_condition_value',
 			),
 		).toBe(true);
+	});
+
+	it('keeps the wire value sets in sync with the UI option sets', () => {
+		expect([...VALID_PLATFORM_VALUES].sort()).toEqual(
+			PLATFORM_OPTIONS.map((o) => o.value).sort(),
+		);
+		expect([...VALID_DEVICE_CLASS_VALUES].sort()).toEqual(
+			DEVICE_CLASS_OPTIONS.map((o) => o.value).sort(),
+		);
 	});
 });
