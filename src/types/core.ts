@@ -146,6 +146,28 @@ export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
 	custom_attribute: ['custom'],
 };
 
+// Custom attribute names that are SDK-populated rather than app-supplied — the
+// SDK resolves these itself (see ConditionEvaluator.swift's `.customAttribute`
+// case and flag-evaluation.ts's `evaluateCustomCondition`) instead of calling
+// out to the app's custom attribute resolver callback. This mirrors the SDK's
+// normative reserved-attribute list; keep both in sync if it ever grows beyond
+// `manufacturer` (e.g. `apple`, `samsung`, `google`).
+export const RESERVED_CUSTOM_ATTRIBUTES = ['manufacturer'];
+
+export function isReservedCustomAttribute(name: string): boolean {
+	return RESERVED_CUSTOM_ATTRIBUTES.includes(name);
+}
+
+// Composes/decomposes a custom_attribute condition's `values` array: values[0]
+// is always the attribute name, values[1...] are the accepted values (only
+// meaningful — and only shown in the UI — for reserved attributes).
+export function splitCustomAttributeValues(values: string[]): {
+	attributeName: string;
+	acceptedValues: string[];
+} {
+	return { attributeName: values[0] ?? '', acceptedValues: values.slice(1) };
+}
+
 // Predefined options for list-based conditions. Values are the lowercase, exact-match
 // wire values the SDKs compare against; labels are display-only.
 export const PLATFORM_OPTIONS = [

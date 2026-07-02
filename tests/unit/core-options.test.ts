@@ -1,8 +1,11 @@
 import {
 	DEVICE_CLASS_OPTIONS,
 	expandPlatformGroups,
+	isReservedCustomAttribute,
 	PLATFORM_GROUP_EXPANSIONS,
 	PLATFORM_OPTIONS,
+	RESERVED_CUSTOM_ATTRIBUTES,
+	splitCustomAttributeValues,
 } from '@/types/core';
 
 describe('PLATFORM_OPTIONS', () => {
@@ -57,5 +60,46 @@ describe('PLATFORM_GROUP_EXPANSIONS', () => {
 			'all_apple',
 			'everything',
 		]);
+	});
+});
+
+describe('isReservedCustomAttribute', () => {
+	it('is true for every name in RESERVED_CUSTOM_ATTRIBUTES', () => {
+		for (const name of RESERVED_CUSTOM_ATTRIBUTES) {
+			expect(isReservedCustomAttribute(name)).toBe(true);
+		}
+	});
+
+	it('is false for an app-defined name', () => {
+		expect(isReservedCustomAttribute('subscription_plan')).toBe(false);
+	});
+
+	it('is case-sensitive (matches the SDK-side lookup key exactly)', () => {
+		expect(isReservedCustomAttribute('Manufacturer')).toBe(false);
+	});
+});
+
+describe('splitCustomAttributeValues', () => {
+	it('splits attribute name and accepted values', () => {
+		expect(
+			splitCustomAttributeValues(['manufacturer', 'apple', 'samsung']),
+		).toEqual({
+			attributeName: 'manufacturer',
+			acceptedValues: ['apple', 'samsung'],
+		});
+	});
+
+	it('handles a name-only array (no accepted values yet)', () => {
+		expect(splitCustomAttributeValues(['manufacturer'])).toEqual({
+			attributeName: 'manufacturer',
+			acceptedValues: [],
+		});
+	});
+
+	it('handles an empty array', () => {
+		expect(splitCustomAttributeValues([])).toEqual({
+			attributeName: '',
+			acceptedValues: [],
+		});
 	});
 });
