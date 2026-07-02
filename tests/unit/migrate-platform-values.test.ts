@@ -1,4 +1,7 @@
-import { migrateConditionsArray } from '../../scripts/migrate-platform-values';
+import {
+	formatBeforeAfter,
+	migrateConditionsArray,
+} from '../../scripts/migrate-platform-values';
 
 describe('migrateConditionsArray', () => {
 	it('lowercases plain platform values', () => {
@@ -104,5 +107,55 @@ describe('migrateConditionsArray', () => {
 			{ type: 'region', operator: 'in', values: ['US'] },
 		]);
 		expect(changed).toBe(false);
+	});
+
+	it('maps plain "in [iOS]" to "in [ios]" with an informational note, not a review flag', () => {
+		const { conditions, changed, needsReview, notes } = migrateConditionsArray([
+			{ type: 'platform', operator: 'in', values: ['iOS'] },
+		]);
+		expect(conditions).toEqual([
+			{ type: 'platform', operator: 'in', values: ['ios'] },
+		]);
+		expect(changed).toBe(true);
+		expect(needsReview).toBe(false);
+		expect(notes.length).toBe(1);
+	});
+
+	it('maps plain "not_in [iOS]" to "not_in [ios]" with an informational note, not a review flag', () => {
+		const { conditions, changed, needsReview, notes } = migrateConditionsArray([
+			{ type: 'platform', operator: 'not_in', values: ['iOS'] },
+		]);
+		expect(conditions).toEqual([
+			{ type: 'platform', operator: 'not_in', values: ['ios'] },
+		]);
+		expect(changed).toBe(true);
+		expect(needsReview).toBe(false);
+		expect(notes.length).toBe(1);
+	});
+
+	it('does not emit the plain-iOS note when iPadOS is present alongside it', () => {
+		const { notes } = migrateConditionsArray([
+			{ type: 'platform', operator: 'in', values: ['iOS', 'iPadOS'] },
+		]);
+		expect(notes).toEqual([]);
+	});
+});
+
+describe('formatBeforeAfter', () => {
+	it('renders compact before/after JSON on separate lines', () => {
+		const before = [{ type: 'platform', operator: 'in', values: ['iOS'] }];
+		const after = [{ type: 'platform', operator: 'in', values: ['ios'] }];
+		const result = formatBeforeAfter(before, after);
+		expect(result).toBe(
+			`    before: ${JSON.stringify(before)}\n    after:  ${JSON.stringify(after)}`,
+		);
+	});
+
+	it('prefixes each line with the label when provided', () => {
+		const before = [{ type: 'platform', operator: 'in', values: ['iOS'] }];
+		const after = [{ type: 'platform', operator: 'in', values: ['ios'] }];
+		const result = formatBeforeAfter(before, after, 'production');
+		expect(result).toContain('[production] before:');
+		expect(result).toContain('[production] after: ');
 	});
 });
