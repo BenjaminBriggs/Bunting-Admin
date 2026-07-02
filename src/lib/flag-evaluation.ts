@@ -25,6 +25,7 @@ export interface UserAttributes {
 	language?: string;
 	platform?: string;
 	device_model?: string;
+	device_class?: string;
 	region?: string;
 	[key: string]: unknown;
 }
@@ -157,6 +158,13 @@ export function evaluateCondition(
 		case 'platform':
 			return evaluateListCondition(
 				context.userAttributes.platform,
+				operator,
+				values,
+			);
+
+		case 'device_class':
+			return evaluateListCondition(
+				context.userAttributes.device_class,
 				operator,
 				values,
 			);
@@ -326,7 +334,8 @@ export function testFlagEvaluation(): void {
 		userAttributes: {
 			region: 'EU',
 			app_version: '1.2.0',
-			platform: 'iOS',
+			platform: 'ios',
+			device_class: 'phone',
 		},
 	};
 
