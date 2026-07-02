@@ -1,5 +1,5 @@
 {
-	"version": "2026-07-02.1",
+	"version": "2026-07-02.2",
 	"note": "Runners MUST execute every case whose swift_applicable is not false. Cases flagged swift_applicable:false use non-UUID identifiers only the string-hashing reference (admin) exercises.",
 	"cases": [
 		{

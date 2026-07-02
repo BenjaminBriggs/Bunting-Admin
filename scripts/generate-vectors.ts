@@ -41,7 +41,7 @@ import type {
 	Test,
 } from '@/types';
 
-const BUNDLE_VERSION = '2026-07-02.1';
+const BUNDLE_VERSION = '2026-07-02.2';
 const CONFORMANCE_DIR = join(process.cwd(), 'conformance');
 const KEYS_DIR = join(CONFORMANCE_DIR, 'keys');
 
@@ -101,6 +101,22 @@ function makeFlag(
 	};
 }
 
+// Unlike makeFlag (variants only on production), this attaches the same
+// variants to every environment — needed to exercise variant matching (not
+// just default fallback) in development/beta evaluation cases.
+function makeFlagAllEnvs(
+	type: FlagType,
+	defaultValue: FlagValue,
+	variants: FlagVariant[],
+): EnvironmentFlag {
+	return {
+		type,
+		development: { default: defaultValue, variants },
+		beta: { default: defaultValue, variants },
+		production: { default: defaultValue, variants },
+	};
+}
+
 const flags: Record<string, EnvironmentFlag> = {
 	'cond/app_version_equals': makeFlag('bool', false, [
 		conditional(1, true, [cond('app_version', 'equals', ['2.5.0'])]),
@@ -137,6 +153,9 @@ const flags: Record<string, EnvironmentFlag> = {
 	'cond/platform_not_in': makeFlag('bool', false, [
 		conditional(1, true, [cond('platform', 'not_in', ['android'])]),
 	]),
+	'cond/platform_web_only': makeFlag('bool', false, [
+		conditional(1, true, [cond('platform', 'in', ['web'])]),
+	]),
 	'cond/device_class_in': makeFlag('bool', false, [
 		conditional(1, true, [cond('device_class', 'in', ['phone', 'tablet'])]),
 	]),
@@ -169,6 +188,25 @@ const flags: Record<string, EnvironmentFlag> = {
 		conditional(2, 'region-match', [cond('region', 'in', ['US'])]),
 		conditional(1, 'platform-match', [cond('platform', 'in', ['android'])]),
 	]),
+	// Variants attached to every environment (not just production, unlike
+	// makeFlag's other fixtures) so development/beta cases exercise actual
+	// variant matching rather than only the environment default.
+	'targeting/env_specific': makeFlagAllEnvs('string', 'default-value', [
+		conditional(1, 'matched-value', [cond('region', 'in', ['US'])]),
+	]),
+	// Hand-constructed: `conditions` is intentionally ABSENT (not `[]`) on this
+	// conditional variant. This pins the SDK contract's vacuous-match behavior
+	// (evaluateConditions/evaluateFlag both treat a missing conditions array as
+	// `?? []`, which matches unconditionally). The admin's authoring-layer zod
+	// guard (src/lib/validation-schemas.ts) rejects a condition-less conditional
+	// variant on write, but that guard does NOT apply here — this fixture is
+	// hand-built by the generator, never routed through the API, so the pinned
+	// vacuous-match behavior stays reachable in the conformance bundle. See
+	// task-18-report.md for why this lives at the authoring layer and not in
+	// validateConfig.
+	'cond/vacuous_match': makeFlag('bool', false, [
+		{ type: 'conditional', order: 1, value: true },
+	]),
 	'test/checkout_experiment': makeFlag('string', 'no-test-default', [
 		testVariant(1, 'checkout_experiment', {
 			control: 'control-value',
@@ -182,6 +220,7 @@ const flags: Record<string, EnvironmentFlag> = {
 		rolloutVariant(1, 'always_off_rollout', true),
 	]),
 	'types/whole_double': makeFlag('double', 2),
+	'types/whole_int': makeFlag('int', 42),
 	'types/fractional_date': makeFlag('date', '2026-07-02T00:00:00.123Z'),
 	'types/json_flag': makeFlag('json', '{"sections":["home","profile"]}'),
 };
@@ -343,6 +382,19 @@ const evaluationCaseInputs: EvaluationCaseInput[] = [
 		context: baseContext,
 		environment: 'production',
 	},
+	// Android-context positive match: platform_in's ['ios', 'android'] list
+	// includes android, so an android context still matches the variant.
+	{
+		flag_key: 'cond/platform_in',
+		context: { ...baseContext, platform: 'android' },
+		environment: 'production',
+	},
+	// Web-context positive match.
+	{
+		flag_key: 'cond/platform_web_only',
+		context: { ...baseContext, platform: 'web' },
+		environment: 'production',
+	},
 	{
 		flag_key: 'cond/platform_not_in',
 		context: baseContext,
@@ -411,6 +463,25 @@ const evaluationCaseInputs: EvaluationCaseInput[] = [
 		context: baseContext,
 		environment: 'production',
 	},
+	// Vacuous-match: the fixture's conditional variant has `conditions` entirely
+	// absent, which the SDK contract pins as matching unconditionally.
+	{
+		flag_key: 'cond/vacuous_match',
+		context: baseContext,
+		environment: 'production',
+	},
+	// Per-env variant matching, not just default fallback (development).
+	{
+		flag_key: 'targeting/env_specific',
+		context: baseContext,
+		environment: 'development',
+	},
+	// Per-env variant matching, not just default fallback (beta).
+	{
+		flag_key: 'targeting/env_specific',
+		context: baseContext,
+		environment: 'beta',
+	},
 	{
 		flag_key: 'test/checkout_experiment',
 		context: baseContext,
@@ -428,6 +499,11 @@ const evaluationCaseInputs: EvaluationCaseInput[] = [
 	},
 	{
 		flag_key: 'types/whole_double',
+		context: baseContext,
+		environment: 'production',
+	},
+	{
+		flag_key: 'types/whole_int',
 		context: baseContext,
 		environment: 'production',
 	},

@@ -1,8 +1,8 @@
 {
-	"version": "2026-07-02.1",
+	"version": "2026-07-02.2",
 	"artifact": {
 		"schema_version": 1,
-		"config_version": "2026-07-02.1",
+		"config_version": "2026-07-02.2",
 		"published_at": "2026-07-02T00:00:00.000Z",
 		"app_identifier": "conformance-app",
 		"flags": {
@@ -317,6 +317,34 @@
 					]
 				}
 			},
+			"cond/platform_web_only": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "platform",
+									"operator": "in",
+									"values": [
+										"web"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
 			"cond/device_class_in": {
 				"type": "bool",
 				"development": {
@@ -559,6 +587,85 @@
 					]
 				}
 			},
+			"targeting/env_specific": {
+				"type": "string",
+				"development": {
+					"default": "default-value",
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": "matched-value",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				},
+				"beta": {
+					"default": "default-value",
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": "matched-value",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				},
+				"production": {
+					"default": "default-value",
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": "matched-value",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/vacuous_match": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true
+						}
+					]
+				}
+			},
 			"test/checkout_experiment": {
 				"type": "string",
 				"development": {
@@ -632,6 +739,19 @@
 				},
 				"production": {
 					"default": 2,
+					"variants": []
+				}
+			},
+			"types/whole_int": {
+				"type": "int",
+				"development": {
+					"default": 42
+				},
+				"beta": {
+					"default": 42
+				},
+				"production": {
+					"default": 42,
 					"variants": []
 				}
 			},
@@ -714,7 +834,7 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "production",
-			"code": "2026-07-02.1.1BFFBFA43F"
+			"code": "2026-07-02.2.1BFFBDEC8011"
 		},
 		{
 			"context": {
@@ -731,7 +851,7 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "production",
-			"code": "2026-07-02.1.1BE7BFA4CC"
+			"code": "2026-07-02.2.1BE7BDEC80C6"
 		},
 		{
 			"context": {
@@ -749,12 +869,12 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "development",
-			"code": "2026-07-02.1.1070"
+			"code": "2026-07-02.2.127E"
 		}
 	],
 	"decode_cases": [
 		{
-			"code": "2026-07-02.1.1BFFBFA43F",
+			"code": "2026-07-02.2.1BFFBDEC8011",
 			"environment": "production",
 			"expected_flags": {
 				"cond/app_version_between": {
@@ -821,11 +941,19 @@
 					"value": true,
 					"reason": "conditional variant (order 1)"
 				},
+				"cond/platform_web_only": {
+					"value": false,
+					"reason": "production default"
+				},
 				"cond/region_in": {
 					"value": true,
 					"reason": "conditional variant (order 1)"
 				},
 				"cond/region_not_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/vacuous_match": {
 					"value": true,
 					"reason": "conditional variant (order 1)"
 				},
@@ -836,6 +964,10 @@
 				"rollout/excluded": {
 					"value": false,
 					"reason": "production default"
+				},
+				"targeting/env_specific": {
+					"value": "matched-value",
+					"reason": "conditional variant (order 1)"
 				},
 				"targeting/ordering": {
 					"value": "region-match",
@@ -855,6 +987,10 @@
 				},
 				"types/whole_double": {
 					"value": 2,
+					"reason": "production default"
+				},
+				"types/whole_int": {
+					"value": 42,
 					"reason": "production default"
 				}
 			}

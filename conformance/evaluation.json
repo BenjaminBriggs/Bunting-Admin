@@ -1,8 +1,8 @@
 {
-	"version": "2026-07-02.1",
+	"version": "2026-07-02.2",
 	"artifact": {
 		"schema_version": 1,
-		"config_version": "2026-07-02.1",
+		"config_version": "2026-07-02.2",
 		"published_at": "2026-07-02T00:00:00.000Z",
 		"app_identifier": "conformance-app",
 		"flags": {
@@ -317,6 +317,34 @@
 					]
 				}
 			},
+			"cond/platform_web_only": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "platform",
+									"operator": "in",
+									"values": [
+										"web"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
 			"cond/device_class_in": {
 				"type": "bool",
 				"development": {
@@ -559,6 +587,85 @@
 					]
 				}
 			},
+			"targeting/env_specific": {
+				"type": "string",
+				"development": {
+					"default": "default-value",
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": "matched-value",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				},
+				"beta": {
+					"default": "default-value",
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": "matched-value",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				},
+				"production": {
+					"default": "default-value",
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": "matched-value",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/vacuous_match": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true
+						}
+					]
+				}
+			},
 			"test/checkout_experiment": {
 				"type": "string",
 				"development": {
@@ -632,6 +739,19 @@
 				},
 				"production": {
 					"default": 2,
+					"variants": []
+				}
+			},
+			"types/whole_int": {
+				"type": "int",
+				"development": {
+					"default": 42
+				},
+				"beta": {
+					"default": 42
+				},
+				"production": {
+					"default": 42,
 					"variants": []
 				}
 			},
@@ -940,6 +1060,46 @@
 		},
 		{
 			"context": {
+				"platform": "android",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "cond/platform_in",
+			"environment": "production",
+			"expected_value": true,
+			"expected_source": "conditional variant (order 1)"
+		},
+		{
+			"context": {
+				"platform": "web",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "cond/platform_web_only",
+			"environment": "production",
+			"expected_value": true,
+			"expected_source": "conditional variant (order 1)"
+		},
+		{
+			"context": {
 				"platform": "ios",
 				"device_class": "tablet",
 				"os_version": "18.0",
@@ -1208,6 +1368,66 @@
 				},
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
+			"flag_key": "cond/vacuous_match",
+			"environment": "production",
+			"expected_value": true,
+			"expected_source": "conditional variant (order 1)"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "targeting/env_specific",
+			"environment": "development",
+			"expected_value": "matched-value",
+			"expected_source": "conditional variant (order 1)"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "targeting/env_specific",
+			"environment": "beta",
+			"expected_value": "matched-value",
+			"expected_source": "conditional variant (order 1)"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
 			"flag_key": "test/checkout_experiment",
 			"environment": "production",
 			"expected_value": "control-value",
@@ -1271,6 +1491,26 @@
 			"flag_key": "types/whole_double",
 			"environment": "production",
 			"expected_value": 2,
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "types/whole_int",
+			"environment": "production",
+			"expected_value": 42,
 			"expected_source": "production default"
 		},
 		{
