@@ -6,14 +6,18 @@
  * synchronous: the admin has no async data source for it.
  */
 
+import { assignVariant, isInRollout } from '@/lib/bucketing';
 import { logger } from '@/lib/logger';
 import type {
 	Condition,
 	ConditionOperator,
+	ConfigArtifact,
 	Environment,
 	EnvironmentFlag,
 	FlagValue,
 	FlagVariant,
+	Rollout,
+	Test,
 } from '@/types';
 
 // Device/user attributes evaluated against conditions. The known keys are
@@ -25,7 +29,13 @@ export interface UserAttributes {
 	language?: string;
 	platform?: string;
 	device_model?: string;
+	device_class?: string;
 	region?: string;
+	// SDK-populated reserved attributes (e.g. `{ manufacturer: 'apple' }`), keyed
+	// by attribute name. `custom_attribute` conditions target these first, before
+	// falling back to an app-supplied resolver (which the admin reference
+	// evaluator has none of — see evaluateCustomCondition).
+	reserved_attributes?: Record<string, string>;
 	[key: string]: unknown;
 }
 
@@ -44,11 +54,17 @@ export interface FlagEvaluationResult {
 /**
  * Evaluate a flag for a given environment and user context
  * Implements the exact algorithm from JSON Spec lines 502-511
+ *
+ * `artifact` supplies the test/rollout definitions a `test`/`rollout` variant
+ * refers to (mirrors the SDK's `FlagEvaluator`, which reads them off the
+ * decoded `BuntingConfiguration`). Only `tests`/`rollouts` are needed, not the
+ * full artifact.
  */
 export function evaluateFlag(
 	flag: EnvironmentFlag,
 	environment: Environment,
 	context: EvaluationContext,
+	artifact: Pick<ConfigArtifact, 'tests' | 'rollouts'>,
 ): FlagEvaluationResult {
 	// Step 1: Load the environment object
 	const envConfig = flag[environment];
@@ -70,26 +86,27 @@ export function evaluateFlag(
 				};
 			}
 		} else if (variant.type === 'test') {
-			// Test variant: determine user's test group using deterministic bucketing
-			const testName = variant.test;
-			if (testName) {
-				// Note: Test evaluation requires additional test configuration
-				// This would need to be passed in or looked up
-				logger.warn(
-					{ testName },
-					'Test variant evaluation not fully implemented',
-				);
+			// Test variant: bucket into the referenced test's groups and read the
+			// variant's per-group value. Mirrors FlagEvaluator.swift's evaluateTest.
+			const test = variant.test ? artifact.tests[variant.test] : undefined;
+			if (test) {
+				const value = evaluateTestVariant(test, variant, context);
+				if (value !== undefined) {
+					return { value, variant, reason: 'test' };
+				}
 			}
 		} else {
-			// Rollout variant: compute rollout bucket
-			const rolloutName = variant.rollout;
-			if (rolloutName) {
-				// Note: Rollout evaluation requires additional rollout configuration
-				// This would need to be passed in or looked up
-				logger.warn(
-					{ rolloutName },
-					'Rollout variant evaluation not fully implemented',
-				);
+			// Rollout variant: bucket into the referenced rollout's percentage.
+			// Mirrors FlagEvaluator.swift's evaluateRollout.
+			const rollout = variant.rollout
+				? artifact.rollouts[variant.rollout]
+				: undefined;
+			if (
+				rollout &&
+				evaluateRolloutMembership(rollout, context) &&
+				variant.value !== undefined
+			) {
+				return { value: variant.value, variant, reason: 'rollout' };
 			}
 		}
 	}
@@ -99,6 +116,61 @@ export function evaluateFlag(
 		value: envConfig.default,
 		reason: 'default',
 	};
+}
+
+/**
+ * Resolve a `test` variant's value: preconditions → deterministic bucketing
+ * into `test.groups` → the group's value in `variant.values`. Falls back to
+ * an arbitrary `variant.values` entry, then `variant.value`, for malformed
+ * (groupless) legacy tests — matching FlagEvaluator.swift's evaluateTest
+ * steps 4-5. Returns undefined if the variant should be skipped entirely.
+ */
+function evaluateTestVariant(
+	test: Test,
+	variant: FlagVariant,
+	context: EvaluationContext,
+): FlagValue | undefined {
+	if (
+		test.conditions.length > 0 &&
+		!evaluateConditions(test.conditions, context)
+	) {
+		return undefined;
+	}
+
+	const groupName = assignVariant(
+		test.salt,
+		context.localId,
+		test.groups ?? [],
+	);
+	if (groupName) {
+		const value = variant.values?.[groupName];
+		if (value !== undefined) {
+			return value;
+		}
+	}
+
+	if (variant.values) {
+		const fallbackValues = Object.values(variant.values);
+		if (fallbackValues.length > 0) {
+			return fallbackValues[0];
+		}
+	}
+
+	return variant.value;
+}
+
+/** Preconditions pass and the bucket falls within `rollout.percentage`. */
+function evaluateRolloutMembership(
+	rollout: Rollout,
+	context: EvaluationContext,
+): boolean {
+	if (
+		rollout.conditions.length > 0 &&
+		!evaluateConditions(rollout.conditions, context)
+	) {
+		return false;
+	}
+	return isInRollout(rollout.salt, context.localId, rollout.percentage);
 }
 
 /**
@@ -161,6 +233,13 @@ export function evaluateCondition(
 				values,
 			);
 
+		case 'device_class':
+			return evaluateListCondition(
+				context.userAttributes.device_class,
+				operator,
+				values,
+			);
+
 		case 'device_model':
 			return evaluateListCondition(
 				context.userAttributes.device_model,
@@ -176,7 +255,7 @@ export function evaluateCondition(
 			);
 
 		case 'custom_attribute':
-			return evaluateCustomCondition(condition);
+			return evaluateCustomCondition(condition, context);
 
 		default:
 			// All ConditionType values are handled above; this guards malformed
@@ -252,15 +331,34 @@ function evaluateListCondition(
 }
 
 /**
- * Evaluate custom conditions
- * Implementation is SDK-specific
+ * Evaluate a `custom_attribute` condition. `values[0]` is the attribute name;
+ * `values.slice(1)` are the accepted values. SDK-populated reserved
+ * attributes (`context.userAttributes.reserved_attributes`, e.g.
+ * `{ manufacturer: 'apple' }`) are checked first — mirrors
+ * ConditionEvaluator.swift's `.customAttribute` case. The admin reference
+ * evaluator has no app-supplied resolver to fall back to (that's SDK-side
+ * only), so a non-reserved attribute name never matches.
  */
-function evaluateCustomCondition(condition: Condition): boolean {
-	// Custom condition evaluation would be implemented by the SDK
-	// This is a placeholder for the concept
+function evaluateCustomCondition(
+	condition: Condition,
+	context: EvaluationContext,
+): boolean {
+	const [attributeName, ...accepted] = condition.values;
+	if (!attributeName) {
+		return false;
+	}
+
+	const reserved = context.userAttributes.reserved_attributes;
+	if (
+		reserved &&
+		Object.prototype.hasOwnProperty.call(reserved, attributeName)
+	) {
+		return accepted.includes(reserved[attributeName]);
+	}
+
 	logger.warn(
-		{ type: condition.type, value: condition.values[0] ?? '' },
-		'Custom condition evaluation not implemented',
+		{ type: condition.type, attribute: attributeName },
+		'No resolver for non-reserved custom attribute; treating as non-match',
 	);
 	return false;
 }
@@ -326,11 +424,15 @@ export function testFlagEvaluation(): void {
 		userAttributes: {
 			region: 'EU',
 			app_version: '1.2.0',
-			platform: 'iOS',
+			platform: 'ios',
+			device_class: 'phone',
 		},
 	};
 
-	const result = evaluateFlag(mockFlag, 'development', context);
+	const result = evaluateFlag(mockFlag, 'development', context, {
+		tests: {},
+		rollouts: {},
+	});
 	logger.info({ result }, 'Evaluation result');
 	// Should return: { value: true, variant: {...}, reason: 'conditional' }
 }

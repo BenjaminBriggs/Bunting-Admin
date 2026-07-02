@@ -34,6 +34,31 @@ const VALID_FLAG_TYPES = [
 ] as const;
 const ENVIRONMENTS = ['development', 'beta', 'production'] as const;
 
+// Condition value-set validation. platform/device_class values are exact-match
+// lowercase; the published artifact must contain concrete values only (group
+// tokens are expanded at generation, so any token reaching here is an error).
+// These are deliberately hardcoded string literals, independent of the UI's
+// PLATFORM_OPTIONS/DEVICE_CLASS_OPTIONS in @/types/core — this is the wire
+// contract, not a UI concern. A drift-guard test cross-checks the two stay
+// in sync.
+export const VALID_PLATFORM_VALUES = new Set([
+	'ios',
+	'android',
+	'macos',
+	'watchos',
+	'tvos',
+	'visionos',
+	'web',
+]);
+export const VALID_DEVICE_CLASS_VALUES = new Set([
+	'phone',
+	'tablet',
+	'desktop',
+	'tv',
+	'watch',
+	'headset',
+]);
+
 export type ValidFlagType = (typeof VALID_FLAG_TYPES)[number];
 export type Environment = (typeof ENVIRONMENTS)[number];
 
@@ -128,6 +153,62 @@ export function validateConfig(config: unknown): ValidationResult {
 				});
 			});
 		}
+	});
+
+	const checkCondition = (
+		raw: unknown,
+		where: string,
+		flagKey?: string,
+	): void => {
+		const cond = asRecord(raw);
+		const values = Array.isArray(cond.values) ? (cond.values as unknown[]) : [];
+		const allowed =
+			cond.type === 'platform'
+				? VALID_PLATFORM_VALUES
+				: cond.type === 'device_class'
+					? VALID_DEVICE_CLASS_VALUES
+					: null;
+		if (!allowed) {
+			return;
+		}
+		values.forEach((v) => {
+			if (typeof v !== 'string' || !allowed.has(v)) {
+				errors.push({
+					type: 'invalid_condition_value',
+					message: `Condition in ${where} has invalid ${String(cond.type)} value "${String(v)}"`,
+					flagKey,
+				});
+			}
+		});
+	};
+
+	Object.entries(asRecord(asRecord(config).flags)).forEach(([key, raw]) => {
+		const flag = asRecord(raw);
+		ENVIRONMENTS.forEach((env) => {
+			const envCfg = asRecord(flag[env]);
+			const variants = Array.isArray(envCfg.variants) ? envCfg.variants : [];
+			variants.forEach((rawVariant: unknown, index: number) => {
+				const variant = asRecord(rawVariant);
+				const conditions = Array.isArray(variant.conditions)
+					? variant.conditions
+					: [];
+				conditions.forEach((c) =>
+					checkCondition(c, `flag "${key}" ${env} variant ${index}`, key),
+				);
+			});
+		});
+	});
+
+	(['tests', 'rollouts'] as const).forEach((collection) => {
+		Object.entries(asRecord(asRecord(config)[collection])).forEach(
+			([name, raw]) => {
+				const entry = asRecord(raw);
+				const conditions = Array.isArray(entry.conditions)
+					? entry.conditions
+					: [];
+				conditions.forEach((c) => checkCondition(c, `${collection} "${name}"`));
+			},
+		);
 	});
 
 	return { errors, warnings };

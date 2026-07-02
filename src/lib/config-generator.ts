@@ -13,6 +13,7 @@ import type {
 	Test,
 	TestGroup,
 } from '@/types';
+import { expandPlatformGroups } from '@/types/core';
 
 const ENVIRONMENTS: Environment[] = ['development', 'beta', 'production'];
 
@@ -61,6 +62,12 @@ function normalizeCondition(condition: StoredCondition): Condition {
 	// Strip the legacy `id` field — it was only ever a React UI key and must not
 	// appear in the published artifact (older DB rows may still carry it).
 	const { id: _id, ...rest } = condition;
+	if (rest.type === 'platform' && Array.isArray(rest.values)) {
+		return {
+			...rest,
+			values: expandPlatformGroups(rest.values as string[]),
+		} as unknown as Condition;
+	}
 	if (
 		rest.type === 'custom_attribute' &&
 		typeof rest.attribute === 'string' &&

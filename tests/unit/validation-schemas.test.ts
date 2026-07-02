@@ -8,6 +8,12 @@ import {
 	updateRolloutSchema,
 } from '@/lib/validation-schemas';
 
+const validCondition = {
+	type: 'platform',
+	operator: 'in',
+	values: ['ios'],
+};
+
 describe('validation-schemas', () => {
 	describe('conditionSchema', () => {
 		const valid = {
@@ -199,6 +205,59 @@ describe('validation-schemas', () => {
 			expect(updateRolloutSchema.safeParse({ percentage: 50 }).success).toBe(
 				true,
 			);
+		});
+
+		it('rejects a conditional variant with an empty conditions array', () => {
+			const r = updateFlagSchema.safeParse({
+				variants: {
+					production: [
+						{ type: 'conditional', order: 1, value: true, conditions: [] },
+					],
+				},
+			});
+			expect(r.success).toBe(false);
+		});
+
+		it('rejects a conditional variant with conditions absent entirely', () => {
+			const r = updateFlagSchema.safeParse({
+				variants: {
+					production: [{ type: 'conditional', order: 1, value: true }],
+				},
+			});
+			expect(r.success).toBe(false);
+		});
+
+		it('accepts a conditional variant with at least one condition', () => {
+			const r = updateFlagSchema.safeParse({
+				variants: {
+					production: [
+						{
+							type: 'conditional',
+							order: 1,
+							value: true,
+							conditions: [validCondition],
+						},
+					],
+				},
+			});
+			expect(r.success).toBe(true);
+		});
+
+		it('does not require conditions on non-conditional variants', () => {
+			const r = updateFlagSchema.safeParse({
+				variants: {
+					production: [
+						{ type: 'rollout', order: 1, value: true, rollout: 'r' },
+						{
+							type: 'test',
+							order: 2,
+							test: 't',
+							values: { control: false, treatment: true },
+						},
+					],
+				},
+			});
+			expect(r.success).toBe(true);
 		});
 
 		// Rollouts are created with all-null env slots and config-generator skips

@@ -34,12 +34,22 @@ import {
 } from '@mui/material';
 import type { KeyboardEvent } from 'react';
 import { useState } from 'react';
+import {
+	isReservedCustomAttribute,
+	renameCustomAttribute,
+	RESERVED_CUSTOM_ATTRIBUTES,
+	splitCustomAttributeValues,
+} from '@/types/core';
 import type {
 	RuleCondition,
 	RuleConditionType,
 	RuleOperator,
 } from '@/types/rules';
-import { conditionTemplates, operatorLabels } from './rule-templates';
+import {
+	conditionTemplates,
+	operatorLabels,
+	visibleConditionOptions,
+} from './rule-templates';
 
 /**
  * Props for the ConditionBuilder component
@@ -149,6 +159,17 @@ export function ConditionBuilder({
 		return null;
 	}
 
+	const availableOptions = visibleConditionOptions(
+		template,
+		condition.operator,
+	);
+
+	const { attributeName, acceptedValues } =
+		condition.type === 'custom_attribute'
+			? splitCustomAttributeValues(condition.values)
+			: { attributeName: '', acceptedValues: [] as string[] };
+	const isReservedAttribute = isReservedCustomAttribute(attributeName);
+
 	return (
 		<Box
 			sx={{
@@ -215,13 +236,60 @@ export function ConditionBuilder({
 						label="Attribute Name"
 						value={condition.values[0] || ''}
 						onChange={(e) =>
-							onChange({ ...condition, values: [e.target.value] })
+							onChange({
+								...condition,
+								values: renameCustomAttribute(e.target.value, condition.values),
+							})
 						}
 						placeholder="e.g., subscription_plan, user_tier"
 						size="small"
 						fullWidth
-						helperText="The attribute name your app's custom attribute resolver will receive"
+						helperText={
+							isReservedAttribute
+								? 'Reserved: SDK-populated automatically — no app resolver is called. Select the accepted value(s) below.'
+								: `Reserved names (SDK-populated, no app resolver called): ${RESERVED_CUSTOM_ATTRIBUTES.join(', ')}. Other names are resolved by your app's custom attribute resolver.`
+						}
 					/>
+				)}
+
+				{/* Accepted Values for reserved attributes (e.g. manufacturer) — stored in
+				    values[1...]; matches when the SDK-populated value is one of these. */}
+				{condition.type === 'custom_attribute' && isReservedAttribute && (
+					<Stack spacing={2}>
+						<Typography variant="body2" color="text.secondary">
+							Accepted values for &quot;{attributeName}&quot;:
+						</Typography>
+						<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+							<TextField
+								label="Value"
+								type="text"
+								value={valueInput}
+								onChange={(e) => setValueInput(e.target.value)}
+								onKeyPress={handleKeyPress}
+								placeholder="e.g., apple, samsung, google"
+								sx={{ flexGrow: 1 }}
+							/>
+							<IconButton
+								onClick={handleAddValue}
+								disabled={!valueInput.trim()}
+							>
+								<Add />
+							</IconButton>
+						</Box>
+
+						{acceptedValues.length > 0 && (
+							<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+								{acceptedValues.map((value, index) => (
+									<Chip
+										key={index}
+										label={value}
+										onDelete={() => handleRemoveValue(index + 1)}
+										variant="outlined"
+									/>
+								))}
+							</Box>
+						)}
+					</Stack>
 				)}
 
 				{/* Validation Errors */}
@@ -236,24 +304,34 @@ export function ConditionBuilder({
 				)}
 
 				{/* Custom Attribute Info */}
-				{condition.type === 'custom_attribute' && (
-					<Alert severity="info">
-						<Typography variant="body2">
-							<strong>Custom Attribute:</strong> Your app provides a resolver
-							callback to the SDK. The attribute name above is passed to that
-							callback at evaluation time.
-						</Typography>
-					</Alert>
-				)}
+				{condition.type === 'custom_attribute' &&
+					(isReservedAttribute ? (
+						<Alert severity="info">
+							<Typography variant="body2">
+								<strong>Reserved Attribute:</strong> &quot;{attributeName}&quot;
+								is populated by the SDK itself — no app resolver callback is
+								called. The condition matches when the SDK-reported value is one
+								of the accepted values above.
+							</Typography>
+						</Alert>
+					) : (
+						<Alert severity="info">
+							<Typography variant="body2">
+								<strong>Custom Attribute:</strong> Your app provides a resolver
+								callback to the SDK. The attribute name above is passed to that
+								callback at evaluation time.
+							</Typography>
+						</Alert>
+					))}
 
 				{/* Value Input — hidden for custom_attribute since name field above is the value */}
 				{condition.type === 'custom_attribute' ? null : template.valueType ===
 						'select' || template.valueType === 'multi-select' ? (
-					template.options && template.options.length > 0 ? (
+					availableOptions && availableOptions.length > 0 ? (
 						<Autocomplete
 							multiple
-							options={template.options}
-							value={template.options.filter((option) =>
+							options={availableOptions}
+							value={availableOptions.filter((option) =>
 								condition.values.includes(option.value),
 							)}
 							onChange={(_, newValue) => {

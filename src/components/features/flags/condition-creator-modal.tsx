@@ -102,7 +102,10 @@ export default function ConditionCreatorModal({
 				return condition.values.join('/');
 			} else if (condition.type === 'app_version') {
 				return `v${condition.values.join('/')}`;
-			} else if (condition.type === 'platform') {
+			} else if (
+				condition.type === 'platform' ||
+				condition.type === 'device_class'
+			) {
 				return condition.values.join('/');
 			} else {
 				return `${condition.type}:${condition.values.join('/')}`;

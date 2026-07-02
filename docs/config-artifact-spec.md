@@ -175,17 +175,33 @@ Operators: `equals`, `does_not_equals`, `between`, `greater_than_or_equal`, `gre
 }
 ```
 
-**List conditions** (`platform`, `device_model`, `region`, `language`):
+`os_version` values are wire-formatted as `"major.minor.patch"` (e.g. `"18.5.0"` on Apple platforms, `"15.0.0"` on Android); comparisons are numeric per dot-separated segment, not lexicographic.
+
+**List conditions** (`platform`, `device_class`, `device_model`, `region`, `language`):
 
 Operators: `in`, `not_in`
+
+`platform` values are lowercase and exact-match: `ios`, `android`, `macos`, `watchos`, `tvos`, `visionos`, `web`. There is no `iPadOS` value — an iPad is `platform: ios` with `device_class: tablet`.
 
 ```json
 {
 	"type": "platform",
-	"values": ["iOS", "macOS"],
+	"values": ["ios", "macos"],
 	"operator": "in"
 }
 ```
+
+`device_class` is orthogonal to `platform` and describes device form factor: `phone`, `tablet`, `desktop`, `tv`, `watch`, `headset`.
+
+```json
+{
+	"type": "device_class",
+	"values": ["tablet"],
+	"operator": "in"
+}
+```
+
+> The admin's rule builder also offers `platform` group tokens (`everything`, `all_apple`) as an authoring convenience. These are stored on the rule as-is in the admin database but are **never** written to the published artifact — the config generator expands each token to its concrete `platform` values at publish time (`everything` → all seven platforms; `all_apple` → `ios`, `macos`, `watchos`, `tvos`, `visionos`). Artifact validation rejects a raw group token if one somehow reaches a `platform` condition's `values`.
 
 **Custom attribute** (evaluated by the host app via SDK callback):
 
@@ -197,7 +213,7 @@ Operators: `in`, `not_in`
 }
 ```
 
-`values[0]` is the attribute name passed to the SDK's custom attribute resolver.
+`values[0]` is the attribute name passed to the SDK's custom attribute resolver. One attribute name is reserved and SDK-populated rather than app-supplied: `manufacturer` (e.g. `apple` on Apple platforms, `samsung`, `google`, ...). A `custom_attribute` condition targeting `manufacturer` is matched against the accepted value(s) in `values[1...]` without any app-side callback.
 
 ---
 

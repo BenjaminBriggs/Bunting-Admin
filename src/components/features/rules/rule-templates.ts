@@ -1,5 +1,10 @@
 import type { Condition } from '@/types/core';
-import type { ConditionTemplate } from '@/types/rules';
+import {
+	DEVICE_CLASS_OPTIONS,
+	PLATFORM_GROUP_OPTIONS,
+	PLATFORM_OPTIONS,
+} from '@/types/core';
+import type { ConditionTemplate, RuleOperator } from '@/types/rules';
 
 /**
  * Condition Templates for Bunting Feature Flag Targeting
@@ -68,13 +73,15 @@ export const conditionTemplates: ConditionTemplate[] = [
 		description: 'Target users based on their platform/device',
 		operators: ['in', 'not_in'],
 		valueType: 'multi-select',
-		options: [
-			{ value: 'iOS', label: 'iOS' },
-			{ value: 'iPadOS', label: 'iPadOS' },
-			{ value: 'macOS', label: 'macOS' },
-			{ value: 'watchOS', label: 'watchOS' },
-			{ value: 'tvOS', label: 'tvOS' },
-		],
+		options: [...PLATFORM_GROUP_OPTIONS, ...PLATFORM_OPTIONS],
+	},
+	{
+		type: 'device_class',
+		label: 'Device Class',
+		description: 'Target users by device form factor (orthogonal to platform)',
+		operators: ['in', 'not_in'],
+		valueType: 'multi-select',
+		options: DEVICE_CLASS_OPTIONS,
 	},
 	{
 		type: 'device_model',
@@ -134,6 +141,31 @@ export const conditionTemplates: ConditionTemplate[] = [
 		placeholder: 'Enter custom attribute name',
 	},
 ];
+
+const PLATFORM_GROUP_VALUES = new Set(
+	PLATFORM_GROUP_OPTIONS.map((option) => option.value),
+);
+
+/**
+ * The options a condition builder should offer for a given template + operator.
+ * Group tokens (`everything`, `all_apple`) expand to a set of concrete platform
+ * values at publish time — that's a sensible thing to target with `in`, but
+ * excluding a group with `not_in` is ambiguous (does it mean "none of the
+ * platforms that group covers today", or "none of whatever it expands to in
+ * the future"?). Hidden for `not_in` so only concrete, unambiguous exclusions
+ * can be authored; unaffected for every other type/operator combination.
+ */
+export function visibleConditionOptions(
+	template: ConditionTemplate,
+	operator: RuleOperator,
+): Array<{ value: string; label: string }> | undefined {
+	if (template.type === 'platform' && operator === 'not_in') {
+		return template.options?.filter(
+			(option) => !PLATFORM_GROUP_VALUES.has(option.value),
+		);
+	}
+	return template.options;
+}
 
 /**
  * Human-readable labels for condition operators

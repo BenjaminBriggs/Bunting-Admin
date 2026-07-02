@@ -66,12 +66,13 @@ export type FlagValue = boolean | string | number | object;
 export type Environment = 'development' | 'beta' | 'production';
 
 export type Platform =
-	| 'iOS'
-	| 'iPadOS'
-	| 'macOS'
-	| 'watchOS'
-	| 'tvOS'
-	| 'visionOS';
+	| 'ios'
+	| 'android'
+	| 'macos'
+	| 'watchos'
+	| 'tvos'
+	| 'visionos'
+	| 'web';
 
 // JSON Spec compliant condition system — operators must exactly match SDK ConditionOperator raw values
 export type ConditionType =
@@ -79,6 +80,7 @@ export type ConditionType =
 	| 'os_version'
 	| 'build_number'
 	| 'platform'
+	| 'device_class'
 	| 'device_model'
 	| 'region'
 	| 'language'
@@ -137,21 +139,104 @@ export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
 		'between',
 	],
 	platform: ['in', 'not_in'],
+	device_class: ['in', 'not_in'],
 	device_model: ['in', 'not_in'],
 	region: ['in', 'not_in'],
 	language: ['in', 'not_in'],
 	custom_attribute: ['custom'],
 };
 
-// Predefined options for list-based conditions
+// Custom attribute names that are SDK-populated rather than app-supplied — the
+// SDK resolves these itself (see ConditionEvaluator.swift's `.customAttribute`
+// case and flag-evaluation.ts's `evaluateCustomCondition`) instead of calling
+// out to the app's custom attribute resolver callback. This mirrors the SDK's
+// normative reserved-attribute list; keep both in sync if it ever grows beyond
+// `manufacturer` (e.g. `apple`, `samsung`, `google`).
+export const RESERVED_CUSTOM_ATTRIBUTES = ['manufacturer'];
+
+export function isReservedCustomAttribute(name: string): boolean {
+	return RESERVED_CUSTOM_ATTRIBUTES.includes(name);
+}
+
+// Composes/decomposes a custom_attribute condition's `values` array: values[0]
+// is always the attribute name, values[1...] are the accepted values (only
+// meaningful — and only shown in the UI — for reserved attributes).
+export function splitCustomAttributeValues(values: string[]): {
+	attributeName: string;
+	acceptedValues: string[];
+} {
+	return { attributeName: values[0] ?? '', acceptedValues: values.slice(1) };
+}
+
+// Computes the new `values` array when a custom_attribute condition's
+// attribute name is edited. The accepted-values tail (values[1...]) is only
+// meaningful for reserved attributes, so it's carried over on rename ONLY
+// when BOTH the previous and the new name are reserved — otherwise it's
+// dropped. Two failure modes without this: renaming e.g. `manufacturer` to a
+// non-reserved name would silently retain the stale tail (dead data today,
+// live cross-contamination the moment a second reserved attribute exists);
+// and renaming a non-reserved name that happens to carry a stray tail (e.g.
+// malformed/legacy data) into a reserved name would make that stray tail
+// suddenly live as accepted values it was never meant to be.
+export function renameCustomAttribute(
+	newName: string,
+	previousValues: string[],
+): string[] {
+	const { attributeName: previousName, acceptedValues } =
+		splitCustomAttributeValues(previousValues);
+	const carryOverTail =
+		isReservedCustomAttribute(newName) &&
+		isReservedCustomAttribute(previousName);
+	return carryOverTail ? [newName, ...acceptedValues] : [newName];
+}
+
+// Predefined options for list-based conditions. Values are the lowercase, exact-match
+// wire values the SDKs compare against; labels are display-only.
 export const PLATFORM_OPTIONS = [
-	{ value: 'iOS', label: 'iOS' },
-	{ value: 'iPadOS', label: 'iPadOS' },
-	{ value: 'macOS', label: 'macOS' },
-	{ value: 'watchOS', label: 'watchOS' },
-	{ value: 'tvOS', label: 'tvOS' },
-	{ value: 'visionOS', label: 'visionOS' },
+	{ value: 'ios', label: 'iOS' },
+	{ value: 'android', label: 'Android' },
+	{ value: 'macos', label: 'macOS' },
+	{ value: 'watchos', label: 'watchOS' },
+	{ value: 'tvos', label: 'tvOS' },
+	{ value: 'visionos', label: 'visionOS' },
+	{ value: 'web', label: 'Web' },
 ];
+
+export const DEVICE_CLASS_OPTIONS = [
+	{ value: 'phone', label: 'Phone' },
+	{ value: 'tablet', label: 'Tablet' },
+	{ value: 'desktop', label: 'Desktop' },
+	{ value: 'tv', label: 'TV' },
+	{ value: 'watch', label: 'Watch' },
+	{ value: 'headset', label: 'Headset' },
+];
+
+// Platform group tokens are stored on rules and expanded to concrete platform
+// values by the config generator at publish time. Groups exist for `platform` only.
+export const PLATFORM_GROUP_OPTIONS = [
+	{ value: 'everything', label: 'Everything (all platforms)' },
+	{ value: 'all_apple', label: 'All Apple platforms' },
+];
+
+export const PLATFORM_GROUP_EXPANSIONS: Record<string, Platform[]> = {
+	everything: ['ios', 'android', 'macos', 'watchos', 'tvos', 'visionos', 'web'],
+	all_apple: ['ios', 'macos', 'watchos', 'tvos', 'visionos'],
+};
+
+// Expand any platform group tokens in `values` to concrete platform values,
+// passing concrete values through and de-duplicating while preserving order.
+export function expandPlatformGroups(values: string[]): string[] {
+	const out: string[] = [];
+	for (const value of values) {
+		const expansion = PLATFORM_GROUP_EXPANSIONS[value];
+		if (expansion) {
+			out.push(...expansion);
+		} else {
+			out.push(value);
+		}
+	}
+	return [...new Set(out)];
+}
 
 export const REGION_OPTIONS = [
 	{ value: 'US', label: 'United States' },

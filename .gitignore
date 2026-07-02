@@ -24,6 +24,16 @@
 .DS_Store
 *.pem
 
+# Conformance bundle test keys are fixed/deterministic and test-only (not
+# secrets) — intentionally committed so vector regeneration is byte-stable.
+# wrong-key.pem (the private half) is fixed test-only material, not
+# regenerated — kept out of git as key-hygiene even though it isn't a real
+# secret; only its public half (wrong-key.pub.pem) is needed at vector-build
+# time and is committed.
+!conformance/keys/test-signing-key.pem
+!conformance/keys/test-signing-key.pub.pem
+!conformance/keys/wrong-key.pub.pem
+
 # Debug
 npm-debug.log*
 yarn-debug.log*

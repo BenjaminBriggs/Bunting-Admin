@@ -148,8 +148,35 @@ export const createTestRolloutSchema = z
 // when they spread the raw body into Prisma.
 
 // Flag variants are an env-keyed array blob; validated shallowly to avoid
-// over-constraining the conditional-variant internals.
-const flagVariantsSchema = z.record(z.string(), z.array(z.unknown()));
+// over-constraining the conditional-variant internals. One targeted rule is
+// still enforced here: a `conditional` variant with no conditions matches
+// vacuously (every context passes an empty condition list), which shadows
+// every variant below it and is almost certainly an authoring mistake — the
+// SDK contract pins this as vacuous-match rather than rejecting it, so the
+// admin must stop it from being authored in the first place. This check is
+// authoring-only (zod, on write) and deliberately NOT duplicated in
+// config-validation.ts's validateConfig: the conformance vector fixture
+// (scripts/generate-vectors.ts) hand-constructs a condition-less conditional
+// variant to pin vacuous-match behaviour, and that fixture is never routed
+// through this API-layer schema, so validateConfig must keep accepting it.
+const flagVariantSchema = z
+	.record(z.string(), z.unknown())
+	.superRefine((variant, ctx) => {
+		if (variant.type !== 'conditional') {
+			return;
+		}
+		const conditions = variant.conditions;
+		if (!Array.isArray(conditions) || conditions.length === 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message:
+					'A conditional variant must have at least one condition — a condition-less conditional variant matches vacuously and shadows every variant below it',
+				path: ['conditions'],
+			});
+		}
+	});
+
+const flagVariantsSchema = z.record(z.string(), z.array(flagVariantSchema));
 
 export const updateFlagSchema = z.object({
 	key: z.string().min(1).optional(),

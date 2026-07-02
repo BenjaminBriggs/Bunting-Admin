@@ -103,6 +103,12 @@ jobs:
       - name: Type check
         run: pnpm run type-check
 
+      - name: Regenerate conformance vectors
+        run: pnpm run generate-vectors
+
+      - name: Fail if conformance vectors drift
+        run: git diff --exit-code conformance/
+
   build:
     runs-on: ubuntu-latest
 

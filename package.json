@@ -43,6 +43,7 @@
 		"docker:up": "docker-compose up -d",
 		"docker:down": "docker-compose down",
 		"docker:logs": "docker-compose logs -f",
+		"generate-vectors": "tsx scripts/generate-vectors.ts",
 		"setup": "pnpm run docker:up && pnpm run setup:wait && pnpm run db:push",
 		"setup:wait": "echo 'Waiting for services to be ready...' && sleep 10 && docker wait bunting-minio-init || echo 'MinIO initialization complete'"
 	},
@@ -100,7 +101,8 @@
 		"prisma": "^7.8.0",
 		"rimraf": "^6.0.0",
 		"start-server-and-test": "^2.1.2",
-		"supertest": "^7.1.4"
+		"supertest": "^7.1.4",
+		"tsx": "^4.22.4"
 	},
 	"engines": {
 		"node": ">=22"

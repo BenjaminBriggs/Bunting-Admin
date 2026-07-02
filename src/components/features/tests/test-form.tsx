@@ -225,7 +225,7 @@ export default function TestForm({
 	const setAudience = (on: boolean) => {
 		setAudienceOn(on);
 		if (on && conditions.length === 0) {
-			setConditions([{ type: 'platform', operator: 'in', values: ['iOS'] }]);
+			setConditions([{ type: 'platform', operator: 'in', values: ['ios'] }]);
 		}
 	};
 	const addCondition = () => {

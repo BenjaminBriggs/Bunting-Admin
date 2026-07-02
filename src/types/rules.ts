@@ -9,6 +9,7 @@ export type RuleConditionType =
 	| 'os_version'
 	| 'build_number'
 	| 'platform'
+	| 'device_class'
 	| 'device_model'
 	| 'region'
 	| 'language'
