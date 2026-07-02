@@ -4,7 +4,7 @@ Bunting Admin is the web dashboard for the Bunting feature flag system. It manag
 
 **See README.md for project overview, tech stack, quick start, and docs index.**
 
-Status: under active development, not yet production-ready.
+Status: release-ready for v1, with single-instance deployment assumptions (in-memory rate limiting, boot-time auto-migration) and an operator-supplied CDN required in front of S3.
 
 ---
 
