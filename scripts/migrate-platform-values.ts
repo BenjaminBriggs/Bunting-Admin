@@ -363,9 +363,15 @@ async function main() {
 	);
 }
 
-main()
-	.catch((e) => {
-		console.error(e);
-		process.exit(1);
-	})
-	.finally(() => prisma.$disconnect());
+// Guard against running (and hitting the DB / logging after teardown) when
+// this module is merely imported — e.g. by tests/unit/migrate-platform-values.test.ts
+// importing migrateConditionsArray/formatBeforeAfter. Matches the precedent in
+// scripts/migrate-flags-to-v2.ts and friends.
+if (require.main === module) {
+	main()
+		.catch((e) => {
+			console.error(e);
+			process.exit(1);
+		})
+		.finally(() => prisma.$disconnect());
+}

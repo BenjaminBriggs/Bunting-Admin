@@ -862,7 +862,14 @@ async function main() {
 	});
 }
 
-main().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});
+// Guard against running (and writing the bundle) when this module is merely
+// imported, not executed directly. Nothing currently imports from this file,
+// but matches the precedent in scripts/migrate-flags-to-v2.ts and friends —
+// and scripts/migrate-platform-values.ts learned this the hard way (see its
+// matching guard) when a test imported one of its helpers.
+if (require.main === module) {
+	main().catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});
+}
