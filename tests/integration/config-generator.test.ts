@@ -87,4 +87,78 @@ describe('generateConfigFromDb (integration)', () => {
 		expect(config.flags.archived_flag).toBeDefined();
 		expect(config.flags.archived_flag.deprecated).toBe(true);
 	});
+
+	test('expands platform group tokens to concrete values, never shipping the token itself', async () => {
+		const app = await seedApp(`gen-${Date.now()}-3`);
+
+		const flag = await prisma.flag.create({
+			data: {
+				appId: app.id,
+				key: 'gated_flag',
+				displayName: 'Gated',
+				type: 'BOOL',
+				defaultValues: { development: false, beta: false, production: false },
+				variants: {
+					development: [
+						{
+							order: 0,
+							value: true,
+							conditions: [
+								{
+									type: 'platform',
+									operator: 'in',
+									values: ['all_apple', 'android'],
+								},
+							],
+						},
+					],
+				},
+			},
+		});
+
+		await prisma.testRollout.create({
+			data: {
+				appId: app.id,
+				key: 'gated_test',
+				name: 'Gated Test',
+				type: 'TEST',
+				salt: 'salt',
+				conditions: [
+					{ type: 'platform', operator: 'in', values: ['everything'] },
+				],
+				variants: {
+					a: { percentage: 100, values: { development: { [flag.id]: false } } },
+				},
+				flagIds: [flag.id],
+			},
+		});
+
+		const config = await generateConfigFromDb(app.id);
+
+		const flagCondition =
+			config.flags.gated_flag.development.variants?.[0].conditions?.[0];
+		expect(flagCondition?.values).toEqual([
+			'ios',
+			'macos',
+			'watchos',
+			'tvos',
+			'visionos',
+			'android',
+		]);
+
+		const testCondition = config.tests.gated_test.conditions[0];
+		expect(testCondition.values).toEqual([
+			'ios',
+			'android',
+			'macos',
+			'watchos',
+			'tvos',
+			'visionos',
+			'web',
+		]);
+
+		const serialized = JSON.stringify(config);
+		expect(serialized).not.toContain('all_apple');
+		expect(serialized).not.toContain('everything');
+	});
 });
