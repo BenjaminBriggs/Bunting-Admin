@@ -1,9 +1,15 @@
 /**
  * Migration: two-axis targeting.
  *  - Lowercase all stored `platform` condition values.
- *  - iPadOS is removed: map it to `ios` and, on any conditions array that had an
- *    iPadOS-bearing platform condition, append `device_class: [tablet]` so the
- *    rule still targets iPads.
+ *  - iPadOS is removed and mapped to `ios`. The `device_class: [tablet]` condition
+ *    is appended ONLY when a platform condition's values are exactly `[iPadOS]` —
+ *    that's the one case where the translation is exact (iPad-only in, iPad-only
+ *    out). If iOS is present alongside iPadOS, `ios` alone already covers both, so
+ *    nothing is appended and nothing narrows. If iPadOS is present with some other
+ *    non-iOS platform (e.g. `[iPadOS, macOS]`) there is no exact mechanical answer:
+ *    appending tablet would exclude Mac desktops, and every other platform in the
+ *    list would gain iPhones under bare `ios`. That case is left mapped-only and
+ *    flagged `needsReview` for a human to split by hand.
  * Walks Flag.variants (per-env conditional variants), TestRollout.conditions, and
  * Rule.conditions.
  *
@@ -45,7 +51,7 @@ export function migrateConditionsArray(conditions: StoredCondition[]): {
 	needsReview: boolean;
 } {
 	let changed = false;
-	let hadIpad = false;
+	let appendTablet = false;
 	let needsReview = false;
 
 	const migrated = conditions.map((condition) => {
@@ -53,13 +59,26 @@ export function migrateConditionsArray(conditions: StoredCondition[]): {
 			return condition;
 		}
 		const original = condition.values as string[];
-		const containsIpad = original.includes('iPadOS');
+		const uniqueOriginal = [...new Set(original)];
+		const containsIpad = uniqueOriginal.includes('iPadOS');
+		const containsIos = uniqueOriginal.includes('iOS');
+		const isIpadOnly = containsIpad && uniqueOriginal.length === 1;
+
 		if (containsIpad) {
-			hadIpad = true;
-			if (original.some((v) => v !== 'iPadOS')) {
+			if (isIpadOnly) {
+				// Exact: iPad-only condition becomes ios + tablet.
+				appendTablet = true;
+			} else if (!containsIos) {
+				// iPadOS with some other non-iOS platform, no iOS: no exact mechanical
+				// answer (appending tablet would also exclude that other platform's
+				// desktops/etc; leaving it as plain ios would admit iPhones). Map only,
+				// flag for a human to split.
 				needsReview = true;
 			}
+			// iPadOS alongside iOS (± others): `ios` alone already covers iPhone and
+			// iPad, so mapping without appending tablet is exact — no review needed.
 		}
+
 		const mapped = original.map((v) => PLATFORM_VALUE_MAP[v] ?? v);
 		const deduped = [...new Set(mapped)];
 		if (JSON.stringify(deduped) !== JSON.stringify(original)) {
@@ -68,7 +87,7 @@ export function migrateConditionsArray(conditions: StoredCondition[]): {
 		return { ...condition, values: deduped };
 	});
 
-	if (hadIpad) {
+	if (appendTablet) {
 		const alreadyHasTablet = migrated.some(
 			(c) =>
 				c.type === 'device_class' &&
@@ -136,7 +155,7 @@ async function main() {
 		if (changed) {
 			flagCount++;
 			console.log(
-				`Flag ${flag.key}${needsReview ? '  [REVIEW: combined iPhone+iPad rule narrowed to tablet]' : ''}`,
+				`Flag ${flag.key}${needsReview ? '  [REVIEW: iPadOS mapped to ios widens this rule to iPhone too — no exact translation, split manually]' : ''}`,
 			);
 			if (apply) {
 				await prisma.flag.update({
