@@ -175,6 +175,8 @@ Operators: `equals`, `does_not_equals`, `between`, `greater_than_or_equal`, `gre
 }
 ```
 
+`os_version` values are wire-formatted as `"major.minor.patch"` (e.g. `"18.5.0"` on Apple platforms, `"15.0.0"` on Android); comparisons are numeric per dot-separated segment, not lexicographic.
+
 **List conditions** (`platform`, `device_class`, `device_model`, `region`, `language`):
 
 Operators: `in`, `not_in`
