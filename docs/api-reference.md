@@ -1117,7 +1117,7 @@ Used in flags (variants), tests, and rollouts.
 ```json
 {
   "id": "string",
-  "type": "app_version" | "os_version" | "build_number" | "platform" | "device_class" | "device_model" | "region" | "locale" | "custom_attribute",
+  "type": "app_version" | "os_version" | "build_number" | "platform" | "device_class" | "device_model" | "region" | "language" | "custom_attribute",
   "operator": "equals" | "does_not_equals" | "in" | "not_in" | "greater_than" | "less_than" | "greater_than_or_equal" | "less_than_or_equal" | "between" | "custom",
   "values": ["string"]
 }
