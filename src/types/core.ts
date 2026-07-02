@@ -168,6 +168,28 @@ export function splitCustomAttributeValues(values: string[]): {
 	return { attributeName: values[0] ?? '', acceptedValues: values.slice(1) };
 }
 
+// Computes the new `values` array when a custom_attribute condition's
+// attribute name is edited. The accepted-values tail (values[1...]) is only
+// meaningful for reserved attributes, so it's carried over on rename ONLY
+// when BOTH the previous and the new name are reserved — otherwise it's
+// dropped. Two failure modes without this: renaming e.g. `manufacturer` to a
+// non-reserved name would silently retain the stale tail (dead data today,
+// live cross-contamination the moment a second reserved attribute exists);
+// and renaming a non-reserved name that happens to carry a stray tail (e.g.
+// malformed/legacy data) into a reserved name would make that stray tail
+// suddenly live as accepted values it was never meant to be.
+export function renameCustomAttribute(
+	newName: string,
+	previousValues: string[],
+): string[] {
+	const { attributeName: previousName, acceptedValues } =
+		splitCustomAttributeValues(previousValues);
+	const carryOverTail =
+		isReservedCustomAttribute(newName) &&
+		isReservedCustomAttribute(previousName);
+	return carryOverTail ? [newName, ...acceptedValues] : [newName];
+}
+
 // Predefined options for list-based conditions. Values are the lowercase, exact-match
 // wire values the SDKs compare against; labels are display-only.
 export const PLATFORM_OPTIONS = [

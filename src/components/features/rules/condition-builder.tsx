@@ -36,6 +36,7 @@ import type { KeyboardEvent } from 'react';
 import { useState } from 'react';
 import {
 	isReservedCustomAttribute,
+	renameCustomAttribute,
 	RESERVED_CUSTOM_ATTRIBUTES,
 	splitCustomAttributeValues,
 } from '@/types/core';
@@ -237,7 +238,7 @@ export function ConditionBuilder({
 						onChange={(e) =>
 							onChange({
 								...condition,
-								values: [e.target.value, ...condition.values.slice(1)],
+								values: renameCustomAttribute(e.target.value, condition.values),
 							})
 						}
 						placeholder="e.g., subscription_plan, user_tier"

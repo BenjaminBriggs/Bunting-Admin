@@ -4,6 +4,7 @@ import {
 	isReservedCustomAttribute,
 	PLATFORM_GROUP_EXPANSIONS,
 	PLATFORM_OPTIONS,
+	renameCustomAttribute,
 	RESERVED_CUSTOM_ATTRIBUTES,
 	splitCustomAttributeValues,
 } from '@/types/core';
@@ -101,5 +102,38 @@ describe('splitCustomAttributeValues', () => {
 			attributeName: '',
 			acceptedValues: [],
 		});
+	});
+});
+
+describe('renameCustomAttribute', () => {
+	it('drops the accepted-values tail when renaming away from a reserved attribute', () => {
+		expect(
+			renameCustomAttribute('subscription_plan', [
+				'manufacturer',
+				'apple',
+				'samsung',
+			]),
+		).toEqual(['subscription_plan']);
+	});
+
+	it('keeps the accepted-values tail when renaming between reserved attributes', () => {
+		expect(
+			renameCustomAttribute('manufacturer', ['manufacturer', 'apple']),
+		).toEqual(['manufacturer', 'apple']);
+	});
+
+	it('drops a stray tail when renaming a non-reserved attribute into a reserved one', () => {
+		// previousValues here is malformed/legacy data — non-reserved conditions
+		// should never have a tail via the UI — but must not leak forward if it
+		// somehow exists.
+		expect(
+			renameCustomAttribute('manufacturer', ['subscription_plan', 'gold']),
+		).toEqual(['manufacturer']);
+	});
+
+	it('never carries a stale tail forward for a non-reserved-to-non-reserved rename', () => {
+		expect(renameCustomAttribute('user_tier', ['subscription_plan'])).toEqual([
+			'user_tier',
+		]);
 	});
 });
