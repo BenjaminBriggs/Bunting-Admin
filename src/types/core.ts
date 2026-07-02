@@ -66,12 +66,13 @@ export type FlagValue = boolean | string | number | object;
 export type Environment = 'development' | 'beta' | 'production';
 
 export type Platform =
-	| 'iOS'
-	| 'iPadOS'
-	| 'macOS'
-	| 'watchOS'
-	| 'tvOS'
-	| 'visionOS';
+	| 'ios'
+	| 'android'
+	| 'macos'
+	| 'watchos'
+	| 'tvos'
+	| 'visionos'
+	| 'web';
 
 // JSON Spec compliant condition system — operators must exactly match SDK ConditionOperator raw values
 export type ConditionType =
@@ -79,6 +80,7 @@ export type ConditionType =
 	| 'os_version'
 	| 'build_number'
 	| 'platform'
+	| 'device_class'
 	| 'device_model'
 	| 'region'
 	| 'language'
@@ -137,21 +139,60 @@ export const CONDITION_OPERATORS: Record<ConditionType, ConditionOperator[]> = {
 		'between',
 	],
 	platform: ['in', 'not_in'],
+	device_class: ['in', 'not_in'],
 	device_model: ['in', 'not_in'],
 	region: ['in', 'not_in'],
 	language: ['in', 'not_in'],
 	custom_attribute: ['custom'],
 };
 
-// Predefined options for list-based conditions
+// Predefined options for list-based conditions. Values are the lowercase, exact-match
+// wire values the SDKs compare against; labels are display-only.
 export const PLATFORM_OPTIONS = [
-	{ value: 'iOS', label: 'iOS' },
-	{ value: 'iPadOS', label: 'iPadOS' },
-	{ value: 'macOS', label: 'macOS' },
-	{ value: 'watchOS', label: 'watchOS' },
-	{ value: 'tvOS', label: 'tvOS' },
-	{ value: 'visionOS', label: 'visionOS' },
+	{ value: 'ios', label: 'iOS' },
+	{ value: 'android', label: 'Android' },
+	{ value: 'macos', label: 'macOS' },
+	{ value: 'watchos', label: 'watchOS' },
+	{ value: 'tvos', label: 'tvOS' },
+	{ value: 'visionos', label: 'visionOS' },
+	{ value: 'web', label: 'Web' },
 ];
+
+export const DEVICE_CLASS_OPTIONS = [
+	{ value: 'phone', label: 'Phone' },
+	{ value: 'tablet', label: 'Tablet' },
+	{ value: 'desktop', label: 'Desktop' },
+	{ value: 'tv', label: 'TV' },
+	{ value: 'watch', label: 'Watch' },
+	{ value: 'headset', label: 'Headset' },
+];
+
+// Platform group tokens are stored on rules and expanded to concrete platform
+// values by the config generator at publish time. Groups exist for `platform` only.
+export const PLATFORM_GROUP_OPTIONS = [
+	{ value: 'everything', label: 'Everything (all platforms)' },
+	{ value: 'all_apple', label: 'All Apple platforms' },
+];
+
+export const PLATFORM_GROUP_EXPANSIONS: Record<string, Platform[]> = {
+	everything: ['ios', 'android', 'macos', 'watchos', 'tvos', 'visionos', 'web'],
+	all_apple: ['ios', 'macos', 'watchos', 'tvos', 'visionos'],
+};
+
+// Expand any platform group tokens in `values` to concrete platform values,
+// passing concrete values through and de-duplicating while preserving order.
+export function expandPlatformGroups(values: string[]): string[] {
+	const out: string[] = [];
+	for (const value of values) {
+		const expansion = PLATFORM_GROUP_EXPANSIONS[value];
+		if (expansion) {
+			out.push(...expansion);
+		} else {
+			out.push(value);
+		}
+	}
+	return [...new Set(out)];
+}
 
 export const REGION_OPTIONS = [
 	{ value: 'US', label: 'United States' },

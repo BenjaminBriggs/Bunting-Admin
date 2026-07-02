@@ -1,4 +1,9 @@
 import type { Condition } from '@/types/core';
+import {
+	DEVICE_CLASS_OPTIONS,
+	PLATFORM_GROUP_OPTIONS,
+	PLATFORM_OPTIONS,
+} from '@/types/core';
 import type { ConditionTemplate } from '@/types/rules';
 
 /**
@@ -68,13 +73,15 @@ export const conditionTemplates: ConditionTemplate[] = [
 		description: 'Target users based on their platform/device',
 		operators: ['in', 'not_in'],
 		valueType: 'multi-select',
-		options: [
-			{ value: 'iOS', label: 'iOS' },
-			{ value: 'iPadOS', label: 'iPadOS' },
-			{ value: 'macOS', label: 'macOS' },
-			{ value: 'watchOS', label: 'watchOS' },
-			{ value: 'tvOS', label: 'tvOS' },
-		],
+		options: [...PLATFORM_GROUP_OPTIONS, ...PLATFORM_OPTIONS],
+	},
+	{
+		type: 'device_class',
+		label: 'Device Class',
+		description: 'Target users by device form factor (orthogonal to platform)',
+		operators: ['in', 'not_in'],
+		valueType: 'multi-select',
+		options: DEVICE_CLASS_OPTIONS,
 	},
 	{
 		type: 'device_model',
