@@ -53,6 +53,8 @@ export function useConditionContext(_contextType: ConditionContextType) {
 	const context = useConditions();
 
 	// Provide context-specific configuration
+	// NOTE: this component tree currently has no importers (unreachable) — if it's
+	// ever wired up, re-audit allowedTypes against conditionTemplates for drift.
 	const config: ConditionUIConfig = {
 		title: 'Add Targeting Condition',
 		allowedTypes: [
@@ -60,6 +62,7 @@ export function useConditionContext(_contextType: ConditionContextType) {
 			'os_version',
 			'build_number',
 			'platform',
+			'device_class',
 			'device_model',
 			'region',
 			'language',
