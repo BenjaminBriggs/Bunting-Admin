@@ -1,0 +1,25 @@
+{
+	"version": "2026-07-02.1",
+	"sets": {
+		"bucketing": {
+			"file": "bucketing.json",
+			"count": 124
+		},
+		"evaluation": {
+			"file": "evaluation.json",
+			"count": 31
+		},
+		"fingerprint": {
+			"file": "fingerprint.json",
+			"count": 3
+		},
+		"signature": {
+			"file": "signature.json",
+			"count": 5
+		},
+		"bootstrap": {
+			"file": "bootstrap.json",
+			"count": 3
+		}
+	}
+}

@@ -1,0 +1,750 @@
+{
+	"version": "2026-07-02.1",
+	"note": "Runners MUST execute every case whose swift_applicable is not false. Cases flagged swift_applicable:false use non-UUID identifiers only the string-hashing reference (admin) exercises.",
+	"cases": [
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000001",
+			"bucket": 65,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000002",
+			"bucket": 69,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000003",
+			"bucket": 8,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000004",
+			"bucket": 48,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000005",
+			"bucket": 1,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000006",
+			"bucket": 33,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000007",
+			"bucket": 78,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000008",
+			"bucket": 66,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000009",
+			"bucket": 48,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000010",
+			"bucket": 12,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000011",
+			"bucket": 34,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000012",
+			"bucket": 64,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000013",
+			"bucket": 65,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000014",
+			"bucket": 82,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000015",
+			"bucket": 62,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000016",
+			"bucket": 12,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000017",
+			"bucket": 18,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000018",
+			"bucket": 51,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000019",
+			"bucket": 22,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000020",
+			"bucket": 5,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000021",
+			"bucket": 59,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000022",
+			"bucket": 21,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000023",
+			"bucket": 62,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000024",
+			"bucket": 23,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000025",
+			"bucket": 10,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000026",
+			"bucket": 24,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000027",
+			"bucket": 31,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000028",
+			"bucket": 29,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000029",
+			"bucket": 71,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000030",
+			"bucket": 37,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000031",
+			"bucket": 5,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000032",
+			"bucket": 82,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000033",
+			"bucket": 7,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000034",
+			"bucket": 12,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000035",
+			"bucket": 50,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000036",
+			"bucket": 20,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000037",
+			"bucket": 77,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000038",
+			"bucket": 85,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000039",
+			"bucket": 65,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000040",
+			"bucket": 41,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000041",
+			"bucket": 62,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000042",
+			"bucket": 64,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000043",
+			"bucket": 99,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000044",
+			"bucket": 18,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000045",
+			"bucket": 14,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000046",
+			"bucket": 49,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000047",
+			"bucket": 98,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000048",
+			"bucket": 74,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000049",
+			"bucket": 41,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000050",
+			"bucket": 19,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000051",
+			"bucket": 29,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000052",
+			"bucket": 26,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000053",
+			"bucket": 15,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000054",
+			"bucket": 7,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000055",
+			"bucket": 63,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000056",
+			"bucket": 70,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000057",
+			"bucket": 44,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000058",
+			"bucket": 35,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000059",
+			"bucket": 46,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-alpha",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000060",
+			"bucket": 50,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000061",
+			"bucket": 59,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000062",
+			"bucket": 92,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000063",
+			"bucket": 85,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000064",
+			"bucket": 100,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000065",
+			"bucket": 96,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000066",
+			"bucket": 86,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000067",
+			"bucket": 94,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000068",
+			"bucket": 66,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000069",
+			"bucket": 29,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000070",
+			"bucket": 56,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000071",
+			"bucket": 67,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000072",
+			"bucket": 42,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000073",
+			"bucket": 83,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000074",
+			"bucket": 69,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000075",
+			"bucket": 30,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000076",
+			"bucket": 23,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000077",
+			"bucket": 79,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000078",
+			"bucket": 79,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000079",
+			"bucket": 94,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000080",
+			"bucket": 34,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000081",
+			"bucket": 3,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000082",
+			"bucket": 28,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000083",
+			"bucket": 27,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000084",
+			"bucket": 38,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000085",
+			"bucket": 40,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000086",
+			"bucket": 39,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000087",
+			"bucket": 27,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000088",
+			"bucket": 49,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000089",
+			"bucket": 89,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000090",
+			"bucket": 100,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000091",
+			"bucket": 59,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000092",
+			"bucket": 100,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000093",
+			"bucket": 23,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000094",
+			"bucket": 54,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000095",
+			"bucket": 53,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000096",
+			"bucket": 34,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000097",
+			"bucket": 8,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000098",
+			"bucket": 73,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000099",
+			"bucket": 87,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000100",
+			"bucket": 64,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000101",
+			"bucket": 81,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000102",
+			"bucket": 91,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000103",
+			"bucket": 94,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000104",
+			"bucket": 25,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000105",
+			"bucket": 89,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000106",
+			"bucket": 84,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000107",
+			"bucket": 3,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000108",
+			"bucket": 86,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000109",
+			"bucket": 96,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000110",
+			"bucket": 94,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000111",
+			"bucket": 94,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000112",
+			"bucket": 31,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000113",
+			"bucket": 63,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000114",
+			"bucket": 87,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000115",
+			"bucket": 62,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000116",
+			"bucket": 11,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000117",
+			"bucket": 55,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000118",
+			"bucket": 84,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000119",
+			"bucket": 71,
+			"swift_applicable": true
+		},
+		{
+			"salt": "salt-beta",
+			"identifier": "AAAAAAAA-0000-4000-8000-000000000120",
+			"bucket": 36,
+			"swift_applicable": true
+		},
+		{
+			"salt": "s",
+			"identifier": "",
+			"bucket": 21,
+			"swift_applicable": false
+		},
+		{
+			"salt": "s",
+			"identifier": "café-⚡-user",
+			"bucket": 68,
+			"swift_applicable": false
+		},
+		{
+			"salt": "test-salt",
+			"identifier": "user-123",
+			"bucket": 27,
+			"swift_applicable": false
+		},
+		{
+			"salt": "test-salt",
+			"identifier": "user-456",
+			"bucket": 35,
+			"swift_applicable": false
+		}
+	]
+}

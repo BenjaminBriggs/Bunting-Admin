@@ -1,0 +1,51 @@
+{
+	"version": "2026-07-02.1",
+	"cases": [
+		{
+			"name": "valid",
+			"valid": true,
+			"document": {
+				"app_identifier": "conformance-app",
+				"endpoint_url": "https://cdn.example.com/conformance/config.json",
+				"public_keys": [
+					{
+						"kid": "conformance-key",
+						"pem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlH4+C5w12CnRiZrjk5v2\n6HSW5qabcnhdjFz5dPAY58APgKehGUqm2CGPyswq2q77kUUfml1SI69JQPmL1NHw\nQYN4ae3oYf0R7jEQhv2P2VhUTayUM8zoUzjudfWi5Tsgws7evFIExdGys+sKhsWZ\ndPiwjA6hgdXSAMzZDrs2+jqsUVqb5dj+3RL6YSot1V1Okplq7maDjNFCWMg/ReVv\nTYXiRhXWf7K251+pJsQlPzDJTCCVQa9Rwk6lw5aUwcCCJeb6JDi5t+K2hIYie8/f\ni2BMsbz2BK+HkJ16U2kYfnD2YsvoXExomhLVMiSey62+O/2/uLDBOpKYxNWPIA6A\nkwIDAQAB\n-----END PUBLIC KEY-----\n"
+					}
+				],
+				"fetch_policy": {
+					"min_interval_seconds": 21600,
+					"hard_ttl_days": 7
+				}
+			},
+			"reason": ""
+		},
+		{
+			"name": "missing_endpoint",
+			"valid": false,
+			"document": {
+				"app_identifier": "x",
+				"public_keys": [],
+				"fetch_policy": {
+					"min_interval_seconds": 21600,
+					"hard_ttl_days": 7
+				}
+			},
+			"reason": "endpoint_url missing"
+		},
+		{
+			"name": "endpoint_not_config_json",
+			"valid": false,
+			"document": {
+				"app_identifier": "x",
+				"endpoint_url": "https://cdn.example.com/manifest.txt",
+				"public_keys": [],
+				"fetch_policy": {
+					"min_interval_seconds": 21600,
+					"hard_ttl_days": 7
+				}
+			},
+			"reason": "endpoint_url must end with config.json"
+		}
+	]
+}

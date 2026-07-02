@@ -8,3 +8,10 @@ playwright-report/
 test-results/
 pnpm-lock.yaml
 next-env.d.ts
+
+# Conformance vector bundle: written by scripts/generate-vectors.ts with plain
+# JSON.stringify(value, null, '\t'), which the CI diff gate depends on being
+# byte-stable across regeneration. Prettier's JSON printer collapses short
+# arrays onto one line, which JSON.stringify does not — running Prettier on
+# these would fight the generator on every run.
+conformance/*.json

@@ -1,0 +1,863 @@
+{
+	"version": "2026-07-02.1",
+	"artifact": {
+		"schema_version": 1,
+		"config_version": "2026-07-02.1",
+		"published_at": "2026-07-02T00:00:00.000Z",
+		"app_identifier": "conformance-app",
+		"flags": {
+			"cond/app_version_equals": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "app_version",
+									"operator": "equals",
+									"values": [
+										"2.5.0"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/app_version_not_equals": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "app_version",
+									"operator": "does_not_equals",
+									"values": [
+										"9.9.9"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/app_version_between": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "app_version",
+									"operator": "between",
+									"values": [
+										"2.0.0",
+										"3.0.0"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/os_version_greater_than": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "os_version",
+									"operator": "greater_than",
+									"values": [
+										"17.0"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/os_version_greater_than_or_equal": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "os_version",
+									"operator": "greater_than_or_equal",
+									"values": [
+										"18.0"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/build_number_less_than": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "build_number",
+									"operator": "less_than",
+									"values": [
+										"150"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/build_number_less_than_or_equal": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "build_number",
+									"operator": "less_than_or_equal",
+									"values": [
+										"100"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/language_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "language",
+									"operator": "in",
+									"values": [
+										"en",
+										"fr"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/language_not_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "language",
+									"operator": "not_in",
+									"values": [
+										"de"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/platform_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "platform",
+									"operator": "in",
+									"values": [
+										"ios",
+										"android"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/platform_not_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "platform",
+									"operator": "not_in",
+									"values": [
+										"android"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/device_class_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "device_class",
+									"operator": "in",
+									"values": [
+										"phone",
+										"tablet"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/device_class_not_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "device_class",
+									"operator": "not_in",
+									"values": [
+										"desktop"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/device_model_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "device_model",
+									"operator": "in",
+									"values": [
+										"iPhone16,2"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/region_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US",
+										"CA"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/region_not_in": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "not_in",
+									"values": [
+										"CN"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/manufacturer_custom": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "custom_attribute",
+									"operator": "custom",
+									"values": [
+										"manufacturer",
+										"apple"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"cond/non_reserved_custom": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": true,
+							"conditions": [
+								{
+									"type": "custom_attribute",
+									"operator": "custom",
+									"values": [
+										"loyalty_tier",
+										"gold"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"targeting/ordering": {
+				"type": "string",
+				"development": {
+					"default": "none"
+				},
+				"beta": {
+					"default": "none"
+				},
+				"production": {
+					"default": "none",
+					"variants": [
+						{
+							"type": "conditional",
+							"order": 2,
+							"value": "region-match",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						},
+						{
+							"type": "conditional",
+							"order": 1,
+							"value": "platform-match",
+							"conditions": [
+								{
+									"type": "platform",
+									"operator": "in",
+									"values": [
+										"android"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"test/checkout_experiment": {
+				"type": "string",
+				"development": {
+					"default": "no-test-default"
+				},
+				"beta": {
+					"default": "no-test-default"
+				},
+				"production": {
+					"default": "no-test-default",
+					"variants": [
+						{
+							"type": "test",
+							"order": 1,
+							"test": "checkout_experiment",
+							"values": {
+								"control": "control-value",
+								"treatment": "treatment-value"
+							}
+						}
+					]
+				}
+			},
+			"rollout/enrolled": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "rollout",
+							"order": 1,
+							"rollout": "always_on_rollout",
+							"value": true
+						}
+					]
+				}
+			},
+			"rollout/excluded": {
+				"type": "bool",
+				"development": {
+					"default": false
+				},
+				"beta": {
+					"default": false
+				},
+				"production": {
+					"default": false,
+					"variants": [
+						{
+							"type": "rollout",
+							"order": 1,
+							"rollout": "always_off_rollout",
+							"value": true
+						}
+					]
+				}
+			},
+			"types/whole_double": {
+				"type": "double",
+				"development": {
+					"default": 2
+				},
+				"beta": {
+					"default": 2
+				},
+				"production": {
+					"default": 2,
+					"variants": []
+				}
+			},
+			"types/fractional_date": {
+				"type": "date",
+				"development": {
+					"default": "2026-07-02T00:00:00.123Z"
+				},
+				"beta": {
+					"default": "2026-07-02T00:00:00.123Z"
+				},
+				"production": {
+					"default": "2026-07-02T00:00:00.123Z",
+					"variants": []
+				}
+			},
+			"types/json_flag": {
+				"type": "json",
+				"development": {
+					"default": "{\"sections\":[\"home\",\"profile\"]}"
+				},
+				"beta": {
+					"default": "{\"sections\":[\"home\",\"profile\"]}"
+				},
+				"production": {
+					"default": "{\"sections\":[\"home\",\"profile\"]}",
+					"variants": []
+				}
+			}
+		},
+		"tests": {
+			"checkout_experiment": {
+				"name": "checkout_experiment",
+				"type": "test",
+				"salt": "checkout-salt",
+				"conditions": [],
+				"groups": [
+					{
+						"name": "control",
+						"percentage": 50
+					},
+					{
+						"name": "treatment",
+						"percentage": 50
+					}
+				]
+			}
+		},
+		"rollouts": {
+			"always_on_rollout": {
+				"name": "always_on_rollout",
+				"type": "rollout",
+				"salt": "rollout-salt",
+				"conditions": [],
+				"percentage": 100
+			},
+			"always_off_rollout": {
+				"name": "always_off_rollout",
+				"type": "rollout",
+				"salt": "rollout-salt",
+				"conditions": [],
+				"percentage": 0
+			}
+		}
+	},
+	"cases": [
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"environment": "production",
+			"code": "2026-07-02.1.1BFFBFA43F"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"environment": "production",
+			"code": "2026-07-02.1.1BE7BFA4CC"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"environment": "development",
+			"code": "2026-07-02.1.1070"
+		}
+	],
+	"decode_cases": [
+		{
+			"code": "2026-07-02.1.1BFFBFA43F",
+			"environment": "production",
+			"expected_flags": {
+				"cond/app_version_between": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/app_version_equals": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/app_version_not_equals": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/build_number_less_than": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/build_number_less_than_or_equal": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/device_class_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/device_class_not_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/device_model_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/language_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/language_not_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/manufacturer_custom": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/non_reserved_custom": {
+					"value": false,
+					"reason": "production default"
+				},
+				"cond/os_version_greater_than": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/os_version_greater_than_or_equal": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/platform_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/platform_not_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/region_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"cond/region_not_in": {
+					"value": true,
+					"reason": "conditional variant (order 1)"
+				},
+				"rollout/enrolled": {
+					"value": true,
+					"reason": "rollout \"always_on_rollout\""
+				},
+				"rollout/excluded": {
+					"value": false,
+					"reason": "production default"
+				},
+				"targeting/ordering": {
+					"value": "region-match",
+					"reason": "conditional variant (order 2)"
+				},
+				"test/checkout_experiment": {
+					"value": "control-value",
+					"reason": "test \"checkout_experiment\" group \"control\""
+				},
+				"types/fractional_date": {
+					"value": "2026-07-02T00:00:00.123Z",
+					"reason": "production default"
+				},
+				"types/json_flag": {
+					"value": "{\"sections\":[\"home\",\"profile\"]}",
+					"reason": "production default"
+				},
+				"types/whole_double": {
+					"value": 2,
+					"reason": "production default"
+				}
+			}
+		}
+	]
+}
