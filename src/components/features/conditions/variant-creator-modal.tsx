@@ -172,7 +172,10 @@ export function VariantCreatorModal({
 				if (condition.type === 'app_version') {
 					return `v${condition.values.join('/')}`;
 				}
-				if (condition.type === 'platform') {
+				if (
+					condition.type === 'platform' ||
+					condition.type === 'device_class'
+				) {
 					return condition.values.join('/');
 				}
 				return `${condition.type}:${condition.values.join('/')}`;

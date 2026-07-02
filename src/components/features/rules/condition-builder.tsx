@@ -220,7 +220,7 @@ export function ConditionBuilder({
 						placeholder="e.g., subscription_plan, user_tier"
 						size="small"
 						fullWidth
-						helperText="The attribute name your app's custom attribute resolver will receive"
+						helperText="Reserved: manufacturer (values: apple, samsung, google). Other names are resolved by your app's custom attribute resolver."
 					/>
 				)}
 
