@@ -16,7 +16,7 @@ Authentication and storage are configured entirely through environment variables
 
 1. **Configure authentication** via env vars. `AUTH_MODE` selects `oidc` (bring your own OpenID Connect IdP — the default) or `proxy` (a trusted reverse-proxy authenticates users). In `oidc` mode at least one provider must be set or the app refuses to boot.
 2. **Configure object storage** (`S3_BUCKET`, `S3_REGION`, `CDN_BASE_URL`, and optionally `S3_ENDPOINT`/keys) and a signing-key protection scheme (`SIGNING_KEY_KMS_KEY_ID` or `SIGNING_KEY_SECRET`).
-3. **Open the deployed URL and sign in.** The first user to sign in is granted the `ADMIN` role automatically.
+3. **Open the deployed URL and sign in.** On a fresh install, the first user to authenticate is granted the `ADMIN` role automatically — see [security.md](security.md) §RBAC and first-admin for the exact rule and how it differs between `oidc` and `proxy` mode.
 4. **Create your first app** at `/setup/app` (the only setup step in the UI).
 
 ## OAuth Provider Guides
@@ -47,7 +47,7 @@ Authentication and storage are configured entirely through environment variables
 
 ## Access Control
 
-- The first user to sign in is granted the **ADMIN** role.
+- On a fresh install (empty access list, no admin yet), the first user to authenticate is granted the **ADMIN** role. Once any access list entry exists, later sign-ins — including a first `oidc` sign-in on an instance a `proxy` deployment already bootstrapped — are checked against it instead. See [security.md](security.md) §RBAC and first-admin.
 - Additional users start with the **DEVELOPER** role (unless their email or domain is pre-listed in the access list).
 - Admins manage access and roles from the dashboard under **Settings** (the access controls are visible to ADMIN users only).
 

@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/authz';
 import { type ConfigArtifact, getConfigChanges } from '@/lib/config-comparison';
-import { generateConfigFromDb } from '@/lib/config-generator';
+import { AppNotFoundError, generateConfigFromDb } from '@/lib/config-generator';
 import { validateConfig } from '@/lib/config-validation';
 import { prisma } from '@/lib/db';
 import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
@@ -267,6 +267,12 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// A missing app is an expected condition (stale client selection, deleted
+		// app), not a server fault — same mapping as /api/config/validate.
+		if (error instanceof AppNotFoundError) {
+			return NextResponse.json({ error: 'App not found' }, { status: 404 });
+		}
+
 		logger.error({ err: error }, 'Error publishing config');
 		return NextResponse.json(
 			{ error: 'Failed to publish configuration' },
@@ -281,7 +287,7 @@ async function getPublishedConfigFromS3(
 	const bucketName = getConfigBucket();
 
 	try {
-		const configKey = `${appIdentifier}/config.json`;
+		const configKey = latestConfigKey(appIdentifier);
 		const command = new GetObjectCommand({
 			Bucket: bucketName,
 			Key: configKey,

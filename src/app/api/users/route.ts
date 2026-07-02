@@ -61,7 +61,10 @@ export async function PATCH(request: NextRequest) {
 			where: { id: userId },
 			select: { email: true },
 		});
-		if (target?.email.toLowerCase() === authz.email && role === 'DEVELOPER') {
+		if (!target) {
+			return NextResponse.json({ error: 'User not found' }, { status: 404 });
+		}
+		if (target.email.toLowerCase() === authz.email && role === 'DEVELOPER') {
 			return NextResponse.json(
 				{ error: 'Cannot change your own role to Developer' },
 				{ status: 400 },

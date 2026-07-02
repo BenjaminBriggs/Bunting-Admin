@@ -88,6 +88,8 @@ jest.mock('@/lib/db', () => ({
 import { NextRequest } from 'next/server';
 // eslint-disable-next-line import/first -- jest.mock must register before import
 import { POST } from '@/app/api/config/publish/route';
+// eslint-disable-next-line import/first -- jest.mock must register before import
+import { AppNotFoundError } from '@/lib/config-generator';
 
 function req(body: unknown): NextRequest {
 	return new NextRequest('http://local/api/config/publish', {
@@ -179,5 +181,16 @@ describe('POST /api/config/publish — validation gate', () => {
 		expect(res.status).toBe(200);
 		expect(mockEnsureSigningKey).toHaveBeenCalled();
 		expect(mockS3Send).toHaveBeenCalled();
+	});
+
+	// Parity with /api/config/validate, which already maps this to 404.
+	it('maps AppNotFoundError to 404, not 500', async () => {
+		mockGenerateConfigFromDb.mockRejectedValue(
+			new AppNotFoundError('missing-app'),
+		);
+
+		const res = await POST(req({ appId: 'missing-app', changelog: 'x' }));
+
+		expect(res.status).toBe(404);
 	});
 });

@@ -86,10 +86,26 @@ export async function getUserRoleFromAccessList(
 	return 'DEVELOPER';
 }
 
+/**
+ * True only on a genuinely fresh install: no `User` row AND no `AccessList`
+ * entry exists yet.
+ *
+ * Checking `User.count()` alone is not enough — `bootstrapFirstProxyAdmin`
+ * (proxy mode) populates the `AccessList` without ever writing a `User` row,
+ * which is a normal, supported state. If this only checked the `User` table,
+ * a proxy-bootstrapped install later switched to `AUTH_MODE=oidc` would let
+ * the first arbitrary OIDC identity bypass the access list (`signIn` in
+ * auth.ts) and get minted ADMIN, even though an admin was already
+ * provisioned. Requiring both tables empty keeps the two bootstrap paths
+ * mutually exclusive: whichever mode bootstraps first "claims" the instance.
+ */
 export async function isFirstUser(): Promise<boolean> {
 	const db = await getDb();
-	const userCount = await db.user.count();
-	return userCount === 0;
+	const [userCount, accessListCount] = await Promise.all([
+		db.user.count(),
+		db.accessList.count(),
+	]);
+	return userCount === 0 && accessListCount === 0;
 }
 
 export async function createOrUpdateUser(userData: {
@@ -171,12 +187,32 @@ export async function createOrUpdateUser(userData: {
  * serialized by a Postgres advisory lock (same technique as the publish
  * route's version reservation), so two concurrent first requests can't both
  * observe "empty" and both insert.
+ *
+ * Called via `actorFromHeaders` on every proxy request that doesn't already
+ * resolve ADMIN from the access list — i.e. every proxy-mode mutation on a
+ * long-lived instance, forever, not just the very first one. Taking the
+ * advisory lock is only free while it's actually contested; on a seeded
+ * instance it would otherwise serialize all of those requests on one lock
+ * for no reason. So an unlocked pre-check runs first: once either table is
+ * non-empty, this returns without ever opening a transaction. The locked
+ * re-check inside the transaction remains the source of truth for the
+ * actual bootstrap decision — the pre-check can only produce false
+ * negatives-into-the-lock (a benign extra lock acquisition on a concurrent
+ * first request), never a false "empty" that skips the lock.
  */
 export async function bootstrapFirstProxyAdmin(
 	email: string,
 ): Promise<'ADMIN' | null> {
 	const db = await getDb();
 	const normalizedEmail = email.toLowerCase();
+
+	const [precheckAccessListCount, precheckAdminUserCount] = await Promise.all([
+		db.accessList.count(),
+		db.user.count({ where: { role: 'ADMIN' } }),
+	]);
+	if (precheckAccessListCount > 0 || precheckAdminUserCount > 0) {
+		return null;
+	}
 
 	return db.$transaction(async (tx) => {
 		await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('bunting_proxy_first_admin_bootstrap'))`;

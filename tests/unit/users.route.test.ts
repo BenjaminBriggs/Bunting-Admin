@@ -184,6 +184,20 @@ describe('PATCH /api/users — proxy mode', () => {
 		expect(mockUpdate).not.toHaveBeenCalled();
 		expect(mockLogActivity).not.toHaveBeenCalled();
 	});
+
+	it('returns 404 for an unknown userId instead of falling through to a 500', async () => {
+		mockIdentityFromHeaders.mockResolvedValue({ email: 'admin@x.com' });
+		mockRoleFromAccessList.mockResolvedValue('ADMIN');
+		mockFindUnique.mockResolvedValue(null);
+
+		const res = await PATCH(
+			patchReq({ userId: 'does-not-exist', role: 'DEVELOPER' }),
+		);
+
+		expect(res.status).toBe(404);
+		expect(mockUpdate).not.toHaveBeenCalled();
+		expect(mockLogActivity).not.toHaveBeenCalled();
+	});
 });
 
 describe('PATCH /api/users — session mode (oidc)', () => {
