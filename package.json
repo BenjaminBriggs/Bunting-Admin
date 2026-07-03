@@ -62,7 +62,7 @@
 		"@prisma/client": "^7.8.0",
 		"@types/node": "^26.0.0",
 		"jose": "^6.1.0",
-		"next": "^16.2.9",
+		"next": "^16.2.10",
 		"next-auth": "^5.0.0-beta.29",
 		"node-jose": "^2.2.0",
 		"pg": "^8.22.0",
