@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/BenjaminBriggs/Bunting-Admin/main/public/images/Logotype.png" alt="Bunting" width="400" />
+  <img src="https://raw.githubusercontent.com/BenjaminBriggs/Bunting-Admin/main/public/images/Logotype-Admin.png" alt="Bunting Admin" width="400" />
 </div>
 
 # Bunting Admin
@@ -7,6 +7,9 @@
 [![Tests](https://github.com/BenjaminBriggs/Bunting-Admin/workflows/Tests/badge.svg)](https://github.com/BenjaminBriggs/Bunting-Admin/actions)
 [![Build](https://github.com/BenjaminBriggs/Bunting-Admin/workflows/Build/badge.svg)](https://github.com/BenjaminBriggs/Bunting-Admin/actions)
 [![License](https://img.shields.io/github/license/BenjaminBriggs/Bunting-Admin)](https://github.com/BenjaminBriggs/Bunting-Admin/blob/main/LICENSE)
+
+> [!TIP]
+> Full documentation for the dashboard, SDK integration, and self-hosting lives at **[benjaminbriggs.github.io/Bunting-Documentation](https://benjaminbriggs.github.io/Bunting-Documentation/)**.
 
 > [!NOTE]
 > Bunting Admin is release-ready for v1, with known limitations: it assumes a single-instance deployment (in-memory rate limiting, boot-time auto-migration on startup); you must front S3 with a CDN yourself (a plain CDN works — the SDK fetches the `.sig` signature file alongside `config.json`; header injection is optional); and publish-route S3 integration tests run in the full-stack smoke suite rather than CI.
@@ -23,6 +26,7 @@ Bunting Admin is a self-hosted feature flag dashboard for Apple platform apps. I
 - **A/B tests** — multi-variant experiments with configurable traffic splits
 - **Gradual rollouts** — percentage-based rollouts with real-time slider controls
 - **Signed publishing** — detached JWS (RS256) over exact config bytes; `kid` header supports key rotation
+- **Config fingerprint decoding** — paste the compact fingerprint code a device reports and recover every flag's resolved value, plus why it resolved that way, without re-running evaluation
 - **SDK bootstrap** — downloadable `BuntingConfig.plist` with endpoint URL, public keys, and fetch policy
 - **Multi-app workspace** — manage multiple apps from a single instance
 - **Auth** — generic OIDC or named OAuth providers (Google, GitHub, Microsoft) + email magic links (Resend), or trusted reverse-proxy headers (`AUTH_MODE=proxy`); roles `ADMIN` / `DEVELOPER`; first sign-in becomes admin
