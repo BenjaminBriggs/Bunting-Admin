@@ -122,12 +122,6 @@ export default function SetupPage() {
 			await createApp({
 				name: setupData.appName,
 				identifier: setupData.appIdentifier,
-				publicKeys: [
-					{
-						kid: 'default',
-						pem: '-----BEGIN PUBLIC KEY-----\n[Your public key here]\n-----END PUBLIC KEY-----',
-					},
-				],
 				fetchPolicy: {
 					min_interval_seconds: setupData.fetchPolicy.minIntervalHours * 3600,
 					hard_ttl_days: setupData.fetchPolicy.hardTtlDays,
@@ -466,11 +460,13 @@ export default function SetupPage() {
 								<Typography
 									sx={{ font: "500 13px/1.55 'Nunito'", color: '#5E4A18' }}
 								>
-									A signing keypair is generated on create. You'll download{' '}
+									Two signing keys are generated on create: an active key that
+									signs your configs and a standby key for future rotation.
+									You'll download{' '}
 									<Box component="span" sx={{ fontFamily: monoFontFamily }}>
 										BuntingConfig.plist
 									</Box>{' '}
-									from the SDK Integration tab right after.
+									(which trusts both) from the SDK Integration tab right after.
 								</Typography>
 							</Box>
 						</Box>

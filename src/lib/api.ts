@@ -46,7 +46,6 @@ export interface App {
 	name: string;
 	identifier: string;
 	artifactUrl: string;
-	publicKeys: Array<{ kid: string; pem: string }>;
 	fetchPolicy: { min_interval_seconds: number; hard_ttl_days: number };
 	storageConfig: StorageConfig;
 	createdAt: string;
@@ -89,9 +88,10 @@ export async function createApp(data: CreateAppInput): Promise<App> {
 	return parseJson(response);
 }
 
+// Only name and fetch policy are editable; the identifier is immutable.
 export async function updateApp(
 	id: string,
-	data: Partial<Omit<App, 'id' | 'createdAt' | 'updatedAt'>>,
+	data: Partial<Pick<App, 'name' | 'fetchPolicy'>>,
 ): Promise<App> {
 	const response = await fetch(`/api/apps/${id}`, {
 		method: 'PUT',
@@ -104,13 +104,139 @@ export async function updateApp(
 	return parseJson(response);
 }
 
-export async function deleteApp(id: string): Promise<void> {
+// `confirmIdentifier` must equal the app's identifier. `deleteSigningKeys`
+// must be true when the app still has signing keys (they are destroyed too).
+export async function deleteApp(
+	id: string,
+	confirmIdentifier: string,
+	deleteSigningKeys: boolean,
+): Promise<void> {
 	const response = await fetch(`/api/apps/${id}`, {
 		method: 'DELETE',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ confirmIdentifier, deleteSigningKeys }),
 	});
 	if (!response.ok) {
 		throw new Error(await errorMessage(response, 'Failed to delete app'));
 	}
+}
+
+// Signing keys API
+export type SigningKeyStatus = 'ACTIVE' | 'STANDBY' | 'RETIRED';
+
+export interface SigningKeyInfo {
+	id: string;
+	kid: string;
+	publicKey: string;
+	algorithm: string;
+	status: SigningKeyStatus;
+	createdAt: string;
+}
+
+export async function fetchSigningKeys(
+	appId: string,
+): Promise<SigningKeyInfo[]> {
+	const response = await fetch(`/api/keys?appId=${appId}`);
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to fetch signing keys'),
+		);
+	}
+	const body = await parseJson<{ keys: SigningKeyInfo[] }>(response);
+	return body.keys;
+}
+
+export async function createStandbySigningKey(appId: string): Promise<void> {
+	const response = await fetch('/api/keys', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ appId }),
+	});
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to create signing key'),
+		);
+	}
+}
+
+export async function setSigningKeyStatus(
+	appId: string,
+	kid: string,
+	status: 'ACTIVE' | 'RETIRED',
+): Promise<void> {
+	const response = await fetch(`/api/keys/${kid}?appId=${appId}`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ status }),
+	});
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to update signing key'),
+		);
+	}
+}
+
+export async function deleteSigningKey(
+	appId: string,
+	kid: string,
+): Promise<void> {
+	const response = await fetch(`/api/keys/${kid}?appId=${appId}`, {
+		method: 'DELETE',
+	});
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to delete signing key'),
+		);
+	}
+}
+
+// Downloads the passphrase-encrypted key file.
+export async function exportSigningKey(
+	kid: string,
+	passphrase: string,
+): Promise<void> {
+	const response = await fetch('/api/keys/export', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ keyId: kid, passphrase }),
+	});
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to export signing key'),
+		);
+	}
+
+	const contentDisposition = response.headers.get('Content-Disposition');
+	const filename =
+		contentDisposition?.split('filename="')[1]?.replace('"', '') ??
+		`bunting-key-${kid}.json`;
+	const blob = await response.blob();
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	window.URL.revokeObjectURL(url);
+}
+
+export async function importSigningKey(
+	appId: string,
+	envelope: unknown,
+	passphrase: string,
+): Promise<{ kid: string }> {
+	const response = await fetch('/api/keys/import', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ appId, envelope, passphrase }),
+	});
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to import signing key'),
+		);
+	}
+	return parseJson(response);
 }
 
 // Flags API

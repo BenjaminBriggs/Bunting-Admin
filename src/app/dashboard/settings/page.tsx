@@ -5,11 +5,6 @@ import {
 	Box,
 	Button,
 	CircularProgress,
-	Dialog,
-	DialogActions,
-	DialogContent,
-	DialogContentText,
-	DialogTitle,
 	Stack,
 	Table,
 	TableBody,
@@ -23,13 +18,18 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { type ReactNode, useEffect, useState } from 'react';
+import { DeleteAppDialog } from '@/components/settings/DeleteAppDialog';
+import {
+	SigningKeysCard,
+	useSigningKeys,
+} from '@/components/settings/SigningKeys';
 import {
 	type App,
 	type DecodedFingerprintResponse,
 	decodeFingerprint,
-	fetchApps,
 	updateApp,
 } from '@/lib/api';
+import { useApp } from '@/lib/app-context';
 import {
 	codeSurface,
 	ink,
@@ -76,14 +76,20 @@ const sectionTitleSx = {
 export default function SettingsPage() {
 	const router = useRouter();
 	const { data: session } = useSession();
-	const [apps, setApps] = useState<App[]>([]);
-	const [loading, setLoading] = useState(true);
+	const isAdmin = session?.user.role === 'ADMIN';
+	// The app chosen in the dashboard's app switcher, shared with every page.
+	const {
+		apps,
+		selectedApp,
+		loading,
+		error: appsError,
+		refreshApps,
+	} = useApp();
 	const [error, setError] = useState<string | null>(null);
-	const [selectedApp, setSelectedApp] = useState<App | null>(null);
+	const signingKeys = useSigningKeys(selectedApp?.id);
 	const [tab, setTab] = useState<'settings' | 'sdk' | 'fingerprint'>(
 		'settings',
 	);
-	const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 	const [appToDelete, setAppToDelete] = useState<App | null>(null);
 	const [editMode, setEditMode] = useState(false);
 	const [saving, setSaving] = useState(false);
@@ -130,24 +136,6 @@ export default function SettingsPage() {
 			hour: '2-digit',
 			minute: '2-digit',
 		});
-
-	useEffect(() => {
-		const loadApps = async () => {
-			try {
-				setLoading(true);
-				const appsData = await fetchApps();
-				setApps(appsData);
-				if (appsData.length > 0) {
-					setSelectedApp((prev) => prev ?? appsData[0]);
-				}
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Failed to load apps');
-			} finally {
-				setLoading(false);
-			}
-		};
-		void loadApps();
-	}, []);
 
 	useEffect(() => {
 		const syncFormFromApp = () => {
@@ -197,17 +185,15 @@ export default function SettingsPage() {
 		try {
 			setSaving(true);
 			setError(null);
-			const updatedApp = await updateApp(selectedApp.id, {
+			await updateApp(selectedApp.id, {
 				name: formData.name,
 				fetchPolicy: {
 					min_interval_seconds: formData.minIntervalHours * 3600,
 					hard_ttl_days: formData.hardTtlDays,
 				},
 			});
-			setApps(
-				apps.map((app) => (app.id === selectedApp.id ? updatedApp : app)),
-			);
-			setSelectedApp(updatedApp);
+			// Re-sync the shared app list so the switcher picks up the new name.
+			await refreshApps();
 			setEditMode(false);
 		} catch (err) {
 			setError(
@@ -228,21 +214,10 @@ export default function SettingsPage() {
 		document.body.removeChild(a);
 	}
 
-	const handleDeleteApp = (app: App) => {
-		setAppToDelete(app);
-		setDeleteConfirmOpen(true);
-	};
-
-	const confirmDelete = () => {
-		if (appToDelete) {
-			try {
-				console.log('Delete app:', appToDelete.name);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Failed to delete app');
-			}
-		}
-		setDeleteConfirmOpen(false);
+	const handleAppDeleted = async () => {
 		setAppToDelete(null);
+		// Reconciles the selection onto another app (or none).
+		await refreshApps();
 	};
 
 	const copyArtifactUrl = async () => {
@@ -290,7 +265,7 @@ export default function SettingsPage() {
 		{
 			n: 2,
 			title: 'Drop in BuntingConfig.plist',
-			body: 'Add the downloaded file to your app target so the SDK can find its identifier and key.',
+			body: 'Add the downloaded file to your app target so the SDK can find its identifier and keys.',
 		},
 		{
 			n: 3,
@@ -328,9 +303,9 @@ export default function SettingsPage() {
 				</Typography>
 			</Box>
 
-			{error && (
+			{(error ?? appsError) && (
 				<Typography color="error" sx={{ mt: 2, fontWeight: 600 }}>
-					{error}
+					{error ?? appsError}
 				</Typography>
 			)}
 
@@ -393,7 +368,7 @@ export default function SettingsPage() {
 									}}
 								>
 									<Typography sx={sectionTitleSx}>Application</Typography>
-									{!editMode ? (
+									{!isAdmin ? null : !editMode ? (
 										<Box
 											component="button"
 											onClick={handleEditStart}
@@ -552,108 +527,17 @@ export default function SettingsPage() {
 							</Box>
 
 							{/* signing keys */}
-							<Box sx={cardSx}>
-								<Box
-									sx={{
-										display: 'flex',
-										justifyContent: 'space-between',
-										alignItems: 'center',
-										mb: 1.75,
-									}}
-								>
-									<Typography sx={sectionTitleSx}>Signing keys</Typography>
-								</Box>
-								<Stack spacing={1.25}>
-									{(selectedApp.publicKeys.length > 0
-										? selectedApp.publicKeys
-										: [{ kid: 'no key configured' }]
-									).map((k: { kid: string }, i: number) => (
-										<Box
-											key={k.kid || i}
-											sx={{
-												display: 'flex',
-												alignItems: 'center',
-												gap: 1.5,
-												border: `1px solid ${surface.border}`,
-												borderRadius: '12px',
-												p: '13px 15px',
-												bgcolor: surface.sidebar,
-											}}
-										>
-											<Box
-												sx={{
-													width: 34,
-													height: 34,
-													borderRadius: '9px',
-													bgcolor: '#E9F4E0',
-													display: 'flex',
-													alignItems: 'center',
-													justifyContent: 'center',
-												}}
-											>
-												<Ms
-													name="key"
-													sx={{ fontSize: 19, color: '#3F7A2D' }}
-												/>
-											</Box>
-											<Box sx={{ flex: 1, minWidth: 0 }}>
-												<Box
-													sx={{
-														fontFamily: monoFontFamily,
-														fontWeight: 600,
-														fontSize: 13,
-														color: ink.primary,
-														overflow: 'hidden',
-														textOverflow: 'ellipsis',
-													}}
-												>
-													{k.kid || 'signing key'}
-												</Box>
-												<Box
-													sx={{
-														font: "500 11px 'Nunito'",
-														color: ink.muted,
-														mt: '1px',
-													}}
-												>
-													Signs every published config
-												</Box>
-											</Box>
-											{selectedApp.publicKeys.length > 0 && (
-												<Box
-													sx={{
-														fontFamily: monoFontFamily,
-														fontWeight: 700,
-														fontSize: 9,
-														color: '#3F7A2D',
-														bgcolor: '#E9F4E0',
-														borderRadius: '6px',
-														px: 1,
-														py: 0.5,
-													}}
-												>
-													ACTIVE
-												</Box>
-											)}
-										</Box>
-									))}
-								</Stack>
-								<Typography
-									sx={{
-										font: "500 12px 'Nunito'",
-										color: ink.muted,
-										mt: 1.375,
-									}}
-								>
-									{selectedApp.publicKeys.length} key
-									{selectedApp.publicKeys.length === 1 ? '' : 's'} configured.
-									Rotating issues a new key and keeps the old one valid for
-									verification for 30 days.
-								</Typography>
-							</Box>
+							<SigningKeysCard
+								appId={selectedApp.id}
+								isAdmin={isAdmin}
+								keys={signingKeys.keys}
+								loading={signingKeys.loading}
+								error={signingKeys.error}
+								reload={signingKeys.reload}
+							/>
 
 							{/* user management admin link */}
-							{session?.user.role === 'ADMIN' && (
+							{isAdmin && (
 								<Box
 									component="a"
 									onClick={() => router.push('/dashboard/users')}
@@ -719,47 +603,55 @@ export default function SettingsPage() {
 								</Box>
 							)}
 
-							{/* danger zone */}
-							<Box
-								sx={{ ...cardSx, border: '1px solid #ECD4CD', p: '18px 22px' }}
-							>
+							{/* danger zone (DELETE /api/apps/[id] is admin only) */}
+							{isAdmin && (
 								<Box
 									sx={{
-										display: 'flex',
-										justifyContent: 'space-between',
-										alignItems: 'center',
-										gap: 2,
+										...cardSx,
+										border: '1px solid #ECD4CD',
+										p: '18px 22px',
 									}}
 								>
-									<Box>
-										<Box sx={{ font: "800 15px 'Baloo 2'", color: '#C8503C' }}>
-											Delete application
-										</Box>
-										<Box
-											sx={{
-												font: "600 12px 'Nunito'",
-												color: '#8B8472',
-												mt: '2px',
-											}}
-										>
-											Removes all flags, tests, rollouts and published configs.
-											Cannot be undone.
-										</Box>
-									</Box>
-									<Button
-										variant="outlined"
-										color="error"
-										onClick={() => handleDeleteApp(selectedApp)}
+									<Box
 										sx={{
-											borderColor: '#ECD4CD',
-											color: '#C8503C',
-											flexShrink: 0,
+											display: 'flex',
+											justifyContent: 'space-between',
+											alignItems: 'center',
+											gap: 2,
 										}}
 									>
-										Delete
-									</Button>
+										<Box>
+											<Box
+												sx={{ font: "800 15px 'Baloo 2'", color: '#C8503C' }}
+											>
+												Delete application
+											</Box>
+											<Box
+												sx={{
+													font: "600 12px 'Nunito'",
+													color: '#8B8472',
+													mt: '2px',
+												}}
+											>
+												Removes its flags, tests, rollouts, publish history and
+												signing keys from Bunting. Cannot be undone.
+											</Box>
+										</Box>
+										<Button
+											variant="outlined"
+											color="error"
+											onClick={() => setAppToDelete(selectedApp)}
+											sx={{
+												borderColor: '#ECD4CD',
+												color: '#C8503C',
+												flexShrink: 0,
+											}}
+										>
+											Delete
+										</Button>
+									</Box>
 								</Box>
-							</Box>
+							)}
 						</Stack>
 					)}
 
@@ -799,8 +691,8 @@ export default function SettingsPage() {
 											mt: '2px',
 										}}
 									>
-										Identifier, CDN base URL &amp; public key — drop it into
-										your app bundle.
+										Identifier, CDN base URL &amp; every trusted public key. Add
+										it to your app bundle.
 									</Box>
 								</Box>
 								<Button
@@ -1074,33 +966,16 @@ let metering = bunting.bool("metering_enabled", default: false)`}
 				</>
 			)}
 
-			{/* Delete confirmation */}
-			<Dialog
-				open={deleteConfirmOpen}
-				onClose={() => setDeleteConfirmOpen(false)}
-			>
-				<DialogTitle sx={{ fontFamily: 'var(--font-baloo)', fontWeight: 800 }}>
-					Delete application
-				</DialogTitle>
-				<DialogContent>
-					<DialogContentText>
-						Are you sure you want to delete "{appToDelete?.name}"? This will
-						permanently remove the application and all its feature flags. This
-						action cannot be undone.
-					</DialogContentText>
-				</DialogContent>
-				<DialogActions>
-					<Button
-						variant="outlined"
-						onClick={() => setDeleteConfirmOpen(false)}
-					>
-						Cancel
-					</Button>
-					<Button onClick={confirmDelete} color="error" variant="contained">
-						Delete
-					</Button>
-				</DialogActions>
-			</Dialog>
+			<DeleteAppDialog
+				app={appToDelete}
+				keys={
+					appToDelete && appToDelete.id === selectedApp?.id
+						? signingKeys.keys
+						: []
+				}
+				onClose={() => setAppToDelete(null)}
+				onDeleted={handleAppDeleted}
+			/>
 		</Box>
 	);
 }
