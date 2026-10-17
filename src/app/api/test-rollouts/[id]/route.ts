@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { REACTIVATE_FINISHED_MESSAGE } from '@/lib/test-rollout-lifecycle';
 import {
 	updateTestRolloutSchema,
 	zodErrorResponse,
@@ -63,6 +64,22 @@ export async function PUT(
 			variants,
 			rolloutValues,
 		} = parsed;
+
+		const existing = await prisma.testRollout.findUnique({ where: { id } });
+		if (!existing) {
+			return NextResponse.json(
+				{ error: 'Test/Rollout not found' },
+				{ status: 404 },
+			);
+		}
+		// `archived` defaults to false here, so any update without it would
+		// reactivate a finished record.
+		if (existing.outcome && archived !== true) {
+			return NextResponse.json(
+				{ error: REACTIVATE_FINISHED_MESSAGE },
+				{ status: 409 },
+			);
+		}
 
 		const testRollout = await prisma.testRollout.update({
 			where: {

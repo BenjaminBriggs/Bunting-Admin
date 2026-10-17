@@ -1,3 +1,4 @@
+import type { Prisma } from '@/generated/prisma/client';
 import { normalizeFlagType } from '@/lib/config-validation';
 import { prisma } from '@/lib/db';
 import { validateIdentifierKey } from '@/lib/validation';
@@ -99,11 +100,15 @@ function highestOrder(variants: FlagVariant[]): number {
 	return variants.length > 0 ? Math.max(...variants.map((v) => v.order)) : 0;
 }
 
+// `db` lets a caller generate from inside an interactive transaction (completing
+// a test/rollout reads the artifact it is about to change); defaults to the
+// shared client.
 export async function generateConfigFromDb(
 	appId: string,
+	db: Pick<Prisma.TransactionClient, 'app'> = prisma,
 ): Promise<ConfigArtifact> {
 	// Get app info with all related data
-	const app = await prisma.app.findUnique({
+	const app = await db.app.findUnique({
 		where: { id: appId },
 		include: {
 			// Archived flags stay in the artifact marked `deprecated` (see below) so

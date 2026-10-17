@@ -55,6 +55,7 @@ interface TestFormProps {
 	saveError?: string | null;
 	onSubmit: (payload: TestFormSubmit) => void;
 	onComplete?: () => void;
+	onAbandon?: () => void;
 	onDelete?: () => void;
 	cancelHref?: string;
 }
@@ -139,6 +140,7 @@ export default function TestForm({
 	saveError,
 	onSubmit,
 	onComplete,
+	onAbandon,
 	onDelete,
 	cancelHref = '/dashboard/tests',
 }: TestFormProps) {
@@ -151,11 +153,12 @@ export default function TestForm({
 	const [description, setDescription] = useState(initial.description);
 	const [group, setGroup] = useState(initial.group);
 
-	const keyText = slug(name);
-	const keyChanged = isEdit && keyText !== initial.key && keyText.length > 0;
+	// Test keys are immutable after creation (the update APIs have no `key` field):
+	// flag variants reference the test by key. In edit mode the key is fixed; only
+	// create derives it live from the name.
+	const keyText = isEdit ? initial.key : slug(name);
 	const keyValidation = validateKey(keyText);
-	const keyAvailable =
-		!keyValidation.error && (!isEdit ? keyText.length > 0 : keyChanged);
+	const keyAvailable = !keyValidation.error && !isEdit && keyText.length > 0;
 
 	const effGroups = adjustSplit ? groups : evenSplit(groups);
 	const total = effGroups.reduce((n, g) => n + g.weight, 0);
@@ -290,9 +293,6 @@ export default function TestForm({
 				to: name,
 			});
 		}
-		if (keyChanged) {
-			out.push({ field: 'KEY', from: initial.key, to: keyText });
-		}
 		const origEff = initial.adjustSplit
 			? initial.groups
 			: evenSplit(initial.groups);
@@ -332,8 +332,6 @@ export default function TestForm({
 	}, [
 		isEdit,
 		name,
-		keyChanged,
-		keyText,
 		effGroups,
 		audienceOn,
 		conditions,
@@ -460,19 +458,32 @@ export default function TestForm({
 				</Box>
 				{isEdit && (
 					<Stack direction="row" spacing={1}>
-						<Button
-							variant="outlined"
-							size="small"
-							startIcon={
-								<Ms
-									name="check_circle"
-									sx={{ fontSize: 17, color: '#3F7A2D' }}
-								/>
-							}
-							onClick={onComplete}
-						>
-							Complete
-						</Button>
+						{/* Finished tests cannot be completed or abandoned again. */}
+						{!initial.archived && (
+							<>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={
+										<Ms
+											name="check_circle"
+											sx={{ fontSize: 17, color: '#3F7A2D' }}
+										/>
+									}
+									onClick={onComplete}
+								>
+									Complete…
+								</Button>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={<Ms name="stop_circle" sx={{ fontSize: 17 }} />}
+									onClick={onAbandon}
+								>
+									Abandon…
+								</Button>
+							</>
+						)}
 						<Button
 							variant="outlined"
 							size="small"
@@ -582,55 +593,6 @@ export default function TestForm({
 							)
 						)}
 					</Box>
-					{keyChanged && (
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'flex-start',
-								gap: 1.25,
-								bgcolor: '#FCEFD2',
-								border: '1px solid #F3E2BD',
-								borderRadius: '11px',
-								p: '11px 13px',
-								mt: 1.5,
-							}}
-						>
-							<Ms name="warning" sx={{ fontSize: 19, color: '#9A6F1C' }} />
-							<Typography
-								sx={{
-									fontWeight: 600,
-									fontSize: 12,
-									color: '#5E4A18',
-									lineHeight: 1.5,
-								}}
-							>
-								Renaming changes the key from{' '}
-								<Box
-									component="span"
-									sx={{
-										fontFamily: monoFontFamily,
-										fontSize: 11,
-										color: '#9A6F1C',
-									}}
-								>
-									{initial.key}
-								</Box>{' '}
-								to{' '}
-								<Box
-									component="span"
-									sx={{
-										fontFamily: monoFontFamily,
-										fontSize: 11,
-										color: '#9A6F1C',
-									}}
-								>
-									{keyText}
-								</Box>
-								. Analytics already collected stay under the old key.
-							</Typography>
-						</Box>
-					)}
-
 					{/* groups */}
 					<Box
 						sx={{

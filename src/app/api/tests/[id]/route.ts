@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { REACTIVATE_FINISHED_MESSAGE } from '@/lib/test-rollout-lifecycle';
 import { updateTestSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/tests/[id]
@@ -45,6 +46,17 @@ export async function PUT(
 		const updateData = updateTestSchema.parse(
 			await request.json(),
 		) as Prisma.TestRolloutUncheckedUpdateInput;
+
+		const existing = await prisma.testRollout.findUnique({
+			where: { id, type: 'TEST' },
+			select: { outcome: true },
+		});
+		if (existing?.outcome && updateData.archived === false) {
+			return NextResponse.json(
+				{ error: REACTIVATE_FINISHED_MESSAGE },
+				{ status: 409 },
+			);
+		}
 
 		const test = await prisma.testRollout.update({
 			where: {

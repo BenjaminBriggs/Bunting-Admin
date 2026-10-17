@@ -231,8 +231,10 @@ export const updateFlagSchema = z.object({
 	archived: z.boolean().optional(),
 });
 
+// Test and rollout keys are immutable after creation (like flag keys): the
+// published artifact references them by key from flag variants, so none of the
+// update schemas accept `key`. Zod strips it from the body.
 export const updateTestSchema = z.object({
-	key: z.string().min(1).optional(),
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
@@ -242,7 +244,6 @@ export const updateTestSchema = z.object({
 });
 
 export const updateRolloutSchema = z.object({
-	key: z.string().min(1).optional(),
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
@@ -264,6 +265,15 @@ export const updateTestRolloutSchema = z.object({
 	rolloutValues: z.any().optional(),
 	percentage: z.number().int().min(0).max(100).optional(),
 	archived: z.boolean().optional(),
+});
+
+// --- Lifecycle schemas -------------------------------------------------------
+
+// POST /api/test-rollouts/[id]/complete. `winner` names the winning group and is
+// required for tests (enforced in test-rollout-lifecycle.ts, which knows the
+// record's type); rollouts send an empty body.
+export const completeTestRolloutSchema = z.object({
+	winner: z.string().min(1).optional(),
 });
 
 // --- Helper ------------------------------------------------------------------

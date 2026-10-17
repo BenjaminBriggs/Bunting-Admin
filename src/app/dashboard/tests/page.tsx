@@ -14,12 +14,17 @@ import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { CardChips } from '@/components/features/test-rollouts/CardChips';
 import {
+	type FinishAction,
+	FinishDialog,
+} from '@/components/features/test-rollouts/FinishDialog';
+import {
 	groupByGroup,
 	GroupHeader,
 	hasNamedGroups,
 } from '@/components/ui/group-section';
 import {
-	archiveTestRollout,
+	abandonTestRollout,
+	completeTestRollout,
 	deleteTest,
 	fetchFlags,
 	fetchTests,
@@ -39,6 +44,14 @@ interface SplitGroup {
 	pct: number;
 	color: string;
 	isControl: boolean;
+}
+
+// Archived-card status. Tests archived before outcomes were tracked have none.
+function archivedStatus(test: TestRollout): string {
+	if (test.outcome === 'COMPLETED') {
+		return test.winner ? `completed · winner ${test.winner}` : 'completed';
+	}
+	return test.outcome === 'ABANDONED' ? 'abandoned' : 'archived';
 }
 
 function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
@@ -62,6 +75,12 @@ export default function TestsPage() {
 	const [collapsedGroups, setCollapsedGroups] = useState<
 		Record<string, boolean>
 	>({});
+	const [finishing, setFinishing] = useState<{
+		test: TestRollout;
+		action: FinishAction;
+	} | null>(null);
+	const [finishBusy, setFinishBusy] = useState(false);
+	const [finishError, setFinishError] = useState<string | null>(null);
 
 	const loadTests = useCallback(async () => {
 		if (!selectedApp) {
@@ -100,18 +119,38 @@ export default function TestsPage() {
 		setMenuTest(null);
 	};
 
-	const handleArchive = async (type: 'cancel' | 'complete') => {
+	const openFinish = (action: FinishAction) => {
 		if (!menuTest) {
 			return;
 		}
-		const id = menuTest.id;
+		const test = menuTest;
 		closeMenu();
+		setFinishError(null);
+		setFinishing({ test, action });
+	};
+
+	const handleFinish = async (winner?: string) => {
+		if (!finishing) {
+			return;
+		}
+		const { test, action } = finishing;
+		setFinishBusy(true);
+		setFinishError(null);
 		try {
-			await archiveTestRollout(id, type);
+			if (action === 'complete') {
+				await completeTestRollout(test.id, winner);
+			} else {
+				await abandonTestRollout(test.id);
+			}
 			markChangesDetected();
+			setFinishing(null);
 			await loadTests();
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to update test');
+			setFinishError(
+				err instanceof Error ? err.message : `Failed to ${action} test`,
+			);
+		} finally {
+			setFinishBusy(false);
 		}
 	};
 
@@ -229,7 +268,7 @@ export default function TestsPage() {
 								mt: 0.625,
 							}}
 						>
-							{isArchived ? `${test.key} · completed` : test.key}
+							{isArchived ? `${test.key} · ${archivedStatus(test)}` : test.key}
 						</Typography>
 					</Box>
 					<Box
@@ -539,38 +578,42 @@ export default function TestsPage() {
 						Edit test
 					</Typography>
 				</MenuItem>
-				<MenuItem
-					onClick={() => void handleArchive('cancel')}
-					sx={{ borderRadius: '9px', gap: 1.375 }}
-				>
-					<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
-					<Typography
-						sx={{
-							fontFamily: monoFontFamily,
-							fontWeight: 600,
-							fontSize: 13,
-							color: '#3A352C',
-						}}
+				{menuTest && !menuTest.archived && (
+					<MenuItem
+						onClick={() => openFinish('complete')}
+						sx={{ borderRadius: '9px', gap: 1.375 }}
 					>
-						Cancel (0%)
-					</Typography>
-				</MenuItem>
-				<MenuItem
-					onClick={() => void handleArchive('complete')}
-					sx={{ borderRadius: '9px', gap: 1.375 }}
-				>
-					<Ms name="check_circle" sx={{ fontSize: 19, color: '#3F7A2D' }} />
-					<Typography
-						sx={{
-							fontFamily: monoFontFamily,
-							fontWeight: 600,
-							fontSize: 13,
-							color: '#3F7A2D',
-						}}
+						<Ms name="check_circle" sx={{ fontSize: 19, color: '#3F7A2D' }} />
+						<Typography
+							sx={{
+								fontFamily: monoFontFamily,
+								fontWeight: 600,
+								fontSize: 13,
+								color: '#3F7A2D',
+							}}
+						>
+							Complete (pick winner)…
+						</Typography>
+					</MenuItem>
+				)}
+				{menuTest && !menuTest.archived && (
+					<MenuItem
+						onClick={() => openFinish('abandon')}
+						sx={{ borderRadius: '9px', gap: 1.375 }}
 					>
-						Complete (100%)
-					</Typography>
-				</MenuItem>
+						<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
+						<Typography
+							sx={{
+								fontFamily: monoFontFamily,
+								fontWeight: 600,
+								fontSize: 13,
+								color: '#3A352C',
+							}}
+						>
+							Abandon (revert)…
+						</Typography>
+					</MenuItem>
+				)}
 				<MenuItem
 					onClick={() => void handleDelete()}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
@@ -581,6 +624,21 @@ export default function TestsPage() {
 					</Typography>
 				</MenuItem>
 			</Menu>
+
+			{finishing && (
+				<FinishDialog
+					open
+					action={finishing.action}
+					kind="test"
+					name={finishing.test.name}
+					hasConditions={finishing.test.conditions.length > 0}
+					groups={Object.keys(finishing.test.variants ?? {})}
+					busy={finishBusy}
+					error={finishError}
+					onConfirm={(winner) => void handleFinish(winner)}
+					onClose={() => setFinishing(null)}
+				/>
+			)}
 		</Box>
 	);
 }

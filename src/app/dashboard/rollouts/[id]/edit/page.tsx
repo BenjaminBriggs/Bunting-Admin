@@ -14,7 +14,12 @@ import RolloutForm, {
 	type RolloutFormSubmit,
 } from '@/components/features/rollouts/rollout-form';
 import {
-	archiveTestRollout,
+	type FinishAction,
+	FinishDialog,
+} from '@/components/features/test-rollouts/FinishDialog';
+import {
+	abandonTestRollout,
+	completeTestRollout,
 	deleteRollout,
 	fetchTestRollout,
 	type TestRollout,
@@ -33,6 +38,9 @@ export default function EditRolloutPage() {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [saveError, setSaveError] = useState<string | null>(null);
+	const [finishAction, setFinishAction] = useState<FinishAction | null>(null);
+	const [finishBusy, setFinishBusy] = useState(false);
+	const [finishError, setFinishError] = useState<string | null>(null);
 
 	useEffect(() => {
 		let active = true;
@@ -87,18 +95,33 @@ export default function EditRolloutPage() {
 		}
 	};
 
-	const handleComplete = async () => {
-		if (!rollout) {
+	const openFinish = (action: FinishAction) => {
+		setFinishError(null);
+		setFinishAction(action);
+	};
+
+	const handleFinish = async () => {
+		if (!rollout || !finishAction) {
 			return;
 		}
+		setFinishBusy(true);
+		setFinishError(null);
 		try {
-			await archiveTestRollout(rolloutId, 'complete');
+			if (finishAction === 'complete') {
+				await completeTestRollout(rolloutId);
+			} else {
+				await abandonTestRollout(rolloutId);
+			}
 			markChangesDetected();
 			router.push('/dashboard/rollouts');
 		} catch (err) {
-			setSaveError(
-				err instanceof Error ? err.message : 'Failed to complete rollout',
+			setFinishError(
+				err instanceof Error
+					? err.message
+					: `Failed to ${finishAction} rollout`,
 			);
+		} finally {
+			setFinishBusy(false);
 		}
 	};
 
@@ -156,7 +179,11 @@ export default function EditRolloutPage() {
 		<Box sx={{ py: 1 }}>
 			{rollout.archived && (
 				<Alert severity="info" sx={{ maxWidth: 920, mx: 'auto', mb: 2 }}>
-					This rollout is archived and no longer active.
+					{rollout.outcome === 'COMPLETED'
+						? 'This rollout is completed. Its value was baked into the attached flags, and it is no longer active.'
+						: rollout.outcome === 'ABANDONED'
+							? 'This rollout was abandoned and is no longer active.'
+							: 'This rollout is archived and no longer active.'}
 				</Alert>
 			)}
 			<RolloutForm
@@ -173,9 +200,23 @@ export default function EditRolloutPage() {
 				saving={saving}
 				saveError={saveError}
 				onSubmit={(payload) => void handleSubmit(payload)}
-				onComplete={() => void handleComplete()}
+				onComplete={() => openFinish('complete')}
+				onAbandon={() => openFinish('abandon')}
 				onDelete={() => void handleDelete()}
 			/>
+			{finishAction && (
+				<FinishDialog
+					open
+					action={finishAction}
+					kind="rollout"
+					name={rollout.name}
+					hasConditions={rollout.conditions.length > 0}
+					busy={finishBusy}
+					error={finishError}
+					onConfirm={() => void handleFinish()}
+					onClose={() => setFinishAction(null)}
+				/>
+			)}
 		</Box>
 	);
 }

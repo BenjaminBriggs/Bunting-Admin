@@ -89,10 +89,17 @@ model TestRollout {
   // Flags affected by this test/rollout
   flagIds Json @default("[]") // Array of flag IDs
 
-  archived   Boolean   @default(false)
-  archivedAt DateTime? @map("archived_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  archived    Boolean             @default(false)
+  archivedAt  DateTime?           @map("archived_at")
+  // How the test/rollout finished. Set together with `archived`: COMPLETED baked
+  // the outcome into the attached flags (see test-rollout-lifecycle.ts), ABANDONED
+  // archived it without baking. Null while active, and for rows archived before
+  // outcomes were recorded.
+  outcome     TestRolloutOutcome?
+  completedAt DateTime?           @map("completed_at")
+  winner      String? // Winning group name of a completed A/B test
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
 
   // Relations
   appId String @map("app_id")
@@ -153,6 +160,11 @@ enum FlagType {
 enum TestRolloutType {
   TEST    @map("test")
   ROLLOUT @map("rollout")
+}
+
+enum TestRolloutOutcome {
+  COMPLETED @map("completed")
+  ABANDONED @map("abandoned")
 }
 
 model User {

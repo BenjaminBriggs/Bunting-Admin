@@ -681,18 +681,36 @@ export async function updateRolloutPercentage(
 	return parseJson(response);
 }
 
-export async function archiveTestRollout(
+// Complete a test or rollout: its value (a test's `winner` group) is baked into
+// the attached flags and it is archived. A draft until the next publish.
+export async function completeTestRollout(
 	id: string,
-	type: 'cancel' | 'complete',
+	winner?: string,
 ): Promise<TestRollout> {
-	const response = await fetch(`/api/test-rollouts/${id}/archive`, {
+	const response = await fetch(`/api/test-rollouts/${id}/complete`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ type }),
+		body: JSON.stringify(winner === undefined ? {} : { winner }),
 	});
 	if (!response.ok) {
 		throw new Error(
-			await errorMessage(response, 'Failed to archive test/rollout'),
+			await errorMessage(response, 'Failed to complete test/rollout'),
+		);
+	}
+	return parseJson(response);
+}
+
+// Abandon a test or rollout: archived without baking anything, so its users
+// return to what the flags serve without it. A draft until the next publish.
+export async function abandonTestRollout(id: string): Promise<TestRollout> {
+	const response = await fetch(`/api/test-rollouts/${id}/archive`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ type: 'abandon' }),
+	});
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to abandon test/rollout'),
 		);
 	}
 	return parseJson(response);

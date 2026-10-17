@@ -20,6 +20,8 @@ export type ActivityAction =
 	| 'delete'
 	| 'archive'
 	| 'unarchive'
+	| 'complete'
+	| 'abandon'
 	| 'rotate'
 	| 'activate'
 	| 'retire'
