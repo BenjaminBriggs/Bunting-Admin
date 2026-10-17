@@ -22,6 +22,7 @@ import {
 	conditionTemplates,
 	operatorLabels,
 } from '@/components/features/rules/rule-templates';
+import { defaultDateValue } from '@/lib/date-values';
 import { generateId } from '@/lib/utils';
 import {
 	codeSurface,
@@ -131,7 +132,7 @@ export function VariantCreatorModal({
 			case 'double':
 				return 0;
 			case 'date':
-				return new Date().toISOString().split('T')[0];
+				return defaultDateValue();
 			case 'json':
 				return {};
 			default:

@@ -55,7 +55,9 @@ const FLAGS: FlagSpec[] = [
 		type: 'date',
 		name: 'Smoke Date Flag',
 		setValue: async (_page, value) => {
-			await value.locator('input[type="date"]').fill('2026-06-25');
+			await value
+				.locator('input[type="datetime-local"]')
+				.fill('2026-06-25T10:30');
 		},
 	},
 	{

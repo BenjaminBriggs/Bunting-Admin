@@ -19,9 +19,9 @@ The first stable release. If you ran the admin from source before 1.0.0, check e
 ### Behaviour that changed
 
 - **Publish refuses anything an SDK would not decode losslessly.** Fix the reported item and publish again. The cases most likely in existing data are:
-  - date values that aren't UTC instants with at most millisecond precision (for example date-only strings);
   - A/B test group percentages that aren't whole numbers from 0 to 100 or that sum to more than 100;
   - fractional rollout percentages.
+- **Date flags are instants.** The dashboard now edits a date and time in your local time zone and stores the UTC instant (`2026-06-25T10:30:00.000Z`), the only form the SDKs decode. Older dashboards stored date-only values (`2026-06-25`), which SDKs could never read and so always served the call-site default; these are now published as midnight UTC. Check any date flag whose intended moment is not midnight UTC.
 - **A/B test remainder:** users whose bucket lands past every group, or in a group with no value for a flag, now fall through to the next variant or the default instead of getting the first group's value. This matches what the 1.0 SDKs do.
 - **Complete keeps what users were getting.** Completing a rollout or test (pick a winner) writes its value into the attached flags; **Abandon** removes it. Both take effect on the next publish. The old Complete returned users to the flag default.
 - **Immutable after creation:** flag key and type, test and rollout keys, and the app identifier. App update and delete are admin-only.

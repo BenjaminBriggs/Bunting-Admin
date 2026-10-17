@@ -1,3 +1,4 @@
+import { decodeArtifact, isLossless } from '@/lib/artifact-decoder';
 import { generateConfigFromDb } from '@/lib/config-generator';
 import { prisma } from '@/lib/db';
 
@@ -47,6 +48,55 @@ describe('generateConfigFromDb (integration)', () => {
 		expect(flag.beta.default).toBe(false);
 		expect(flag.production.default).toBe(false);
 		expect(flag.development.variants).toEqual([]);
+	});
+
+	test('publishes legacy date-only values as UTC instants the SDKs decode', async () => {
+		const app = await seedApp(`gen-${Date.now()}-dates`);
+
+		// What dashboards before 1.0 stored: date-only strings.
+		await prisma.flag.create({
+			data: {
+				appId: app.id,
+				key: 'promo_end',
+				displayName: 'Promo End',
+				type: 'DATE',
+				defaultValues: {
+					development: '2026-06-25',
+					beta: '2026-06-25T10:30:00Z',
+					production: '2026-06-25',
+				},
+				variants: {
+					production: [
+						{
+							id: 'v1',
+							type: 'conditional',
+							order: 1,
+							value: '2026-12-31',
+							conditions: [
+								{ type: 'platform', operator: 'in', values: ['ios'] },
+							],
+						},
+					],
+				},
+			},
+		});
+
+		const config = await generateConfigFromDb(app.id);
+		const flag = config.flags['promo_end'];
+		expect(flag.development.default).toBe('2026-06-25T00:00:00.000Z');
+		expect(flag.beta.default).toBe('2026-06-25T10:30:00.000Z');
+		expect(flag.production.variants?.[0].value).toBe(
+			'2026-12-31T00:00:00.000Z',
+		);
+
+		const decoded = decodeArtifact(
+			JSON.stringify({
+				...config,
+				config_version: 'v',
+				published_at: '2026-01-01T00:00:00.000Z',
+			}),
+		);
+		expect(isLossless(decoded)).toBe(true);
 	});
 
 	test('ships archived flags marked deprecated', async () => {

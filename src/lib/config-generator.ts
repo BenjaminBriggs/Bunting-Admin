@@ -1,5 +1,6 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { normalizeFlagType } from '@/lib/config-validation';
+import { toUtcInstant } from '@/lib/date-values';
 import { prisma } from '@/lib/db';
 import { orderedTestGroups } from '@/lib/test-group-variants';
 import { validateIdentifierKey } from '@/lib/validation';
@@ -327,6 +328,32 @@ export async function generateConfigFromDb(
 	Object.keys(flags).forEach((flagKey) => {
 		ENVIRONMENTS.forEach((env) => {
 			flags[flagKey][env].variants?.sort((a, b) => a.order - b.order);
+		});
+	});
+
+	// Date values go out as UTC instants, the only form SDKs decode. Dashboards
+	// before 1.0 stored date-only strings, which become midnight UTC (the same
+	// instant Date.parse gives them); anything unparseable is left for publish
+	// validation to report.
+	const asInstant = (value: FlagValue): FlagValue =>
+		typeof value === 'string' ? toUtcInstant(value) : value;
+	Object.values(flags).forEach((flag) => {
+		if (flag.type !== 'date') {
+			return;
+		}
+		ENVIRONMENTS.forEach((env) => {
+			const envConfig = flag[env];
+			envConfig.default = asInstant(envConfig.default);
+			envConfig.variants?.forEach((variant) => {
+				if (variant.value !== undefined) {
+					variant.value = asInstant(variant.value);
+				}
+				if (variant.values) {
+					for (const group of Object.keys(variant.values)) {
+						variant.values[group] = asInstant(variant.values[group]);
+					}
+				}
+			});
 		});
 	});
 
