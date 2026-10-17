@@ -512,15 +512,14 @@ Complete a test or rollout: keep what it shipped by baking it into every attache
 - **No entry conditions:** the value becomes that environment's **default**.
 - **Entry conditions:** a **conditional variant** with the same conditions and the value is appended after the flag's existing conditional variants, which is where the test/rollout variant was evaluated. Ordering and exposure are unchanged.
 
-Environments where the test/rollout has no value for a flag are left alone. A completed rollout's `percentage` is set to 100.
+Environments where the test/rollout has no value for a flag are left alone. So are environments where a test's winner group has no value even though other groups do: a user in a group with no value for a flag is not in the test for that flag and gets the next variant or the default, so at 100% the test changes nothing there. A completed rollout's `percentage` is set to 100.
 
 **Refusals (409).** Completion refuses rather than guess when the bake would not give users the same result as the test/rollout at 100%:
 
 - another active test/rollout on the same flag and environment is evaluated **after** it and the value would become the default (that test/rollout would start receiving users);
 - another active test/rollout on the same flag and environment is evaluated **before** it and the bake would be a conditional variant (conditional variants are always evaluated before tests and rollouts, so it would jump ahead);
 - the value is not valid for the flag's type;
-- the winner group has no value for a flag environment where other groups do (the SDK would serve another group's value to its users);
-- an attached flag is archived (archived flags are locked);
+- an attached flag the bake would change is archived (archived flags are locked);
 - the test/rollout is already archived, completed or abandoned;
 - the app's config cannot be generated.
 
