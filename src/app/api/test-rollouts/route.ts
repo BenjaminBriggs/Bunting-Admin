@@ -6,6 +6,10 @@ import { generateSalt } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import {
+	type StoredTestVariants,
+	withGroupPositions,
+} from '@/lib/test-group-variants';
+import {
 	createTestRolloutSchema,
 	zodErrorResponse,
 } from '@/lib/validation-schemas';
@@ -95,7 +99,10 @@ export async function POST(request: NextRequest) {
 		};
 
 		if (type === 'TEST') {
-			data.variants = variants as Prisma.InputJsonValue;
+			// Give each group a position in the order sent (see orderedTestGroups).
+			data.variants = withGroupPositions(
+				variants as unknown as StoredTestVariants,
+			) as unknown as Prisma.InputJsonValue;
 		} else {
 			data.percentage = percentage;
 			data.rolloutValues = {

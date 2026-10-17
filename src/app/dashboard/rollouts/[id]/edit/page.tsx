@@ -76,13 +76,14 @@ export default function EditRolloutPage() {
 		setSaving(true);
 		setSaveError(null);
 		try {
+			// Only what the form edits. Absent fields (flagIds, rolloutValues,
+			// archived) are left unchanged by the server.
 			await updateTestRollout(rolloutId, {
 				name: payload.name,
 				description: payload.description,
 				group: payload.group || null,
 				percentage: payload.percentage,
 				conditions: payload.conditions,
-				archived: rollout.archived,
 			});
 			markChangesDetected();
 			router.push('/dashboard/rollouts');

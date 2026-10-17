@@ -1,6 +1,7 @@
 import type { Prisma } from '@/generated/prisma/client';
 import { normalizeFlagType } from '@/lib/config-validation';
 import { prisma } from '@/lib/db';
+import { orderedTestGroups } from '@/lib/test-group-variants';
 import { validateIdentifierKey } from '@/lib/validation';
 import type {
 	Condition,
@@ -51,6 +52,7 @@ type StoredAssignedValue = FlagValue | Record<string, FlagValue> | null;
 
 interface StoredTestVariant {
 	percentage?: number;
+	position?: number;
 	values?: Partial<Record<Environment, StoredAssignedValue>>;
 }
 
@@ -213,10 +215,15 @@ export async function generateConfigFromDb(
 		).map(normalizeCondition);
 
 		if (testRollout.type === 'TEST') {
-			// Derive groups from variants — SDK needs groups to do deterministic bucketing
-			const variants = (testRollout.variants ??
-				{}) as unknown as StoredTestVariants;
-			const groups: TestGroup[] = Object.entries(variants).map(([name, v]) => ({
+			// Derive groups from variants — SDK needs groups to do deterministic bucketing.
+			// The SDK buckets by cumulative percentage in `groups` order, so groups
+			// (and each test variant's `values` map) are emitted in position order;
+			// legacy rows without positions keep their jsonb order (see
+			// orderedTestGroups), which is what their published artifacts carry.
+			const orderedGroups = orderedTestGroups(
+				(testRollout.variants ?? {}) as unknown as StoredTestVariants,
+			);
+			const groups: TestGroup[] = orderedGroups.map(([name, v]) => ({
 				name,
 				percentage: v.percentage ?? 0,
 			}));
@@ -244,8 +251,7 @@ export async function generateConfigFromDb(
 					// For tests, build variants from the test variant definitions. Test
 					// values are stored per variant but we need flag-specific values.
 					const testVariantValues: Record<string, FlagValue> = {};
-					Object.keys(variants).forEach((variantName) => {
-						const variantData = variants[variantName];
+					orderedGroups.forEach(([variantName, variantData]) => {
 						const stored = variantData.values?.[env];
 						if (stored === null || stored === undefined) {
 							return;

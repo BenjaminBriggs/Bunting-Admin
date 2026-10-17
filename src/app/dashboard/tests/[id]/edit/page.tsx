@@ -27,6 +27,10 @@ import {
 	updateTestRollout,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
+import {
+	buildTestUpdatePayload,
+	orderedTestGroups,
+} from '@/lib/test-group-variants';
 import type { Condition, TestVariant } from '@/types';
 
 function isEvenSplit(groups: TestGroupValue[]): boolean {
@@ -71,25 +75,12 @@ export default function EditTestPage() {
 		setSaving(true);
 		setSaveError(null);
 		try {
-			const variants = payload.groups.reduce<Record<string, TestVariant>>(
-				(acc, g) => {
-					acc[g.name] = {
-						percentage: g.weight,
-						values: { development: '', beta: '', production: '' },
-					};
-					return acc;
-				},
-				{},
+			// Only what the form edits: kept groups carry their per-flag values,
+			// and flagIds/archived are left to the server as they are.
+			await updateTestRollout(
+				testId,
+				buildTestUpdatePayload(test.variants, payload),
 			);
-			await updateTestRollout(testId, {
-				name: payload.name,
-				description: payload.description,
-				group: payload.group || null,
-				variants,
-				conditions: payload.conditions,
-				flagIds: test.flagIds,
-				archived: test.archived,
-			});
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
@@ -179,10 +170,12 @@ export default function EditTestPage() {
 		);
 	}
 
-	const groups: TestGroupValue[] = Object.entries(test.variants ?? {}).map(
+	// Rows in bucketing order, so groups the form appends come after them.
+	const groups: TestGroupValue[] = orderedTestGroups(test.variants).map(
 		([name, data]: [string, TestVariant]) => ({
 			name,
 			weight: data.percentage,
+			storedName: name,
 		}),
 	);
 	const conditions: Condition[] = test.conditions;
@@ -230,7 +223,7 @@ export default function EditTestPage() {
 					kind="test"
 					name={test.name}
 					hasConditions={test.conditions.length > 0}
-					groups={Object.keys(test.variants ?? {})}
+					groups={groups.map((g) => g.name)}
 					busy={finishBusy}
 					error={finishError}
 					onConfirm={(winner) => void handleFinish(winner)}

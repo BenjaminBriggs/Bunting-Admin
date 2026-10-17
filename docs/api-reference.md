@@ -273,11 +273,15 @@ Create an A/B test.
 | `variantNames` | `string[]`    | required — length must equal `variantCount`, no empty names  |
 | `appId`        | string        | required                                                     |
 
-A `salt` is generated server-side. `variants` is built as `{ [name]: { percentage, values: { development: null, beta: null, production: null } } }`. `flagIds` starts as `[]`.
+A `salt` is generated server-side. `variants` is built as `{ [name]: { percentage, position, values: { development: null, beta: null, production: null } } }`, where `position` is the group's index in `variantNames`. `flagIds` starts as `[]`.
+
+**Group order.** SDKs bucket users into groups by cumulative percentage in the order of the artifact's `groups`, so that order decides which users land in which group. It comes from each group's integer `position` (Postgres does not keep JSON key order), and editing a test never changes the position of a group it keeps, renamed or not; added groups get the next positions. Tests stored before positions existed have none and keep the order they were already published with until their first edit records it.
+
+Positions are optional on writes and assigned by the server. When `PUT /api/tests/[id]` or `PUT /api/test-rollouts/[id]` writes `variants`, a group sent without a whole-number `position` keeps the stored position of the group with the same name, or is appended after the highest position; positions that are sent are used as given. A group renamed without its `position` therefore counts as a new group and is appended. On a test stored before positions existed, the server first numbers the stored groups in their current published order.
 
 **Response 201** — created `TestRollout` object.
 
-**Errors:** `400` if traffic split doesn't sum to 100, count/names mismatch, or empty variant names.
+**Errors:** `400` if traffic split doesn't sum to 100, count/names mismatch, or empty or repeated variant names.
 
 ---
 
@@ -293,7 +297,7 @@ Get a single test. Only matches records with `type = "TEST"`.
 
 ### `PUT /api/tests/[id]`
 
-Update a test. The key is immutable after creation (flag variants reference the test by key); a `key` in the body is ignored.
+Update a test. The key is immutable after creation (flag variants reference the test by key); a `key` in the body is ignored. Partial update: a field left out of the body keeps its stored value, and `variants`, when sent, replaces the stored groups and their values as a whole.
 
 **Request body** (Zod-validated via `updateTestSchema`)
 
@@ -375,7 +379,7 @@ Get a single rollout. Only matches records with `type = "ROLLOUT"`.
 
 ### `PUT /api/rollouts/[id]`
 
-Update a rollout. The key is immutable after creation (flag variants reference the rollout by key); a `key` in the body is ignored.
+Update a rollout. The key is immutable after creation (flag variants reference the rollout by key); a `key` in the body is ignored. Partial update: a field left out of the body keeps its stored value, and `rolloutValues`, when sent, replaces the stored values as a whole.
 
 **Request body** (Zod-validated via `updateRolloutSchema`)
 
@@ -458,6 +462,8 @@ Create a test or rollout. `key` is auto-generated from `name`.
 | `variants`    | `Record<string, unknown>` | required when `type = "TEST"`                                                              |
 | `percentage`  | integer 0–100             | required when `type = "ROLLOUT"`                                                           |
 
+Test groups are given a `position` in the order sent (or in their existing `position` order if every group has one); see [group order](#post-apitests).
+
 **Response 201** — created `TestRollout` object.
 
 ---
@@ -476,22 +482,25 @@ Get a single test-rollout by ID (no type filter).
 
 Update a test-rollout. No type filter applied. The key is immutable after creation; `updateTestRolloutSchema` has no `key` field, so one in the body is ignored.
 
+This is a partial update: a field left out of the body keeps its stored value. Only an explicit `null` clears a field, and only where the table allows it. `variants` and `rolloutValues` are replaced as a whole when sent, so send the full blob (every group's or environment's values), not just the part that changed.
+
 **Request body** (Zod-validated via `updateTestRolloutSchema`)
 
-| Field           | Type                                         |
-| --------------- | -------------------------------------------- |
-| `name`          | string?                                      |
-| `description`   | string \| null?                              |
-| `conditions`    | `Condition[]`? — defaults to `[]` if omitted |
-| `flagIds`       | `string[]`? — defaults to `[]` if omitted    |
-| `variants`      | any? — defaults to `null` if omitted         |
-| `rolloutValues` | any? — defaults to `null` if omitted         |
-| `percentage`    | integer 0–100?                               |
-| `archived`      | boolean? — defaults to `false` if omitted    |
+| Field           | Type                               |
+| --------------- | ---------------------------------- |
+| `name`          | string?                            |
+| `description`   | string \| null? (`null` clears it) |
+| `group`         | string \| null? (`null` clears it) |
+| `conditions`    | `Condition[]`?                     |
+| `flagIds`       | `string[]`?                        |
+| `variants`      | any? (`null` clears it)            |
+| `rolloutValues` | any? (`null` clears it)            |
+| `percentage`    | integer 0–100?                     |
+| `archived`      | boolean?                           |
 
 **Response 200** — updated `TestRollout` object.
 
-**Errors:** `404` if not found. `409` if the record is finished (completed or abandoned) and the request does not send `archived: true`: finished tests and rollouts cannot be reactivated.
+**Errors:** `404` if not found. `409` if `archived: false` is sent for a finished (completed or abandoned) record: finished tests and rollouts cannot be reactivated.
 
 ---
 
@@ -522,15 +531,14 @@ Complete a test or rollout: keep what it shipped by baking it into every attache
 - **No entry conditions:** the value becomes that environment's **default**.
 - **Entry conditions:** a **conditional variant** with the same conditions and the value is appended after the flag's existing conditional variants, which is where the test/rollout variant was evaluated. Ordering and exposure are unchanged.
 
-Environments where the test/rollout has no value for a flag are left alone. A completed rollout's `percentage` is set to 100.
+Environments where the test/rollout has no value for a flag are left alone. So are environments where a test's winner group has no value even though other groups do: a user in a group with no value for a flag is not in the test for that flag and gets the next variant or the default, so at 100% the test changes nothing there. A completed rollout's `percentage` is set to 100.
 
 **Refusals (409).** Completion refuses rather than guess when the bake would not give users the same result as the test/rollout at 100%:
 
 - another active test/rollout on the same flag and environment is evaluated **after** it and the value would become the default (that test/rollout would start receiving users);
 - another active test/rollout on the same flag and environment is evaluated **before** it and the bake would be a conditional variant (conditional variants are always evaluated before tests and rollouts, so it would jump ahead);
 - the value is not valid for the flag's type;
-- the winner group has no value for a flag environment where other groups do (the SDK would serve another group's value to its users);
-- an attached flag is archived (archived flags are locked);
+- an attached flag the bake would change is archived (archived flags are locked);
 - the test/rollout is already archived, completed or abandoned;
 - the app's config cannot be generated.
 

@@ -214,22 +214,22 @@ export async function completeTestRollout(
 				}
 				const where = `flag "${flag.key}" (${env})`;
 
+				const own = generated[index];
+				const value =
+					record.type === 'TEST' ? own.values?.[winner ?? ''] : own.value;
+				if (value === undefined) {
+					// Contract rule C3: a user bucketed into a group with no value in
+					// this variant is not in the test here and falls through to the
+					// next variant or the default. At 100% winner the variant
+					// contributes nothing, so there is nothing to bake.
+					continue;
+				}
+
 				if (flag.archived) {
 					conflicts.push(
 						`${where} is archived and locked; unarchive it before completing`,
 					);
 					break;
-				}
-
-				const own = generated[index];
-				const value =
-					record.type === 'TEST' ? own.values?.[winner ?? ''] : own.value;
-				if (value === undefined) {
-					// The SDK serves a fallback group's value to a group with none.
-					conflicts.push(
-						`${where} has no value for group "${winner}", so its users would get another group's value`,
-					);
-					continue;
 				}
 				if (!validateFlagValue(flagType, value)) {
 					conflicts.push(

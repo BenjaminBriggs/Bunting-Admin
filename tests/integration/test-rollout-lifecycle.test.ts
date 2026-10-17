@@ -476,14 +476,82 @@ describe('POST /api/test-rollouts/[id]/complete (tests)', () => {
 		]);
 	});
 
-	test('refuses (409) a winner with no value where other groups have one', async () => {
-		const { test } = await seedCheckoutTest();
+	test('a winner with no value in an environment bakes the others and skips it', async () => {
+		const app = await seedApp();
+		const flag = await seedFlag(app.id, 'checkout_button', 'STRING', {
+			development: 'grey',
+			beta: 'grey',
+			production: 'grey',
+		});
+		const test = await seedTest(app.id, 'checkout_test', {
+			flagIds: [flag.id],
+			groups: {
+				control: { production: { [flag.id]: 'blue' } },
+				treatment: {
+					beta: { [flag.id]: 'green' },
+					production: { [flag.id]: 'green' },
+				},
+			},
+		});
 
-		// control has no beta value; treatment does.
+		// control has no beta value; treatment does. Under contract rule C3 a
+		// control user is not in the test for beta and gets the default, so at
+		// 100% control the test changes nothing there.
+		const before = await generateConfigFromDb(app.id);
+		expect(before.flags.checkout_button.beta.variants).toHaveLength(1);
+
 		const res = await complete(test.id, { winner: 'control' });
-		expect(res.status).toBe(409);
-		const body = (await res.json()) as { error: string };
-		expect(body.error).toMatch(/no value for group "control"/);
+		expect(res.status).toBe(200);
+
+		const after = await generateConfigFromDb(app.id);
+		expect(after.flags.checkout_button.production.default).toBe('blue');
+		expect(after.flags.checkout_button.beta.default).toBe('grey');
+		expect(after.flags.checkout_button.development.default).toBe('grey');
+		for (const env of ['development', 'beta', 'production'] as const) {
+			expect(after.flags.checkout_button[env].variants).toEqual([]);
+		}
+		expect(after.tests).toEqual({});
+
+		const log = await prisma.activityLog.findFirstOrThrow({
+			where: { action: 'complete', entityId: test.id },
+		});
+		const changes = log.changes as { baked: Array<{ environment: string }> };
+		expect(changes.baked.map((b) => b.environment)).toEqual(['production']);
+	});
+
+	test('an archived flag the winner has no value for does not block completion', async () => {
+		const app = await seedApp();
+		const live = await seedFlag(app.id, 'checkout_button', 'STRING', {
+			development: 'grey',
+			beta: 'grey',
+			production: 'grey',
+		});
+		const retired = await seedFlag(app.id, 'old_banner', 'STRING', {
+			development: 'off',
+			beta: 'off',
+			production: 'off',
+		});
+		await prisma.flag.update({
+			where: { id: retired.id },
+			data: { archived: true },
+		});
+		const test = await seedTest(app.id, 'checkout_test', {
+			flagIds: [live.id, retired.id],
+			groups: {
+				control: { production: { [live.id]: 'blue' } },
+				treatment: {
+					production: { [live.id]: 'green', [retired.id]: 'on' },
+				},
+			},
+		});
+
+		const res = await complete(test.id, { winner: 'control' });
+		expect(res.status).toBe(200);
+
+		const after = await generateConfigFromDb(app.id);
+		expect(after.flags.checkout_button.production.default).toBe('blue');
+		expect(after.flags.old_banner.production.default).toBe('off');
+		expect(after.flags.old_banner.production.variants).toEqual([]);
 	});
 
 	test.each([
@@ -575,7 +643,7 @@ describe('POST /api/test-rollouts/[id]/archive (abandon)', () => {
 			new NextRequest(`http://local/api/test-rollouts/${rollout.id}`, {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ name: 'Back again' }),
+				body: JSON.stringify({ name: 'Back again', archived: false }),
 			}),
 			ctx(rollout.id),
 		);
