@@ -4,15 +4,12 @@ import {
 	Add,
 	Flag,
 	History,
-	KeyboardArrowDown,
-	Logout,
 	Rocket,
 	Science,
 	Settings,
 	UnfoldMore,
 } from '@mui/icons-material';
 import {
-	Avatar,
 	Box,
 	Divider,
 	Drawer,
@@ -28,8 +25,9 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { signOut, useSession } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
+import { UserMenu } from '@/components/layout/UserMenu';
 import type { App } from '@/lib/api';
 import { AppProvider, useApp } from '@/lib/app-context';
 import { ChangesProvider, useChanges } from '@/lib/changes-context';
@@ -40,9 +38,10 @@ const drawerWidth = 266;
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
 	const router = useRouter();
-	const { data: session } = useSession();
 	const { hasChanges, getChangeCount } = useChanges();
-	const { apps, selectedApp, setSelectedApp, loading } = useApp();
+	// currentUser comes from /api/me, not the NextAuth client session, so the
+	// user menu also works in proxy auth mode.
+	const { apps, selectedApp, setSelectedApp, loading, currentUser } = useApp();
 
 	// No apps (empty/recreated DB, or every app deleted) → there is nothing to
 	// manage on any dashboard route. Funnel the operator to create their first app
@@ -54,9 +53,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 	}, [loading, apps.length, router]);
 
 	const [appMenuAnchor, setAppMenuAnchor] = useState<null | HTMLElement>(null);
-	const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(
-		null,
-	);
 
 	// Core-type nav items carry their brand type colour (Flag = coral, Test = teal,
 	// Rollout = green): the icon is always tinted, and the active row uses the type
@@ -127,17 +123,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 		router.push('/setup/app');
 	};
 
-	const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {
-		setUserMenuAnchor(event.currentTarget);
-	};
-
-	const handleUserMenuClose = () => {
-		setUserMenuAnchor(null);
-	};
-
-	const handleSignOut = async () => {
-		handleUserMenuClose();
-		await signOut({ callbackUrl: '/auth/signin' });
+	// NextAuth sign-out (oidc mode only; UserMenu hides it in proxy mode).
+	const handleSignOut = () => {
+		void signOut({ callbackUrl: '/auth/signin' });
 	};
 
 	return (
@@ -352,26 +340,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 							<ListItemText primary={settingsItem.label} />
 						</ListItemButton>
 					</ListItem>
-					{session?.user && (
-						<ListItem disablePadding>
-							<ListItemButton onClick={handleUserMenuClick}>
-								<ListItemIcon>
-									<Avatar
-										src={session.user.image ?? undefined}
-										sx={{ width: 24, height: 24 }}
-									>
-										{session.user.name?.[0] ??
-											session.user.email[0].toUpperCase()}
-									</Avatar>
-								</ListItemIcon>
-								<ListItemText
-									primary={session.user.name ?? session.user.email}
-									secondary={session.user.role}
-								/>
-								<KeyboardArrowDown />
-							</ListItemButton>
-						</ListItem>
-					)}
+					<UserMenu user={currentUser} onSignOut={handleSignOut} />
 				</List>
 				{/* App Menu Dropdown */}
 				<Menu
@@ -400,30 +369,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 							<Add />
 						</ListItemIcon>
 						<ListItemText primary="Add Application" />
-					</MenuItem>
-				</Menu>
-
-				{/* User Menu Dropdown */}
-				<Menu
-					anchorEl={userMenuAnchor}
-					open={Boolean(userMenuAnchor)}
-					onClose={handleUserMenuClose}
-					PaperProps={{
-						sx: { minWidth: 200 },
-					}}
-				>
-					<MenuItem disabled>
-						<ListItemText
-							primary={session?.user.name ?? session?.user.email}
-							secondary={`Role: ${session?.user.role}`}
-						/>
-					</MenuItem>
-					<Divider />
-					<MenuItem onClick={() => void handleSignOut()}>
-						<ListItemIcon>
-							<Logout />
-						</ListItemIcon>
-						<ListItemText primary="Sign Out" />
 					</MenuItem>
 				</Menu>
 			</Drawer>

@@ -142,6 +142,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
 
+    # The proxy-identity spec signs in through the access list, so the server
+    # needs a real (migrated) database.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: bunting_e2e
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -168,9 +184,15 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bunting_e2e
         run: pnpm run e2e:build
 
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bunting_e2e
+        run: pnpm exec prisma migrate deploy
+
       # The production server runs the startup config validation, so the smoke
       # test needs a complete (if dummy) prod config to boot. Proxy mode avoids
-      # needing a live OIDC provider; the smoke test only loads the public `/`.
+      # needing a live OIDC provider, and e2e/proxy-identity.spec.ts checks that
+      # a proxied user landing on `/` reaches the app rather than sign-in.
       - name: Run Playwright smoke tests
         env:
           AUTH_MODE: proxy

@@ -40,6 +40,9 @@ describe('GET /api/me (proxy mode)', () => {
 		expect(await admin.json()).toEqual({
 			email: 'admin@example.com',
 			role: 'ADMIN',
+			name: null,
+			image: null,
+			authMode: 'proxy',
 		});
 
 		const dev = await get('someone@example.com');
@@ -47,6 +50,21 @@ describe('GET /api/me (proxy mode)', () => {
 		expect(await dev.json()).toEqual({
 			email: 'someone@example.com',
 			role: 'DEVELOPER',
+			name: null,
+			image: null,
+			authMode: 'proxy',
+		});
+	});
+
+	test('includes the display name of a known user row', async () => {
+		await prisma.user.create({
+			data: { email: 'admin@example.com', name: 'Ada Admin' },
+		});
+		const res = await get('admin@example.com');
+		expect(await res.json()).toMatchObject({
+			email: 'admin@example.com',
+			role: 'ADMIN',
+			name: 'Ada Admin',
 		});
 	});
 

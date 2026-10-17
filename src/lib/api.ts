@@ -60,6 +60,10 @@ export interface App {
 export interface CurrentUser {
 	email: string;
 	role: 'ADMIN' | 'DEVELOPER';
+	name: string | null;
+	image: string | null;
+	// proxy: identity comes from a reverse proxy, so there is no sign-out here.
+	authMode: 'oidc' | 'proxy';
 }
 
 // Returns null when the request is not authenticated.

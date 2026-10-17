@@ -1018,13 +1018,21 @@ Also handles `OPTIONS` preflight with CORS headers.
 
 ### `GET /api/me`
 
-The caller's identity and role, resolved server-side exactly as route authorization does (NextAuth session in `oidc` mode, access list in `proxy` mode). The dashboard uses it to decide which admin controls to show; it grants nothing itself. Any authenticated user.
+The caller's identity and role, resolved server-side exactly as route authorization does (NextAuth session in `oidc` mode, access list in `proxy` mode). It is the dashboard's only source of client-side identity in both modes: the home and setup pages send a `401` to sign-in, the user menu shows the name/email and role, and settings decides which admin controls to show. It grants nothing itself. Any authenticated user.
 
 **Response 200** (`Cache-Control: private, no-store`)
 
 ```json
-{ "email": "string", "role": "ADMIN" }
+{
+	"email": "string",
+	"role": "ADMIN",
+	"name": "string | null",
+	"image": "string | null",
+	"authMode": "oidc"
+}
 ```
+
+`name` and `image` come from the `User` row, which exists only for users who signed in via OIDC; they are `null` otherwise. `authMode` is `oidc` or `proxy`; the user menu offers sign-out only in `oidc` mode, because in `proxy` mode the reverse proxy owns the session.
 
 **Errors:** `401` if unauthenticated.
 

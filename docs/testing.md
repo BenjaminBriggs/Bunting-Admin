@@ -55,7 +55,7 @@ Coverage reports on all of `src/lib` (`collectCoverageFrom: ['src/lib/**/*.{ts,t
 
 ## E2E Flow
 
-`make test-e2e` runs `playwright test` against a server that is already listening on port 3000 (the default Playwright config has no `webServer`). The `pnpm run e2e` script does the full cycle in one step: `e2e:build` builds the app, then `start-server-and-test` launches `next start` on port 3000 (`e2e:start`) and runs `playwright test` against it. The default config (`playwright.config.ts`) ignores `smoke-key-paths.spec.ts` and runs the remaining specs (currently `e2e/smoke.spec.ts`). Remember to run `pnpm exec playwright install` once to download browsers.
+`make test-e2e` runs `playwright test` against a server that is already listening on port 3000 (the default Playwright config has no `webServer`). The `pnpm run e2e` script does the full cycle in one step: `e2e:build` builds the app, then `start-server-and-test` launches `next start` on port 3000 (`e2e:start`) and runs `playwright test` against it. The default config (`playwright.config.ts`) ignores `smoke-key-paths.spec.ts` and runs the remaining specs (currently `e2e/smoke.spec.ts` and `e2e/proxy-identity.spec.ts`). The proxy-identity spec only runs when `AUTH_MODE=proxy` is set for the Playwright process, needs a migrated database behind the server, and checks that `/` sends a request without a proxy identity to sign-in but a request with one (`x-forwarded-email`, or `AUTH_PROXY_EMAIL_HEADER`) into the app. Remember to run `pnpm exec playwright install` once to download browsers.
 
 ## Core-Flow Smoke Test (`make smoke`)
 
@@ -102,7 +102,7 @@ If you add a flow you want covered, add a `data-testid` to the new control and e
 
 ### Relationship to the CI e2e job
 
-This spec is **not** run by the default `make test-e2e` / CI e2e job — that job builds a production app in `proxy` auth mode and only runs the lightweight `e2e/smoke.spec.ts`. The full-stack smoke needs the dex OIDC stack, so `playwright.config.ts` ignores `smoke-key-paths.spec.ts` and `make smoke` runs it via `playwright.smoke.config.ts`. It is intended to be run on demand (locally or in a dedicated job that can run Docker Compose), not on every push.
+This spec is **not** run by the default `make test-e2e` / CI e2e job — that job builds a production app in `proxy` auth mode against a migrated Postgres service and only runs the lightweight `e2e/smoke.spec.ts` and `e2e/proxy-identity.spec.ts`. The full-stack smoke needs the dex OIDC stack, so `playwright.config.ts` ignores `smoke-key-paths.spec.ts` and `make smoke` runs it via `playwright.smoke.config.ts`. It is intended to be run on demand (locally or in a dedicated job that can run Docker Compose), not on every push.
 
 ## Removing Coverage Overrides
 

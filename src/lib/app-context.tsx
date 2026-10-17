@@ -2,7 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { type App, type CurrentUser, fetchApps, fetchCurrentUser } from './api';
+import { type App, type CurrentUser, fetchApps } from './api';
+import { useCurrentUser } from './current-user';
 
 interface AppContextType {
 	/** The caller and their role, as resolved server-side by /api/me. */
@@ -18,7 +19,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-	const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+	const { status, user: currentUser, error: userError } = useCurrentUser();
 	const [apps, setApps] = useState<App[]>([]);
 	const [selectedApp, setSelectedAppState] = useState<App | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -61,29 +62,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 	// in proxy auth mode. (Auto-selection of the first app is handled inside
 	// refreshApps' reconciliation, so no separate effect is needed.)
 	useEffect(() => {
-		let cancelled = false;
-		const loadUserAndApps = async () => {
-			try {
-				const user = await fetchCurrentUser();
-				if (cancelled) {
-					return;
-				}
-				setCurrentUser(user);
-				if (user) {
-					await refreshApps();
-				}
-			} catch (err) {
-				setError(
-					err instanceof Error ? err.message : 'Failed to load current user',
-				);
-				setLoading(false);
-			}
-		};
-		void loadUserAndApps();
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+		if (status === 'authenticated') {
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: refreshApps sets a loading flag before an async fetch once authenticated
+			void refreshApps();
+		} else if (status === 'error') {
+			setError(userError);
+			setLoading(false);
+		}
+	}, [status, userError]);
 
 	const value: AppContextType = {
 		currentUser,
