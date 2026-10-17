@@ -4,9 +4,9 @@ import { Box, CircularProgress, Typography } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { type ChangeEvent, useEffect, useState } from 'react';
 import { createApp } from '@/lib/api';
+import { useCurrentUser } from '@/lib/current-user';
 import { ink, monoFontFamily } from '@/theme/designTokens';
 
 interface SetupData {
@@ -54,7 +54,9 @@ const inputReset = {
 
 export default function SetupPage() {
 	const router = useRouter();
-	const { status } = useSession();
+	// Resolved server-side by /api/me, so this works in proxy auth mode too
+	// (there is no NextAuth client session there).
+	const { status, error: userError } = useCurrentUser();
 	const [activeStep, setActiveStep] = useState(0);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -67,11 +69,8 @@ export default function SetupPage() {
 		},
 	});
 
-	// Require authentication.
+	// Require authentication (a 401 from /api/me in either auth mode).
 	useEffect(() => {
-		if (status === 'loading') {
-			return;
-		}
 		if (status === 'unauthenticated') {
 			router.replace('/auth/signin');
 		}
@@ -122,12 +121,6 @@ export default function SetupPage() {
 			await createApp({
 				name: setupData.appName,
 				identifier: setupData.appIdentifier,
-				publicKeys: [
-					{
-						kid: 'default',
-						pem: '-----BEGIN PUBLIC KEY-----\n[Your public key here]\n-----END PUBLIC KEY-----',
-					},
-				],
 				fetchPolicy: {
 					min_interval_seconds: setupData.fetchPolicy.minIntervalHours * 3600,
 					hard_ttl_days: setupData.fetchPolicy.hardTtlDays,
@@ -155,6 +148,16 @@ export default function SetupPage() {
 				}}
 			>
 				<CircularProgress />
+			</Box>
+		);
+	}
+
+	if (status === 'error') {
+		return (
+			<Box sx={{ maxWidth: 480, mx: 'auto', mt: 12, px: 2 }}>
+				<Typography color="error" sx={{ fontWeight: 600 }}>
+					Could not load your account: {userError}. Reload to try again.
+				</Typography>
 			</Box>
 		);
 	}
@@ -466,11 +469,13 @@ export default function SetupPage() {
 								<Typography
 									sx={{ font: "500 13px/1.55 'Nunito'", color: '#5E4A18' }}
 								>
-									A signing keypair is generated on create. You'll download{' '}
+									Two signing keys are generated on create: an active key that
+									signs your configs and a standby key for future rotation.
+									You'll download{' '}
 									<Box component="span" sx={{ fontFamily: monoFontFamily }}>
 										BuntingConfig.plist
 									</Box>{' '}
-									from the SDK Integration tab right after.
+									(which trusts both) from the SDK Integration tab right after.
 								</Typography>
 							</Box>
 						</Box>

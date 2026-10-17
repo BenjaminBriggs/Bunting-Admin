@@ -16,7 +16,7 @@ In `oidc` mode, auth is handled by NextAuth.js (JWT session strategy). Supported
 
 **Authorization** (role checks) is enforced per-route in the node-runtime handlers. ADMIN-only routes are marked **Admin only** in each section; they all call `requireAdmin` (`src/lib/authz.ts`), which returns `403` for an authenticated non-admin or `401` if unauthenticated. All other routes are open to any authenticated user (including `DEVELOPER`): per [authentication.md](../../docs/authentication.md) §Roles, developers may author apps/flags/tests/rollouts but may not publish or manage keys/users/access-list.
 
-The **Admin only** routes are: `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic.
+The **Admin only** routes are: `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `keys/export`, `keys/import`, `apps/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic.
 
 ---
 
@@ -39,7 +39,7 @@ Zod validation failures additionally include:
 }
 ```
 
-Common status codes: `400` bad input, `401` unauthorized, `404` not found, `409` conflict (duplicate key/identifier), `500` server error.
+Common status codes: `400` bad input, `401` unauthorized, `403` forbidden (not an admin), `404` not found, `409` conflict (duplicate key/identifier, a disallowed signing-key transition, or an app delete that would destroy signing keys), `500` server error.
 
 ---
 
@@ -53,37 +53,38 @@ List all apps, ordered by name.
 
 Array of `App` objects, each including a `_count` of related `flags` and `testRollouts`.
 
-| Field                     | Type                                                    | Notes                                               |
-| ------------------------- | ------------------------------------------------------- | --------------------------------------------------- |
-| `id`                      | string                                                  | cuid                                                |
-| `name`                    | string                                                  |                                                     |
-| `identifier`              | string                                                  | unique, used as S3 path prefix                      |
-| `artifactUrl`             | string                                                  | CDN URL derived from `CDN_BASE_URL`                 |
-| `publicKeys`              | `{kid: string, pem: string}[]`                          | stored on app; see Keys section for DB-managed keys |
-| `fetchPolicy`             | `{min_interval_seconds: number, hard_ttl_days: number}` |                                                     |
-| `storageConfig`           | object                                                  | internal, not used for routing                      |
-| `createdAt` / `updatedAt` | ISO8601 string                                          |                                                     |
-| `_count.flags`            | number                                                  |                                                     |
-| `_count.testRollouts`     | number                                                  |                                                     |
+| Field                     | Type                                                    | Notes                                                                                              |
+| ------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `id`                      | string                                                  | cuid                                                                                               |
+| `name`                    | string                                                  |                                                                                                    |
+| `identifier`              | string                                                  | unique, used as S3 path prefix                                                                     |
+| `artifactUrl`             | string                                                  | CDN URL derived from `CDN_BASE_URL`                                                                |
+| `publicKeys`              | `{kid: string, pem: string}[]`                          | deprecated and never read; new apps store `[]`. Trusted keys are the app's signing keys (see Keys) |
+| `fetchPolicy`             | `{min_interval_seconds: number, hard_ttl_days: number}` |                                                                                                    |
+| `storageConfig`           | object                                                  | internal, not used for routing                                                                     |
+| `createdAt` / `updatedAt` | ISO8601 string                                          |                                                                                                    |
+| `_count.flags`            | number                                                  |                                                                                                    |
+| `_count.testRollouts`     | number                                                  |                                                                                                    |
 
 ---
 
 ### `POST /api/apps`
 
-Create a new app and publish an initial empty config to S3.
+Create a new app, mint its signing keys (one `ACTIVE`, one `STANDBY`) and publish an initial empty config to S3, signed with the `ACTIVE` key. Open to any authenticated user.
 
 **Request body** (Zod-validated)
 
-| Field         | Type                                                    | Required             |
-| ------------- | ------------------------------------------------------- | -------------------- |
-| `name`        | string                                                  | yes                  |
-| `identifier`  | string                                                  | yes — must be unique |
-| `publicKeys`  | `{kid: string, pem: string}[]`                          | yes                  |
-| `fetchPolicy` | `{min_interval_seconds: number, hard_ttl_days: number}` | yes                  |
+| Field         | Type                                                    | Required            |
+| ------------- | ------------------------------------------------------- | ------------------- |
+| `name`        | string                                                  | yes                 |
+| `identifier`  | string                                                  | yes; must be unique |
+| `fetchPolicy` | `{min_interval_seconds: number, hard_ttl_days: number}` | yes                 |
+
+Public keys are never supplied by the client; a `publicKeys` field in the body is ignored. The `identifier` can't be changed after creation.
 
 **Response 201** — created `App` object (same shape as GET list item).
 
-**Errors:** `409` if `identifier` already exists. `500` if the initial S3 config upload fails (app is rolled back).
+**Errors:** `409` if `identifier` already exists. `500` if the initial S3 config upload fails (the app and its freshly minted keys are rolled back).
 
 ---
 
@@ -99,36 +100,48 @@ Get a single app by database ID.
 
 ### `PUT /api/apps/[id]`
 
-Update an app. All fields are optional.
+**Admin only.** Update an app's name or fetch policy. All fields are optional.
 
 **Request body** (Zod-validated)
 
-| Field         | Type                                                     |
-| ------------- | -------------------------------------------------------- |
-| `name`        | string?                                                  |
-| `identifier`  | string?                                                  |
-| `publicKeys`  | `{kid: string, pem: string}[]?`                          |
-| `fetchPolicy` | `{min_interval_seconds: number, hard_ttl_days: number}?` |
+| Field         | Type                                                     | Notes                                       |
+| ------------- | -------------------------------------------------------- | ------------------------------------------- |
+| `name`        | string?                                                  |                                             |
+| `identifier`  | string?                                                  | accepted only if equal to the current value |
+| `fetchPolicy` | `{min_interval_seconds: number, hard_ttl_days: number}?` |                                             |
 
-Changing `identifier` re-derives `artifactUrl` automatically.
+The `identifier` is immutable: it is the S3 path prefix shipped apps fetch their config from, so changing it would strand every binary in the field. `publicKeys` is no longer accepted (ignored if sent).
 
 **Response 200** — updated `App` object.
 
-**Errors:** `404` not found, `409` if new `identifier` conflicts.
+**Errors:** `403` not an admin, `404` not found, `409` if `identifier` differs from the current value.
 
 ---
 
 ### `DELETE /api/apps/[id]`
 
-Delete an app. Cascades to all flags, test-rollouts, and audit logs.
+**Admin only.** Delete an app. Deletes its flags, test-rollouts, rules, audit logs (publish ledger) and publications in the same operation. Signing keys never cascade: they are only deleted when the request explicitly asks for it. Objects already in S3 (the last `config.json` and its signature) are not removed, so shipped apps keep that config but never receive another update. Activity-log rows are kept.
+
+**Request body**
+
+```json
+{ "confirmIdentifier": "string", "deleteSigningKeys": false }
+```
+
+| Field               | Type     | Notes                                                                                                  |
+| ------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| `confirmIdentifier` | string   | required; must equal the app's `identifier` (typed confirmation)                                       |
+| `deleteSigningKeys` | boolean? | default `false`; must be `true` if the app still has signing keys, which are then deleted with the app |
 
 **Response 200**
 
 ```json
-{ "message": "App deleted successfully" }
+{ "message": "App deleted successfully", "deletedSigningKeys": ["kid", "..."] }
 ```
 
-**Errors:** `404` if not found.
+Each deleted key is recorded in the activity log, as is the app deletion.
+
+**Errors:** `400` if `confirmIdentifier` is missing or doesn't match, `403` not an admin, `404` if not found, `409` if the app still has signing keys and `deleteSigningKeys` is not `true` (the body includes `signingKeyCount`). Export any key you may need first (`POST /api/keys/export`): once deleted, configs signed by a recreated app can never verify in builds that only trust the old keys.
 
 ---
 
@@ -725,10 +738,10 @@ Generate and download a `BuntingConfig.plist` for the Bunting Swift SDK. Unchang
 The plist contains:
 
 - `endpoint_url` — `app.artifactUrl`
-- `public_keys` — array of `{kid, pem}` from active `SigningKey` records; falls back to `app.publicKeys` if no DB keys exist
+- `public_keys`: array of `{kid, pem}` for every trusted signing key of the app: the `ACTIVE` key first, then every `STANDBY` key (newest first). `RETIRED` keys are excluded. Before the list is built the app is guaranteed an `ACTIVE` key and at least one `STANDBY` key: a missing `ACTIVE` key is filled by promoting the oldest `STANDBY` key (or minting one if there is none), and a missing `STANDBY` key is minted (requires signing-key protection to be configured). Every downloaded file therefore carries at least two keys.
 - `fetch_policy` — `{min_interval_seconds, hard_ttl_days}` from `app.fetchPolicy` (defaults: 21600 / 7)
 
-**Errors:** `400` if neither param provided, `404` if app not found or no signing keys exist.
+**Errors:** `400` if neither param provided, `404` if app not found, `500` if keys had to be minted and key protection is not configured.
 
 Also handles `OPTIONS` preflight with CORS headers.
 
@@ -746,10 +759,10 @@ The JSON document contains:
 
 - `app_identifier` — `app.identifier`. Present here in addition to the plist form, since non-Apple clients have no bundle identifier to fall back on.
 - `endpoint_url` — `app.artifactUrl`
-- `public_keys` — array of `{kid, pem}` from active `SigningKey` records; falls back to `app.publicKeys` if no DB keys exist
+- `public_keys`: same list as the plist: the `ACTIVE` key first, then every `STANDBY` key; `RETIRED` keys excluded, with a missing `ACTIVE` or `STANDBY` key filled first
 - `fetch_policy` — `{min_interval_seconds, hard_ttl_days}` from `app.fetchPolicy` (defaults: 21600 / 7)
 
-**Errors:** `400` if neither param provided, `404` if app not found or no signing keys exist.
+**Errors:** `400` if neither param provided, `404` if app not found, `500` if keys had to be minted and key protection is not configured.
 
 Also handles `OPTIONS` preflight with CORS headers.
 
@@ -757,11 +770,13 @@ Also handles `OPTIONS` preflight with CORS headers.
 
 ## Keys
 
-The mutating key endpoints (`POST /api/keys`, `PUT /api/keys`, `PUT /api/keys/[id]`, `DELETE /api/keys/[id]`) are **Admin only** (via `requireAdmin`; `403` for non-admins). The read endpoints (`GET /api/keys`, `GET /api/keys/[id]`, `GET /api/keys/public`) require any authenticated session.
+Every signing key has a `status`: `ACTIVE` (exactly one per app; signs publishes), `STANDBY` (trusted and in bootstrap files, but not signing) or `RETIRED` (excluded from bootstrap files, can never be re-activated, and the only status that can be deleted). See [security.md](security.md) §Key statuses and the rotation runbook.
+
+The mutating key endpoints (`POST /api/keys`, `PUT /api/keys`, `PUT /api/keys/[id]`, `DELETE /api/keys/[id]`, `POST /api/keys/export`, `POST /api/keys/import`) are **Admin only** (via `requireAdmin`; `403` for non-admins). The read endpoints (`GET /api/keys`, `GET /api/keys/[id]`, `GET /api/keys/public`) require any authenticated session. Private keys are never returned except, passphrase-encrypted, by export.
 
 ### `GET /api/keys?appId=<id>`
 
-List all signing keys for an app. Private keys are never returned.
+List all signing keys for an app, `ACTIVE` first, then `STANDBY`, then `RETIRED` (newest first within each).
 
 **Response 200**
 
@@ -774,7 +789,7 @@ List all signing keys for an app. Private keys are never returned.
 			"kid": "string",
 			"publicKey": "string",
 			"algorithm": "RS256",
-			"isActive": true,
+			"status": "ACTIVE",
 			"createdAt": "ISO8601"
 		}
 	]
@@ -785,15 +800,13 @@ List all signing keys for an app. Private keys are never returned.
 
 ### `POST /api/keys`
 
-Generate a new RSA key pair for an app. The private key is encrypted before persistence.
+Generate a new RSA key pair for an app as a `STANDBY` key. The private key is encrypted before persistence. New keys never sign until activated; an `isActive` field from older clients is ignored.
 
 **Request body**
 
 ```json
-{ "appId": "string", "isActive": false }
+{ "appId": "string" }
 ```
-
-`isActive` defaults to `false`. If `true`, all existing active keys for the app are deactivated first (in a transaction).
 
 **Response 201**
 
@@ -802,7 +815,8 @@ Generate a new RSA key pair for an app. The private key is encrypted before pers
 	"kid": "string",
 	"publicKey": "string",
 	"algorithm": "RS256",
-	"isActive": false,
+	"status": "STANDBY",
+	"createdAt": "ISO8601",
 	"message": "Signing key created successfully"
 }
 ```
@@ -811,7 +825,7 @@ Generate a new RSA key pair for an app. The private key is encrypted before pers
 
 ### `PUT /api/keys`
 
-Rotate signing keys — deactivates all current active keys and activates the specified key.
+Rotate: activate a `STANDBY` key. The previous `ACTIVE` key becomes `STANDBY` in the same transaction. Equivalent to `PUT /api/keys/[newKeyId]` with `{ "status": "ACTIVE" }`.
 
 **Request body**
 
@@ -824,10 +838,14 @@ Rotate signing keys — deactivates all current active keys and activates the sp
 **Response 200**
 
 ```json
-{ "message": "Key rotation completed successfully", "activeKeyId": "string" }
+{
+	"message": "Key rotation completed successfully",
+	"activeKeyId": "string",
+	"previousActiveKeyId": "string | null"
+}
 ```
 
-**Errors:** `404` if app or target key not found.
+**Errors:** `404` if app or target key not found, `409` if the target key is `RETIRED`.
 
 ---
 
@@ -844,7 +862,7 @@ Get a specific signing key by `kid` (URL segment) and `appId` (query param). The
 		"kid": "string",
 		"publicKey": "string",
 		"algorithm": "RS256",
-		"isActive": true,
+		"status": "STANDBY",
 		"createdAt": "ISO8601",
 		"app": { "id": "string", "name": "string", "identifier": "string" }
 	}
@@ -855,29 +873,41 @@ Get a specific signing key by `kid` (URL segment) and `appId` (query param). The
 
 ### `PUT /api/keys/[id]?appId=<appId>`
 
-Activate or deactivate a key. Activating a key deactivates all other keys for the app.
+Change a key's lifecycle status.
 
 **Request body**
 
 ```json
-{ "isActive": true }
+{ "status": "ACTIVE" }
 ```
+
+| `status`  | Allowed from | Effect                                                                               |
+| --------- | ------------ | ------------------------------------------------------------------------------------ |
+| `ACTIVE`  | `STANDBY`    | The key signs from now on; the previous `ACTIVE` key becomes `STANDBY` (atomically). |
+| `RETIRED` | `STANDBY`    | The key leaves bootstrap files and can never be activated again.                     |
+
+`STANDBY` can't be set directly (a key only becomes `STANDBY` when another key is activated). Setting a key to the status it already has is a no-op.
 
 **Response 200**
 
 ```json
 {
-	"message": "Signing key updated successfully",
+	"message": "Signing key activated",
 	"keyId": "string",
-	"isActive": true
+	"status": "ACTIVE",
+	"previousActiveKeyId": "string | null"
 }
 ```
+
+(`previousActiveKeyId` is only present when activating.)
+
+**Errors:** `400` invalid status (including `STANDBY`), `404` if not found, `409` when activating a `RETIRED` key or retiring the `ACTIVE` key.
 
 ---
 
 ### `DELETE /api/keys/[id]?appId=<appId>`
 
-Delete a signing key. Cannot delete the active key — deactivate it first.
+Delete a signing key. Only `RETIRED` keys can be deleted; the private key is destroyed, so export it first if you might need it.
 
 **Response 200**
 
@@ -885,13 +915,77 @@ Delete a signing key. Cannot delete the active key — deactivate it first.
 { "message": "Signing key deleted successfully", "keyId": "string" }
 ```
 
-**Errors:** `400` if key is active, `404` if not found.
+**Errors:** `404` if not found, `409` if the key is `ACTIVE` or `STANDBY`.
+
+---
+
+### `POST /api/keys/export`
+
+Export a key's private half for backup or for import into another instance. The PKCS#8 DER private key is encrypted with AES-256-GCM under a key derived from the passphrase with scrypt (N=2^17, r=8, p=1, 16-byte random salt). All binary fields are base64. Everything except `ciphertext` and `cipher.tag` is authenticated as GCM additional data, so editing the metadata or KDF parameters makes import fail. The response is sent as a download (`Content-Disposition: attachment; filename="bunting-key-<appIdentifier>-<kid>.json"`, `Cache-Control: no-store`). Recorded in the activity log; the passphrase and key material are never logged.
+
+**Request body**
+
+```json
+{ "keyId": "string", "passphrase": "string" }
+```
+
+`keyId` is the key's `kid` (unique per instance). `passphrase` must be at least 12 characters.
+
+**Response 200**
+
+```json
+{
+	"format": "bunting-signing-key",
+	"formatVersion": 1,
+	"appIdentifier": "string",
+	"kid": "string",
+	"algorithm": "RS256",
+	"status": "ACTIVE",
+	"createdAt": "ISO8601",
+	"kdf": { "name": "scrypt", "N": 131072, "r": 8, "p": 1, "salt": "base64" },
+	"cipher": { "name": "aes-256-gcm", "iv": "base64", "tag": "base64" },
+	"ciphertext": "base64"
+}
+```
+
+**Errors:** `400` invalid body or passphrase shorter than 12 characters, `404` if the key doesn't exist.
+
+---
+
+### `POST /api/keys/import`
+
+Import an exported key into an app as `STANDBY`, preserving its `kid`. The envelope must use scrypt with N between 2^14 and 2^18 (a power of two), r=8 and p=1. The key is decrypted with the passphrase (any edit to the metadata, KDF parameters, IV, tag or ciphertext fails authentication), validated (RSA, at least 2048 bits, `kid` of 32 lowercase hex characters), re-encrypted with this instance's at-rest scheme and stored. Activate it afterwards with `PUT /api/keys/[kid]`. Recorded in the activity log.
+
+**Request body**
+
+```json
+{
+	"appId": "string",
+	"passphrase": "string",
+	"envelope": { "...": "the export response, unchanged" }
+}
+```
+
+**Response 201**
+
+```json
+{
+	"kid": "string",
+	"publicKey": "string",
+	"algorithm": "RS256",
+	"status": "STANDBY",
+	"createdAt": "ISO8601",
+	"message": "Signing key imported as standby"
+}
+```
+
+**Errors:** `400` invalid envelope, out-of-range KDF parameters, wrong passphrase or tampered file, or a non-RSA or undersized key; `404` if the target app doesn't exist; `409` if a key with the same `kid` or the same key material already exists anywhere on this instance (`kid` is unique per instance; to move a key between apps on one instance, retire and delete it in the source app first).
 
 ---
 
 ### `GET /api/keys/public?appId=<id>` or `?appIdentifier=<id>`
 
-Fetch all public keys for an app (active and inactive), intended for SDK distribution or CDN caching. Active keys are returned first.
+Fetch the app's trusted public keys (the same set as the bootstrap files: `ACTIVE` first, then `STANDBY`; `RETIRED` keys excluded), intended for SDK distribution or CDN caching.
 
 **Response 200** (with `Cache-Control: public, max-age=3600, stale-while-revalidate=86400` and CORS headers)
 
@@ -903,6 +997,7 @@ Fetch all public keys for an app (active and inactive), intended for SDK distrib
 			"kid": "string",
 			"pem": "string",
 			"algorithm": "RS256",
+			"status": "ACTIVE",
 			"active": true,
 			"created_at": "ISO8601"
 		}
@@ -913,9 +1008,33 @@ Fetch all public keys for an app (active and inactive), intended for SDK distrib
 }
 ```
 
-**Errors:** `400` if neither `appId` nor `appIdentifier` is provided, `404` if no keys exist.
+**Errors:** `400` if neither `appId` nor `appIdentifier` is provided, `404` if the app doesn't exist or has no trusted keys.
 
 Also handles `OPTIONS` preflight with CORS headers.
+
+---
+
+## Current user
+
+### `GET /api/me`
+
+The caller's identity and role, resolved server-side exactly as route authorization does (NextAuth session in `oidc` mode, access list in `proxy` mode). It is the dashboard's only source of client-side identity in both modes: the home and setup pages send a `401` to sign-in, the user menu shows the name/email and role, and settings decides which admin controls to show. It grants nothing itself. Any authenticated user.
+
+**Response 200** (`Cache-Control: private, no-store`)
+
+```json
+{
+	"email": "string",
+	"role": "ADMIN",
+	"name": "string | null",
+	"image": "string | null",
+	"authMode": "oidc"
+}
+```
+
+`name` and `image` come from the `User` row, which exists only for users who signed in via OIDC; they are `null` otherwise. `authMode` is `oidc` or `proxy`; the user menu offers sign-out only in `oidc` mode, because in `proxy` mode the reverse proxy owns the session.
+
+**Errors:** `401` if unauthenticated.
 
 ---
 

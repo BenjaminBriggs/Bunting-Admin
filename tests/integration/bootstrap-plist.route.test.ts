@@ -3,6 +3,20 @@ import { GET } from '@/app/api/bootstrap/plist/route';
 import { prisma } from '@/lib/db';
 
 describe('GET /api/bootstrap/plist', () => {
+	// An app without signing keys gets a pair minted on first download, which
+	// needs a key-protection secret.
+	const savedSecret = process.env.SIGNING_KEY_SECRET;
+	beforeAll(() => {
+		process.env.SIGNING_KEY_SECRET ??= 'integration-test-signing-secret';
+	});
+	afterAll(() => {
+		if (savedSecret === undefined) {
+			delete process.env.SIGNING_KEY_SECRET;
+		} else {
+			process.env.SIGNING_KEY_SECRET = savedSecret;
+		}
+	});
+
 	test('emits the full config.json URL as endpoint_url, even for a legacy directory-shaped artifactUrl', async () => {
 		const identifier = `plist-${Date.now()}`;
 		const app = await prisma.app.create({

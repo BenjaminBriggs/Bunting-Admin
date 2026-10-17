@@ -12,12 +12,8 @@ async function main() {
 			name: 'My Application',
 			identifier: 'my-app',
 			artifactUrl: 'https://cdn.example.com/configs/my-app/',
-			publicKeys: [
-				{
-					kid: 'key-1',
-					pem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----',
-				},
-			],
+			// Deprecated column; signing keys are minted on first publish/bootstrap.
+			publicKeys: [],
 			fetchPolicy: {
 				min_interval_seconds: 300,
 				hard_ttl_days: 7,

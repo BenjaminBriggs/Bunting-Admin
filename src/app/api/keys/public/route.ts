@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getPublicKeysForApp } from '@/lib/jws-signer';
 import { logger } from '@/lib/logger';
 
 // GET /api/keys/public - Get public keys for SDK verification
@@ -36,35 +37,23 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		// Get all signing keys (active and inactive for key rotation support)
-		const signingKeys = await prisma.signingKey.findMany({
-			where: { appId: app.id },
-			select: {
-				kid: true,
-				publicKey: true,
-				algorithm: true,
-				isActive: true,
-				createdAt: true,
-			},
-			orderBy: [
-				{ isActive: 'desc' }, // Active keys first
-				{ createdAt: 'desc' }, // Then by creation date
-			],
-		});
+		// Every key the SDK should trust (ACTIVE first, then STANDBY). RETIRED
+		// keys are excluded, matching the bootstrap files.
+		const trustedKeys = await getPublicKeysForApp(app.id);
 
-		if (signingKeys.length === 0) {
+		if (trustedKeys.length === 0) {
 			return NextResponse.json(
 				{ error: 'No signing keys found for this app' },
 				{ status: 404 },
 			);
 		}
 
-		// Format response according to JSON Spec
-		const publicKeys = signingKeys.map((key) => ({
+		const publicKeys = trustedKeys.map((key) => ({
 			kid: key.kid,
-			pem: key.publicKey,
+			pem: key.pem,
 			algorithm: key.algorithm,
-			active: key.isActive,
+			status: key.status,
+			active: key.status === 'ACTIVE',
 			created_at: key.createdAt.toISOString(),
 		}));
 

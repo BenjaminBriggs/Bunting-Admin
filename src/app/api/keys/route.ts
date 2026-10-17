@@ -3,14 +3,17 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-log';
 import { requireAdmin } from '@/lib/authz';
-import { generateRSAKeyPair, KeySecurity } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
-import { storePrivateKey } from '@/lib/key-protection';
 import { logger } from '@/lib/logger';
+import {
+	activateSigningKey,
+	createStandbySigningKey,
+	listSigningKeys,
+	signingKeyErrorResponse,
+} from '@/lib/signing-keys';
 
 const createKeySchema = z.object({
 	appId: z.string(),
-	isActive: z.boolean().optional().default(false),
 });
 
 const rotateKeySchema = z.object({
@@ -41,30 +44,10 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		// Get signing keys (exclude private keys from response)
-		const signingKeys = await prisma.signingKey.findMany({
-			where: { appId },
-			select: {
-				id: true,
-				kid: true,
-				publicKey: true,
-				algorithm: true,
-				isActive: true,
-				createdAt: true,
-			},
-			orderBy: {
-				createdAt: 'desc',
-			},
-		});
+		// Private keys are never selected.
+		const keys = await listSigningKeys(appId);
 
-		return NextResponse.json({
-			app: app.name,
-			keys: signingKeys.map((key) => ({
-				...key,
-				// Sanitize for logging safety
-				...KeySecurity.sanitizeKeyForLogging(key),
-			})),
-		});
+		return NextResponse.json({ app: app.name, keys });
 	} catch (error) {
 		logger.error({ err: error }, 'Failed to list signing keys');
 		return NextResponse.json(
@@ -74,7 +57,7 @@ export async function GET(request: NextRequest) {
 	}
 }
 
-// POST /api/keys - Create a new signing key
+// POST /api/keys - Create a new STANDBY signing key
 export async function POST(request: NextRequest) {
 	try {
 		const authz = await requireAdmin(request.headers);
@@ -83,7 +66,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const body: unknown = await request.json();
-		const { appId, isActive } = createKeySchema.parse(body);
+		const { appId } = createKeySchema.parse(body);
 
 		// Verify app exists
 		const app = await prisma.app.findUnique({
@@ -95,49 +78,27 @@ export async function POST(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		// Generate new RSA key pair and encrypt the private key before persistence.
-		const keyPair = await generateRSAKeyPair();
-		const protectedPrivateKey = await storePrivateKey(keyPair.privateKey);
+		// New keys always start as STANDBY: trusted by bootstrap files downloaded
+		// from now on, but not signing until an admin activates them.
+		const createdKey = await createStandbySigningKey(appId);
 
-		// If this key should be active, deactivate other keys first
-		const createdKey = await prisma.$transaction(async (tx) => {
-			if (isActive) {
-				await tx.signingKey.updateMany({
-					where: { appId, isActive: true },
-					data: { isActive: false },
-				});
-			}
-
-			// Create the new signing key
-			return tx.signingKey.create({
-				data: {
-					appId,
-					kid: keyPair.kid,
-					privateKey: protectedPrivateKey,
-					publicKey: keyPair.publicKey,
-					algorithm: keyPair.algorithm,
-					isActive,
-				},
-			});
-		});
-
-		const actor = authz.email;
 		await logActivity({
-			actor,
+			actor: authz.email,
 			action: 'create',
 			entityType: 'signing_key',
 			entityId: createdKey.id,
 			appId,
-			summary: 'Created signing key',
+			summary: `Created standby signing key ${createdKey.kid}`,
 		});
 
 		// Return public information only
 		return NextResponse.json(
 			{
-				kid: keyPair.kid,
-				publicKey: keyPair.publicKey,
-				algorithm: keyPair.algorithm,
-				isActive,
+				kid: createdKey.kid,
+				publicKey: createdKey.publicKey,
+				algorithm: createdKey.algorithm,
+				status: createdKey.status,
+				createdAt: createdKey.createdAt,
 				message: 'Signing key created successfully',
 			},
 			{ status: 201 },
@@ -158,7 +119,8 @@ export async function POST(request: NextRequest) {
 	}
 }
 
-// PUT /api/keys - Rotate signing keys
+// PUT /api/keys - Rotate: activate a STANDBY key (the previous ACTIVE key
+// becomes STANDBY). Same transition as PUT /api/keys/[id] { status: 'ACTIVE' }.
 export async function PUT(request: NextRequest) {
 	try {
 		const authz = await requireAdmin(request.headers);
@@ -179,44 +141,24 @@ export async function PUT(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		// Verify the new key exists
-		const newKey = await prisma.signingKey.findUnique({
-			where: { appId_kid: { appId, kid: newKeyId } },
-			select: { id: true, kid: true },
-		});
+		const result = await activateSigningKey(appId, newKeyId);
 
-		if (!newKey) {
-			return NextResponse.json({ error: 'New key not found' }, { status: 404 });
+		if (result.changed) {
+			await logActivity({
+				actor: authz.email,
+				action: 'activate',
+				entityType: 'signing_key',
+				entityId: result.keyId,
+				appId,
+				summary: `Activated signing key ${newKeyId}`,
+				changes: { previousActiveKid: result.previousActiveKid },
+			});
 		}
-
-		// Perform key rotation
-		await prisma.$transaction(async (tx) => {
-			// Deactivate all keys for this app
-			await tx.signingKey.updateMany({
-				where: { appId, isActive: true },
-				data: { isActive: false },
-			});
-
-			// Activate the new key
-			await tx.signingKey.update({
-				where: { appId_kid: { appId, kid: newKeyId } },
-				data: { isActive: true },
-			});
-		});
-
-		const actor = authz.email;
-		await logActivity({
-			actor,
-			action: 'rotate',
-			entityType: 'signing_key',
-			entityId: newKey.id,
-			appId,
-			summary: 'Rotated signing key',
-		});
 
 		return NextResponse.json({
 			message: 'Key rotation completed successfully',
 			activeKeyId: newKeyId,
+			previousActiveKeyId: result.previousActiveKid,
 		});
 	} catch (error) {
 		if (error instanceof z.ZodError) {
@@ -224,6 +166,10 @@ export async function PUT(request: NextRequest) {
 				{ error: 'Invalid request data', details: error.issues },
 				{ status: 400 },
 			);
+		}
+		const keyError = signingKeyErrorResponse(error);
+		if (keyError) {
+			return keyError;
 		}
 
 		logger.error({ err: error }, 'Failed to rotate signing keys');

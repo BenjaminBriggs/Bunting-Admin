@@ -110,7 +110,7 @@ The admin's `src/lib/bucketing.ts` reads the first 8 bytes (16 hex characters) o
 
 **Signature verification** is the core trust mechanism. The SDK will not apply any config it cannot verify. The public keys shipped in `BuntingConfig.plist` are long-lived; multiple keys are supported for rotation. Old builds keep working as long as their embedded keys remain valid.
 
-**Key rotation** works without forcing app updates: the admin can sign with a new private key while the old one is still trusted by deployed apps. New app versions add the new public key; old builds continue to verify with the old one.
+**Key rotation** works without forcing app updates because every bootstrap file also carries the app's standby keys. Activating a standby key switches signing to a key that builds made from that file already trust; the previous key stays trusted as a standby. Only one key signs at a time, so a build can verify new configs only if its bootstrap file includes the current active key. See [security.md](security.md) for the runbook.
 
 **Fallback chain:** verified fetched config → last-known-good cache → bundled seed JSON. The seed is the snapshot of flags at the time the app was built, ensuring the app behaves sensibly with no connectivity at all.
 

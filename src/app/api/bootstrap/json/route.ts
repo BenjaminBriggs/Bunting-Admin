@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getBootstrapPublicKeys } from '@/lib/jws-signer';
 import { logger } from '@/lib/logger';
 import { normalizeArtifactUrl } from '@/lib/storage';
 import { buildBootstrapDocument } from '@/lib/bootstrap';
@@ -23,7 +24,6 @@ export async function GET(request: NextRequest) {
 				id: true,
 				identifier: true,
 				artifactUrl: true,
-				publicKeys: true,
 				fetchPolicy: true,
 			},
 		});
@@ -31,28 +31,8 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		const signingKeys = await prisma.signingKey.findMany({
-			where: { appId: app.id, isActive: true },
-			select: { kid: true, publicKey: true },
-			orderBy: { createdAt: 'desc' },
-		});
-
-		let publicKeys: Array<{ kid: string; pem: string }>;
-		if (signingKeys.length > 0) {
-			publicKeys = signingKeys.map((k) => ({ kid: k.kid, pem: k.publicKey }));
-		} else {
-			const appKeys = app.publicKeys as Array<{
-				kid: string;
-				pem: string;
-			}> | null;
-			if (!appKeys || appKeys.length === 0) {
-				return NextResponse.json(
-					{ error: 'No signing keys found for this app' },
-					{ status: 404 },
-				);
-			}
-			publicKeys = appKeys;
-		}
+		// Every trusted key (ACTIVE first, then STANDBY); see the plist route.
+		const publicKeys = await getBootstrapPublicKeys(app.id);
 
 		const doc = buildBootstrapDocument({
 			appIdentifier: app.identifier,
