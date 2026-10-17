@@ -39,7 +39,7 @@ Zod validation failures additionally include:
 }
 ```
 
-Common status codes: `400` bad input, `401` unauthorized, `404` not found, `409` conflict (duplicate key/identifier), `500` server error.
+Common status codes: `400` bad input, `401` unauthorized, `404` not found, `409` conflict (duplicate key/identifier, or a change the current state does not allow, such as renaming a flag), `500` server error.
 
 ---
 
@@ -195,21 +195,23 @@ Get a single flag by ID.
 
 Update a flag. All fields are optional. Setting `archived: true` also sets `archivedAt`; setting `archived: false` clears it.
 
+`key` and `type` are **immutable** from creation: apps ship generated, strongly typed accessors for both, so changing either would break clients already in the wild. They may be sent (the edit form echoes them back on every save) but must equal the stored values; they are never written.
+
 **Request body** (Zod-validated via `updateFlagSchema`)
 
-| Field           | Type                                                                     |
-| --------------- | ------------------------------------------------------------------------ |
-| `key`           | string?                                                                  |
-| `displayName`   | string?                                                                  |
-| `type`          | `"bool"` \| `"string"` \| `"int"` \| `"double"` \| `"date"` \| `"json"`? |
-| `description`   | string \| null?                                                          |
-| `defaultValues` | `{development: any, beta: any, production: any}`?                        |
-| `variants`      | `Record<string, unknown[]>`? — env-keyed array                           |
-| `archived`      | boolean?                                                                 |
+| Field           | Type                                                                     | Notes                      |
+| --------------- | ------------------------------------------------------------------------ | -------------------------- |
+| `key`           | string?                                                                  | must equal the stored key  |
+| `displayName`   | string?                                                                  |                            |
+| `type`          | `"bool"` \| `"string"` \| `"int"` \| `"double"` \| `"date"` \| `"json"`? | must equal the stored type |
+| `description`   | string \| null?                                                          |                            |
+| `defaultValues` | `{development: any, beta: any, production: any}`?                        |                            |
+| `variants`      | `Record<string, unknown[]>`? (env-keyed array)                           |                            |
+| `archived`      | boolean?                                                                 |                            |
 
 **Response 200** — updated `Flag` object.
 
-**Errors:** `404` if not found.
+**Errors:** `404` if not found. `409` if `key` or `type` differs from the stored value, if the flag is archived and the request changes anything other than `archived`, or if archiving a flag that was never published.
 
 ---
 
@@ -278,13 +280,12 @@ Get a single test. Only matches records with `type = "TEST"`.
 
 ### `PUT /api/tests/[id]`
 
-Update a test.
+Update a test. The key is immutable after creation (flag variants reference the test by key); a `key` in the body is ignored.
 
 **Request body** (Zod-validated via `updateTestSchema`)
 
 | Field         | Type                       |
 | ------------- | -------------------------- |
-| `key`         | string?                    |
 | `name`        | string?                    |
 | `description` | string \| null?            |
 | `conditions`  | `Condition[]`?             |
@@ -294,7 +295,7 @@ Update a test.
 
 **Response 200** — updated `TestRollout` object.
 
-**Errors:** `404` if not found.
+**Errors:** `404` if not found. `409` if `archived: false` is sent for a finished (completed or abandoned) test.
 
 ---
 
@@ -361,13 +362,12 @@ Get a single rollout. Only matches records with `type = "ROLLOUT"`.
 
 ### `PUT /api/rollouts/[id]`
 
-Update a rollout.
+Update a rollout. The key is immutable after creation (flag variants reference the rollout by key); a `key` in the body is ignored.
 
 **Request body** (Zod-validated via `updateRolloutSchema`)
 
 | Field           | Type                                          |
 | --------------- | --------------------------------------------- |
-| `key`           | string?                                       |
 | `name`          | string?                                       |
 | `description`   | string \| null?                               |
 | `conditions`    | `Condition[]`?                                |
@@ -378,7 +378,7 @@ Update a rollout.
 
 **Response 200** — updated `TestRollout` object.
 
-**Errors:** `404` if not found.
+**Errors:** `404` if not found. `409` if `archived: false` is sent for a finished (completed or abandoned) rollout.
 
 ---
 
@@ -461,7 +461,7 @@ Get a single test-rollout by ID (no type filter).
 
 ### `PUT /api/test-rollouts/[id]`
 
-Update a test-rollout. No type filter applied.
+Update a test-rollout. No type filter applied. The key is immutable after creation; `updateTestRolloutSchema` has no `key` field, so one in the body is ignored.
 
 **Request body** (Zod-validated via `updateTestRolloutSchema`)
 
@@ -478,6 +478,8 @@ Update a test-rollout. No type filter applied.
 
 **Response 200** — updated `TestRollout` object.
 
+**Errors:** `404` if not found. `409` if the record is finished (completed or abandoned) and the request does not send `archived: true`: finished tests and rollouts cannot be reactivated.
+
 ---
 
 ### `DELETE /api/test-rollouts/[id]`
@@ -492,25 +494,62 @@ Hard-delete a test-rollout.
 
 ---
 
+### `POST /api/test-rollouts/[id]/complete`
+
+Complete a test or rollout: keep what it shipped by baking it into every attached flag, then archive it with `outcome: "COMPLETED"`. Everything happens in one database transaction; on any refusal nothing is changed. Like any other edit, the result is a **draft**: apps get it on the next publish.
+
+**Request body** (Zod-validated via `completeTestRolloutSchema`)
+
+| Field    | Type    | Notes                                                                                                           |
+| -------- | ------- | --------------------------------------------------------------------------------------------------------------- |
+| `winner` | string? | **required for tests**: the name of one of the test's groups. Rollouts take no `winner` (send `{}` or no body). |
+
+**What is baked.** For each attached flag, in each environment where the test/rollout supplies a value for that flag (the same per-flag, per-environment value the published artifact would carry: the rollout value, or the winner group's value):
+
+- **No entry conditions:** the value becomes that environment's **default**.
+- **Entry conditions:** a **conditional variant** with the same conditions and the value is appended after the flag's existing conditional variants, which is where the test/rollout variant was evaluated. Ordering and exposure are unchanged.
+
+Environments where the test/rollout has no value for a flag are left alone. A completed rollout's `percentage` is set to 100.
+
+**Refusals (409).** Completion refuses rather than guess when the bake would not give users the same result as the test/rollout at 100%:
+
+- another active test/rollout on the same flag and environment is evaluated **after** it and the value would become the default (that test/rollout would start receiving users);
+- another active test/rollout on the same flag and environment is evaluated **before** it and the bake would be a conditional variant (conditional variants are always evaluated before tests and rollouts, so it would jump ahead);
+- the value is not valid for the flag's type;
+- the winner group has no value for a flag environment where other groups do (the SDK would serve another group's value to its users);
+- an attached flag is archived (archived flags are locked);
+- the test/rollout is already archived, completed or abandoned;
+- the app's config cannot be generated.
+
+The error message lists every flag and environment that blocked completion.
+
+**Response 200**: the updated `TestRollout` object with `archived: true`, `outcome: "COMPLETED"`, `completedAt` set and, for tests, `winner`.
+
+**Errors:** `400` if a test has no `winner`, the `winner` is not one of its groups, or a rollout is sent a `winner`. `404` if not found. `409` as above.
+
+Recorded in the activity log as action `complete`, with `changes.baked` listing each flag environment changed (`flagKey`, `environment`, `kind: "default" | "conditional"`, `value`, and `previousDefault` or the new `variantId`).
+
+---
+
 ### `POST /api/test-rollouts/[id]/archive`
 
-Archive a test or rollout. For rollouts, sets `percentage` to 0 (cancel) or 100 (complete).
+**Abandon** a test or rollout: archive it with `outcome: "ABANDONED"` and bake nothing. Its flag variants leave the artifact, so its users go back to what each flag serves without it (usually the flag default). A rollout's `percentage` is set to 0. A draft until the next publish.
 
-**Request body** (not Zod-validated — raw JSON parse)
+To keep the shipped value instead, use [`POST /api/test-rollouts/[id]/complete`](#post-apitest-rolloutsidcomplete).
 
-```json
-{ "type": "cancel" }
-```
-
-or
+**Request body** (optional, not Zod-validated)
 
 ```json
-{ "type": "complete" }
+{ "type": "abandon" }
 ```
 
-**Response 200** — updated `TestRollout` object with `archived: true`, `archivedAt` set.
+`"cancel"` is accepted as an older spelling of `"abandon"`. `"complete"` is rejected with `400`: it used to archive here too, which silently reverted users to the flag default.
 
-**Errors:** `400` if `type` is not `"cancel"` or `"complete"`, `404` if not found.
+**Response 200**: the updated `TestRollout` object with `archived: true`, `archivedAt` set, `outcome: "ABANDONED"`.
+
+**Errors:** `400` for any other `type`, `404` if not found, `409` if already archived, completed or abandoned.
+
+Recorded in the activity log as action `abandon`.
 
 ---
 
@@ -1020,7 +1059,7 @@ Remove an access-list entry by ID (query parameter).
 
 ### `GET /api/activity`
 
-Read the entity change trail (creates/updates/deletes/archives/rotations of flags, tests, rollouts, apps, keys, users, access-list entries). Backed by the `activity_logs` table, which is distinct from the publish ledger (`audit_logs`).
+Read the entity change trail (creates/updates/deletes/archives/completions/rotations of flags, tests, rollouts, apps, keys, users, access-list entries). Backed by the `activity_logs` table, which is distinct from the publish ledger (`audit_logs`).
 
 **Query params** (all optional)
 
@@ -1033,17 +1072,17 @@ Read the entity change trail (creates/updates/deletes/archives/rotations of flag
 
 **Response 200** — array of `ActivityLog` entries (most recent first):
 
-| Field        | Type           | Notes                                                     |
-| ------------ | -------------- | --------------------------------------------------------- |
-| `id`         | string         |                                                           |
-| `actor`      | string         | email, or `system`/`unknown`                              |
-| `action`     | string         | `create` \| `update` \| `delete` \| `archive` \| `rotate` |
-| `entityType` | string         |                                                           |
-| `entityId`   | string         |                                                           |
-| `appId`      | string?        | null for global entities                                  |
-| `summary`    | string?        | human-readable one-liner                                  |
-| `changes`    | object?        | optional `{before?, after?}` snapshot                     |
-| `createdAt`  | ISO8601 string |                                                           |
+| Field        | Type           | Notes                                                                                               |
+| ------------ | -------------- | --------------------------------------------------------------------------------------------------- |
+| `id`         | string         |                                                                                                     |
+| `actor`      | string         | email, or `system`/`unknown`                                                                        |
+| `action`     | string         | `create` \| `update` \| `delete` \| `archive` \| `unarchive` \| `complete` \| `abandon` \| `rotate` |
+| `entityType` | string         |                                                                                                     |
+| `entityId`   | string         |                                                                                                     |
+| `appId`      | string?        | null for global entities                                                                            |
+| `summary`    | string?        | human-readable one-liner                                                                            |
+| `changes`    | object?        | optional `{before?, after?}` snapshot                                                               |
+| `createdAt`  | ISO8601 string |                                                                                                     |
 
 ---
 
@@ -1142,6 +1181,9 @@ For `custom_attribute`, the attribute name is stored in `values[0]`.
   "flagIds": "string[]",
   "archived": "boolean",
   "archivedAt": "ISO8601?",
+  "outcome": "\"COMPLETED\" | \"ABANDONED\" | null (null while active, and for records archived before outcomes were recorded)",
+  "completedAt": "ISO8601?",
+  "winner": "string? (completed TEST only)",
   "appId": "string",
   "createdAt": "ISO8601",
   "updatedAt": "ISO8601"
