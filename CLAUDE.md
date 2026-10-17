@@ -77,11 +77,11 @@ The single source of truth for environments, flag types, versioning, the publish
 - `src/app/api/config/publish` serializes the config JSON exactly once before signing — do not reserialize after signing or the signature will be invalid.
 - The `/api/test-rollouts` routes are the primary frontend interface; `/api/tests` and `/api/rollouts` apply type filters and are secondary.
 - Edge-safety: modules reachable from `src/middleware.ts` (the auth chain — `auth`, `auth-session`, `access-control`) must NOT statically import `@/lib/db` or `@/lib/logger`; they pull Node-only deps (`pg`, `pino`) into the edge bundle and crash it. Import them lazily via dynamic `import()` (see `access-control.ts` `getDb`). Enforced by ESLint `no-restricted-imports`.
-- Server-only modules (`db`, `jws-signer`, `key-protection`, `crypto`) carry `import 'server-only'` so the build fails if they leak into a client bundle. Use the pino logger (`@/lib/logger`) in server code; `console.*` is lint-banned in `src/lib` + `src/app/api` (except the edge files).
+- Server-only modules (`db`, `jws-signer`, `signing-keys`, `key-protection`, `crypto`) carry `import 'server-only'` so the build fails if they leak into a client bundle. Use the pino logger (`@/lib/logger`) in server code; `console.*` is lint-banned in `src/lib` + `src/app/api` (except the edge files).
 
 ---
 
 ## Authentication & authorization
 
 - **Authentication** is enforced globally in `src/middleware.ts` (edge); unauthenticated requests never reach a handler.
-- **Authorization** is enforced per-route via `requireAdmin` (`src/lib/authz.ts`) in node-runtime handlers — the role comes from the NextAuth session (oidc) or the access list (proxy). ADMIN-only: publish, keys, users, access-list, activity, crypto/test. Flags/tests/rollouts/apps are open to any authenticated user. See `docs/security.md` → "API authorization coverage" and `../docs/authentication.md` §Roles.
+- **Authorization** is enforced per-route via `requireAdmin` (`src/lib/authz.ts`) in node-runtime handlers — the role comes from the NextAuth session (oidc) or the access list (proxy). ADMIN-only: publish, keys (incl. export/import), app update/delete, users, access-list, activity, crypto/test. Flags/tests/rollouts and app read/create are open to any authenticated user. See `docs/security.md` → "API authorization coverage" and `../docs/authentication.md` §Roles.

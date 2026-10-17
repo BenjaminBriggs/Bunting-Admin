@@ -359,7 +359,7 @@ The JWS `header` must include `alg: RS256` and `kid` for key rotation.
 2. Parse and verify the detached JWS with RS256.
 3. If verification passes, use the config. If it fails, fall back to the last-known-good cached config, or the bundled seed if no cache exists.
 
-**Key rotation:** apps embed multiple public keys. Old keys stay valid for all shipped builds; new app versions add newer keys. The admin signs with the current active private key.
+**Key rotation:** apps embed multiple public keys: the admin's `ACTIVE` key plus every `STANDBY` key at the time the bootstrap file was downloaded. The admin signs with the single `ACTIVE` private key; rotating activates a standby key that shipped builds already trust. See [security.md](security.md).
 
 ---
 

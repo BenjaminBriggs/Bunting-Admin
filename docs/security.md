@@ -10,7 +10,35 @@ Bunting Admin generates RSA-2048 keys (RS256) via the admin UI. Private keys are
 
 ### Key generation
 
-Keys are generated inside the app using Node's `crypto.generateKeyPair`. The public key (PEM, SPKI format) is stored unencrypted and distributed to SDK clients via the bootstrap plist. The private key is encrypted immediately before being written to the database.
+Keys are generated inside the app using Node's `crypto.generateKeyPair`. The public key (PEM, SPKI format) is stored unencrypted and distributed to SDK clients via the bootstrap files (`BuntingConfig.plist` and `bunting_config.json`). The private key is encrypted immediately before being written to the database.
+
+Creating an app mints two keys: an **ACTIVE** key and a **STANDBY** key. The first bootstrap file you download therefore already trusts the key your first rotation will switch to.
+
+### Key statuses
+
+Every signing key has exactly one status (`signing_keys.status`):
+
+| Status    | Signs publishes                   | In bootstrap files | Allowed transitions                                        |
+| --------- | --------------------------------- | ------------------ | ---------------------------------------------------------- |
+| `ACTIVE`  | Yes (exactly one per app)         | Yes, listed first  | Becomes `STANDBY` only when another key is activated       |
+| `STANDBY` | No                                | Yes                | Activate (becomes `ACTIVE`), or retire (becomes `RETIRED`) |
+| `RETIRED` | No, and can never be re-activated | No                 | Delete                                                     |
+
+- The `ACTIVE` key can't be retired or deleted. Activate a standby key first. (The only exception is deleting the whole app; see [Deleting an app](#deleting-an-app).)
+- Only `RETIRED` keys can be deleted. Deleting a key destroys its private half; export it first if you might ever need it.
+- Activation is atomic: the previous `ACTIVE` key drops to `STANDBY` in the same transaction, so it stays trusted and in new bootstrap files.
+- New keys (Settings → Signing keys → **New standby key**, or `POST /api/keys`) always start as `STANDBY`.
+- If an app somehow has no `ACTIVE` key at publish or bootstrap time, the oldest `STANDBY` key is promoted. A fresh pair is minted only when the app has no `ACTIVE` or `STANDBY` key at all; `RETIRED` keys are never re-activated.
+
+### Bootstrap files and trust
+
+The SDK trusts exactly the public keys that were in the bootstrap file when the app was built. A config signed by any other key is rejected and the app keeps its last cached config. That is why the bootstrap files list every non-retired key: a binary built today trusts the current `ACTIVE` key and every `STANDBY` key, so activating one of those standby keys later doesn't break it.
+
+### Exporting and importing keys
+
+The database is the only place private keys live. To back a key up, or move it to another instance, an admin exports it (Settings → Signing keys → **Export**, or `POST /api/keys/export`). The export is a JSON file holding the key's metadata and its private key as a PKCS#8 PEM encrypted with `aes-256-cbc` under a passphrase of at least 12 characters (PBES2, PBKDF2-HMAC-SHA256 as produced by Node's `KeyObject.export`). Anyone with the file and the passphrase can sign configs your apps will trust, so store them separately, ideally in a secrets manager.
+
+Import (`POST /api/keys/import`) decrypts the file with the passphrase, checks that it is an RSA key of at least 2048 bits with a valid key ID, re-encrypts it with this instance's at-rest scheme, and adds it to the target app as `STANDBY` with its original `kid`. Key IDs are unique per instance, so a key can't be imported while a key with the same `kid` (or the same key material) exists anywhere on the instance; to move a key between apps on one instance, export it, retire and delete it in the source app, then import it. Neither the passphrase nor any key material is ever logged; export and import are recorded in the activity log by key ID only.
 
 ### At-rest protection schemes
 
@@ -59,20 +87,37 @@ Legacy plaintext PEM rows (created before encryption was added) are accepted tra
 
 ## Key rotation runbook
 
-The Bunting SDK verifies config signatures offline using public keys embedded in the app bundle. Multiple public keys are supported so in-field apps keep verifying during rotation.
+The Bunting SDK verifies config signatures offline using the public keys embedded in the app bundle at build time. Rotation is therefore always: make sure the key you are about to sign with is already in the builds you care about, then switch to it.
 
-**Safe rotation steps:**
+### Planned rotation
 
-1. In the admin UI, generate a new signing key for the app. The new key is added with `isActive = false` initially.
-2. Update the SDK bootstrap plist (`BuntingConfig.plist`) to include **both** the old and new public keys. Ship this app update.
-3. Once the app update has reached an acceptable percentage of your user base (enough that no un-updated builds matter), activate the new signing key in the admin UI. New publishes will be signed with the new key.
-4. Old builds continue to verify using the old public key they carry; new builds can verify with either key.
-5. After you are confident the old key is not needed, deactivate it. The old public key in shipped app binaries does nothing once no signatures reference its `kid`.
+1. In Settings → Signing keys, confirm the app has a `STANDBY` key. Apps created by this version of the admin have one from the start, and every build made from a bootstrap file downloaded since then trusts it.
+2. **Activate** the standby key. New publishes are signed with it, and the previous active key becomes `STANDBY` (still trusted, still in new bootstrap files).
+3. Click **New standby key** to mint the next rotation target.
+4. **Publish** so the live `config.json` is signed with the newly active key. Builds that trust it verify the new config; builds that don't keep their last cached config.
+5. Download fresh bootstrap files and **ship new binaries**. They trust the new active key, the previous key and the new standby key.
+6. When the binaries that only trust the previous key have aged out (no longer in meaningful use), **retire** it, and optionally export and then delete it.
+
+Step 2 only keeps every build working when the standby key was created before those builds' bootstrap files were downloaded. Keys created later (including imported keys) are only trusted by builds made after they were added.
+
+### Suspected compromise
+
+1. **Retire** the compromised key if it is `STANDBY`. If it is `ACTIVE`, first **activate** a standby key (one that was not exposed), then retire the compromised key. Retiring removes it from new bootstrap files and it can never sign again from this instance.
+2. **Publish** immediately so the live config is signed with the uncompromised key.
+3. Mint a **new standby key**, download fresh bootstrap files and **ship new binaries** that no longer trust the compromised key. Builds already in the field keep trusting it, because embedded keys can't be revoked remotely: an attacker holding that private key can serve those builds a forged config until they are updated.
+4. Investigate how the key leaked (database access, `SIGNING_KEY_SECRET` or KMS permissions, export files) before relying on the remaining keys.
+
+If no uncompromised standby key exists, you have to activate a key that shipped builds don't trust. Those builds then stop receiving updates (they keep their last cached config) until users install a new binary.
 
 **Do not:**
 
-- Deactivate the old key before shipping the plist update. In-field apps only carry the old public key and will fail verification.
-- Delete private keys from the database — the app may need to re-sign historical configs.
+- Activate a key that your shipped builds don't trust. They will reject every config published afterwards.
+- Retire a key while builds that only trust it are still in use, unless it is compromised. Retired keys can never be re-activated.
+- Delete a key you haven't exported. Deletion destroys the private key permanently.
+
+### Deleting an app
+
+Signing keys never cascade with their app (`onDelete: Restrict`). `DELETE /api/apps/[id]` is admin-only, needs the app identifier typed as confirmation, and is refused with `409` while the app still has keys unless the request also sets `deleteSigningKeys: true`; the settings dialog lists the keys with export buttons and an acknowledgment checkbox first. The app's last `config.json` stays in storage, so shipped binaries keep using it, but they will never receive another update. If those binaries are still live, deleting the app and its keys breaks verification for them permanently: even if you recreate an app with the same identifier, its configs are signed with new keys those builds don't trust. Export the keys first if you might ever restore the app, and import them into the recreated app before its first publish.
 
 ---
 
@@ -135,8 +180,8 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 
 **Authorization** (role checks) is enforced per-route in node-runtime handlers via `requireAdmin` (`src/lib/authz.ts`), which resolves the caller's role from the `User` table (oidc mode) or the access list (proxy mode):
 
-- **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production). All of these — including `users` and `access-list` — use `requireAdmin` uniformly.
-- **Any authenticated user (incl. DEVELOPER):** `apps`, `flags`, `tests`, `rollouts`, key reads (`keys` GET, `keys/[id]` GET, `keys/public`), and `config/decode` — per [authentication.md](../../docs/authentication.md) §Roles, developers may author flags/tests/rollouts/apps but may not publish or manage keys/users.
+- **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `keys/export`, `keys/import`, `apps/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production). All of these, including `users` and `access-list`, use `requireAdmin` uniformly.
+- **Any authenticated user (incl. DEVELOPER):** `apps` (GET/POST), `apps/[id]` (GET), `flags`, `tests`, `rollouts`, key reads (`keys` GET, `keys/[id]` GET, `keys/public`), the bootstrap downloads, and `config/decode`. Developers may author flags/tests/rollouts and create apps, but may not publish, edit or delete apps, or manage keys/users. Creating an app mints its signing keys server-side; the caller never supplies or sees private keys.
 
 Defense-in-depth at the network layer (reverse proxy, IAP, or private network) is still recommended, but the application layer no longer leaves routes unauthenticated.
 
