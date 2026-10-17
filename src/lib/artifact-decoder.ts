@@ -115,12 +115,29 @@ function isUtcInstant(value: string): boolean {
 	const [year, month, day, hour, minute, second] = match
 		.slice(1, 7)
 		.map(Number);
-	const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+	const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+	const daysInMonth = [
+		31,
+		leap ? 29 : 28,
+		31,
+		30,
+		31,
+		30,
+		31,
+		31,
+		30,
+		31,
+		30,
+		31,
+	];
+	// Year 0000 is excluded: calendars disagree on it (proleptic Gregorian
+	// has a year 0, Foundation's Gregorian calendar does not).
 	return (
+		year >= 1 &&
 		month >= 1 &&
 		month <= 12 &&
 		day >= 1 &&
-		day <= daysInMonth &&
+		day <= daysInMonth[month - 1] &&
 		hour <= 23 &&
 		minute <= 59 &&
 		second <= 59
@@ -187,7 +204,7 @@ export function decodeIssues(
  * - double: any finite JSON number
  * - string: any JSON string, taken verbatim
  * - date: a string holding an ISO-8601 UTC instant on a real calendar date,
- *   with 0 to 3 fraction digits (`2026-07-02T00:00:00Z`,
+ *   in years 0001-9999, with 0 to 3 fraction digits (`2026-07-02T00:00:00Z`,
  *   `2026-07-02T00:00:00.123Z`); no offsets, no `24:00`, no leap seconds
  * - json: a string holding JSON text, taken verbatim (never a raw object)
  */

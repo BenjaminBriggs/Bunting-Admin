@@ -55,6 +55,10 @@ describe('isValidWireValue (C2: decode by declared type)', () => {
 		['date', '2026-07-02T24:00:00Z', false],
 		['date', '2026-06-30T23:59:60Z', false],
 		['date', '2026-07-02T00:00:00.123456Z', false],
+		['date', '2000-02-29T00:00:00Z', true],
+		['date', '2100-02-29T00:00:00Z', false],
+		['date', '0000-02-29T00:00:00Z', false],
+		['date', '0001-01-01T00:00:00Z', true],
 	] as const)('%s %j → %s', (type, value, valid) => {
 		expect(isValidWireValue(type, value)).toBe(valid);
 	});
