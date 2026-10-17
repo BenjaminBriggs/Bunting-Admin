@@ -15,6 +15,7 @@ export const conditionTypeSchema = z.enum([
 	'os_version',
 	'build_number',
 	'platform',
+	'device_class',
 	'device_model',
 	'region',
 	'language',
@@ -116,7 +117,7 @@ export const createRolloutSchema = z.object({
 	description: z.string().optional(),
 	group: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema),
-	percentage: z.number().min(0).max(100),
+	percentage: z.number().int().min(0).max(100),
 	appId: id,
 });
 
@@ -238,7 +239,7 @@ export const updateTestSchema = z.object({
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
-	variants: z.record(z.string(), z.unknown()).optional(),
+	variants: checkedTestVariants.optional(),
 	flagIds: z.array(z.string()).optional(),
 	archived: z.boolean().optional(),
 });
@@ -247,7 +248,7 @@ export const updateRolloutSchema = z.object({
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
-	percentage: z.number().min(0).max(100).optional(),
+	percentage: z.number().int().min(0).max(100).optional(),
 	rolloutValues: rolloutValuesSchema.optional(),
 	flagIds: z.array(z.string()).optional(),
 	archived: z.boolean().optional(),

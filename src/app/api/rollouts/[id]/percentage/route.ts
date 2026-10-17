@@ -16,10 +16,15 @@ export async function PUT(
 		const { percentage } = (await request.json()) as { percentage?: unknown };
 
 		// Validate percentage
-		if (typeof percentage !== 'number' || percentage < 0 || percentage > 100) {
+		if (
+			typeof percentage !== 'number' ||
+			!Number.isInteger(percentage) ||
+			percentage < 0 ||
+			percentage > 100
+		) {
 			return NextResponse.json(
 				{
-					error: 'Percentage must be a number between 0 and 100',
+					error: 'Percentage must be a whole number from 0 to 100',
 				},
 				{ status: 400 },
 			);
