@@ -523,14 +523,14 @@ Only the header is strict: invalid JSON, a `schema_version` other than `1`, a mi
 
 **Values decode by the flag's declared type, never by their JSON shape.**
 
-| Type     | Wire value                                                                                                                                                                  |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bool`   | JSON boolean                                                                                                                                                                |
-| `int`    | JSON number with no fractional part (`2.0` is the int `2`)                                                                                                                  |
-| `double` | Any finite JSON number                                                                                                                                                      |
-| `string` | Any JSON string, verbatim (`"[Beta] Hi"` and `"2026-01-01T00:00:00Z"` stay strings)                                                                                         |
-| `date`   | String holding an ISO 8601 UTC instant, with or without fractional seconds (`2026-07-02T10:00:04Z`, `2026-07-02T10:00:04.796Z`). Date-only strings and offsets are invalid. |
-| `json`   | String holding JSON text, verbatim (`"42"` is valid). Never a raw object or array.                                                                                          |
+| Type     | Wire value                                                                                                                                                                                                                           |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `bool`   | JSON boolean                                                                                                                                                                                                                         |
+| `int`    | JSON number with no fractional part (`2.0` is the int `2`)                                                                                                                                                                           |
+| `double` | Any finite JSON number                                                                                                                                                                                                               |
+| `string` | Any JSON string, verbatim (`"[Beta] Hi"` and `"2026-01-01T00:00:00Z"` stay strings)                                                                                                                                                  |
+| `date`   | String holding an ISO 8601 UTC instant on a real calendar date, with 0 to 3 fraction digits (`2026-07-02T10:00:04Z`, `2026-07-02T10:00:04.796Z`). Date-only strings, offsets, `24:00`, leap seconds and finer precision are invalid. |
+| `json`   | String holding JSON text, verbatim (`"42"` is valid). Never a raw object or array.                                                                                                                                                   |
 
 Fingerprint parity holds only when the SDK knows every type in the artifact: an SDK older than the artifact counts an unrecognized variant as one path, and skipped flags are left out of its fingerprint.
 

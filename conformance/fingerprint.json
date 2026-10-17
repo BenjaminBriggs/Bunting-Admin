@@ -1,8 +1,8 @@
 {
-	"version": "2026-10-17.1",
+	"version": "2026-10-17.2",
 	"artifact": {
 		"schema_version": 1,
-		"config_version": "2026-10-17.1",
+		"config_version": "2026-10-17.2",
 		"published_at": "2026-07-02T00:00:00.000Z",
 		"app_identifier": "conformance-app",
 		"flags": {
@@ -1003,7 +1003,7 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "production",
-			"code": "2026-10-17.1.1BFFBDEC8829"
+			"code": "2026-10-17.2.1BFFBDEC8829"
 		},
 		{
 			"context": {
@@ -1020,7 +1020,7 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "production",
-			"code": "2026-10-17.1.1BE7BDEC88FE"
+			"code": "2026-10-17.2.1BE7BDEC88FE"
 		},
 		{
 			"context": {
@@ -1038,12 +1038,12 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "development",
-			"code": "2026-10-17.1.127E"
+			"code": "2026-10-17.2.127E"
 		}
 	],
 	"decode_cases": [
 		{
-			"code": "2026-10-17.1.1BFFBDEC8829",
+			"code": "2026-10-17.2.1BFFBDEC8829",
 			"environment": "production",
 			"expected_flags": {
 				"cond/app_version_between": {

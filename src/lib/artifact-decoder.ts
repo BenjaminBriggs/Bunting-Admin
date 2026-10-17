@@ -94,8 +94,38 @@ const ENVIRONMENTS: readonly Environment[] = [
 	'production',
 ];
 
-/** An ISO-8601 UTC instant, with or without fractional seconds. */
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+/**
+ * An ISO-8601 UTC instant, with up to millisecond precision: what
+ * `Date#toISOString` emits, with the fraction optional.
+ */
+const ISO_INSTANT =
+	/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d{1,3})?Z$/;
+
+/**
+ * Whether `value` is an ISO_INSTANT naming a real calendar moment. Checked
+ * field by field rather than with `Date.parse`, which rolls `02-30` over to
+ * March and accepts `24:00:00`; every SDK's date parser must agree, so the
+ * contract only admits values all of them read the same way.
+ */
+function isUtcInstant(value: string): boolean {
+	const match = ISO_INSTANT.exec(value);
+	if (!match) {
+		return false;
+	}
+	const [year, month, day, hour, minute, second] = match
+		.slice(1, 7)
+		.map(Number);
+	const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+	return (
+		month >= 1 &&
+		month <= 12 &&
+		day >= 1 &&
+		day <= daysInMonth &&
+		hour <= 23 &&
+		minute <= 59 &&
+		second <= 59
+	);
+}
 
 export interface DecodeIssue {
 	path: string;
@@ -156,8 +186,9 @@ export function decodeIssues(
  * - int: a JSON number with no fractional part (`2.0` is the int 2)
  * - double: any finite JSON number
  * - string: any JSON string, taken verbatim
- * - date: a string holding an ISO-8601 UTC instant, with or without
- *   fractional seconds (`2026-07-02T00:00:00Z`, `2026-07-02T00:00:00.123Z`)
+ * - date: a string holding an ISO-8601 UTC instant on a real calendar date,
+ *   with 0 to 3 fraction digits (`2026-07-02T00:00:00Z`,
+ *   `2026-07-02T00:00:00.123Z`); no offsets, no `24:00`, no leap seconds
  * - json: a string holding JSON text, taken verbatim (never a raw object)
  */
 export function isValidWireValue(type: FlagType, value: unknown): boolean {
@@ -172,11 +203,7 @@ export function isValidWireValue(type: FlagType, value: unknown): boolean {
 		case 'json':
 			return typeof value === 'string';
 		case 'date':
-			return (
-				typeof value === 'string' &&
-				ISO_INSTANT.test(value) &&
-				!Number.isNaN(Date.parse(value))
-			);
+			return typeof value === 'string' && isUtcInstant(value);
 	}
 }
 

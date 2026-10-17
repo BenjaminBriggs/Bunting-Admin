@@ -47,7 +47,7 @@ import type {
 	Test,
 } from '@/types';
 
-const BUNDLE_VERSION = '2026-10-17.1';
+const BUNDLE_VERSION = '2026-10-17.2';
 const CONFORMANCE_DIR = join(process.cwd(), 'conformance');
 const KEYS_DIR = join(CONFORMANCE_DIR, 'keys');
 
@@ -961,6 +961,10 @@ const tolerantArtifact = {
 		'skip/json_raw_object': rawFlag('json', { sections: ['home'] }),
 		'skip/date_only': rawFlag('date', '2026-07-02'),
 		'skip/date_with_offset': rawFlag('date', '2026-07-02T00:00:00+01:00'),
+		'skip/date_not_on_calendar': rawFlag('date', '2026-02-30T00:00:00Z'),
+		'skip/date_hour_24': rawFlag('date', '2026-07-02T24:00:00Z'),
+		'skip/date_leap_second': rawFlag('date', '2026-06-30T23:59:60Z'),
+		'skip/date_microseconds': rawFlag('date', '2026-07-02T00:00:00.123456Z'),
 		'skip/int_fractional': rawFlag('int', 2.5),
 		'skip/null_default': rawFlag('string', null),
 		'skip/variants_not_array': {
@@ -980,6 +984,8 @@ const tolerantArtifact = {
 		'typed/json_leading_newline': rawFlag('json', '\n{"a":1}'),
 		'typed/date_fractional': rawFlag('date', '2026-07-02T10:00:04.796Z'),
 		'typed/date_whole_seconds': rawFlag('date', '2026-07-02T10:00:04Z'),
+		'typed/date_one_fraction_digit': rawFlag('date', '2026-07-02T10:00:04.5Z'),
+		'typed/date_leap_day': rawFlag('date', '2028-02-29T00:00:00Z'),
 
 		// C1: bad variants become never-matching placeholders (one fingerprint
 		// path each), a variant without an order is dropped, and conditions an

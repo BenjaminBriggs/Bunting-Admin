@@ -1,8 +1,8 @@
 {
-	"version": "2026-10-17.1",
+	"version": "2026-10-17.2",
 	"artifact": {
 		"schema_version": 1,
-		"config_version": "2026-10-17.1",
+		"config_version": "2026-10-17.2",
 		"published_at": "2026-07-02T00:00:00.000Z",
 		"app_identifier": "conformance-app",
 		"flags": {
