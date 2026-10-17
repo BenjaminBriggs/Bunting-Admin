@@ -738,7 +738,7 @@ Generate and download a `BuntingConfig.plist` for the Bunting Swift SDK. Unchang
 The plist contains:
 
 - `endpoint_url` — `app.artifactUrl`
-- `public_keys`: array of `{kid, pem}` for every trusted signing key of the app: the `ACTIVE` key first, then every `STANDBY` key (newest first). `RETIRED` keys are excluded. If the app has no `ACTIVE` or `STANDBY` key, an `ACTIVE` + `STANDBY` pair is minted first (requires signing-key protection to be configured).
+- `public_keys`: array of `{kid, pem}` for every trusted signing key of the app: the `ACTIVE` key first, then every `STANDBY` key (newest first). `RETIRED` keys are excluded. Before the list is built the app is guaranteed an `ACTIVE` key and at least one `STANDBY` key: a missing `ACTIVE` key is filled by promoting the oldest `STANDBY` key (or minting one if there is none), and a missing `STANDBY` key is minted (requires signing-key protection to be configured). Every downloaded file therefore carries at least two keys.
 - `fetch_policy` — `{min_interval_seconds, hard_ttl_days}` from `app.fetchPolicy` (defaults: 21600 / 7)
 
 **Errors:** `400` if neither param provided, `404` if app not found, `500` if keys had to be minted and key protection is not configured.
@@ -759,7 +759,7 @@ The JSON document contains:
 
 - `app_identifier` — `app.identifier`. Present here in addition to the plist form, since non-Apple clients have no bundle identifier to fall back on.
 - `endpoint_url` — `app.artifactUrl`
-- `public_keys`: same list as the plist: the `ACTIVE` key first, then every `STANDBY` key; `RETIRED` keys excluded, and a pair minted if the app has no trusted key
+- `public_keys`: same list as the plist: the `ACTIVE` key first, then every `STANDBY` key; `RETIRED` keys excluded, with a missing `ACTIVE` or `STANDBY` key filled first
 - `fetch_policy` — `{min_interval_seconds, hard_ttl_days}` from `app.fetchPolicy` (defaults: 21600 / 7)
 
 **Errors:** `400` if neither param provided, `404` if app not found, `500` if keys had to be minted and key protection is not configured.
@@ -921,7 +921,7 @@ Delete a signing key. Only `RETIRED` keys can be deleted; the private key is des
 
 ### `POST /api/keys/export`
 
-Export a key's private half for backup or for import into another instance. The private key is re-encrypted as PKCS#8 (`aes-256-cbc`, PBES2/PBKDF2) under the given passphrase. The response is sent as a download (`Content-Disposition: attachment; filename="bunting-key-<appIdentifier>-<kid>.json"`, `Cache-Control: no-store`). Recorded in the activity log; the passphrase and key material are never logged.
+Export a key's private half for backup or for import into another instance. The PKCS#8 DER private key is encrypted with AES-256-GCM under a key derived from the passphrase with scrypt (N=2^17, r=8, p=1, 16-byte random salt). All binary fields are base64. Everything except `ciphertext` and `cipher.tag` is authenticated as GCM additional data, so editing the metadata or KDF parameters makes import fail. The response is sent as a download (`Content-Disposition: attachment; filename="bunting-key-<appIdentifier>-<kid>.json"`, `Cache-Control: no-store`). Recorded in the activity log; the passphrase and key material are never logged.
 
 **Request body**
 
@@ -942,7 +942,9 @@ Export a key's private half for backup or for import into another instance. The 
 	"algorithm": "RS256",
 	"status": "ACTIVE",
 	"createdAt": "ISO8601",
-	"privateKeyPem": "-----BEGIN ENCRYPTED PRIVATE KEY-----\n..."
+	"kdf": { "name": "scrypt", "N": 131072, "r": 8, "p": 1, "salt": "base64" },
+	"cipher": { "name": "aes-256-gcm", "iv": "base64", "tag": "base64" },
+	"ciphertext": "base64"
 }
 ```
 
@@ -952,7 +954,7 @@ Export a key's private half for backup or for import into another instance. The 
 
 ### `POST /api/keys/import`
 
-Import an exported key into an app as `STANDBY`, preserving its `kid`. The key is decrypted with the passphrase, validated (RSA, at least 2048 bits, `kid` of 32 lowercase hex characters), re-encrypted with this instance's at-rest scheme and stored. Activate it afterwards with `PUT /api/keys/[kid]`. Recorded in the activity log.
+Import an exported key into an app as `STANDBY`, preserving its `kid`. The envelope must use scrypt with N between 2^14 and 2^18 (a power of two), r=8 and p=1. The key is decrypted with the passphrase (any edit to the metadata, KDF parameters, IV, tag or ciphertext fails authentication), validated (RSA, at least 2048 bits, `kid` of 32 lowercase hex characters), re-encrypted with this instance's at-rest scheme and stored. Activate it afterwards with `PUT /api/keys/[kid]`. Recorded in the activity log.
 
 **Request body**
 
@@ -977,7 +979,7 @@ Import an exported key into an app as `STANDBY`, preserving its `kid`. The key i
 }
 ```
 
-**Errors:** `400` invalid envelope, wrong passphrase, non-RSA or undersized key, or an unencrypted private key; `404` if the target app doesn't exist; `409` if a key with the same `kid` or the same key material already exists anywhere on this instance (`kid` is unique per instance; to move a key between apps on one instance, retire and delete it in the source app first).
+**Errors:** `400` invalid envelope, out-of-range KDF parameters, wrong passphrase or tampered file, or a non-RSA or undersized key; `404` if the target app doesn't exist; `409` if a key with the same `kid` or the same key material already exists anywhere on this instance (`kid` is unique per instance; to move a key between apps on one instance, retire and delete it in the source app first).
 
 ---
 
@@ -1009,6 +1011,22 @@ Fetch the app's trusted public keys (the same set as the bootstrap files: `ACTIV
 **Errors:** `400` if neither `appId` nor `appIdentifier` is provided, `404` if the app doesn't exist or has no trusted keys.
 
 Also handles `OPTIONS` preflight with CORS headers.
+
+---
+
+## Current user
+
+### `GET /api/me`
+
+The caller's identity and role, resolved server-side exactly as route authorization does (NextAuth session in `oidc` mode, access list in `proxy` mode). The dashboard uses it to decide which admin controls to show; it grants nothing itself. Any authenticated user.
+
+**Response 200** (`Cache-Control: private, no-store`)
+
+```json
+{ "email": "string", "role": "ADMIN" }
+```
+
+**Errors:** `401` if unauthenticated.
 
 ---
 

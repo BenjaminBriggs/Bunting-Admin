@@ -28,7 +28,7 @@ Every signing key has exactly one status (`signing_keys.status`):
 - Only `RETIRED` keys can be deleted. Deleting a key destroys its private half; export it first if you might ever need it.
 - Activation is atomic: the previous `ACTIVE` key drops to `STANDBY` in the same transaction, so it stays trusted and in new bootstrap files.
 - New keys (Settings → Signing keys → **New standby key**, or `POST /api/keys`) always start as `STANDBY`.
-- If an app somehow has no `ACTIVE` key at publish or bootstrap time, the oldest `STANDBY` key is promoted. A fresh pair is minted only when the app has no `ACTIVE` or `STANDBY` key at all; `RETIRED` keys are never re-activated.
+- Every publish and every bootstrap download first makes sure the app has an `ACTIVE` key and at least one `STANDBY` key. With no `ACTIVE` key, the oldest `STANDBY` key is promoted; a fresh `ACTIVE` key is minted only when the app has no `ACTIVE` or `STANDBY` key at all. If no `STANDBY` key is left (an app created before key statuses existed, or after its last standby was activated or retired), a new one is minted, so every bootstrap file carries a rotation target. `RETIRED` keys are never re-activated.
 
 ### Bootstrap files and trust
 
@@ -36,9 +36,9 @@ The SDK trusts exactly the public keys that were in the bootstrap file when the 
 
 ### Exporting and importing keys
 
-The database is the only place private keys live. To back a key up, or move it to another instance, an admin exports it (Settings → Signing keys → **Export**, or `POST /api/keys/export`). The export is a JSON file holding the key's metadata and its private key as a PKCS#8 PEM encrypted with `aes-256-cbc` under a passphrase of at least 12 characters (PBES2, PBKDF2-HMAC-SHA256 as produced by Node's `KeyObject.export`). Anyone with the file and the passphrase can sign configs your apps will trust, so store them separately, ideally in a secrets manager.
+The database is the only place private keys live. To back a key up, or move it to another instance, an admin exports it (Settings → Signing keys → **Export**, or `POST /api/keys/export`). The export is a versioned JSON file (`format: "bunting-signing-key"`, `formatVersion: 1`) holding the key's metadata (app identifier, `kid`, status, creation time) and its private key (PKCS#8 DER) encrypted with AES-256-GCM. The encryption key is derived from a passphrase of at least 12 characters with scrypt (N=2^17, r=8, p=1, random 16-byte salt); the KDF parameters, salt, 12-byte IV and authentication tag are stored in the file. The metadata and KDF parameters are authenticated as GCM additional data, so editing any of them makes import fail. Anyone with the file and the passphrase can sign configs your apps will trust, so store them separately, ideally in a secrets manager.
 
-Import (`POST /api/keys/import`) decrypts the file with the passphrase, checks that it is an RSA key of at least 2048 bits with a valid key ID, re-encrypts it with this instance's at-rest scheme, and adds it to the target app as `STANDBY` with its original `kid`. Key IDs are unique per instance, so a key can't be imported while a key with the same `kid` (or the same key material) exists anywhere on the instance; to move a key between apps on one instance, export it, retire and delete it in the source app, then import it. Neither the passphrase nor any key material is ever logged; export and import are recorded in the activity log by key ID only.
+Import (`POST /api/keys/import`) accepts scrypt costs between N=2^14 and N=2^18 (r=8, p=1), decrypts the file with the passphrase, checks that it is an RSA key of at least 2048 bits with a valid key ID, re-encrypts it with this instance's at-rest scheme, and adds it to the target app as `STANDBY` with its original `kid`. Key IDs are unique per instance, so a key can't be imported while a key with the same `kid` (or the same key material) exists anywhere on the instance; to move a key between apps on one instance, export it, retire and delete it in the source app, then import it. Neither the passphrase nor any key material is ever logged; export and import are recorded in the activity log by key ID only.
 
 ### At-rest protection schemes
 
@@ -181,7 +181,7 @@ When `AUTH_PROXY_JWKS_URL` is set, the app verifies the signed assertion cryptog
 **Authorization** (role checks) is enforced per-route in node-runtime handlers via `requireAdmin` (`src/lib/authz.ts`), which resolves the caller's role from the `User` table (oidc mode) or the access list (proxy mode):
 
 - **ADMIN-only:** `config/publish`, `keys` (POST/PUT), `keys/[id]` (PUT/DELETE), `keys/export`, `keys/import`, `apps/[id]` (PUT/DELETE), `activity`, `users`, `access-list`, and the `crypto/test` diagnostic (which also 404s in production). All of these, including `users` and `access-list`, use `requireAdmin` uniformly.
-- **Any authenticated user (incl. DEVELOPER):** `apps` (GET/POST), `apps/[id]` (GET), `flags`, `tests`, `rollouts`, key reads (`keys` GET, `keys/[id]` GET, `keys/public`), the bootstrap downloads, and `config/decode`. Developers may author flags/tests/rollouts and create apps, but may not publish, edit or delete apps, or manage keys/users. Creating an app mints its signing keys server-side; the caller never supplies or sees private keys.
+- **Any authenticated user (incl. DEVELOPER):** `apps` (GET/POST), `apps/[id]` (GET), `flags`, `tests`, `rollouts`, key reads (`keys` GET, `keys/[id]` GET, `keys/public`), the bootstrap downloads, `me` (the caller's own role, used by the UI to show admin controls), and `config/decode`. Developers may author flags/tests/rollouts and create apps, but may not publish, edit or delete apps, or manage keys/users. Creating an app mints its signing keys server-side; the caller never supplies or sees private keys.
 
 Defense-in-depth at the network layer (reverse proxy, IAP, or private network) is still recommended, but the application layer no longer leaves routes unauthenticated.
 
