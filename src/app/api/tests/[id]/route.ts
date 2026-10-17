@@ -4,6 +4,11 @@ import { NextResponse } from 'next/server';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import {
+	assignGroupPositions,
+	type StoredTestVariants,
+} from '@/lib/test-group-variants';
+import { REACTIVATE_FINISHED_MESSAGE } from '@/lib/test-rollout-lifecycle';
 import { updateTestSchema, zodErrorResponse } from '@/lib/validation-schemas';
 
 // GET /api/tests/[id]
@@ -45,6 +50,25 @@ export async function PUT(
 		const updateData = updateTestSchema.parse(
 			await request.json(),
 		) as Prisma.TestRolloutUncheckedUpdateInput;
+
+		const existing = await prisma.testRollout.findUnique({
+			where: { id, type: 'TEST' },
+			select: { outcome: true, variants: true },
+		});
+		if (existing?.outcome && updateData.archived === false) {
+			return NextResponse.json(
+				{ error: REACTIVATE_FINISHED_MESSAGE },
+				{ status: 409 },
+			);
+		}
+		// Group positions are server-owned, so omitting them cannot reorder
+		// groups (see assignGroupPositions).
+		if (existing) {
+			updateData.variants = assignGroupPositions(
+				existing.variants as unknown as StoredTestVariants | null,
+				updateData.variants,
+			);
+		}
 
 		const test = await prisma.testRollout.update({
 			where: {

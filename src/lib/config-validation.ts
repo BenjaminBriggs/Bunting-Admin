@@ -5,6 +5,7 @@
  * This addresses the issue where invalid flag types like "boolean" weren't caught.
  */
 
+import { decodeArtifact, decodeIssues } from '@/lib/artifact-decoder';
 import type { FlagValue } from '@/types';
 
 export interface ValidationResult {
@@ -211,7 +212,65 @@ export function validateConfig(config: unknown): ValidationResult {
 		);
 	});
 
+	errors.push(...checkSdkDecoding(config, errors));
+
 	return { errors, warnings };
+}
+
+const FLAG_PATH = /^flags\["(.+?)"\]/;
+
+/**
+ * Round-trip the artifact through the SDK reference decoder: anything an SDK
+ * would skip, drop or treat as unrecognized is a publish error, so what the
+ * admin publishes is exactly what every client evaluates. Issues inside a flag
+ * that already has an error above are left out to avoid reporting it twice.
+ *
+ * The generator leaves `config_version`/`published_at` empty until publish
+ * fills them in, and callers may pass a partial config, so missing header
+ * fields are stubbed here; this checks content, not the header.
+ */
+function checkSdkDecoding(
+	config: unknown,
+	existing: ValidationError[],
+): ValidationError[] {
+	const record = asRecord(config);
+	const orStub = (value: unknown, stub: string): unknown =>
+		value === undefined || value === null || value === '' ? stub : value;
+	const decoded = decodeArtifact(
+		JSON.stringify({
+			...record,
+			schema_version: record.schema_version ?? 1,
+			config_version: orStub(record.config_version, 'unpublished'),
+			published_at: orStub(record.published_at, '1970-01-01T00:00:00.000Z'),
+			app_identifier: orStub(record.app_identifier, 'unpublished'),
+			flags: record.flags ?? {},
+		}),
+	);
+	if (!decoded.accepted) {
+		return [
+			{
+				type: 'undecodable_artifact',
+				message: `SDKs would reject the whole config: ${decoded.rejection ?? 'unknown reason'}`,
+			},
+		];
+	}
+
+	const flagsWithErrors = new Set(
+		existing.map((e) => e.flagKey).filter((key) => key !== undefined),
+	);
+	return decodeIssues(decoded).flatMap((issue) => {
+		const flagKey = FLAG_PATH.exec(issue.path)?.[1];
+		if (flagKey && flagsWithErrors.has(flagKey)) {
+			return [];
+		}
+		return [
+			{
+				type: issue.kind,
+				message: `SDKs could not use ${issue.path}: ${issue.reason}`,
+				...(flagKey ? { flagKey } : {}),
+			},
+		];
+	});
 }
 
 /**

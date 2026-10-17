@@ -74,6 +74,11 @@ export interface DBTestRollout {
 	flagIds: string[];
 	archived: boolean;
 	archivedAt?: string;
+	/** How it finished; null while active and for records archived before outcomes were recorded. */
+	outcome?: 'COMPLETED' | 'ABANDONED' | null;
+	completedAt?: string | null;
+	/** Winning group of a completed test. */
+	winner?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	appId: string;

@@ -3,6 +3,11 @@
 import { Box, FormHelperText, TextField, Typography } from '@mui/material';
 import type { KeyboardEvent } from 'react';
 import { useEffect, useState } from 'react';
+import {
+	defaultDateValue,
+	toLocalDateTimeInput,
+	toUtcInstant,
+} from '@/lib/date-values';
 import { ink, monoFontFamily, surface } from '@/theme/designTokens';
 import type { FlagValue } from '@/types';
 import JsonChip from './json-chip';
@@ -61,7 +66,7 @@ export function getDefaultValueForType(flagType: FlagType): FlagValue {
 		case 'double':
 			return 0.0;
 		case 'date':
-			return new Date().toISOString().split('T')[0];
+			return defaultDateValue();
 		case 'json':
 			return '{}';
 		default:
@@ -96,8 +101,12 @@ export function processValueForType(
 			} catch {
 				return '{}';
 			}
-		case 'string':
 		case 'date':
+			// Store the UTC instant SDKs decode, whatever form the input gave.
+			return typeof value === 'string'
+				? toUtcInstant(value)
+				: (value as FlagValue);
+		case 'string':
 		default:
 			// Non-JSON values pass through; coerce to a FlagValue-safe form.
 			return value as FlagValue;
@@ -393,16 +402,22 @@ export default function FlagValueInput({
 	// Date input (mono)
 	if (normalizedFlagType === 'date') {
 		return (
+			// Edited in the admin user's time zone, stored as a UTC instant.
 			<TextField
 				label={label}
-				type="date"
-				value={toInputValue(value)}
-				onChange={(e) => onChange(e.target.value)}
+				type="datetime-local"
+				value={toLocalDateTimeInput(toInputValue(value))}
+				onChange={(e) => onChange(toUtcInstant(e.target.value))}
 				placeholder={placeholder}
 				fullWidth={fullWidth}
 				size={size}
 				error={isError}
-				helperText={displayHelperText}
+				helperText={
+					displayHelperText ??
+					(typeof value === 'string' && value !== ''
+						? `Stored as ${toUtcInstant(value)}`
+						: undefined)
+				}
 				disabled={disabled}
 				required={required}
 				autoFocus={autoFocus}

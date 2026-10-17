@@ -1,0 +1,78 @@
+# Runs compose.yaml on a development machine or in CI. The app, Caddy,
+# Postgres and backup services are the production ones; only the outside world
+# is swapped: MinIO stands in for R2/S3 and dex for the OIDC provider.
+#
+#   make smoke-deploy
+#   # or by hand (stop the dev stack first; the ports overlap):
+#   docker compose -p bunting-local -f deploy/compose.yaml -f deploy/compose.local.yaml \
+#     --env-file deploy/local.env up -d --build
+#
+# Sign in at http://localhost:3000 as admin@bunting.dev / password.
+
+services:
+  app:
+    # Built from this checkout's `runner` stage: the image the release publishes.
+    image: bunting-admin:local
+    build:
+      context: ..
+      target: runner
+    env_file: !override
+      - local.env
+    extra_hosts:
+      - 'auth.localhost:host-gateway'
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+      dex:
+        condition: service_started
+
+  caddy:
+    ports: !override
+      - '3000:3000'
+
+  dex:
+    image: ghcr.io/dexidp/dex:latest
+    command: dex serve /etc/dex/config.yaml
+    volumes:
+      - ../dex/config.yaml:/etc/dex/config.yaml:ro
+    ports:
+      - '5556:5556'
+
+  minio:
+    image: bitnamilegacy/minio:2025.5.24
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/bitnami/minio/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: bitnamilegacy/minio:2025.5.24
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      HOME: /tmp
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set minio http://minio:9000 admin admin123 &&
+      mc mb minio/bunting-configs --ignore-existing &&
+      mc anonymous set public minio/bunting-configs &&
+      mc mb minio/bunting-backups --ignore-existing
+      "
+
+  backup-offsite:
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
+volumes:
+  minio_data:

@@ -24,10 +24,13 @@
  *                  test        → 1 path per group of the referenced test
  *                                (artifact.tests[name].groups order)
  *                  rollout     → 1 path
+ *                  unrecognized (a placeholder from artifact-decoder.ts,
+ *                  never matches) → 1 path
  *
  * See docs/config-fingerprint-spec.md for the full contract.
  */
 
+import { UNRECOGNIZED } from '@/lib/artifact-decoder';
 import type {
 	ConfigArtifact,
 	EnvironmentFlag,
@@ -107,7 +110,14 @@ export function enumeratePaths(
 
 	const variants = [...(cfg.variants ?? [])].sort((a, b) => a.order - b.order);
 	for (const variant of variants) {
-		if (variant.type === 'conditional') {
+		if ((variant.type as string) === UNRECOGNIZED) {
+			// Never selected; the path exists so SDKs that don't recognise a
+			// variant type still agree with the admin on every later index.
+			paths.push({
+				value: cfg.default,
+				reason: `unrecognized variant (order ${variant.order})`,
+			});
+		} else if (variant.type === 'conditional') {
 			paths.push({
 				value: variant.value as FlagValue,
 				reason: `conditional variant (order ${variant.order})`,

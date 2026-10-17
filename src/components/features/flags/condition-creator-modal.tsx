@@ -20,6 +20,7 @@ import {
 	Typography,
 } from '@mui/material';
 import { useCallback, useState } from 'react';
+import { defaultDateValue } from '@/lib/date-values';
 import { generateId } from '@/lib/utils';
 import type {
 	ConditionalVariant,
@@ -74,7 +75,7 @@ export default function ConditionCreatorModal({
 			case 'double':
 				return 0;
 			case 'date':
-				return new Date().toISOString().split('T')[0];
+				return defaultDateValue();
 			case 'json':
 				return {};
 			default:

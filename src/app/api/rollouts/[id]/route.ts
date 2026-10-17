@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { REACTIVATE_FINISHED_MESSAGE } from '@/lib/test-rollout-lifecycle';
 import {
 	updateRolloutSchema,
 	zodErrorResponse,
@@ -48,6 +49,17 @@ export async function PUT(
 		const updateData = updateRolloutSchema.parse(
 			await request.json(),
 		) as Prisma.TestRolloutUncheckedUpdateInput;
+
+		const existing = await prisma.testRollout.findUnique({
+			where: { id, type: 'ROLLOUT' },
+			select: { outcome: true },
+		});
+		if (existing?.outcome && updateData.archived === false) {
+			return NextResponse.json(
+				{ error: REACTIVATE_FINISHED_MESSAGE },
+				{ status: 409 },
+			);
+		}
 
 		const rollout = await prisma.testRollout.update({
 			where: {

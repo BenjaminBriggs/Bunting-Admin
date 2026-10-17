@@ -27,6 +27,11 @@ import { CONDITION_OPERATORS } from '@/types';
 export interface TestGroupValue {
 	name: string;
 	weight: number;
+	/**
+	 * Edit mode: the stored group this row was loaded from. It survives renames
+	 * so the group keeps its per-flag values; absent for groups added here.
+	 */
+	storedName?: string;
 }
 export interface TestFormValues {
 	name: string;
@@ -55,6 +60,7 @@ interface TestFormProps {
 	saveError?: string | null;
 	onSubmit: (payload: TestFormSubmit) => void;
 	onComplete?: () => void;
+	onAbandon?: () => void;
 	onDelete?: () => void;
 	cancelHref?: string;
 }
@@ -84,7 +90,7 @@ function evenSplit(groups: TestGroupValue[]): TestGroupValue[] {
 	const base = Math.floor(100 / n);
 	const rem = 100 - base * n;
 	return groups.map((g, i) => ({
-		name: g.name,
+		...g,
 		weight: base + (i < rem ? 1 : 0),
 	}));
 }
@@ -139,6 +145,7 @@ export default function TestForm({
 	saveError,
 	onSubmit,
 	onComplete,
+	onAbandon,
 	onDelete,
 	cancelHref = '/dashboard/tests',
 }: TestFormProps) {
@@ -151,15 +158,24 @@ export default function TestForm({
 	const [description, setDescription] = useState(initial.description);
 	const [group, setGroup] = useState(initial.group);
 
-	const keyText = slug(name);
-	const keyChanged = isEdit && keyText !== initial.key && keyText.length > 0;
+	// Test keys are immutable after creation (the update APIs have no `key` field):
+	// flag variants reference the test by key. In edit mode the key is fixed; only
+	// create derives it live from the name.
+	const keyText = isEdit ? initial.key : slug(name);
 	const keyValidation = validateKey(keyText);
-	const keyAvailable =
-		!keyValidation.error && (!isEdit ? keyText.length > 0 : keyChanged);
+	const keyAvailable = !keyValidation.error && !isEdit && keyText.length > 0;
 
 	const effGroups = adjustSplit ? groups : evenSplit(groups);
 	const total = effGroups.reduce((n, g) => n + g.weight, 0);
 	const valid = total === 100;
+	// Groups are stored by name, so an empty or repeated name would lose a group
+	// (and its per-flag values) on save.
+	const groupNames = groups.map((g) => g.name.trim());
+	const groupNameError = groupNames.some((n) => n === '')
+		? 'Every group needs a name.'
+		: new Set(groupNames).size !== groupNames.length
+			? 'Group names must be different from each other.'
+			: null;
 	const canRemove = groups.length > 2;
 	const canAdd = groups.length < 5;
 
@@ -290,9 +306,6 @@ export default function TestForm({
 				to: name,
 			});
 		}
-		if (keyChanged) {
-			out.push({ field: 'KEY', from: initial.key, to: keyText });
-		}
 		const origEff = initial.adjustSplit
 			? initial.groups
 			: evenSplit(initial.groups);
@@ -332,8 +345,6 @@ export default function TestForm({
 	}, [
 		isEdit,
 		name,
-		keyChanged,
-		keyText,
 		effGroups,
 		audienceOn,
 		conditions,
@@ -342,7 +353,10 @@ export default function TestForm({
 		initial,
 	]);
 
-	const dirty = (isEdit ? changes.length > 0 : keyText.length > 0) && valid;
+	const dirty =
+		(isEdit ? changes.length > 0 : keyText.length > 0) &&
+		valid &&
+		groupNameError === null;
 	const canSubmit = dirty && !keyValidation.error && !saving;
 
 	const json = useMemo(() => {
@@ -460,19 +474,32 @@ export default function TestForm({
 				</Box>
 				{isEdit && (
 					<Stack direction="row" spacing={1}>
-						<Button
-							variant="outlined"
-							size="small"
-							startIcon={
-								<Ms
-									name="check_circle"
-									sx={{ fontSize: 17, color: '#3F7A2D' }}
-								/>
-							}
-							onClick={onComplete}
-						>
-							Complete
-						</Button>
+						{/* Finished tests cannot be completed or abandoned again. */}
+						{!initial.archived && (
+							<>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={
+										<Ms
+											name="check_circle"
+											sx={{ fontSize: 17, color: '#3F7A2D' }}
+										/>
+									}
+									onClick={onComplete}
+								>
+									Complete…
+								</Button>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={<Ms name="stop_circle" sx={{ fontSize: 17 }} />}
+									onClick={onAbandon}
+								>
+									Abandon…
+								</Button>
+							</>
+						)}
 						<Button
 							variant="outlined"
 							size="small"
@@ -582,55 +609,6 @@ export default function TestForm({
 							)
 						)}
 					</Box>
-					{keyChanged && (
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'flex-start',
-								gap: 1.25,
-								bgcolor: '#FCEFD2',
-								border: '1px solid #F3E2BD',
-								borderRadius: '11px',
-								p: '11px 13px',
-								mt: 1.5,
-							}}
-						>
-							<Ms name="warning" sx={{ fontSize: 19, color: '#9A6F1C' }} />
-							<Typography
-								sx={{
-									fontWeight: 600,
-									fontSize: 12,
-									color: '#5E4A18',
-									lineHeight: 1.5,
-								}}
-							>
-								Renaming changes the key from{' '}
-								<Box
-									component="span"
-									sx={{
-										fontFamily: monoFontFamily,
-										fontSize: 11,
-										color: '#9A6F1C',
-									}}
-								>
-									{initial.key}
-								</Box>{' '}
-								to{' '}
-								<Box
-									component="span"
-									sx={{
-										fontFamily: monoFontFamily,
-										fontSize: 11,
-										color: '#9A6F1C',
-									}}
-								>
-									{keyText}
-								</Box>
-								. Analytics already collected stay under the old key.
-							</Typography>
-						</Box>
-					)}
-
 					{/* groups */}
 					<Box
 						sx={{
@@ -900,6 +878,13 @@ export default function TestForm({
 							</Box>
 						)}
 					</Box>
+					{groupNameError && (
+						<Typography
+							sx={{ mt: 1.25, fontWeight: 700, fontSize: 12, color: '#C8503C' }}
+						>
+							{groupNameError}
+						</Typography>
+					)}
 
 					{/* audience */}
 					<Box sx={{ mt: 3.25, mb: 1.25 }}>

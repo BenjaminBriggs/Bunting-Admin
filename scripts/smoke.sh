@@ -9,17 +9,24 @@
 #   scripts/smoke.sh            # fresh stack, run smoke, tear down
 #   KEEP_STACK=1 scripts/smoke.sh   # leave the stack up afterwards (debugging)
 #   NO_BUILD=1 scripts/smoke.sh     # skip image rebuild (faster; deps must be current)
+#   STACK=deploy scripts/smoke.sh   # run the production stack (deploy/compose.yaml,
+#                                   # the `runner` image) instead of the dev stack
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-COMPOSE="docker compose"
+if [ "${STACK:-dev}" = "deploy" ]; then
+	# deploy/compose.yaml with MinIO and dex standing in for R2 and the IdP.
+	COMPOSE="docker compose -p bunting-smoke -f deploy/compose.yaml -f deploy/compose.local.yaml --env-file deploy/local.env"
+else
+	COMPOSE="docker compose"
+fi
 BASE_URL="http://localhost:3000"
 HEALTH_URL="${BASE_URL}/api/health"
 
 cleanup() {
 	if [ "${KEEP_STACK:-0}" = "1" ]; then
-		echo "==> KEEP_STACK=1 — leaving the stack running. Tear down with: docker compose down -v"
+		echo "==> KEEP_STACK=1 — leaving the stack running. Tear down with: $COMPOSE down -v"
 		return
 	fi
 	echo "==> Tearing down stack"

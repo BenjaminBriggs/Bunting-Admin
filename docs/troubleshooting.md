@@ -43,7 +43,7 @@ The Swift SDK verifies every config fetch against a JWS signature. It prefers th
 
 - CDN is gzip/br compressing the body but serving the header for the uncompressed bytes, or vice versa. Ensure the CDN does not re-encode the body after signing.
 - A CDN cache layer is serving a stale `config.json` with the `.sig` from a newer publish. ETag-based invalidation must be atomic across both files.
-- The signing key used at publish time is no longer in the app's bootstrap plist. Add the new public key to the plist and ship an app update before activating the new signing key — see [security.md](security.md).
+- The key that signed the publish isn't in the bootstrap file the build shipped with (for example, a key created after that file was downloaded was activated). Builds only trust the keys in their bootstrap file. Activate a key those builds already trust, or ship builds with a fresh bootstrap file; see the rotation runbook in [security.md](security.md).
 
 **Admin-side check:** In the Releases section, re-publish to regenerate the signature from the current config bytes.
 
@@ -102,7 +102,7 @@ Common causes:
 
 ### Publish errors
 
-**`No active signing key found for app`:** The app has no signing key with `isActive = true` in the `signing_keys` table. Generate a key in Settings → SDK Integration for the app.
+**`No active signing key found for app`:** The app has no signing key with `status = 'active'` in the `signing_keys` table. Publishing normally promotes a standby key or mints a pair automatically, so this usually means key creation failed (see the next entry). Check Settings → Signing keys for the app.
 
 **`Signing-key protection is not configured`:** Neither `SIGNING_KEY_KMS_KEY_ID` nor `SIGNING_KEY_SECRET` is set. The app cannot decrypt the stored private key to sign a config.
 

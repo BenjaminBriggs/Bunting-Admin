@@ -16,12 +16,17 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { CardChips } from '@/components/features/test-rollouts/CardChips';
 import {
+	type FinishAction,
+	FinishDialog,
+} from '@/components/features/test-rollouts/FinishDialog';
+import {
 	groupByGroup,
 	GroupHeader,
 	hasNamedGroups,
 } from '@/components/ui/group-section';
 import {
-	archiveTestRollout,
+	abandonTestRollout,
+	completeTestRollout,
 	fetchFlags,
 	fetchRollouts,
 	type TestRollout,
@@ -57,6 +62,12 @@ export default function RolloutsPage() {
 	const [collapsedGroups, setCollapsedGroups] = useState<
 		Record<string, boolean>
 	>({});
+	const [finishing, setFinishing] = useState<{
+		rollout: TestRollout;
+		action: FinishAction;
+	} | null>(null);
+	const [finishBusy, setFinishBusy] = useState(false);
+	const [finishError, setFinishError] = useState<string | null>(null);
 
 	useEffect(() => {
 		const loadRollouts = async () => {
@@ -121,19 +132,38 @@ export default function RolloutsPage() {
 		}
 	};
 
-	const handleArchive = async (
-		rolloutId: string,
-		type: 'cancel' | 'complete',
-	) => {
+	const openFinish = (action: FinishAction) => {
+		const rollout = rollouts.find((r) => r.id === menuRolloutId);
 		closeMenu();
+		if (rollout) {
+			setFinishError(null);
+			setFinishing({ rollout, action });
+		}
+	};
+
+	const handleFinish = async () => {
+		if (!finishing) {
+			return;
+		}
+		const { rollout, action } = finishing;
+		setFinishBusy(true);
+		setFinishError(null);
 		try {
-			const updated = await archiveTestRollout(rolloutId, type);
+			const updated =
+				action === 'complete'
+					? await completeTestRollout(rollout.id)
+					: await abandonTestRollout(rollout.id);
 			setRollouts((prev) =>
-				prev.map((r) => (r.id === rolloutId ? updated : r)),
+				prev.map((r) => (r.id === rollout.id ? updated : r)),
 			);
 			markChangesDetected();
+			setFinishing(null);
 		} catch (err) {
-			console.error('Failed to archive rollout:', err);
+			setFinishError(
+				err instanceof Error ? err.message : `Failed to ${action} rollout`,
+			);
+		} finally {
+			setFinishBusy(false);
 		}
 	};
 
@@ -452,7 +482,16 @@ export default function RolloutsPage() {
 					</Box>
 					{archivedRollouts.map((rollout) => {
 						const pct = rollout.percentage ?? 0;
-						const complete = pct >= 100;
+						// Records archived before outcomes were tracked have none.
+						const complete = rollout.outcome
+							? rollout.outcome === 'COMPLETED'
+							: pct >= 100;
+						const status =
+							rollout.outcome === 'COMPLETED'
+								? 'completed'
+								: rollout.outcome === 'ABANDONED'
+									? 'abandoned'
+									: `archived at ${pct}%`;
 						return (
 							<Box
 								key={rollout.id}
@@ -481,7 +520,7 @@ export default function RolloutsPage() {
 											mt: 0.5,
 										}}
 									>
-										{rollout.key} · shipped at {pct}%
+										{rollout.key} · {status}
 									</Typography>
 								</Box>
 								<Box
@@ -554,36 +593,42 @@ export default function RolloutsPage() {
 				</MenuItem>
 				<Box sx={{ height: '1px', bgcolor: '#F1EBDD', m: '5px 4px' }} />
 				<MenuItem
-					onClick={() => {
-						if (menuRolloutId) {
-							void handleArchive(menuRolloutId, 'cancel');
-						}
-					}}
-					sx={{ borderRadius: '9px', gap: 1.375 }}
-				>
-					<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
-					<Typography
-						sx={{ font: `600 13px ${monoFontFamily}`, color: '#3A352C' }}
-					>
-						Cancel (0%)
-					</Typography>
-				</MenuItem>
-				<MenuItem
-					onClick={() => {
-						if (menuRolloutId) {
-							void handleArchive(menuRolloutId, 'complete');
-						}
-					}}
+					onClick={() => openFinish('complete')}
 					sx={{ borderRadius: '9px', gap: 1.375 }}
 				>
 					<Ms name="check_circle" sx={{ fontSize: 19, color: '#3F7A2D' }} />
 					<Typography
 						sx={{ font: `600 13px ${monoFontFamily}`, color: '#3F7A2D' }}
 					>
-						Complete (100%)
+						Complete (keep value)…
+					</Typography>
+				</MenuItem>
+				<MenuItem
+					onClick={() => openFinish('abandon')}
+					sx={{ borderRadius: '9px', gap: 1.375 }}
+				>
+					<Ms name="stop_circle" sx={{ fontSize: 19, color: '#8B8472' }} />
+					<Typography
+						sx={{ font: `600 13px ${monoFontFamily}`, color: '#3A352C' }}
+					>
+						Abandon (revert)…
 					</Typography>
 				</MenuItem>
 			</Menu>
+
+			{finishing && (
+				<FinishDialog
+					open
+					action={finishing.action}
+					kind="rollout"
+					name={finishing.rollout.name}
+					hasConditions={finishing.rollout.conditions.length > 0}
+					busy={finishBusy}
+					error={finishError}
+					onConfirm={() => void handleFinish()}
+					onClose={() => setFinishing(null)}
+				/>
+			)}
 		</Box>
 	);
 }

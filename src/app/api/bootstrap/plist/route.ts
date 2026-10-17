@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getBootstrapPublicKeys } from '@/lib/jws-signer';
 import { logger } from '@/lib/logger';
 import { normalizeArtifactUrl } from '@/lib/storage';
 import { escapeXml } from '@/lib/xml';
@@ -47,7 +48,6 @@ export async function GET(request: NextRequest) {
 				name: true,
 				identifier: true,
 				artifactUrl: true,
-				publicKeys: true,
 				fetchPolicy: true,
 			},
 		});
@@ -56,41 +56,9 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: 'App not found' }, { status: 404 });
 		}
 
-		// Get all active signing keys
-		const signingKeys = await prisma.signingKey.findMany({
-			where: {
-				appId: app.id,
-				isActive: true,
-			},
-			select: {
-				kid: true,
-				publicKey: true,
-			},
-			orderBy: { createdAt: 'desc' },
-		});
-
-		// If no signing keys in database, fall back to publicKeys stored on app
-		let publicKeysArray: Array<{ kid: string; pem: string }>;
-
-		if (signingKeys.length > 0) {
-			publicKeysArray = signingKeys.map((key) => ({
-				kid: key.kid,
-				pem: key.publicKey,
-			}));
-		} else {
-			// Fall back to app.publicKeys (a Prisma JSON column that may be null).
-			const appPublicKeys = app.publicKeys as Array<{
-				kid: string;
-				pem: string;
-			}> | null;
-			if (!appPublicKeys || appPublicKeys.length === 0) {
-				return NextResponse.json(
-					{ error: 'No signing keys found for this app' },
-					{ status: 404 },
-				);
-			}
-			publicKeysArray = appPublicKeys;
-		}
+		// Every trusted key (ACTIVE first, then STANDBY) so a later rotation to a
+		// STANDBY key doesn't break binaries built from this file.
+		const publicKeysArray = await getBootstrapPublicKeys(app.id);
 
 		// Parse fetch policy with defaults (JSON column, may be null).
 		const fetchPolicy =
@@ -100,8 +68,6 @@ export async function GET(request: NextRequest) {
 			} | null) ?? {};
 		const minIntervalSeconds = fetchPolicy.min_interval_seconds ?? 21600; // 6 hours default
 		const hardTtlDays = fetchPolicy.hard_ttl_days ?? 7; // 7 days default
-
-		// publicKeysArray is already defined above
 
 		// Generate plist XML content according to SDK specification
 		const plistContent = `<?xml version="1.0" encoding="UTF-8"?>

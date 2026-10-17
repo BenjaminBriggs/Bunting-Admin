@@ -91,7 +91,7 @@ run('POST /api/config/publish (integration)', () => {
 
 		// #4: the detached signature verifies against the EXACT uploaded bytes.
 		const key = await prisma.signingKey.findFirst({
-			where: { appId: app.id, isActive: true },
+			where: { appId: app.id, status: 'ACTIVE' },
 		});
 		const parts = sig.split('.');
 		const signingInput = Buffer.concat([

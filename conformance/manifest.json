@@ -1,5 +1,5 @@
 {
-	"version": "2026-07-02.2",
+	"version": "2026-10-17.2",
 	"sets": {
 		"bucketing": {
 			"file": "bucketing.json",
@@ -7,7 +7,7 @@
 		},
 		"evaluation": {
 			"file": "evaluation.json",
-			"count": 37
+			"count": 48
 		},
 		"fingerprint": {
 			"file": "fingerprint.json",
@@ -19,7 +19,11 @@
 		},
 		"bootstrap": {
 			"file": "bootstrap.json",
-			"count": 3
+			"count": 4
+		},
+		"decoding": {
+			"file": "decoding.json",
+			"count": 7
 		}
 	}
 }

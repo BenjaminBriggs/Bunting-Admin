@@ -1,8 +1,8 @@
 {
-	"version": "2026-07-02.2",
+	"version": "2026-10-17.2",
 	"artifact": {
 		"schema_version": 1,
-		"config_version": "2026-07-02.2",
+		"config_version": "2026-10-17.2",
 		"published_at": "2026-07-02T00:00:00.000Z",
 		"app_identifier": "conformance-app",
 		"flags": {
@@ -768,6 +768,19 @@
 					"variants": []
 				}
 			},
+			"types/whole_second_date": {
+				"type": "date",
+				"development": {
+					"default": "2026-07-02T00:00:00Z"
+				},
+				"beta": {
+					"default": "2026-07-02T00:00:00Z"
+				},
+				"production": {
+					"default": "2026-07-02T00:00:00Z",
+					"variants": []
+				}
+			},
 			"types/json_flag": {
 				"type": "json",
 				"development": {
@@ -779,6 +792,130 @@
 				"production": {
 					"default": "{\"sections\":[\"home\",\"profile\"]}",
 					"variants": []
+				}
+			},
+			"types/bracket_string": {
+				"type": "string",
+				"development": {
+					"default": "[Beta] Hi"
+				},
+				"beta": {
+					"default": "[Beta] Hi"
+				},
+				"production": {
+					"default": "[Beta] Hi",
+					"variants": []
+				}
+			},
+			"types/brace_string": {
+				"type": "string",
+				"development": {
+					"default": "{not json}"
+				},
+				"beta": {
+					"default": "{not json}"
+				},
+				"production": {
+					"default": "{not json}",
+					"variants": []
+				}
+			},
+			"types/iso_looking_string": {
+				"type": "string",
+				"development": {
+					"default": "2026-01-01T00:00:00Z"
+				},
+				"beta": {
+					"default": "2026-01-01T00:00:00Z"
+				},
+				"production": {
+					"default": "2026-01-01T00:00:00Z",
+					"variants": []
+				}
+			},
+			"types/numeric_string": {
+				"type": "string",
+				"development": {
+					"default": "42"
+				},
+				"beta": {
+					"default": "42"
+				},
+				"production": {
+					"default": "42",
+					"variants": []
+				}
+			},
+			"types/json_scalar": {
+				"type": "json",
+				"development": {
+					"default": "42"
+				},
+				"beta": {
+					"default": "42"
+				},
+				"production": {
+					"default": "42",
+					"variants": []
+				}
+			},
+			"test/remainder_experiment": {
+				"type": "string",
+				"development": {
+					"default": "not-in-test"
+				},
+				"beta": {
+					"default": "not-in-test"
+				},
+				"production": {
+					"default": "not-in-test",
+					"variants": [
+						{
+							"type": "test",
+							"order": 1,
+							"test": "remainder_experiment",
+							"values": {
+								"alpha": "alpha-value",
+								"beta": "beta-value"
+							}
+						},
+						{
+							"type": "conditional",
+							"order": 2,
+							"value": "next-variant",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"test/partial_values_experiment": {
+				"type": "string",
+				"development": {
+					"default": "not-in-test"
+				},
+				"beta": {
+					"default": "not-in-test"
+				},
+				"production": {
+					"default": "not-in-test",
+					"variants": [
+						{
+							"type": "test",
+							"order": 1,
+							"test": "partial_values_experiment",
+							"values": {
+								"with_value": "with-value"
+							}
+						}
+					]
 				}
 			}
 		},
@@ -795,6 +932,38 @@
 					},
 					{
 						"name": "treatment",
+						"percentage": 50
+					}
+				]
+			},
+			"remainder_experiment": {
+				"name": "remainder_experiment",
+				"type": "test",
+				"salt": "remainder-salt",
+				"conditions": [],
+				"groups": [
+					{
+						"name": "alpha",
+						"percentage": 30
+					},
+					{
+						"name": "beta",
+						"percentage": 30
+					}
+				]
+			},
+			"partial_values_experiment": {
+				"name": "partial_values_experiment",
+				"type": "test",
+				"salt": "partial-salt",
+				"conditions": [],
+				"groups": [
+					{
+						"name": "with_value",
+						"percentage": 50
+					},
+					{
+						"name": "without_value",
 						"percentage": 50
 					}
 				]
@@ -1551,6 +1720,226 @@
 			"flag_key": "types/json_flag",
 			"environment": "production",
 			"expected_value": "{\"sections\":[\"home\",\"profile\"]}",
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "types/whole_second_date",
+			"environment": "production",
+			"expected_value": "2026-07-02T00:00:00Z",
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "types/bracket_string",
+			"environment": "production",
+			"expected_value": "[Beta] Hi",
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "types/brace_string",
+			"environment": "production",
+			"expected_value": "{not json}",
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "types/iso_looking_string",
+			"environment": "production",
+			"expected_value": "2026-01-01T00:00:00Z",
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "types/numeric_string",
+			"environment": "production",
+			"expected_value": "42",
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "types/json_scalar",
+			"environment": "production",
+			"expected_value": "42",
+			"expected_source": "production default"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "test/remainder_experiment",
+			"environment": "production",
+			"expected_value": "alpha-value",
+			"expected_source": "test \"remainder_experiment\" group \"alpha\""
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000004"
+			},
+			"flag_key": "test/remainder_experiment",
+			"environment": "production",
+			"expected_value": "beta-value",
+			"expected_source": "test \"remainder_experiment\" group \"beta\""
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000006"
+			},
+			"flag_key": "test/remainder_experiment",
+			"environment": "production",
+			"expected_value": "next-variant",
+			"expected_source": "conditional variant (order 2)"
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000004"
+			},
+			"flag_key": "test/partial_values_experiment",
+			"environment": "production",
+			"expected_value": "with-value",
+			"expected_source": "test \"partial_values_experiment\" group \"with_value\""
+		},
+		{
+			"context": {
+				"platform": "ios",
+				"device_class": "tablet",
+				"os_version": "18.0",
+				"app_version": "2.5.0",
+				"build_number": "100",
+				"device_model": "iPhone16,2",
+				"region": "US",
+				"language": "en",
+				"reserved_attributes": {
+					"manufacturer": "apple"
+				},
+				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+			},
+			"flag_key": "test/partial_values_experiment",
+			"environment": "production",
+			"expected_value": "not-in-test",
 			"expected_source": "production default"
 		}
 	]

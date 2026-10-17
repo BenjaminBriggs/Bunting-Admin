@@ -28,6 +28,8 @@ Every flag defines separate defaults for `development`, `beta`, and `production`
 
 Flag keys use `lowercase_snake_case` with optional namespace prefixes: `store/use_new_paywall_design`.
 
+A flag's key and type are fixed when it is created. Apps ship generated, strongly typed accessors for both, so renaming a flag or changing its type would break clients already in the wild; the API refuses either change with `409`. To change them, create a new flag and retire the old one. Test and rollout keys are fixed after creation too, because flag variants reference them by key.
+
 ### Tests (A/B experiments)
 
 A **test** assigns users to named groups (`control`, `variant_a`, etc.) deterministically and reproducibly, using SHA-256 bucketing. The test defines traffic splits as percentages per group. A flag variant of type `test` maps group names to flag values.
@@ -110,7 +112,7 @@ The admin's `src/lib/bucketing.ts` reads the first 8 bytes (16 hex characters) o
 
 **Signature verification** is the core trust mechanism. The SDK will not apply any config it cannot verify. The public keys shipped in `BuntingConfig.plist` are long-lived; multiple keys are supported for rotation. Old builds keep working as long as their embedded keys remain valid.
 
-**Key rotation** works without forcing app updates: the admin can sign with a new private key while the old one is still trusted by deployed apps. New app versions add the new public key; old builds continue to verify with the old one.
+**Key rotation** works without forcing app updates because every bootstrap file also carries the app's standby keys. Activating a standby key switches signing to a key that builds made from that file already trust; the previous key stays trusted as a standby. Only one key signs at a time, so a build can verify new configs only if its bootstrap file includes the current active key. See [security.md](security.md) for the runbook.
 
 **Fallback chain:** verified fetched config → last-known-good cache → bundled seed JSON. The seed is the snapshot of flags at the time the app was built, ensuring the app behaves sensibly with no connectivity at all.
 
@@ -153,6 +155,23 @@ instead.
 at least once in its archived (deprecated) state — so clients received the
 deprecation signal before the flag disappears. After deletion, apps that still read
 the key fall back to last-known-good cache → bundled seed → code default.
+
+---
+
+## Test and rollout lifecycle
+
+A test or rollout is **active** until it is finished, in one of two ways. Both archive it, so it leaves the published artifact; they differ in what its users get afterwards. Both are draft changes that reach apps on the next publish, and a finished test or rollout cannot be restarted.
+
+**Complete** keeps what it shipped. The rollout value, or the value of the test's winning group (you pick it), is baked into every attached flag:
+
+- with no entry conditions, it becomes the flag's default in each environment where the test or rollout sets a value;
+- with entry conditions, it becomes a conditional variant with those conditions, in the place the test or rollout held in the flag's variant order.
+
+Either way, users who were eligible for the test or rollout keep getting that value, now from the flag itself. When the bake cannot give exactly that result (for example another active test or rollout on the same flag would start or stop receiving users, or the value does not match the flag type), completion is refused and the reason is shown, rather than guessing.
+
+**Abandon** throws the outcome away. Nothing is baked, so users go back to what each flag serves without the test or rollout, usually its default. Abandoned rollouts are set to 0%.
+
+Each test or rollout records its `outcome` (`COMPLETED` or `ABANDONED`), and completed tests record their `winner`. See [api-reference.md](api-reference.md) (`POST /api/test-rollouts/[id]/complete` and `/archive`) for the exact rules.
 
 ---
 

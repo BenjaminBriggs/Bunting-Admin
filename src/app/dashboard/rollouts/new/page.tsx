@@ -12,17 +12,19 @@ import { useChanges } from '@/lib/changes-context';
 
 export default function NewRolloutPage() {
 	const router = useRouter();
-	const { selectedApp } = useApp();
+	const { selectedApp, loading } = useApp();
 	const { markChangesDetected } = useChanges();
 	const [saving, setSaving] = useState(false);
 	const [saveError, setSaveError] = useState<string | null>(null);
 
 	// Redirect if no app is selected
 	useEffect(() => {
-		if (!selectedApp) {
+		// Wait for the app context to finish loading: selectedApp is null until
+		// then, and redirecting early bounces a fresh page load to /dashboard.
+		if (!loading && !selectedApp) {
 			router.push('/dashboard');
 		}
-	}, [selectedApp, router]);
+	}, [loading, selectedApp, router]);
 
 	const handleSubmit = async (payload: RolloutFormSubmit) => {
 		if (!selectedApp) {

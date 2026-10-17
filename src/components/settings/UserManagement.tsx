@@ -2,9 +2,9 @@
 
 import { Alert, Box, MenuItem, Select, Typography } from '@mui/material';
 import type { SelectChangeEvent, SxProps, Theme } from '@mui/material';
-import { useSession } from 'next-auth/react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { useApp } from '@/lib/app-context';
 import { ink, monoFontFamily, surface } from '@/theme/designTokens';
 
 interface User {
@@ -80,7 +80,8 @@ function Ms({ name, sx }: { name: string; sx?: SxProps<Theme> }) {
 }
 
 export default function UserManagement() {
-	const { data: session } = useSession();
+	// Resolved server-side by /api/me (proxy mode has no NextAuth session).
+	const { currentUser } = useApp();
 	const [users, setUsers] = useState<User[]>([]);
 	const [accessList, setAccessList] = useState<AccessListEntry[]>([]);
 	const [newEntry, setNewEntry] = useState<{
@@ -386,7 +387,7 @@ export default function UserManagement() {
 			</Box>
 			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
 				{activeUsers.map((user) => {
-					const isYou = user.id === session?.user.id;
+					const isYou = user.email.toLowerCase() === currentUser?.email;
 					const role = ROLE_STYLE[user.role];
 					return (
 						<Box

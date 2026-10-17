@@ -10,18 +10,27 @@ import {
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import {
+	type FinishAction,
+	FinishDialog,
+} from '@/components/features/test-rollouts/FinishDialog';
 import TestForm, {
 	type TestFormSubmit,
 	type TestGroupValue,
 } from '@/components/features/tests/test-form';
 import {
-	archiveTestRollout,
+	abandonTestRollout,
+	completeTestRollout,
 	deleteTest,
 	fetchTestRollout,
 	type TestRollout,
 	updateTestRollout,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
+import {
+	buildTestUpdatePayload,
+	orderedTestGroups,
+} from '@/lib/test-group-variants';
 import type { Condition, TestVariant } from '@/types';
 
 function isEvenSplit(groups: TestGroupValue[]): boolean {
@@ -42,6 +51,9 @@ export default function EditTestPage() {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [saveError, setSaveError] = useState<string | null>(null);
+	const [finishAction, setFinishAction] = useState<FinishAction | null>(null);
+	const [finishBusy, setFinishBusy] = useState(false);
+	const [finishError, setFinishError] = useState<string | null>(null);
 
 	useEffect(() => {
 		void (async () => {
@@ -63,25 +75,12 @@ export default function EditTestPage() {
 		setSaving(true);
 		setSaveError(null);
 		try {
-			const variants = payload.groups.reduce<Record<string, TestVariant>>(
-				(acc, g) => {
-					acc[g.name] = {
-						percentage: g.weight,
-						values: { development: '', beta: '', production: '' },
-					};
-					return acc;
-				},
-				{},
+			// Only what the form edits: kept groups carry their per-flag values,
+			// and flagIds/archived are left to the server as they are.
+			await updateTestRollout(
+				testId,
+				buildTestUpdatePayload(test.variants, payload),
 			);
-			await updateTestRollout(testId, {
-				name: payload.name,
-				description: payload.description,
-				group: payload.group || null,
-				variants,
-				conditions: payload.conditions,
-				flagIds: test.flagIds,
-				archived: test.archived,
-			});
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
@@ -93,18 +92,31 @@ export default function EditTestPage() {
 		}
 	};
 
-	const handleComplete = async () => {
-		if (!test) {
+	const openFinish = (action: FinishAction) => {
+		setFinishError(null);
+		setFinishAction(action);
+	};
+
+	const handleFinish = async (winner?: string) => {
+		if (!test || !finishAction) {
 			return;
 		}
+		setFinishBusy(true);
+		setFinishError(null);
 		try {
-			await archiveTestRollout(testId, 'complete');
+			if (finishAction === 'complete') {
+				await completeTestRollout(testId, winner);
+			} else {
+				await abandonTestRollout(testId);
+			}
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
-			setSaveError(
-				err instanceof Error ? err.message : 'Failed to complete test',
+			setFinishError(
+				err instanceof Error ? err.message : `Failed to ${finishAction} test`,
 			);
+		} finally {
+			setFinishBusy(false);
 		}
 	};
 
@@ -158,10 +170,12 @@ export default function EditTestPage() {
 		);
 	}
 
-	const groups: TestGroupValue[] = Object.entries(test.variants ?? {}).map(
+	// Rows in bucketing order, so groups the form appends come after them.
+	const groups: TestGroupValue[] = orderedTestGroups(test.variants).map(
 		([name, data]: [string, TestVariant]) => ({
 			name,
 			weight: data.percentage,
+			storedName: name,
 		}),
 	);
 	const conditions: Condition[] = test.conditions;
@@ -170,7 +184,11 @@ export default function EditTestPage() {
 		<Box sx={{ py: 1 }}>
 			{test.archived && (
 				<Alert severity="info" sx={{ maxWidth: 920, mx: 'auto', mb: 2 }}>
-					This test is archived and no longer active.
+					{test.outcome === 'COMPLETED'
+						? `This test is completed${test.winner ? ` with winner ${test.winner}` : ''}. The winning values were baked into the attached flags, and it is no longer active.`
+						: test.outcome === 'ABANDONED'
+							? 'This test was abandoned and is no longer active.'
+							: 'This test is archived and no longer active.'}
 				</Alert>
 			)}
 			<TestForm
@@ -194,9 +212,24 @@ export default function EditTestPage() {
 				saving={saving}
 				saveError={saveError}
 				onSubmit={(payload) => void handleSubmit(payload)}
-				onComplete={() => void handleComplete()}
+				onComplete={() => openFinish('complete')}
+				onAbandon={() => openFinish('abandon')}
 				onDelete={() => void handleDelete()}
 			/>
+			{finishAction && (
+				<FinishDialog
+					open
+					action={finishAction}
+					kind="test"
+					name={test.name}
+					hasConditions={test.conditions.length > 0}
+					groups={groups.map((g) => g.name)}
+					busy={finishBusy}
+					error={finishError}
+					onConfirm={(winner) => void handleFinish(winner)}
+					onClose={() => setFinishAction(null)}
+				/>
+			)}
 		</Box>
 	);
 }

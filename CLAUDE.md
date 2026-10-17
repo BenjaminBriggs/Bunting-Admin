@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Bunting Admin is the web dashboard for the Bunting feature flag system. It manages flags, A/B tests, and rollouts for Apple platform apps; publishes signed config artifacts to S3; and generates the `BuntingConfig.plist` that the Swift SDK uses to bootstrap.
+Bunting Admin is the web dashboard for the Bunting feature flag system. It manages flags, A/B tests, and rollouts for Apple and Android apps; publishes signed config artifacts to S3; and generates the bootstrap files (`BuntingConfig.plist` for Swift, `bunting_config.json` for Android) the SDKs use to bootstrap.
 
 **See README.md for project overview, tech stack, quick start, and docs index.**
 
@@ -48,6 +48,7 @@ make test-unit        # jest tests/unit
 make test-integration # jest --selectProjects integration
 pnpm test:e2e         # playwright e2e tests (no make target)
 make smoke            # full-stack core-flow smoke (fresh docker stack; on demand, not in CI)
+make smoke-deploy     # same smoke against the production image + deploy/compose.yaml (CI: Image workflow)
 make lint             # eslint
 make type-check       # tsc --noEmit
 make db-migrate       # prisma migrate dev
@@ -77,11 +78,11 @@ The single source of truth for environments, flag types, versioning, the publish
 - `src/app/api/config/publish` serializes the config JSON exactly once before signing — do not reserialize after signing or the signature will be invalid.
 - The `/api/test-rollouts` routes are the primary frontend interface; `/api/tests` and `/api/rollouts` apply type filters and are secondary.
 - Edge-safety: modules reachable from `src/middleware.ts` (the auth chain — `auth`, `auth-session`, `access-control`) must NOT statically import `@/lib/db` or `@/lib/logger`; they pull Node-only deps (`pg`, `pino`) into the edge bundle and crash it. Import them lazily via dynamic `import()` (see `access-control.ts` `getDb`). Enforced by ESLint `no-restricted-imports`.
-- Server-only modules (`db`, `jws-signer`, `key-protection`, `crypto`) carry `import 'server-only'` so the build fails if they leak into a client bundle. Use the pino logger (`@/lib/logger`) in server code; `console.*` is lint-banned in `src/lib` + `src/app/api` (except the edge files).
+- Server-only modules (`db`, `jws-signer`, `signing-keys`, `key-export`, `key-protection`, `crypto`) carry `import 'server-only'` so the build fails if they leak into a client bundle. Use the pino logger (`@/lib/logger`) in server code; `console.*` is lint-banned in `src/lib` + `src/app/api` (except the edge files).
 
 ---
 
 ## Authentication & authorization
 
 - **Authentication** is enforced globally in `src/middleware.ts` (edge); unauthenticated requests never reach a handler.
-- **Authorization** is enforced per-route via `requireAdmin` (`src/lib/authz.ts`) in node-runtime handlers — the role comes from the NextAuth session (oidc) or the access list (proxy). ADMIN-only: publish, keys, users, access-list, activity, crypto/test. Flags/tests/rollouts/apps are open to any authenticated user. See `docs/security.md` → "API authorization coverage" and `../docs/authentication.md` §Roles.
+- **Authorization** is enforced per-route via `requireAdmin` (`src/lib/authz.ts`) in node-runtime handlers — the role comes from the NextAuth session (oidc) or the access list (proxy). ADMIN-only: publish, keys (incl. export/import), app update/delete, users, access-list, activity, crypto/test. Flags/tests/rollouts, app read/create and `GET /api/me` are open to any authenticated user. Client-side identity (home/setup sign-in redirects, the dashboard's app loading, the user menu, admin gating in settings, the "you" marker in user management) comes from `GET /api/me` via `useCurrentUser` (`src/lib/current-user.ts`) or the app context's `currentUser`, never NextAuth's `useSession`: proxy mode has no NextAuth client session. See `docs/security.md` → "API authorization coverage" and `../docs/authentication.md` §Roles.

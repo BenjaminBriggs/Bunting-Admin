@@ -62,7 +62,16 @@ See [docs/testing.md](bunting-admin/docs/testing.md) for full details on suites,
 2. Branch from `main`, keep PRs focused.
 3. All tests pass; no type errors; lint clean.
 4. Update the relevant docs under `bunting-admin/docs/` if you change behaviour.
-5. Add an entry to `CHANGELOG.md` under `## [Unreleased]`.
+5. Write a PR title and description that work as release notes: releases are published with GitHub's generated notes.
+
+## Releasing
+
+1. Set `version` in `package.json` to the new version and merge it to `main`.
+2. Tag that commit and push the tag: `git tag v1.2.3 && git push origin v1.2.3`.
+
+The `Release` workflow checks the tag matches `package.json`, runs the production smoke, then publishes the multi-arch image to GHCR and a GitHub release with the deploy bundle. A tag with a suffix (`v1.2.3-rc.1`) is published as a pre-release with only its exact image tag.
+
+Deployments can skip versions, which only works if migration history is append-only: never edit, squash or delete a migration that has been released. Breaking changes to environment variables or the deploy bundle need a major version and upgrade notes in the release.
 
 ## Where docs live
 
@@ -75,6 +84,7 @@ Docs follow a rough [Diátaxis](https://diataxis.fr) layout inside `bunting-admi
 | `security.md`              | Reference + how-to | Operators                |
 | `testing.md`               | Reference          | Contributors             |
 | `troubleshooting.md`       | How-to             | Operators + contributors |
+| `upgrading.md`             | How-to             | Operators                |
 | `deployment.md`            | How-to             | Operators                |
 
-Root-level docs (`CONTRIBUTING.md`, `CHANGELOG.md`) apply to the whole Bunting monorepo.
+`CONTRIBUTING.md` applies to the whole repository.

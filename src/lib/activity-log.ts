@@ -20,7 +20,13 @@ export type ActivityAction =
 	| 'delete'
 	| 'archive'
 	| 'unarchive'
-	| 'rotate';
+	| 'complete'
+	| 'abandon'
+	| 'rotate'
+	| 'activate'
+	| 'retire'
+	| 'export'
+	| 'import';
 
 export type EntityType =
 	| 'flag'

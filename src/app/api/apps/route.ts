@@ -14,15 +14,11 @@ import {
 	normalizeArtifactUrl,
 } from '@/lib/storage';
 
+// Signing keys are minted server-side (an ACTIVE + STANDBY pair, via
+// ensureSigningKey); clients never supply public keys.
 const createAppSchema = z.object({
 	name: z.string(),
 	identifier: z.string(),
-	publicKeys: z.array(
-		z.object({
-			kid: z.string(),
-			pem: z.string(),
-		}),
-	),
 	fetchPolicy: z.object({
 		min_interval_seconds: z.number(),
 		hard_ttl_days: z.number(),
@@ -50,8 +46,9 @@ async function publishInitialConfig(appId: string): Promise<void> {
 	const signatureKey = `${appIdentifier}/config.json.sig`;
 
 	try {
-		// A new app has no signing key yet — mint one, then sign the exact bytes
-		// we upload so the artifact verifies in the SDK from the very first fetch.
+		// A new app has no signing key yet: mint an ACTIVE + STANDBY pair, then
+		// sign the exact bytes we upload so the artifact verifies in the SDK from
+		// the very first fetch.
 		await ensureSigningKey(appId);
 		const signingResult = await signConfigDetached(appId, configContent);
 
@@ -153,6 +150,8 @@ export async function POST(request: NextRequest) {
 		const app = await prisma.app.create({
 			data: {
 				...validatedData,
+				// Deprecated column, kept until a later migration drops it.
+				publicKeys: [],
 				// Storage is a single global bucket; the public read URL is derived
 				// from CDN_BASE_URL, and per-app storage settings are no longer used.
 				artifactUrl: artifactUrlFor(validatedData.identifier),
@@ -172,11 +171,16 @@ export async function POST(request: NextRequest) {
 		try {
 			await publishInitialConfig(app.id);
 		} catch (error) {
-			// If initial config publish fails, roll back the app row. Guard the
-			// delete itself: if it throws we'd otherwise mask the original error and
-			// leave a half-created app, so log and continue to the error response.
+			// If initial config publish fails, roll back the app row and the keys
+			// just minted for it (nothing has shipped with them, and signing keys
+			// no longer cascade with the app). Guard the delete itself: if it throws
+			// we'd otherwise mask the original error and leave a half-created app,
+			// so log and continue to the error response.
 			try {
-				await prisma.app.delete({ where: { id: app.id } });
+				await prisma.$transaction([
+					prisma.signingKey.deleteMany({ where: { appId: app.id } }),
+					prisma.app.delete({ where: { id: app.id } }),
+				]);
 			} catch (rollbackError) {
 				logger.error(
 					{ err: rollbackError },

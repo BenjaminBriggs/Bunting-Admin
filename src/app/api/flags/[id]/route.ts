@@ -1,6 +1,7 @@
-import { Prisma } from '@/generated/prisma/client';
+import { type FlagType, Prisma } from '@/generated/prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import type { z } from 'zod';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import {
@@ -10,7 +11,22 @@ import {
 	isPublished,
 } from '@/lib/flag-lifecycle';
 import { logger } from '@/lib/logger';
-import { updateFlagSchema, zodErrorResponse } from '@/lib/validation-schemas';
+import {
+	type flagTypeSchema,
+	updateFlagSchema,
+	zodErrorResponse,
+} from '@/lib/validation-schemas';
+
+// Lowercase wire type → Prisma enum, for comparing a submitted type against the
+// stored one.
+const FLAG_TYPE_MAP: Record<z.infer<typeof flagTypeSchema>, FlagType> = {
+	bool: 'BOOL',
+	string: 'STRING',
+	int: 'INT',
+	double: 'DOUBLE',
+	date: 'DATE',
+	json: 'JSON',
+};
 
 // GET /api/flags/[id] - Get a specific flag
 export async function GET(
@@ -52,20 +68,43 @@ export async function PUT(
 		const actor = await actorFromHeaders(request.headers);
 		// Parsing whitelists updatable fields and strips id/appId/timestamps,
 		// closing the mass-assignment hole from spreading the raw body.
-		// The parsed `type` is the lowercase wire enum; it is remapped to the
-		// uppercase Prisma enum below, and archive timestamps are derived here,
-		// so the mutation shape is wider than the parsed shape.
 		const parsed = updateFlagSchema.parse(await request.json());
-		// Mutable copy: the parsed `type` is the lowercase wire enum (remapped to
-		// the uppercase Prisma enum below) and archive timestamps are derived here,
-		// so the mutation shape is wider than the parsed shape. Cast at the
-		// prisma boundary once everything is normalized.
+		// Mutable copy: `key`/`type` are checked against the stored flag and
+		// dropped below, and archive timestamps are derived here, so the
+		// mutation shape differs from the parsed shape. Cast at the prisma
+		// boundary once everything is normalized.
 		const updateData: Record<string, unknown> = { ...parsed };
 
 		const existing = await prisma.flag.findUnique({ where: { id } });
 		if (!existing) {
 			return NextResponse.json({ error: 'Flag not found' }, { status: 404 });
 		}
+
+		// Key and type are immutable from creation: apps ship generated, strongly
+		// typed accessors for both, so changing either breaks clients already in
+		// the wild. Identical values are accepted (the edit form echoes them back
+		// on every save) and are never written.
+		if (parsed.key !== undefined && parsed.key !== existing.key) {
+			return NextResponse.json(
+				{
+					error: `A flag's key cannot be changed after it is created (it is "${existing.key}"). Create a new flag instead.`,
+				},
+				{ status: 409 },
+			);
+		}
+		if (
+			parsed.type !== undefined &&
+			FLAG_TYPE_MAP[parsed.type] !== existing.type
+		) {
+			return NextResponse.json(
+				{
+					error: `A flag's type cannot be changed after it is created (it is "${existing.type.toLowerCase()}"). Create a new flag instead.`,
+				},
+				{ status: 409 },
+			);
+		}
+		delete updateData.key;
+		delete updateData.type;
 
 		const fieldKeys = Object.keys(updateData).filter((k) => k !== 'archived');
 
@@ -97,19 +136,6 @@ export async function PUT(
 			updateData.archivedAt = new Date();
 		} else if (updateData.archived === false) {
 			updateData.archivedAt = null;
-		}
-
-		// Map string type to enum if provided
-		if (typeof updateData.type === 'string') {
-			const typeMap: Record<string, Prisma.FlagUpdateInput['type']> = {
-				bool: 'BOOL',
-				string: 'STRING',
-				int: 'INT',
-				double: 'DOUBLE',
-				date: 'DATE',
-				json: 'JSON',
-			};
-			updateData.type = typeMap[updateData.type] ?? updateData.type;
 		}
 
 		const flag = await prisma.flag.update({

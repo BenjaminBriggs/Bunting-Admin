@@ -1,13 +1,29 @@
-import type { Prisma } from '@/generated/prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { Prisma } from '@/generated/prisma/client';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import {
+	assignGroupPositions,
+	type StoredTestVariants,
+} from '@/lib/test-group-variants';
+import { REACTIVATE_FINISHED_MESSAGE } from '@/lib/test-rollout-lifecycle';
+import {
 	updateTestRolloutSchema,
 	zodErrorResponse,
 } from '@/lib/validation-schemas';
+
+// A nullable JSON column in a partial update: absent leaves it unchanged, an
+// explicit null clears it (Prisma needs DbNull for SQL NULL on JSON columns).
+function nullableJson(
+	value: unknown,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+	return value ?? Prisma.DbNull;
+}
 
 export async function GET(
 	request: NextRequest,
@@ -64,6 +80,24 @@ export async function PUT(
 			rolloutValues,
 		} = parsed;
 
+		const existing = await prisma.testRollout.findUnique({ where: { id } });
+		if (!existing) {
+			return NextResponse.json(
+				{ error: 'Test/Rollout not found' },
+				{ status: 404 },
+			);
+		}
+		if (existing.outcome && archived === false) {
+			return NextResponse.json(
+				{ error: REACTIVATE_FINISHED_MESSAGE },
+				{ status: 409 },
+			);
+		}
+
+		// Partial update: a field absent from the body is left unchanged (Prisma
+		// skips `undefined`). Only an explicit `null` clears a nullable column;
+		// the nullable JSON blobs need Prisma.DbNull for that. Test group
+		// positions are server-owned (see assignGroupPositions).
 		const testRollout = await prisma.testRollout.update({
 			where: {
 				id,
@@ -71,13 +105,20 @@ export async function PUT(
 			data: {
 				name,
 				description,
-				group: group ?? null,
+				group,
 				percentage,
-				conditions: conditions ?? [],
-				flagIds: flagIds ?? [],
-				archived: archived ?? false,
-				variants: (variants ?? null) as Prisma.InputJsonValue,
-				rolloutValues: (rolloutValues ?? null) as Prisma.InputJsonValue,
+				conditions,
+				flagIds,
+				archived,
+				variants: nullableJson(
+					existing.type === 'TEST'
+						? assignGroupPositions(
+								existing.variants as unknown as StoredTestVariants | null,
+								variants,
+							)
+						: variants,
+				),
+				rolloutValues: nullableJson(rolloutValues),
 				updatedAt: new Date(),
 			},
 		});

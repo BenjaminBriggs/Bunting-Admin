@@ -2,8 +2,8 @@
 
 // RolloutForm — unified Create / Edit rollout screen (Rollout Form.dc.html).
 // Owns the editable form state and derives key / live JSON / pending-changes; the page
-// supplies initial values + the submit / complete / delete callbacks (preserving the
-// existing createRollout / updateTestRollout / archiveTestRollout / deleteRollout logic).
+// supplies initial values + the submit / complete / abandon / delete callbacks (preserving
+// the existing createRollout / updateTestRollout / deleteRollout logic).
 
 import type { SxProps, Theme } from '@mui/material';
 import { Alert, Box, Button, Stack, Typography } from '@mui/material';
@@ -52,6 +52,7 @@ interface RolloutFormProps {
 	saveError?: string | null;
 	onSubmit: (payload: RolloutFormSubmit) => void;
 	onComplete?: () => void;
+	onAbandon?: () => void;
 	onDelete?: () => void;
 	cancelHref?: string;
 }
@@ -165,6 +166,7 @@ export default function RolloutForm({
 	saveError,
 	onSubmit,
 	onComplete,
+	onAbandon,
 	onDelete,
 	cancelHref = '/dashboard/rollouts',
 }: RolloutFormProps) {
@@ -384,19 +386,32 @@ export default function RolloutForm({
 				</Box>
 				{isEdit && (
 					<Stack direction="row" spacing={1}>
-						<Button
-							variant="outlined"
-							size="small"
-							startIcon={
-								<Ms
-									name="check_circle"
-									sx={{ fontSize: 17, color: '#3F7A2D' }}
-								/>
-							}
-							onClick={onComplete}
-						>
-							Complete (100%)
-						</Button>
+						{/* Finished rollouts cannot be completed or abandoned again. */}
+						{!initial.archived && (
+							<>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={
+										<Ms
+											name="check_circle"
+											sx={{ fontSize: 17, color: '#3F7A2D' }}
+										/>
+									}
+									onClick={onComplete}
+								>
+									Complete…
+								</Button>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={<Ms name="stop_circle" sx={{ fontSize: 17 }} />}
+									onClick={onAbandon}
+								>
+									Abandon…
+								</Button>
+							</>
+						)}
 						<Button
 							variant="outlined"
 							size="small"

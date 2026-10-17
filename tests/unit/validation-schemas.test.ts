@@ -6,6 +6,7 @@ import {
 	createTestSchema,
 	updateFlagSchema,
 	updateRolloutSchema,
+	updateTestSchema,
 } from '@/lib/validation-schemas';
 
 const validCondition = {
@@ -282,5 +283,86 @@ describe('validation-schemas', () => {
 				}).success,
 			).toBe(true);
 		});
+	});
+
+	describe('createTestRolloutSchema test group percentages', () => {
+		const testPayload = (variants: Record<string, unknown>) => ({
+			appId: 'cl0000000000000000000000',
+			name: 'Experiment',
+			type: 'TEST',
+			variants,
+		});
+
+		it('accepts groups summing to under 100 (the rest are not in the test)', () => {
+			const result = createTestRolloutSchema.safeParse(
+				testPayload({ a: { percentage: 30 }, b: { percentage: 30 } }),
+			);
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects groups summing to more than 100', () => {
+			const result = createTestRolloutSchema.safeParse(
+				testPayload({ a: { percentage: 60 }, b: { percentage: 60 } }),
+			);
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects a fractional group percentage (SDKs decode integers)', () => {
+			const result = createTestRolloutSchema.safeParse(
+				testPayload({ a: { percentage: 12.5 } }),
+			);
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects a fractional rollout percentage', () => {
+			const result = createTestRolloutSchema.safeParse({
+				appId: 'cl0000000000000000000000',
+				name: 'Rollout',
+				type: 'ROLLOUT',
+				percentage: 12.5,
+			});
+			expect(result.success).toBe(false);
+		});
+	});
+
+	describe('secondary test/rollout routes match the primary rules', () => {
+		it('updateTestSchema rejects groups summing to more than 100', () => {
+			const result = updateTestSchema.safeParse({
+				variants: { a: { percentage: 60 }, b: { percentage: 60 } },
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it('updateTestSchema rejects a fractional group percentage', () => {
+			const result = updateTestSchema.safeParse({
+				variants: { a: { percentage: 30.5 } },
+			});
+			expect(result.success).toBe(false);
+		});
+
+		it('rollout schemas reject fractional percentages instead of truncating', () => {
+			expect(
+				createRolloutSchema.safeParse({
+					key: 'k',
+					name: 'n',
+					conditions: [],
+					percentage: 33.5,
+					appId: 'a',
+				}).success,
+			).toBe(false);
+			expect(
+				updateRolloutSchema.safeParse({ percentage: 12.5, appId: 'a' }).success,
+			).toBe(false);
+		});
+	});
+
+	it('conditionSchema accepts device_class, which the UI and SDKs support', () => {
+		expect(
+			conditionSchema.safeParse({
+				type: 'device_class',
+				operator: 'in',
+				values: ['tablet'],
+			}).success,
+		).toBe(true);
 	});
 });

@@ -49,8 +49,9 @@ Each flag has a `type`, an optional `description`, an optional `deprecated` flag
 
 Supported types: `bool`, `string`, `int`, `double`, `date`, `json`.
 
-- `date` values use ISO 8601 date strings (`YYYY-MM-DD`).
-- `json` values are embedded JSON objects (not strings); the SDK exposes them as `Data`.
+- `date` values are ISO 8601 UTC instants (`2026-07-02T10:00:04.796Z`, fractional seconds optional).
+- `json` values are JSON-encoded strings (never raw objects or arrays); the SDK exposes them as `Data`.
+- Values are decoded by the declared type, never by their shape. See [Decoding rules](#decoding-rules-v1-contract).
 - `deprecated` (boolean, optional): present and `true` when the flag is archived. The flag is still served so existing clients keep resolving it, but the SDK codegen marks the generated accessor `@available(*, deprecated)` and the runtime fires `didReadDeprecatedFlag(flagKey:)` on read. Omitted (treated as `false`) for active flags.
 
 ```json
@@ -117,7 +118,7 @@ Matches when all listed `conditions` evaluate to `true`.
 
 ### `test`
 
-References a named A/B test. The SDK buckets the user and returns the value for their assigned group.
+References a named A/B test. The SDK buckets the user and returns the value for their assigned group. A user who is not in the test (preconditions fail, the bucket lands past the groups' total, or the assigned group has no value in `values`) skips the variant, and evaluation continues with the next one.
 
 ```json
 {
@@ -237,13 +238,15 @@ A/B experiments with deterministic user bucketing.
 }
 ```
 
-| Field        | Required | Description                                                                                                                                        |
-| ------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`       | yes      | Human-readable display name.                                                                                                                       |
-| `type`       | yes      | Always `"test"`.                                                                                                                                   |
-| `salt`       | yes      | Unique, immutable random string. Changing it remaps all users.                                                                                     |
-| `conditions` | yes      | Entry conditions; only users matching all conditions participate (`[]` when none).                                                                 |
-| `groups`     | no       | Array of `{ name, percentage }`. Omitted when the test has no groups. Percentages should sum to ≤ 100. The SDK buckets users into a group by name. |
+| Field        | Required | Description                                                                                                                                                                                                                         |
+| ------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`       | yes      | Human-readable display name.                                                                                                                                                                                                        |
+| `type`       | yes      | Always `"test"`.                                                                                                                                                                                                                    |
+| `salt`       | yes      | Unique, immutable random string. Changing it remaps all users.                                                                                                                                                                      |
+| `conditions` | yes      | Entry conditions; only users matching all conditions participate (`[]` when none).                                                                                                                                                  |
+| `groups`     | no       | Array of uniquely named `{ name, percentage }` with integer percentages summing to 100 or less. Users bucketed past the total are not in the test. A test without groups never matches. Array order is the bucket order; see below. |
+
+**Group order.** The SDK maps a user's bucket to a group by cumulative percentage in `groups` array order, so the order decides which users land in which group. The admin emits groups in the order of each group's stored `position`, which edits never change for a group they keep (renamed or not); new groups are appended. Tests stored before positions existed keep the order they were first published with.
 
 ---
 
@@ -359,7 +362,7 @@ The JWS `header` must include `alg: RS256` and `kid` for key rotation.
 2. Parse and verify the detached JWS with RS256.
 3. If verification passes, use the config. If it fails, fall back to the last-known-good cached config, or the bundled seed if no cache exists.
 
-**Key rotation:** apps embed multiple public keys. Old keys stay valid for all shipped builds; new app versions add newer keys. The admin signs with the current active private key.
+**Key rotation:** apps embed multiple public keys: the admin's `ACTIVE` key plus every `STANDBY` key at the time the bootstrap file was downloaded. The admin signs with the single `ACTIVE` private key; rotating activates a standby key that shipped builds already trust. See [security.md](security.md).
 
 ---
 
@@ -503,14 +506,47 @@ CDN URL pattern: `https://<cdn-host>/<appIdentifier>/config.json`
 
 ---
 
+## Decoding rules (v1 contract)
+
+SDKs decode `config.json` by these rules. `src/lib/artifact-decoder.ts` in the admin is the reference implementation, the conformance bundle's `decoding` set pins them, and publish refuses any artifact that would not decode losslessly.
+
+**One bad entry never rejects the artifact.**
+
+| What SDKs find                                                                                                                                                 | What they do                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| A flag with an unknown `type`, a missing environment, a `default` that doesn't match the type, or `variants` that isn't an array                               | Skip that flag. Its accessor returns the call-site default.              |
+| A variant with an unknown `type`, a missing or mistyped value, or a missing test/rollout reference                                                             | Keep a placeholder that never matches and counts as one fingerprint path |
+| A variant without an integer `order`                                                                                                                           | Drop it                                                                  |
+| A condition with an unknown `type` or `operator`, or `values` that aren't all strings                                                                          | The condition never matches, so whatever it guards never matches         |
+| A malformed test (bad salt, groups that aren't uniquely named integer percentages summing to 100 or less) or rollout (percentage not an integer from 0 to 100) | Drop it. Variants that reference it never match.                         |
+| Unknown keys anywhere                                                                                                                                          | Ignore them                                                              |
+
+Only the header is strict: invalid JSON, a `schema_version` other than `1`, a missing `config_version` or `app_identifier`, a `published_at` that isn't an ISO 8601 UTC instant, or a `flags`/`tests`/`rollouts` container that isn't an object rejects the artifact, and the SDK keeps its cached or bundled config. Breaking changes bump `schema_version`.
+
+**Values decode by the flag's declared type, never by their JSON shape.**
+
+| Type     | Wire value                                                                                                                                                                                                                                                 |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bool`   | JSON boolean                                                                                                                                                                                                                                               |
+| `int`    | JSON number with no fractional part (`2.0` is the int `2`)                                                                                                                                                                                                 |
+| `double` | Any finite JSON number                                                                                                                                                                                                                                     |
+| `string` | Any JSON string, verbatim (`"[Beta] Hi"` and `"2026-01-01T00:00:00Z"` stay strings)                                                                                                                                                                        |
+| `date`   | String holding an ISO 8601 UTC instant on a real calendar date in years 0001 to 9999, with 0 to 3 fraction digits (`2026-07-02T10:00:04Z`, `2026-07-02T10:00:04.796Z`). Date-only strings, offsets, `24:00`, leap seconds and finer precision are invalid. |
+| `json`   | String holding JSON text, verbatim (`"42"` is valid). Never a raw object or array.                                                                                                                                                                         |
+
+Fingerprint parity holds only when the SDK knows every type in the artifact: an SDK older than the artifact counts an unrecognized variant as one path, and skipped flags are left out of its fingerprint.
+
+---
+
 ## Flag evaluation reference (SDK behaviour)
 
 1. Select the environment object matching the current runtime environment (`development`, `beta`, or `production`).
 2. Sort `variants` by `order` ascending.
 3. For each variant:
    - `conditional`: evaluate all `conditions`; if all pass, return `value`.
-   - `test`: bucket the user via the bucketing algorithm; map the bucket to a variant group using cumulative percentages; return `values[group]`.
+   - `test`: if the test's conditions pass, bucket the user via the bucketing algorithm and map the bucket to a group using cumulative percentages. Return `values[group]` if the user landed in a group that has a value; otherwise skip the variant.
    - `rollout`: bucket the user; if `bucket <= percentage`, return `value`.
+   - Any other (unrecognized) variant: skip it.
 4. If no variant matched, return the environment `default`.
 
 ---
