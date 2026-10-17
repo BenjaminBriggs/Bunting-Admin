@@ -1,8 +1,8 @@
 {
-	"version": "2026-07-02.2",
+	"version": "2026-10-17.2",
 	"artifact": {
 		"schema_version": 1,
-		"config_version": "2026-07-02.2",
+		"config_version": "2026-10-17.2",
 		"published_at": "2026-07-02T00:00:00.000Z",
 		"app_identifier": "conformance-app",
 		"flags": {
@@ -768,6 +768,19 @@
 					"variants": []
 				}
 			},
+			"types/whole_second_date": {
+				"type": "date",
+				"development": {
+					"default": "2026-07-02T00:00:00Z"
+				},
+				"beta": {
+					"default": "2026-07-02T00:00:00Z"
+				},
+				"production": {
+					"default": "2026-07-02T00:00:00Z",
+					"variants": []
+				}
+			},
 			"types/json_flag": {
 				"type": "json",
 				"development": {
@@ -779,6 +792,130 @@
 				"production": {
 					"default": "{\"sections\":[\"home\",\"profile\"]}",
 					"variants": []
+				}
+			},
+			"types/bracket_string": {
+				"type": "string",
+				"development": {
+					"default": "[Beta] Hi"
+				},
+				"beta": {
+					"default": "[Beta] Hi"
+				},
+				"production": {
+					"default": "[Beta] Hi",
+					"variants": []
+				}
+			},
+			"types/brace_string": {
+				"type": "string",
+				"development": {
+					"default": "{not json}"
+				},
+				"beta": {
+					"default": "{not json}"
+				},
+				"production": {
+					"default": "{not json}",
+					"variants": []
+				}
+			},
+			"types/iso_looking_string": {
+				"type": "string",
+				"development": {
+					"default": "2026-01-01T00:00:00Z"
+				},
+				"beta": {
+					"default": "2026-01-01T00:00:00Z"
+				},
+				"production": {
+					"default": "2026-01-01T00:00:00Z",
+					"variants": []
+				}
+			},
+			"types/numeric_string": {
+				"type": "string",
+				"development": {
+					"default": "42"
+				},
+				"beta": {
+					"default": "42"
+				},
+				"production": {
+					"default": "42",
+					"variants": []
+				}
+			},
+			"types/json_scalar": {
+				"type": "json",
+				"development": {
+					"default": "42"
+				},
+				"beta": {
+					"default": "42"
+				},
+				"production": {
+					"default": "42",
+					"variants": []
+				}
+			},
+			"test/remainder_experiment": {
+				"type": "string",
+				"development": {
+					"default": "not-in-test"
+				},
+				"beta": {
+					"default": "not-in-test"
+				},
+				"production": {
+					"default": "not-in-test",
+					"variants": [
+						{
+							"type": "test",
+							"order": 1,
+							"test": "remainder_experiment",
+							"values": {
+								"alpha": "alpha-value",
+								"beta": "beta-value"
+							}
+						},
+						{
+							"type": "conditional",
+							"order": 2,
+							"value": "next-variant",
+							"conditions": [
+								{
+									"type": "region",
+									"operator": "in",
+									"values": [
+										"US"
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"test/partial_values_experiment": {
+				"type": "string",
+				"development": {
+					"default": "not-in-test"
+				},
+				"beta": {
+					"default": "not-in-test"
+				},
+				"production": {
+					"default": "not-in-test",
+					"variants": [
+						{
+							"type": "test",
+							"order": 1,
+							"test": "partial_values_experiment",
+							"values": {
+								"with_value": "with-value"
+							}
+						}
+					]
 				}
 			}
 		},
@@ -795,6 +932,38 @@
 					},
 					{
 						"name": "treatment",
+						"percentage": 50
+					}
+				]
+			},
+			"remainder_experiment": {
+				"name": "remainder_experiment",
+				"type": "test",
+				"salt": "remainder-salt",
+				"conditions": [],
+				"groups": [
+					{
+						"name": "alpha",
+						"percentage": 30
+					},
+					{
+						"name": "beta",
+						"percentage": 30
+					}
+				]
+			},
+			"partial_values_experiment": {
+				"name": "partial_values_experiment",
+				"type": "test",
+				"salt": "partial-salt",
+				"conditions": [],
+				"groups": [
+					{
+						"name": "with_value",
+						"percentage": 50
+					},
+					{
+						"name": "without_value",
 						"percentage": 50
 					}
 				]
@@ -834,7 +1003,7 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "production",
-			"code": "2026-07-02.2.1BFFBDEC8011"
+			"code": "2026-10-17.2.1BFFBDEC8829"
 		},
 		{
 			"context": {
@@ -851,7 +1020,7 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "production",
-			"code": "2026-07-02.2.1BE7BDEC80C6"
+			"code": "2026-10-17.2.1BE7BDEC88FE"
 		},
 		{
 			"context": {
@@ -869,12 +1038,12 @@
 				"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
 			},
 			"environment": "development",
-			"code": "2026-07-02.2.127E"
+			"code": "2026-10-17.2.127E"
 		}
 	],
 	"decode_cases": [
 		{
-			"code": "2026-07-02.2.1BFFBDEC8011",
+			"code": "2026-10-17.2.1BFFBDEC8829",
 			"environment": "production",
 			"expected_flags": {
 				"cond/app_version_between": {
@@ -977,12 +1146,40 @@
 					"value": "control-value",
 					"reason": "test \"checkout_experiment\" group \"control\""
 				},
+				"test/partial_values_experiment": {
+					"value": "not-in-test",
+					"reason": "production default"
+				},
+				"test/remainder_experiment": {
+					"value": "alpha-value",
+					"reason": "test \"remainder_experiment\" group \"alpha\""
+				},
+				"types/brace_string": {
+					"value": "{not json}",
+					"reason": "production default"
+				},
+				"types/bracket_string": {
+					"value": "[Beta] Hi",
+					"reason": "production default"
+				},
 				"types/fractional_date": {
 					"value": "2026-07-02T00:00:00.123Z",
 					"reason": "production default"
 				},
+				"types/iso_looking_string": {
+					"value": "2026-01-01T00:00:00Z",
+					"reason": "production default"
+				},
 				"types/json_flag": {
 					"value": "{\"sections\":[\"home\",\"profile\"]}",
+					"reason": "production default"
+				},
+				"types/json_scalar": {
+					"value": "42",
+					"reason": "production default"
+				},
+				"types/numeric_string": {
+					"value": "42",
 					"reason": "production default"
 				},
 				"types/whole_double": {
@@ -991,6 +1188,10 @@
 				},
 				"types/whole_int": {
 					"value": 42,
+					"reason": "production default"
+				},
+				"types/whole_second_date": {
+					"value": "2026-07-02T00:00:00Z",
 					"reason": "production default"
 				}
 			}

@@ -1,0 +1,946 @@
+{
+	"version": "2026-10-17.2",
+	"note": "artifact_b64 is the exact config.json text. Decode it with the SDK decoder, compare the decoded model to expected (values compared by the flag type: dates as instants, numbers numerically), then run evaluations and the fingerprint against the decoded artifact.",
+	"cases": [
+		{
+			"name": "tolerant",
+			"artifact_b64": "eyJzY2hlbWFfdmVyc2lvbiI6MSwiY29uZmlnX3ZlcnNpb24iOiIyMDI2LTEwLTE3LjIiLCJwdWJsaXNoZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwLjAwMFoiLCJhcHBfaWRlbnRpZmllciI6ImNvbmZvcm1hbmNlLWFwcCIsImZ1dHVyZV90b3BfbGV2ZWxfZmllbGQiOnsiYW55dGhpbmciOnRydWV9LCJmbGFncyI6eyJvay9ib29sIjp7InR5cGUiOiJib29sIiwib3duZXIiOiJ0ZWFtLWEiLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0IjpmYWxzZSwidmFyaWFudHMiOlt7InR5cGUiOiJjb25kaXRpb25hbCIsIm9yZGVyIjoxLCJ2YWx1ZSI6dHJ1ZSwiY29uZGl0aW9ucyI6W3sidHlwZSI6InBsYXRmb3JtIiwib3BlcmF0b3IiOiJpbiIsInZhbHVlcyI6WyJpb3MiXX1dfV19LCJiZXRhIjp7ImRlZmF1bHQiOmZhbHNlLCJ2YXJpYW50cyI6W3sidHlwZSI6ImNvbmRpdGlvbmFsIiwib3JkZXIiOjEsInZhbHVlIjp0cnVlLCJjb25kaXRpb25zIjpbeyJ0eXBlIjoicGxhdGZvcm0iLCJvcGVyYXRvciI6ImluIiwidmFsdWVzIjpbImlvcyJdfV19XX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6ZmFsc2UsInZhcmlhbnRzIjpbeyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6MSwidmFsdWUiOnRydWUsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJwbGF0Zm9ybSIsIm9wZXJhdG9yIjoiaW4iLCJ2YWx1ZXMiOlsiaW9zIl19XX1dfX0sIm9rL3JvbGxvdXQiOnsidHlwZSI6ImJvb2wiLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0IjpmYWxzZSwidmFyaWFudHMiOlt7InR5cGUiOiJyb2xsb3V0Iiwib3JkZXIiOjEsInJvbGxvdXQiOiJmaW5lX3JvbGxvdXQiLCJ2YWx1ZSI6dHJ1ZX1dfSwiYmV0YSI6eyJkZWZhdWx0IjpmYWxzZSwidmFyaWFudHMiOlt7InR5cGUiOiJyb2xsb3V0Iiwib3JkZXIiOjEsInJvbGxvdXQiOiJmaW5lX3JvbGxvdXQiLCJ2YWx1ZSI6dHJ1ZX1dfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjpmYWxzZSwidmFyaWFudHMiOlt7InR5cGUiOiJyb2xsb3V0Iiwib3JkZXIiOjEsInJvbGxvdXQiOiJmaW5lX3JvbGxvdXQiLCJ2YWx1ZSI6dHJ1ZX1dfX0sInNraXAvdW5rbm93bl90eXBlIjp7InR5cGUiOiJjb2xvciIsImRldmVsb3BtZW50Ijp7ImRlZmF1bHQiOiJyZWQiLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOiJyZWQiLCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiJyZWQiLCJ2YXJpYW50cyI6W119fSwic2tpcC9taXNzaW5nX2Vudmlyb25tZW50Ijp7InR5cGUiOiJib29sIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6ZmFsc2V9LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOmZhbHNlfX0sInNraXAvZGVmYXVsdF93cm9uZ190eXBlIjp7InR5cGUiOiJpbnQiLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0IjoiNSIsInZhcmlhbnRzIjpbXX0sImJldGEiOnsiZGVmYXVsdCI6IjUiLCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiI1IiwidmFyaWFudHMiOltdfX0sInNraXAvanNvbl9yYXdfb2JqZWN0Ijp7InR5cGUiOiJqc29uIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6eyJzZWN0aW9ucyI6WyJob21lIl19LCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOnsic2VjdGlvbnMiOlsiaG9tZSJdfSwidmFyaWFudHMiOltdfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0Ijp7InNlY3Rpb25zIjpbImhvbWUiXX0sInZhcmlhbnRzIjpbXX19LCJza2lwL2RhdGVfb25seSI6eyJ0eXBlIjoiZGF0ZSIsImRldmVsb3BtZW50Ijp7ImRlZmF1bHQiOiIyMDI2LTA3LTAyIiwidmFyaWFudHMiOltdfSwiYmV0YSI6eyJkZWZhdWx0IjoiMjAyNi0wNy0wMiIsInZhcmlhbnRzIjpbXX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6IjIwMjYtMDctMDIiLCJ2YXJpYW50cyI6W119fSwic2tpcC9kYXRlX3dpdGhfb2Zmc2V0Ijp7InR5cGUiOiJkYXRlIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMDA6MDA6MDArMDE6MDAiLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwKzAxOjAwIiwidmFyaWFudHMiOltdfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjoiMjAyNi0wNy0wMlQwMDowMDowMCswMTowMCIsInZhcmlhbnRzIjpbXX19LCJza2lwL2RhdGVfbm90X29uX2NhbGVuZGFyIjp7InR5cGUiOiJkYXRlIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjIwMjYtMDItMzBUMDA6MDA6MDBaIiwidmFyaWFudHMiOltdfSwiYmV0YSI6eyJkZWZhdWx0IjoiMjAyNi0wMi0zMFQwMDowMDowMFoiLCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiIyMDI2LTAyLTMwVDAwOjAwOjAwWiIsInZhcmlhbnRzIjpbXX19LCJza2lwL2RhdGVfaG91cl8yNCI6eyJ0eXBlIjoiZGF0ZSIsImRldmVsb3BtZW50Ijp7ImRlZmF1bHQiOiIyMDI2LTA3LTAyVDI0OjAwOjAwWiIsInZhcmlhbnRzIjpbXX0sImJldGEiOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMjQ6MDA6MDBaIiwidmFyaWFudHMiOltdfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjoiMjAyNi0wNy0wMlQyNDowMDowMFoiLCJ2YXJpYW50cyI6W119fSwic2tpcC9kYXRlX2xlYXBfc2Vjb25kIjp7InR5cGUiOiJkYXRlIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjIwMjYtMDYtMzBUMjM6NTk6NjBaIiwidmFyaWFudHMiOltdfSwiYmV0YSI6eyJkZWZhdWx0IjoiMjAyNi0wNi0zMFQyMzo1OTo2MFoiLCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiIyMDI2LTA2LTMwVDIzOjU5OjYwWiIsInZhcmlhbnRzIjpbXX19LCJza2lwL2RhdGVfbWljcm9zZWNvbmRzIjp7InR5cGUiOiJkYXRlIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMDA6MDA6MDAuMTIzNDU2WiIsInZhcmlhbnRzIjpbXX0sImJldGEiOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMDA6MDA6MDAuMTIzNDU2WiIsInZhcmlhbnRzIjpbXX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMDA6MDA6MDAuMTIzNDU2WiIsInZhcmlhbnRzIjpbXX19LCJza2lwL2ludF9mcmFjdGlvbmFsIjp7InR5cGUiOiJpbnQiLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0IjoyLjUsInZhcmlhbnRzIjpbXX0sImJldGEiOnsiZGVmYXVsdCI6Mi41LCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOjIuNSwidmFyaWFudHMiOltdfX0sInNraXAvbnVsbF9kZWZhdWx0Ijp7InR5cGUiOiJzdHJpbmciLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0IjpudWxsLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOm51bGwsInZhcmlhbnRzIjpbXX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6bnVsbCwidmFyaWFudHMiOltdfX0sInNraXAvdmFyaWFudHNfbm90X2FycmF5Ijp7InR5cGUiOiJib29sIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6ZmFsc2UsInZhcmlhbnRzIjp7fX0sImJldGEiOnsiZGVmYXVsdCI6ZmFsc2V9LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOmZhbHNlfX0sInNraXAvbm90X2FuX29iamVjdCI6ImJvb2wiLCJ0eXBlZC9pbnRfd3JpdHRlbl9hc19mbG9hdCI6eyJ0eXBlIjoiaW50IiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6Mi4wLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOjIuMCwidmFyaWFudHMiOltdfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjoyLjAsInZhcmlhbnRzIjpbXX19LCJ0eXBlZC9kb3VibGVfd3JpdHRlbl9hc19pbnQiOnsidHlwZSI6ImRvdWJsZSIsImRldmVsb3BtZW50Ijp7ImRlZmF1bHQiOjMsInZhcmlhbnRzIjpbXX0sImJldGEiOnsiZGVmYXVsdCI6MywidmFyaWFudHMiOltdfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjozLCJ2YXJpYW50cyI6W119fSwidHlwZWQvYnJhY2tldF9zdHJpbmciOnsidHlwZSI6InN0cmluZyIsImRldmVsb3BtZW50Ijp7ImRlZmF1bHQiOiJbQmV0YV0gSGkiLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOiJbQmV0YV0gSGkiLCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiJbQmV0YV0gSGkiLCJ2YXJpYW50cyI6W119fSwidHlwZWQvaXNvX2xvb2tpbmdfc3RyaW5nIjp7InR5cGUiOiJzdHJpbmciLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0IjoiMjAyNi0wMS0wMVQwMDowMDowMFoiLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOiIyMDI2LTAxLTAxVDAwOjAwOjAwWiIsInZhcmlhbnRzIjpbXX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6IjIwMjYtMDEtMDFUMDA6MDA6MDBaIiwidmFyaWFudHMiOltdfX0sInR5cGVkL2pzb25fc2NhbGFyIjp7InR5cGUiOiJqc29uIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjQyIiwidmFyaWFudHMiOltdfSwiYmV0YSI6eyJkZWZhdWx0IjoiNDIiLCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiI0MiIsInZhcmlhbnRzIjpbXX19LCJ0eXBlZC9qc29uX2xlYWRpbmdfbmV3bGluZSI6eyJ0eXBlIjoianNvbiIsImRldmVsb3BtZW50Ijp7ImRlZmF1bHQiOiJcbntcImFcIjoxfSIsInZhcmlhbnRzIjpbXX0sImJldGEiOnsiZGVmYXVsdCI6Ilxue1wiYVwiOjF9IiwidmFyaWFudHMiOltdfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjoiXG57XCJhXCI6MX0iLCJ2YXJpYW50cyI6W119fSwidHlwZWQvZGF0ZV9mcmFjdGlvbmFsIjp7InR5cGUiOiJkYXRlIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMTA6MDA6MDQuNzk2WiIsInZhcmlhbnRzIjpbXX0sImJldGEiOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMTA6MDA6MDQuNzk2WiIsInZhcmlhbnRzIjpbXX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMTA6MDA6MDQuNzk2WiIsInZhcmlhbnRzIjpbXX19LCJ0eXBlZC9kYXRlX3dob2xlX3NlY29uZHMiOnsidHlwZSI6ImRhdGUiLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0IjoiMjAyNi0wNy0wMlQxMDowMDowNFoiLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOiIyMDI2LTA3LTAyVDEwOjAwOjA0WiIsInZhcmlhbnRzIjpbXX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMTA6MDA6MDRaIiwidmFyaWFudHMiOltdfX0sInR5cGVkL2RhdGVfb25lX2ZyYWN0aW9uX2RpZ2l0Ijp7InR5cGUiOiJkYXRlIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjIwMjYtMDctMDJUMTA6MDA6MDQuNVoiLCJ2YXJpYW50cyI6W119LCJiZXRhIjp7ImRlZmF1bHQiOiIyMDI2LTA3LTAyVDEwOjAwOjA0LjVaIiwidmFyaWFudHMiOltdfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjoiMjAyNi0wNy0wMlQxMDowMDowNC41WiIsInZhcmlhbnRzIjpbXX19LCJ0eXBlZC9kYXRlX2xlYXBfZGF5Ijp7InR5cGUiOiJkYXRlIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6IjIwMjgtMDItMjlUMDA6MDA6MDBaIiwidmFyaWFudHMiOltdfSwiYmV0YSI6eyJkZWZhdWx0IjoiMjAyOC0wMi0yOVQwMDowMDowMFoiLCJ2YXJpYW50cyI6W119LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiIyMDI4LTAyLTI5VDAwOjAwOjAwWiIsInZhcmlhbnRzIjpbXX19LCJ2YXJpYW50cy9wbGFjZWhvbGRlcnMiOnsidHlwZSI6InN0cmluZyIsImRldmVsb3BtZW50Ijp7ImRlZmF1bHQiOiJkZWZhdWx0IiwidmFyaWFudHMiOlt7InR5cGUiOiJnZW9fZmVuY2UiLCJvcmRlciI6MSwidmFsdWUiOiJ1bmtub3duLXZhcmlhbnQtdHlwZSJ9LHsidHlwZSI6ImNvbmRpdGlvbmFsIiwib3JkZXIiOjIsInZhbHVlIjo1LCJjb25kaXRpb25zIjpbeyJ0eXBlIjoicGxhdGZvcm0iLCJvcGVyYXRvciI6ImluIiwidmFsdWVzIjpbImlvcyJdfV19LHsidHlwZSI6ImNvbmRpdGlvbmFsIiwidmFsdWUiOiJuby1vcmRlciJ9LHsidHlwZSI6ImNvbmRpdGlvbmFsIiwib3JkZXIiOjMsInZhbHVlIjoidW5rbm93bi1jb25kaXRpb24tdHlwZSIsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJtb29uX3BoYXNlIiwib3BlcmF0b3IiOiJpbiIsInZhbHVlcyI6WyJmdWxsIl19XX0seyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6NCwidmFsdWUiOiJ1bmtub3duLW9wZXJhdG9yIiwiY29uZGl0aW9ucyI6W3sidHlwZSI6InBsYXRmb3JtIiwib3BlcmF0b3IiOiJtYXRjaGVzX3JlZ2V4IiwidmFsdWVzIjpbImlvcyJdfV19LHsidHlwZSI6ImNvbmRpdGlvbmFsIiwib3JkZXIiOjUsInZhbHVlIjoibnVtZXJpYy1jb25kaXRpb24tdmFsdWVzIiwiY29uZGl0aW9ucyI6W3sidHlwZSI6ImJ1aWxkX251bWJlciIsIm9wZXJhdG9yIjoiZXF1YWxzIiwidmFsdWVzIjpbMTAwXX1dfSx7InR5cGUiOiJ0ZXN0Iiwib3JkZXIiOjYsInRlc3QiOiJkcm9wcGVkX3Rlc3QiLCJ2YWx1ZXMiOnsiYSI6InQifX0seyJ0eXBlIjoicm9sbG91dCIsIm9yZGVyIjo3LCJyb2xsb3V0IjoiZHJvcHBlZF9yb2xsb3V0IiwidmFsdWUiOiJyIn0seyJ0eXBlIjoicm9sbG91dCIsIm9yZGVyIjo4LCJ2YWx1ZSI6Im1pc3Npbmctcm9sbG91dC1yZWZlcmVuY2UifSx7InR5cGUiOiJjb25kaXRpb25hbCIsIm9yZGVyIjo5LCJ2YWx1ZSI6ImZpcnN0LXJlYWwtbWF0Y2giLCJjb25kaXRpb25zIjpbeyJ0eXBlIjoicGxhdGZvcm0iLCJvcGVyYXRvciI6ImluIiwidmFsdWVzIjpbImlvcyJdfV19XX0sImJldGEiOnsiZGVmYXVsdCI6ImRlZmF1bHQiLCJ2YXJpYW50cyI6W3sidHlwZSI6Imdlb19mZW5jZSIsIm9yZGVyIjoxLCJ2YWx1ZSI6InVua25vd24tdmFyaWFudC10eXBlIn0seyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6MiwidmFsdWUiOjUsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJwbGF0Zm9ybSIsIm9wZXJhdG9yIjoiaW4iLCJ2YWx1ZXMiOlsiaW9zIl19XX0seyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJ2YWx1ZSI6Im5vLW9yZGVyIn0seyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6MywidmFsdWUiOiJ1bmtub3duLWNvbmRpdGlvbi10eXBlIiwiY29uZGl0aW9ucyI6W3sidHlwZSI6Im1vb25fcGhhc2UiLCJvcGVyYXRvciI6ImluIiwidmFsdWVzIjpbImZ1bGwiXX1dfSx7InR5cGUiOiJjb25kaXRpb25hbCIsIm9yZGVyIjo0LCJ2YWx1ZSI6InVua25vd24tb3BlcmF0b3IiLCJjb25kaXRpb25zIjpbeyJ0eXBlIjoicGxhdGZvcm0iLCJvcGVyYXRvciI6Im1hdGNoZXNfcmVnZXgiLCJ2YWx1ZXMiOlsiaW9zIl19XX0seyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6NSwidmFsdWUiOiJudW1lcmljLWNvbmRpdGlvbi12YWx1ZXMiLCJjb25kaXRpb25zIjpbeyJ0eXBlIjoiYnVpbGRfbnVtYmVyIiwib3BlcmF0b3IiOiJlcXVhbHMiLCJ2YWx1ZXMiOlsxMDBdfV19LHsidHlwZSI6InRlc3QiLCJvcmRlciI6NiwidGVzdCI6ImRyb3BwZWRfdGVzdCIsInZhbHVlcyI6eyJhIjoidCJ9fSx7InR5cGUiOiJyb2xsb3V0Iiwib3JkZXIiOjcsInJvbGxvdXQiOiJkcm9wcGVkX3JvbGxvdXQiLCJ2YWx1ZSI6InIifSx7InR5cGUiOiJyb2xsb3V0Iiwib3JkZXIiOjgsInZhbHVlIjoibWlzc2luZy1yb2xsb3V0LXJlZmVyZW5jZSJ9LHsidHlwZSI6ImNvbmRpdGlvbmFsIiwib3JkZXIiOjksInZhbHVlIjoiZmlyc3QtcmVhbC1tYXRjaCIsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJwbGF0Zm9ybSIsIm9wZXJhdG9yIjoiaW4iLCJ2YWx1ZXMiOlsiaW9zIl19XX1dfSwicHJvZHVjdGlvbiI6eyJkZWZhdWx0IjoiZGVmYXVsdCIsInZhcmlhbnRzIjpbeyJ0eXBlIjoiZ2VvX2ZlbmNlIiwib3JkZXIiOjEsInZhbHVlIjoidW5rbm93bi12YXJpYW50LXR5cGUifSx7InR5cGUiOiJjb25kaXRpb25hbCIsIm9yZGVyIjoyLCJ2YWx1ZSI6NSwiY29uZGl0aW9ucyI6W3sidHlwZSI6InBsYXRmb3JtIiwib3BlcmF0b3IiOiJpbiIsInZhbHVlcyI6WyJpb3MiXX1dfSx7InR5cGUiOiJjb25kaXRpb25hbCIsInZhbHVlIjoibm8tb3JkZXIifSx7InR5cGUiOiJjb25kaXRpb25hbCIsIm9yZGVyIjozLCJ2YWx1ZSI6InVua25vd24tY29uZGl0aW9uLXR5cGUiLCJjb25kaXRpb25zIjpbeyJ0eXBlIjoibW9vbl9waGFzZSIsIm9wZXJhdG9yIjoiaW4iLCJ2YWx1ZXMiOlsiZnVsbCJdfV19LHsidHlwZSI6ImNvbmRpdGlvbmFsIiwib3JkZXIiOjQsInZhbHVlIjoidW5rbm93bi1vcGVyYXRvciIsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJwbGF0Zm9ybSIsIm9wZXJhdG9yIjoibWF0Y2hlc19yZWdleCIsInZhbHVlcyI6WyJpb3MiXX1dfSx7InR5cGUiOiJjb25kaXRpb25hbCIsIm9yZGVyIjo1LCJ2YWx1ZSI6Im51bWVyaWMtY29uZGl0aW9uLXZhbHVlcyIsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJidWlsZF9udW1iZXIiLCJvcGVyYXRvciI6ImVxdWFscyIsInZhbHVlcyI6WzEwMF19XX0seyJ0eXBlIjoidGVzdCIsIm9yZGVyIjo2LCJ0ZXN0IjoiZHJvcHBlZF90ZXN0IiwidmFsdWVzIjp7ImEiOiJ0In19LHsidHlwZSI6InJvbGxvdXQiLCJvcmRlciI6Nywicm9sbG91dCI6ImRyb3BwZWRfcm9sbG91dCIsInZhbHVlIjoiciJ9LHsidHlwZSI6InJvbGxvdXQiLCJvcmRlciI6OCwidmFsdWUiOiJtaXNzaW5nLXJvbGxvdXQtcmVmZXJlbmNlIn0seyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6OSwidmFsdWUiOiJmaXJzdC1yZWFsLW1hdGNoIiwiY29uZGl0aW9ucyI6W3sidHlwZSI6InBsYXRmb3JtIiwib3BlcmF0b3IiOiJpbiIsInZhbHVlcyI6WyJpb3MiXX1dfV19fSwidmFyaWFudHMvY3VzdG9tX2F0dHJpYnV0ZV91bmtub3duX29wZXJhdG9yIjp7InR5cGUiOiJib29sIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6ZmFsc2UsInZhcmlhbnRzIjpbeyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6MSwidmFsdWUiOnRydWUsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJjdXN0b21fYXR0cmlidXRlIiwib3BlcmF0b3IiOiJyZWdleCIsInZhbHVlcyI6WyJtYW51ZmFjdHVyZXIiLCJhcHBsZSJdfV19XX0sImJldGEiOnsiZGVmYXVsdCI6ZmFsc2UsInZhcmlhbnRzIjpbeyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6MSwidmFsdWUiOnRydWUsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJjdXN0b21fYXR0cmlidXRlIiwib3BlcmF0b3IiOiJyZWdleCIsInZhbHVlcyI6WyJtYW51ZmFjdHVyZXIiLCJhcHBsZSJdfV19XX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6ZmFsc2UsInZhcmlhbnRzIjpbeyJ0eXBlIjoiY29uZGl0aW9uYWwiLCJvcmRlciI6MSwidmFsdWUiOnRydWUsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJjdXN0b21fYXR0cmlidXRlIiwib3BlcmF0b3IiOiJyZWdleCIsInZhbHVlcyI6WyJtYW51ZmFjdHVyZXIiLCJhcHBsZSJdfV19XX19LCJ2YXJpYW50cy90ZXN0X3JlbWFpbmRlciI6eyJ0eXBlIjoic3RyaW5nIiwiZGV2ZWxvcG1lbnQiOnsiZGVmYXVsdCI6Im5vdC1pbi10ZXN0IiwidmFyaWFudHMiOlt7InR5cGUiOiJ0ZXN0Iiwib3JkZXIiOjEsInRlc3QiOiJzbWFsbF90ZXN0IiwidmFsdWVzIjp7Im9ubHkiOiJpbi10ZXN0In19XX0sImJldGEiOnsiZGVmYXVsdCI6Im5vdC1pbi10ZXN0IiwidmFyaWFudHMiOlt7InR5cGUiOiJ0ZXN0Iiwib3JkZXIiOjEsInRlc3QiOiJzbWFsbF90ZXN0IiwidmFsdWVzIjp7Im9ubHkiOiJpbi10ZXN0In19XX0sInByb2R1Y3Rpb24iOnsiZGVmYXVsdCI6Im5vdC1pbi10ZXN0IiwidmFyaWFudHMiOlt7InR5cGUiOiJ0ZXN0Iiwib3JkZXIiOjEsInRlc3QiOiJzbWFsbF90ZXN0IiwidmFsdWVzIjp7Im9ubHkiOiJpbi10ZXN0In19XX19LCJ2YXJpYW50cy90ZXN0X3Vua25vd25fcHJlY29uZGl0aW9uIjp7InR5cGUiOiJzdHJpbmciLCJkZXZlbG9wbWVudCI6eyJkZWZhdWx0Ijoibm90LWluLXRlc3QiLCJ2YXJpYW50cyI6W3sidHlwZSI6InRlc3QiLCJvcmRlciI6MSwidGVzdCI6InVua25vd25fcHJlY29uZGl0aW9uX3Rlc3QiLCJ2YWx1ZXMiOnsiZXZlcnlvbmUiOiJpbi10ZXN0In19XX0sImJldGEiOnsiZGVmYXVsdCI6Im5vdC1pbi10ZXN0IiwidmFyaWFudHMiOlt7InR5cGUiOiJ0ZXN0Iiwib3JkZXIiOjEsInRlc3QiOiJ1bmtub3duX3ByZWNvbmRpdGlvbl90ZXN0IiwidmFsdWVzIjp7ImV2ZXJ5b25lIjoiaW4tdGVzdCJ9fV19LCJwcm9kdWN0aW9uIjp7ImRlZmF1bHQiOiJub3QtaW4tdGVzdCIsInZhcmlhbnRzIjpbeyJ0eXBlIjoidGVzdCIsIm9yZGVyIjoxLCJ0ZXN0IjoidW5rbm93bl9wcmVjb25kaXRpb25fdGVzdCIsInZhbHVlcyI6eyJldmVyeW9uZSI6ImluLXRlc3QifX1dfX19LCJ0ZXN0cyI6eyJzbWFsbF90ZXN0Ijp7Im5hbWUiOiJzbWFsbF90ZXN0IiwidHlwZSI6InRlc3QiLCJzYWx0Ijoic21hbGwtc2FsdCIsImNvbmRpdGlvbnMiOltdLCJncm91cHMiOlt7Im5hbWUiOiJvbmx5IiwicGVyY2VudGFnZSI6MTB9XX0sInVua25vd25fcHJlY29uZGl0aW9uX3Rlc3QiOnsibmFtZSI6InVua25vd25fcHJlY29uZGl0aW9uX3Rlc3QiLCJ0eXBlIjoidGVzdCIsInNhbHQiOiJwcmVjb25kaXRpb24tc2FsdCIsImNvbmRpdGlvbnMiOlt7InR5cGUiOiJtb29uX3BoYXNlIiwib3BlcmF0b3IiOiJpbiIsInZhbHVlcyI6WyJmdWxsIl19XSwiZ3JvdXBzIjpbeyJuYW1lIjoiZXZlcnlvbmUiLCJwZXJjZW50YWdlIjoxMDB9XX0sImRyb3BwZWRfdGVzdCI6eyJuYW1lIjoiZHJvcHBlZF90ZXN0IiwidHlwZSI6InRlc3QiLCJzYWx0IjoiZHJvcHBlZC1zYWx0IiwiY29uZGl0aW9ucyI6W10sImdyb3VwcyI6W3sibmFtZSI6ImEiLCJwZXJjZW50YWdlIjo2MH0seyJuYW1lIjoiYiIsInBlcmNlbnRhZ2UiOjYwfV19LCJmcmFjdGlvbmFsX3Rlc3QiOnsibmFtZSI6ImZyYWN0aW9uYWxfdGVzdCIsInR5cGUiOiJ0ZXN0Iiwic2FsdCI6ImZyYWN0aW9uYWwtc2FsdCIsImNvbmRpdGlvbnMiOltdLCJncm91cHMiOlt7Im5hbWUiOiJhIiwicGVyY2VudGFnZSI6MTIuNX1dfX0sInJvbGxvdXRzIjp7ImZpbmVfcm9sbG91dCI6eyJuYW1lIjoiZmluZV9yb2xsb3V0IiwidHlwZSI6InJvbGxvdXQiLCJzYWx0IjoiZmluZS1zYWx0IiwiY29uZGl0aW9ucyI6W10sInBlcmNlbnRhZ2UiOjEwMH0sImRyb3BwZWRfcm9sbG91dCI6eyJuYW1lIjoiZHJvcHBlZF9yb2xsb3V0IiwidHlwZSI6InJvbGxvdXQiLCJzYWx0IjoiZHJvcHBlZC1zYWx0IiwiY29uZGl0aW9ucyI6W10sInBlcmNlbnRhZ2UiOjE1MH0sImZyYWN0aW9uYWxfcm9sbG91dCI6eyJuYW1lIjoiZnJhY3Rpb25hbF9yb2xsb3V0IiwidHlwZSI6InJvbGxvdXQiLCJzYWx0IjoiZnJhY3Rpb25hbC1zYWx0IiwiY29uZGl0aW9ucyI6W10sInBlcmNlbnRhZ2UiOjEyLjV9fX0=",
+			"expected": {
+				"accepted": true,
+				"flags": {
+					"ok/bool": {
+						"type": "bool",
+						"environments": {
+							"development": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "conditional"
+									}
+								]
+							},
+							"beta": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "conditional"
+									}
+								]
+							},
+							"production": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "conditional"
+									}
+								]
+							}
+						}
+					},
+					"ok/rollout": {
+						"type": "bool",
+						"environments": {
+							"development": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "rollout"
+									}
+								]
+							},
+							"beta": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "rollout"
+									}
+								]
+							},
+							"production": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "rollout"
+									}
+								]
+							}
+						}
+					},
+					"typed/bracket_string": {
+						"type": "string",
+						"environments": {
+							"development": {
+								"default": "[Beta] Hi",
+								"variants": []
+							},
+							"beta": {
+								"default": "[Beta] Hi",
+								"variants": []
+							},
+							"production": {
+								"default": "[Beta] Hi",
+								"variants": []
+							}
+						}
+					},
+					"typed/date_fractional": {
+						"type": "date",
+						"environments": {
+							"development": {
+								"default": "2026-07-02T10:00:04.796Z",
+								"variants": []
+							},
+							"beta": {
+								"default": "2026-07-02T10:00:04.796Z",
+								"variants": []
+							},
+							"production": {
+								"default": "2026-07-02T10:00:04.796Z",
+								"variants": []
+							}
+						}
+					},
+					"typed/date_leap_day": {
+						"type": "date",
+						"environments": {
+							"development": {
+								"default": "2028-02-29T00:00:00Z",
+								"variants": []
+							},
+							"beta": {
+								"default": "2028-02-29T00:00:00Z",
+								"variants": []
+							},
+							"production": {
+								"default": "2028-02-29T00:00:00Z",
+								"variants": []
+							}
+						}
+					},
+					"typed/date_one_fraction_digit": {
+						"type": "date",
+						"environments": {
+							"development": {
+								"default": "2026-07-02T10:00:04.5Z",
+								"variants": []
+							},
+							"beta": {
+								"default": "2026-07-02T10:00:04.5Z",
+								"variants": []
+							},
+							"production": {
+								"default": "2026-07-02T10:00:04.5Z",
+								"variants": []
+							}
+						}
+					},
+					"typed/date_whole_seconds": {
+						"type": "date",
+						"environments": {
+							"development": {
+								"default": "2026-07-02T10:00:04Z",
+								"variants": []
+							},
+							"beta": {
+								"default": "2026-07-02T10:00:04Z",
+								"variants": []
+							},
+							"production": {
+								"default": "2026-07-02T10:00:04Z",
+								"variants": []
+							}
+						}
+					},
+					"typed/double_written_as_int": {
+						"type": "double",
+						"environments": {
+							"development": {
+								"default": 3,
+								"variants": []
+							},
+							"beta": {
+								"default": 3,
+								"variants": []
+							},
+							"production": {
+								"default": 3,
+								"variants": []
+							}
+						}
+					},
+					"typed/int_written_as_float": {
+						"type": "int",
+						"environments": {
+							"development": {
+								"default": 2,
+								"variants": []
+							},
+							"beta": {
+								"default": 2,
+								"variants": []
+							},
+							"production": {
+								"default": 2,
+								"variants": []
+							}
+						}
+					},
+					"typed/iso_looking_string": {
+						"type": "string",
+						"environments": {
+							"development": {
+								"default": "2026-01-01T00:00:00Z",
+								"variants": []
+							},
+							"beta": {
+								"default": "2026-01-01T00:00:00Z",
+								"variants": []
+							},
+							"production": {
+								"default": "2026-01-01T00:00:00Z",
+								"variants": []
+							}
+						}
+					},
+					"typed/json_leading_newline": {
+						"type": "json",
+						"environments": {
+							"development": {
+								"default": "\n{\"a\":1}",
+								"variants": []
+							},
+							"beta": {
+								"default": "\n{\"a\":1}",
+								"variants": []
+							},
+							"production": {
+								"default": "\n{\"a\":1}",
+								"variants": []
+							}
+						}
+					},
+					"typed/json_scalar": {
+						"type": "json",
+						"environments": {
+							"development": {
+								"default": "42",
+								"variants": []
+							},
+							"beta": {
+								"default": "42",
+								"variants": []
+							},
+							"production": {
+								"default": "42",
+								"variants": []
+							}
+						}
+					},
+					"variants/custom_attribute_unknown_operator": {
+						"type": "bool",
+						"environments": {
+							"development": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "conditional"
+									}
+								]
+							},
+							"beta": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "conditional"
+									}
+								]
+							},
+							"production": {
+								"default": false,
+								"variants": [
+									{
+										"order": 1,
+										"kind": "conditional"
+									}
+								]
+							}
+						}
+					},
+					"variants/placeholders": {
+						"type": "string",
+						"environments": {
+							"development": {
+								"default": "default",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 2,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 3,
+										"kind": "conditional"
+									},
+									{
+										"order": 4,
+										"kind": "conditional"
+									},
+									{
+										"order": 5,
+										"kind": "conditional"
+									},
+									{
+										"order": 6,
+										"kind": "test"
+									},
+									{
+										"order": 7,
+										"kind": "rollout"
+									},
+									{
+										"order": 8,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 9,
+										"kind": "conditional"
+									}
+								]
+							},
+							"beta": {
+								"default": "default",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 2,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 3,
+										"kind": "conditional"
+									},
+									{
+										"order": 4,
+										"kind": "conditional"
+									},
+									{
+										"order": 5,
+										"kind": "conditional"
+									},
+									{
+										"order": 6,
+										"kind": "test"
+									},
+									{
+										"order": 7,
+										"kind": "rollout"
+									},
+									{
+										"order": 8,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 9,
+										"kind": "conditional"
+									}
+								]
+							},
+							"production": {
+								"default": "default",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 2,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 3,
+										"kind": "conditional"
+									},
+									{
+										"order": 4,
+										"kind": "conditional"
+									},
+									{
+										"order": 5,
+										"kind": "conditional"
+									},
+									{
+										"order": 6,
+										"kind": "test"
+									},
+									{
+										"order": 7,
+										"kind": "rollout"
+									},
+									{
+										"order": 8,
+										"kind": "unrecognized"
+									},
+									{
+										"order": 9,
+										"kind": "conditional"
+									}
+								]
+							}
+						}
+					},
+					"variants/test_remainder": {
+						"type": "string",
+						"environments": {
+							"development": {
+								"default": "not-in-test",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "test"
+									}
+								]
+							},
+							"beta": {
+								"default": "not-in-test",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "test"
+									}
+								]
+							},
+							"production": {
+								"default": "not-in-test",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "test"
+									}
+								]
+							}
+						}
+					},
+					"variants/test_unknown_precondition": {
+						"type": "string",
+						"environments": {
+							"development": {
+								"default": "not-in-test",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "test"
+									}
+								]
+							},
+							"beta": {
+								"default": "not-in-test",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "test"
+									}
+								]
+							},
+							"production": {
+								"default": "not-in-test",
+								"variants": [
+									{
+										"order": 1,
+										"kind": "test"
+									}
+								]
+							}
+						}
+					}
+				},
+				"skipped_flags": [
+					"skip/date_hour_24",
+					"skip/date_leap_second",
+					"skip/date_microseconds",
+					"skip/date_not_on_calendar",
+					"skip/date_only",
+					"skip/date_with_offset",
+					"skip/default_wrong_type",
+					"skip/int_fractional",
+					"skip/json_raw_object",
+					"skip/missing_environment",
+					"skip/not_an_object",
+					"skip/null_default",
+					"skip/unknown_type",
+					"skip/variants_not_array"
+				],
+				"tests": [
+					"small_test",
+					"unknown_precondition_test"
+				],
+				"rollouts": [
+					"fine_rollout"
+				]
+			},
+			"evaluations": [
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "ok/bool",
+					"environment": "production",
+					"expected_value": true,
+					"expected_source": "conditional variant (order 1)"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "ok/rollout",
+					"environment": "production",
+					"expected_value": true,
+					"expected_source": "rollout \"fine_rollout\""
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/bracket_string",
+					"environment": "production",
+					"expected_value": "[Beta] Hi",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/date_fractional",
+					"environment": "production",
+					"expected_value": "2026-07-02T10:00:04.796Z",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/date_leap_day",
+					"environment": "production",
+					"expected_value": "2028-02-29T00:00:00Z",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/date_one_fraction_digit",
+					"environment": "production",
+					"expected_value": "2026-07-02T10:00:04.5Z",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/date_whole_seconds",
+					"environment": "production",
+					"expected_value": "2026-07-02T10:00:04Z",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/double_written_as_int",
+					"environment": "production",
+					"expected_value": 3,
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/int_written_as_float",
+					"environment": "production",
+					"expected_value": 2,
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/iso_looking_string",
+					"environment": "production",
+					"expected_value": "2026-01-01T00:00:00Z",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/json_leading_newline",
+					"environment": "production",
+					"expected_value": "\n{\"a\":1}",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "typed/json_scalar",
+					"environment": "production",
+					"expected_value": "42",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "variants/custom_attribute_unknown_operator",
+					"environment": "production",
+					"expected_value": false,
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "variants/placeholders",
+					"environment": "production",
+					"expected_value": "first-real-match",
+					"expected_source": "conditional variant (order 9)"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "variants/test_remainder",
+					"environment": "production",
+					"expected_value": "not-in-test",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "variants/test_unknown_precondition",
+					"environment": "production",
+					"expected_value": "not-in-test",
+					"expected_source": "production default"
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000008"
+					},
+					"flag_key": "variants/test_remainder",
+					"environment": "production",
+					"expected_value": "in-test",
+					"expected_source": "test \"small_test\" group \"only\""
+				},
+				{
+					"context": {
+						"platform": "ios",
+						"device_class": "tablet",
+						"os_version": "18.0",
+						"app_version": "2.5.0",
+						"build_number": "100",
+						"device_model": "iPhone16,2",
+						"region": "US",
+						"language": "en",
+						"reserved_attributes": {
+							"manufacturer": "apple"
+						},
+						"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+					},
+					"flag_key": "variants/test_remainder",
+					"environment": "production",
+					"expected_value": "not-in-test",
+					"expected_source": "production default"
+				}
+			],
+			"fingerprint": {
+				"context": {
+					"platform": "ios",
+					"device_class": "tablet",
+					"os_version": "18.0",
+					"app_version": "2.5.0",
+					"build_number": "100",
+					"device_model": "iPhone16,2",
+					"region": "US",
+					"language": "en",
+					"reserved_attributes": {
+						"manufacturer": "apple"
+					},
+					"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+				},
+				"environment": "production",
+				"code": "2026-10-17.2.1B4007"
+			}
+		},
+		{
+			"name": "minimal_without_tests_or_rollouts",
+			"artifact_b64": "eyJzY2hlbWFfdmVyc2lvbiI6MSwiY29uZmlnX3ZlcnNpb24iOiIyMDI2LTEwLTE3LjIiLCJwdWJsaXNoZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwLjAwMFoiLCJhcHBfaWRlbnRpZmllciI6ImNvbmZvcm1hbmNlLWFwcCIsImZsYWdzIjp7fX0=",
+			"expected": {
+				"accepted": true,
+				"flags": {},
+				"skipped_flags": [],
+				"tests": [],
+				"rollouts": []
+			},
+			"evaluations": [],
+			"fingerprint": {
+				"context": {
+					"platform": "ios",
+					"device_class": "tablet",
+					"os_version": "18.0",
+					"app_version": "2.5.0",
+					"build_number": "100",
+					"device_model": "iPhone16,2",
+					"region": "US",
+					"language": "en",
+					"reserved_attributes": {
+						"manufacturer": "apple"
+					},
+					"local_id": "AAAAAAAA-0000-4000-8000-000000000001"
+				},
+				"environment": "production",
+				"code": "2026-10-17.2.1848"
+			}
+		},
+		{
+			"name": "rejected_invalid_json",
+			"artifact_b64": "eyJzY2hlbWFfdmVyc2lvbiI6MSwiY29uZmlnX3ZlcnNpb24iOiIyMDI2LTEwLTE3LjIiLCJwdWJsaXNoZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwLjAwMFoiLCJhcHBfaWRlbnRpZmllciI6ImNvbmZvcm1hbmNlLWFwcCIsImZsYWdzIjp7",
+			"expected": {
+				"accepted": false,
+				"reason": "not valid JSON"
+			}
+		},
+		{
+			"name": "rejected_unsupported_schema_version",
+			"artifact_b64": "eyJzY2hlbWFfdmVyc2lvbiI6MiwiY29uZmlnX3ZlcnNpb24iOiIyMDI2LTEwLTE3LjIiLCJwdWJsaXNoZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwLjAwMFoiLCJhcHBfaWRlbnRpZmllciI6ImNvbmZvcm1hbmNlLWFwcCIsImZsYWdzIjp7fX0=",
+			"expected": {
+				"accepted": false,
+				"reason": "unsupported schema_version 2"
+			}
+		},
+		{
+			"name": "rejected_missing_flags",
+			"artifact_b64": "eyJzY2hlbWFfdmVyc2lvbiI6MSwiY29uZmlnX3ZlcnNpb24iOiIyMDI2LTEwLTE3LjIiLCJwdWJsaXNoZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwLjAwMFoiLCJhcHBfaWRlbnRpZmllciI6ImNvbmZvcm1hbmNlLWFwcCJ9",
+			"expected": {
+				"accepted": false,
+				"reason": "flags must be an object"
+			}
+		},
+		{
+			"name": "rejected_tests_not_object",
+			"artifact_b64": "eyJzY2hlbWFfdmVyc2lvbiI6MSwiY29uZmlnX3ZlcnNpb24iOiIyMDI2LTEwLTE3LjIiLCJwdWJsaXNoZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwLjAwMFoiLCJhcHBfaWRlbnRpZmllciI6ImNvbmZvcm1hbmNlLWFwcCIsImZsYWdzIjp7fSwidGVzdHMiOltdfQ==",
+			"expected": {
+				"accepted": false,
+				"reason": "tests must be an object"
+			}
+		},
+		{
+			"name": "rejected_published_at_not_instant",
+			"artifact_b64": "eyJzY2hlbWFfdmVyc2lvbiI6MSwiY29uZmlnX3ZlcnNpb24iOiIyMDI2LTEwLTE3LjIiLCJwdWJsaXNoZWRfYXQiOiIyMDI2LTA3LTAyIiwiYXBwX2lkZW50aWZpZXIiOiJjb25mb3JtYW5jZS1hcHAiLCJmbGFncyI6e319",
+			"expected": {
+				"accepted": false,
+				"reason": "published_at is not an ISO-8601 UTC instant"
+			}
+		}
+	]
+}

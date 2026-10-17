@@ -107,7 +107,11 @@ jobs:
         run: pnpm run generate-vectors
 
       - name: Fail if conformance vectors drift
-        run: git diff --exit-code conformance/
+        # status, not diff: a regenerated bundle that adds a new set file is
+        # untracked, which git diff would not report.
+        run: |
+          git status --porcelain conformance/
+          test -z "$(git status --porcelain conformance/)"
 
   build:
     runs-on: ubuntu-latest

@@ -1,5 +1,5 @@
 {
-	"version": "2026-07-02.2",
+	"version": "2026-10-17.2",
 	"cases": [
 		{
 			"name": "valid",
@@ -19,6 +19,33 @@
 				}
 			},
 			"reason": ""
+		},
+		{
+			"name": "valid_multi_key",
+			"valid": true,
+			"document": {
+				"app_identifier": "conformance-app",
+				"endpoint_url": "https://cdn.example.com/conformance/config.json",
+				"public_keys": [
+					{
+						"kid": "conformance-key",
+						"pem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlH4+C5w12CnRiZrjk5v2\n6HSW5qabcnhdjFz5dPAY58APgKehGUqm2CGPyswq2q77kUUfml1SI69JQPmL1NHw\nQYN4ae3oYf0R7jEQhv2P2VhUTayUM8zoUzjudfWi5Tsgws7evFIExdGys+sKhsWZ\ndPiwjA6hgdXSAMzZDrs2+jqsUVqb5dj+3RL6YSot1V1Okplq7maDjNFCWMg/ReVv\nTYXiRhXWf7K251+pJsQlPzDJTCCVQa9Rwk6lw5aUwcCCJeb6JDi5t+K2hIYie8/f\ni2BMsbz2BK+HkJ16U2kYfnD2YsvoXExomhLVMiSey62+O/2/uLDBOpKYxNWPIA6A\nkwIDAQAB\n-----END PUBLIC KEY-----\n"
+					},
+					{
+						"kid": "conformance-standby-key",
+						"pem": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtXNw9N6s7T8a/elvXMZA\nMn6vISmVfbn8pELGaevkHwp1HehfT1SfM4Z9PrwZNOmvidX0lfyyWwxUHrWkm6Zf\noxZ9O9//+g5GnooaH9Irq+2ih1U6hi5PnBoW5g116bZ95Ma0g8SokvRudBrhht1M\n3ZeAGRLLtdVKdVJeOmLNEi82BPa28u9NgVZea4ZKZVhGJxr/DE1a3ojTVbX8GDmJ\no98co5WbT7/8WwGvKVPmSX1S4RNYrOYB49SwRNPlHYu/pyDfr87nqDHwKo7X0nui\n2Be9PLyOHDUUa9S2sdf+TXWND93TBwS2wuRCIVOY8EpL87CN6WHTHj+VNklesbsc\n1wIDAQAB\n-----END PUBLIC KEY-----\n"
+					}
+				],
+				"fetch_policy": {
+					"min_interval_seconds": 21600,
+					"hard_ttl_days": 7
+				}
+			},
+			"reason": "",
+			"expected_kids": [
+				"conformance-key",
+				"conformance-standby-key"
+			]
 		},
 		{
 			"name": "missing_endpoint",

@@ -283,4 +283,44 @@ describe('validation-schemas', () => {
 			).toBe(true);
 		});
 	});
+
+	describe('createTestRolloutSchema test group percentages', () => {
+		const testPayload = (variants: Record<string, unknown>) => ({
+			appId: 'cl0000000000000000000000',
+			name: 'Experiment',
+			type: 'TEST',
+			variants,
+		});
+
+		it('accepts groups summing to under 100 (the rest are not in the test)', () => {
+			const result = createTestRolloutSchema.safeParse(
+				testPayload({ a: { percentage: 30 }, b: { percentage: 30 } }),
+			);
+			expect(result.success).toBe(true);
+		});
+
+		it('rejects groups summing to more than 100', () => {
+			const result = createTestRolloutSchema.safeParse(
+				testPayload({ a: { percentage: 60 }, b: { percentage: 60 } }),
+			);
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects a fractional group percentage (SDKs decode integers)', () => {
+			const result = createTestRolloutSchema.safeParse(
+				testPayload({ a: { percentage: 12.5 } }),
+			);
+			expect(result.success).toBe(false);
+		});
+
+		it('rejects a fractional rollout percentage', () => {
+			const result = createTestRolloutSchema.safeParse({
+				appId: 'cl0000000000000000000000',
+				name: 'Rollout',
+				type: 'ROLLOUT',
+				percentage: 12.5,
+			});
+			expect(result.success).toBe(false);
+		});
+	});
 });
