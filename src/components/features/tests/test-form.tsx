@@ -27,6 +27,11 @@ import { CONDITION_OPERATORS } from '@/types';
 export interface TestGroupValue {
 	name: string;
 	weight: number;
+	/**
+	 * Edit mode: the stored group this row was loaded from. It survives renames
+	 * so the group keeps its per-flag values; absent for groups added here.
+	 */
+	storedName?: string;
 }
 export interface TestFormValues {
 	name: string;
@@ -85,7 +90,7 @@ function evenSplit(groups: TestGroupValue[]): TestGroupValue[] {
 	const base = Math.floor(100 / n);
 	const rem = 100 - base * n;
 	return groups.map((g, i) => ({
-		name: g.name,
+		...g,
 		weight: base + (i < rem ? 1 : 0),
 	}));
 }
@@ -163,6 +168,14 @@ export default function TestForm({
 	const effGroups = adjustSplit ? groups : evenSplit(groups);
 	const total = effGroups.reduce((n, g) => n + g.weight, 0);
 	const valid = total === 100;
+	// Groups are stored by name, so an empty or repeated name would lose a group
+	// (and its per-flag values) on save.
+	const groupNames = groups.map((g) => g.name.trim());
+	const groupNameError = groupNames.some((n) => n === '')
+		? 'Every group needs a name.'
+		: new Set(groupNames).size !== groupNames.length
+			? 'Group names must be different from each other.'
+			: null;
 	const canRemove = groups.length > 2;
 	const canAdd = groups.length < 5;
 
@@ -340,7 +353,10 @@ export default function TestForm({
 		initial,
 	]);
 
-	const dirty = (isEdit ? changes.length > 0 : keyText.length > 0) && valid;
+	const dirty =
+		(isEdit ? changes.length > 0 : keyText.length > 0) &&
+		valid &&
+		groupNameError === null;
 	const canSubmit = dirty && !keyValidation.error && !saving;
 
 	const json = useMemo(() => {
@@ -862,6 +878,13 @@ export default function TestForm({
 							</Box>
 						)}
 					</Box>
+					{groupNameError && (
+						<Typography
+							sx={{ mt: 1.25, fontWeight: 700, fontSize: 12, color: '#C8503C' }}
+						>
+							{groupNameError}
+						</Typography>
+					)}
 
 					{/* audience */}
 					<Box sx={{ mt: 3.25, mb: 1.25 }}>

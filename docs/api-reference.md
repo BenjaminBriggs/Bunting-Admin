@@ -280,7 +280,7 @@ Get a single test. Only matches records with `type = "TEST"`.
 
 ### `PUT /api/tests/[id]`
 
-Update a test. The key is immutable after creation (flag variants reference the test by key); a `key` in the body is ignored.
+Update a test. The key is immutable after creation (flag variants reference the test by key); a `key` in the body is ignored. Partial update: a field left out of the body keeps its stored value, and `variants`, when sent, replaces the stored groups and their values as a whole.
 
 **Request body** (Zod-validated via `updateTestSchema`)
 
@@ -362,7 +362,7 @@ Get a single rollout. Only matches records with `type = "ROLLOUT"`.
 
 ### `PUT /api/rollouts/[id]`
 
-Update a rollout. The key is immutable after creation (flag variants reference the rollout by key); a `key` in the body is ignored.
+Update a rollout. The key is immutable after creation (flag variants reference the rollout by key); a `key` in the body is ignored. Partial update: a field left out of the body keeps its stored value, and `rolloutValues`, when sent, replaces the stored values as a whole.
 
 **Request body** (Zod-validated via `updateRolloutSchema`)
 
@@ -463,22 +463,25 @@ Get a single test-rollout by ID (no type filter).
 
 Update a test-rollout. No type filter applied. The key is immutable after creation; `updateTestRolloutSchema` has no `key` field, so one in the body is ignored.
 
+This is a partial update: a field left out of the body keeps its stored value. Only an explicit `null` clears a field, and only where the table allows it. `variants` and `rolloutValues` are replaced as a whole when sent, so send the full blob (every group's or environment's values), not just the part that changed.
+
 **Request body** (Zod-validated via `updateTestRolloutSchema`)
 
-| Field           | Type                                         |
-| --------------- | -------------------------------------------- |
-| `name`          | string?                                      |
-| `description`   | string \| null?                              |
-| `conditions`    | `Condition[]`? — defaults to `[]` if omitted |
-| `flagIds`       | `string[]`? — defaults to `[]` if omitted    |
-| `variants`      | any? — defaults to `null` if omitted         |
-| `rolloutValues` | any? — defaults to `null` if omitted         |
-| `percentage`    | integer 0–100?                               |
-| `archived`      | boolean? — defaults to `false` if omitted    |
+| Field           | Type                               |
+| --------------- | ---------------------------------- |
+| `name`          | string?                            |
+| `description`   | string \| null? (`null` clears it) |
+| `group`         | string \| null? (`null` clears it) |
+| `conditions`    | `Condition[]`?                     |
+| `flagIds`       | `string[]`?                        |
+| `variants`      | any? (`null` clears it)            |
+| `rolloutValues` | any? (`null` clears it)            |
+| `percentage`    | integer 0–100?                     |
+| `archived`      | boolean?                           |
 
 **Response 200** — updated `TestRollout` object.
 
-**Errors:** `404` if not found. `409` if the record is finished (completed or abandoned) and the request does not send `archived: true`: finished tests and rollouts cannot be reactivated.
+**Errors:** `404` if not found. `409` if `archived: false` is sent for a finished (completed or abandoned) record: finished tests and rollouts cannot be reactivated.
 
 ---
 

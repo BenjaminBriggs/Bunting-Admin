@@ -27,6 +27,7 @@ import {
 	updateTestRollout,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
+import { buildTestUpdatePayload } from '@/lib/test-group-variants';
 import type { Condition, TestVariant } from '@/types';
 
 function isEvenSplit(groups: TestGroupValue[]): boolean {
@@ -71,25 +72,12 @@ export default function EditTestPage() {
 		setSaving(true);
 		setSaveError(null);
 		try {
-			const variants = payload.groups.reduce<Record<string, TestVariant>>(
-				(acc, g) => {
-					acc[g.name] = {
-						percentage: g.weight,
-						values: { development: '', beta: '', production: '' },
-					};
-					return acc;
-				},
-				{},
+			// Only what the form edits: kept groups carry their per-flag values,
+			// and flagIds/archived are left to the server as they are.
+			await updateTestRollout(
+				testId,
+				buildTestUpdatePayload(test.variants, payload),
 			);
-			await updateTestRollout(testId, {
-				name: payload.name,
-				description: payload.description,
-				group: payload.group || null,
-				variants,
-				conditions: payload.conditions,
-				flagIds: test.flagIds,
-				archived: test.archived,
-			});
 			markChangesDetected();
 			router.push('/dashboard/tests');
 		} catch (err) {
@@ -183,6 +171,7 @@ export default function EditTestPage() {
 		([name, data]: [string, TestVariant]) => ({
 			name,
 			weight: data.percentage,
+			storedName: name,
 		}),
 	);
 	const conditions: Condition[] = test.conditions;

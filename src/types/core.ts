@@ -296,7 +296,10 @@ export interface TestRollout {
 
 export interface TestVariant {
 	percentage: number;
-	values: {
+	// Absent for a group no flag value has been set for yet. Each environment
+	// normally holds a per-flag map ({ [flagId]: value }); see
+	// resolveFlagSpecificValue in config-generator.ts.
+	values?: {
 		development: FlagValue;
 		beta: FlagValue;
 		production: FlagValue;

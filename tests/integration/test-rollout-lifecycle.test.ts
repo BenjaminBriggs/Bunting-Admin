@@ -575,7 +575,7 @@ describe('POST /api/test-rollouts/[id]/archive (abandon)', () => {
 			new NextRequest(`http://local/api/test-rollouts/${rollout.id}`, {
 				method: 'PUT',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ name: 'Back again' }),
+				body: JSON.stringify({ name: 'Back again', archived: false }),
 			}),
 			ctx(rollout.id),
 		);
