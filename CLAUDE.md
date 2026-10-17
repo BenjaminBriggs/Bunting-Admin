@@ -48,6 +48,7 @@ make test-unit        # jest tests/unit
 make test-integration # jest --selectProjects integration
 pnpm test:e2e         # playwright e2e tests (no make target)
 make smoke            # full-stack core-flow smoke (fresh docker stack; on demand, not in CI)
+make smoke-deploy     # same smoke against the production image + deploy/compose.yaml (CI: Image workflow)
 make lint             # eslint
 make type-check       # tsc --noEmit
 make db-migrate       # prisma migrate dev

@@ -1,11 +1,14 @@
+import { verify } from 'node:crypto';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 /**
  * Full-stack smoke: drives the real key paths against the docker-compose stack
  * (OIDC/dex auth, Postgres, MinIO). Run via `make smoke` (which brings up a
- * fresh stack first). NOT part of the default CI e2e run — see playwright.config.ts.
+ * fresh stack first) or `make smoke-deploy` (the production image and
+ * deploy/compose.yaml). NOT part of the default CI e2e run — see playwright.config.ts.
  *
- * Path: dex login → create app → create a flag of each of the 6 types → publish.
+ * Path: dex login → create app → create a flag of each of the 6 types → publish
+ * → fetch and verify the published artifact the way an SDK does.
  */
 
 const DEX_EMAIL = 'admin@bunting.dev';
@@ -131,5 +134,68 @@ test('key paths: login → app → flag of each type → publish', async ({
 		const success = page.getByTestId('publish-success');
 		await expect(success).toBeVisible({ timeout: 60_000 });
 		await expect(success).toContainText(/published successfully/i);
+	});
+
+	await test.step('verify the published artifact like an SDK', async () => {
+		const appsResponse = await page.request.get('/api/apps');
+		expect(appsResponse.ok()).toBe(true);
+		const apps = (await appsResponse.json()) as Array<{
+			id: string;
+			name: string;
+		}>;
+		const app = apps.find((candidate) => candidate.name === APP_NAME);
+		expect(app).toBeDefined();
+
+		// The bootstrap document is what ships in the app bundle: the artifact
+		// URL and the public keys the SDK trusts.
+		const bootstrapResponse = await page.request.get(
+			`/api/bootstrap/json?appId=${app!.id}`,
+		);
+		expect(bootstrapResponse.ok()).toBe(true);
+		const bootstrap = (await bootstrapResponse.json()) as {
+			endpoint_url: string;
+			public_keys: Array<{ kid: string; pem: string }>;
+		};
+
+		const configResponse = await page.request.get(bootstrap.endpoint_url);
+		expect(configResponse.ok()).toBe(true);
+		const signatureResponse = await page.request.get(
+			`${bootstrap.endpoint_url}.sig`,
+		);
+		expect(signatureResponse.ok()).toBe(true);
+
+		// Detached JWS (RFC 7797, b64:false): the signing input is the protected
+		// header, a dot, then the exact config.json bytes.
+		const configBytes = await configResponse.body();
+		const [protectedHeader, payload, signature] = (
+			await signatureResponse.text()
+		)
+			.trim()
+			.split('.');
+		expect(payload).toBe('');
+		const header = JSON.parse(
+			Buffer.from(protectedHeader, 'base64url').toString('utf8'),
+		) as { alg: string; b64: boolean; crit: string[]; kid: string };
+		expect(header).toMatchObject({ alg: 'RS256', b64: false, crit: ['b64'] });
+
+		const key = bootstrap.public_keys.find((k) => k.kid === header.kid);
+		expect(key).toBeDefined();
+		const signingInput = Buffer.concat([
+			Buffer.from(`${protectedHeader}.`, 'ascii'),
+			configBytes,
+		]);
+		expect(
+			verify(
+				'RSA-SHA256',
+				signingInput,
+				key!.pem,
+				Buffer.from(signature, 'base64url'),
+			),
+		).toBe(true);
+
+		const config = JSON.parse(configBytes.toString('utf8')) as {
+			flags: Record<string, unknown>;
+		};
+		expect(Object.keys(config.flags)).toHaveLength(FLAGS.length);
 	});
 });

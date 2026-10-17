@@ -26,6 +26,10 @@ services:
       # Public HTTPS URL of this service (e.g. https://bunting-admin.onrender.com).
       - key: NEXTAUTH_URL
         sync: false
+      # Render's proxy sets the Host header. Without this, Auth.js rejects every
+      # sign-in in production with UntrustedHost (NEXTAUTH_URL does not count).
+      - key: AUTH_TRUST_HOST
+        value: 'true'
 
       # --- Authentication -------------------------------------------------
       # oidc (default) needs a provider or the app won't boot. Set the OIDC_*

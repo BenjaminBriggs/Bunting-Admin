@@ -72,6 +72,7 @@ describe('resolveAuthConfig — production safety', () => {
 		const cfg = resolveAuthConfig({
 			NODE_ENV: 'production',
 			AUTH_MODE: 'oidc',
+			AUTH_TRUST_HOST: 'true',
 			OIDC_ISSUER: 'https://idp.example.com',
 			OIDC_CLIENT_ID: 'abc',
 			OIDC_CLIENT_SECRET: 'shh',
@@ -90,10 +91,49 @@ describe('resolveAuthConfig — production safety', () => {
 		const cfg = resolveAuthConfig({
 			NODE_ENV: 'production',
 			AUTH_MODE: 'oidc',
+			AUTH_TRUST_HOST: 'true',
 			GOOGLE_CLIENT_ID: 'g',
 			GOOGLE_CLIENT_SECRET: 'gs',
 		});
 		expect(cfg.mode).toBe('oidc');
+	});
+
+	it('throws in production oidc mode when the host is not trusted', () => {
+		expect(() =>
+			resolveAuthConfig({
+				NODE_ENV: 'production',
+				AUTH_MODE: 'oidc',
+				OIDC_ISSUER: 'https://idp.example.com',
+				OIDC_CLIENT_ID: 'abc',
+				OIDC_CLIENT_SECRET: 'shh',
+			}),
+		).toThrow(/AUTH_TRUST_HOST/);
+	});
+
+	it('does not count NEXTAUTH_URL as trusting the host (Auth.js ignores it)', () => {
+		expect(() =>
+			resolveAuthConfig({
+				NODE_ENV: 'production',
+				AUTH_MODE: 'oidc',
+				NEXTAUTH_URL: 'https://admin.example.com',
+				OIDC_ISSUER: 'https://idp.example.com',
+				OIDC_CLIENT_ID: 'abc',
+				OIDC_CLIENT_SECRET: 'shh',
+			}),
+		).toThrow(/AUTH_TRUST_HOST/);
+	});
+
+	it('accepts production oidc mode when AUTH_URL is set instead', () => {
+		expect(() =>
+			resolveAuthConfig({
+				NODE_ENV: 'production',
+				AUTH_MODE: 'oidc',
+				AUTH_URL: 'https://admin.example.com',
+				OIDC_ISSUER: 'https://idp.example.com',
+				OIDC_CLIENT_ID: 'abc',
+				OIDC_CLIENT_SECRET: 'shh',
+			}),
+		).not.toThrow();
 	});
 
 	it('does not require a provider in development (dex supplies it)', () => {
