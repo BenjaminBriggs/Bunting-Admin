@@ -27,7 +27,7 @@ Your apps never talk to this stack. They fetch the signed config from your CDN, 
 
 ## Upgrading
 
-1. Read the release notes for every version between yours and the new one.
+1. Read the release notes and [docs/upgrading.md](../docs/upgrading.md) for every version between yours and the new one.
 2. Take a backup: `docker compose exec backup sh -c 'pg_dump --format=custom --file=/backups/bunting-pre-upgrade.dump'`
 3. Set `BUNTING_VERSION` in `.env` to the new version.
 4. `docker compose pull app && docker compose up -d`

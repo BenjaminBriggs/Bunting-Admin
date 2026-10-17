@@ -84,6 +84,7 @@ Docs follow a rough [Diátaxis](https://diataxis.fr) layout inside `bunting-admi
 | `security.md`              | Reference + how-to | Operators                |
 | `testing.md`               | Reference          | Contributors             |
 | `troubleshooting.md`       | How-to             | Operators + contributors |
+| `upgrading.md`             | How-to             | Operators                |
 | `deployment.md`            | How-to             | Operators                |
 
 `CONTRIBUTING.md` applies to the whole repository.

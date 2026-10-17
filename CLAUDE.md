@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Bunting Admin is the web dashboard for the Bunting feature flag system. It manages flags, A/B tests, and rollouts for Apple platform apps; publishes signed config artifacts to S3; and generates the `BuntingConfig.plist` that the Swift SDK uses to bootstrap.
+Bunting Admin is the web dashboard for the Bunting feature flag system. It manages flags, A/B tests, and rollouts for Apple and Android apps; publishes signed config artifacts to S3; and generates the bootstrap files (`BuntingConfig.plist` for Swift, `bunting_config.json` for Android) the SDKs use to bootstrap.
 
 **See README.md for project overview, tech stack, quick start, and docs index.**
 
