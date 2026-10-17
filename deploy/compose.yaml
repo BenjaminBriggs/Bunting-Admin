@@ -1,0 +1,106 @@
+# Bunting Admin production stack: the published image, Postgres, Caddy (TLS),
+# and nightly database backups copied off the host.
+#
+# Copy this directory into your own deployment repo, create .env from
+# .env.example, and pin BUNTING_VERSION to a released tag. Upgrading is a
+# change to BUNTING_VERSION, never a pull of this repository. See README.md.
+
+name: bunting
+
+services:
+  app:
+    image: ghcr.io/benjaminbriggs/bunting-admin:${BUNTING_VERSION:?Set BUNTING_VERSION in .env to a released version, e.g. 1.0.0}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Caddy terminates TLS and forwards the original host, so trust it.
+      AUTH_TRUST_HOST: 'true'
+      DATABASE_URL: ${DATABASE_URL:-postgresql://bunting:${POSTGRES_PASSWORD}@postgres:5432/bunting}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # The entrypoint applies migrations before the server starts.
+      start_period: 60s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      BUNTING_SITE_ADDRESS: ${BUNTING_SITE_ADDRESS:?Set BUNTING_SITE_ADDRESS in .env to the admin's domain}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+  postgres:
+    # Keep the major version fixed: a new major needs a dump and restore.
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bunting
+      POSTGRES_USER: bunting
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bunting -d bunting']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # The database holds every flag and the encrypted signing keys. Losing it
+  # leaves shipped apps unable to verify new configs, so backups are not
+  # optional.
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '/scripts/backup.sh']
+    environment:
+      PGHOST: postgres
+      PGDATABASE: bunting
+      PGUSER: bunting
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./scripts:/scripts:ro
+      - backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backup-offsite:
+    image: rclone/rclone:1
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '/scripts/backup-offsite.sh']
+    environment:
+      RCLONE_CONFIG_OFFSITE_TYPE: s3
+      RCLONE_CONFIG_OFFSITE_PROVIDER: ${BACKUP_S3_PROVIDER:-Cloudflare}
+      RCLONE_CONFIG_OFFSITE_ENDPOINT: ${BACKUP_S3_ENDPOINT:?Set BACKUP_S3_ENDPOINT in .env}
+      RCLONE_CONFIG_OFFSITE_REGION: ${BACKUP_S3_REGION:-auto}
+      RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:?Set BACKUP_S3_ACCESS_KEY_ID in .env}
+      RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:?Set BACKUP_S3_SECRET_ACCESS_KEY in .env}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:?Set BACKUP_S3_BUCKET in .env}
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-bunting}
+      BACKUP_OFFSITE_INTERVAL_SECONDS: ${BACKUP_OFFSITE_INTERVAL_SECONDS:-3600}
+    volumes:
+      - ./scripts:/scripts:ro
+      - backups:/backups:ro
+
+volumes:
+  postgres_data:
+  backups:
+  caddy_data:
+  caddy_config:

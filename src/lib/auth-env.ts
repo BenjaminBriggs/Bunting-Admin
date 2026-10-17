@@ -97,6 +97,19 @@ function resolveOidc(env: Env): AuthConfig {
 		);
 	}
 
+	// Auth.js answers every request with UntrustedHost in production unless it
+	// is told the Host header can be trusted. This mirrors its own check in
+	// @auth/core (lib/utils/env.js): NEXTAUTH_URL does not count, AUTH_URL does.
+	const hostTrusted = Boolean(
+		env.AUTH_URL ?? env.AUTH_TRUST_HOST ?? env.VERCEL ?? env.CF_PAGES,
+	);
+	if (isProd && !hostTrusted) {
+		throw new Error(
+			'Sign-in would fail in production with UntrustedHost: set AUTH_TRUST_HOST=true when a reverse proxy ' +
+				'(Caddy, Render, a load balancer) sets the Host header, or set AUTH_URL to the public URL.',
+		);
+	}
+
 	return { mode: 'oidc', oidc, namedProviders };
 }
 

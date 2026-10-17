@@ -96,6 +96,10 @@ See [docs/local-development.md](docs/local-development.md) for full details and 
 
 ---
 
+## Self-Hosting with Docker
+
+Each release publishes `ghcr.io/benjaminbriggs/bunting-admin:<version>` and a deploy bundle (Postgres, Caddy with automatic HTTPS, off-host backups). Keep the bundle in your own deployment repository and pin the version; see [deploy/README.md](deploy/README.md).
+
 ## One-Click Deployment
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/BenjaminBriggs/Bunting-Admin)
@@ -116,6 +120,7 @@ make test-unit        # unit tests
 make test-integration # integration tests (requires Postgres)
 pnpm test:e2e         # Playwright e2e tests (no make target)
 make smoke            # full-stack core-flow smoke (fresh stack → login → app → flags → publish)
+make smoke-deploy     # the same smoke against the production image and deploy/compose.yaml
 make lint             # ESLint
 make format           # Prettier check
 make type-check       # tsc --noEmit

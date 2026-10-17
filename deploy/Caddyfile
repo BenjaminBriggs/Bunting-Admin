@@ -1,0 +1,6 @@
+# A bare domain (admin.example.com) gets an automatic Let's Encrypt
+# certificate. compose.local.yaml sets http://localhost:3000 instead.
+{$BUNTING_SITE_ADDRESS} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

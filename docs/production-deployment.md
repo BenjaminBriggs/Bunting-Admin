@@ -8,11 +8,15 @@ All environment variables are documented in [`.env.example`](../.env.example) �
 
 ## Container image
 
-The `Dockerfile` produces a minimal, non-root production image via a multi-stage build:
+Releases publish the `Dockerfile`'s `runner` stage, a minimal non-root image, for `linux/amd64` and `linux/arm64`:
 
 ```
-docker build --target runner -t bunting-admin:latest .
+ghcr.io/benjaminbriggs/bunting-admin:1.2.3   # exact release (pin this)
+ghcr.io/benjaminbriggs/bunting-admin:1.2     # latest patch of 1.2
+ghcr.io/benjaminbriggs/bunting-admin:1       # latest 1.x
 ```
+
+There is no `latest` tag. To build the same image from a checkout: `docker build --target runner -t bunting-admin:local .`
 
 The image listens on `$PORT` (defaulting to `3000`). At startup it expects all required env vars to be present — it does not fall back to defaults for secrets. Its entrypoint runs `prisma migrate deploy` before starting the server, so the schema is applied automatically on boot (see the migration note below).
 
@@ -22,29 +26,11 @@ The image listens on `$PORT` (defaulting to `3000`). At startup it expects all r
 
 The checked-in `docker-compose.yml` is a **development compose** file — it includes MinIO, pgAdmin, a Dex OIDC container, and bind-mounts source code. Do not use it in production.
 
-For production, write a minimal compose file that references your managed services:
+For production, use [`deploy/`](../deploy/README.md): the published image with Postgres, Caddy for HTTPS, and database backups copied off the host. Each release attaches it as `bunting-admin-deploy-<version>.tar.gz` with the version already pinned. Keep it in your own deployment repository and upgrade by changing `BUNTING_VERSION`.
 
-```yaml
-services:
-  app:
-    image: bunting-admin:latest
-    restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: '${DATABASE_URL}'
-      S3_BUCKET: '${S3_BUCKET}'
-      S3_REGION: '${S3_REGION}'
-      CDN_BASE_URL: '${CDN_BASE_URL}'
-      SIGNING_KEY_KMS_KEY_ID: '${SIGNING_KEY_KMS_KEY_ID}' # or SIGNING_KEY_SECRET
-      AUTH_MODE: '${AUTH_MODE}'
-      OIDC_ISSUER: '${OIDC_ISSUER}'
-      OIDC_CLIENT_ID: '${OIDC_CLIENT_ID}'
-      OIDC_CLIENT_SECRET: '${OIDC_CLIENT_SECRET}'
-      NEXTAUTH_URL: '${NEXTAUTH_URL}'
-      NEXTAUTH_SECRET: '${NEXTAUTH_SECRET}'
-    ports:
-      - '3000:3000'
-```
+`deploy/compose.yaml` sets `AUTH_TRUST_HOST=true` because Caddy forwards the original host. Any other reverse proxy needs the same setting (or `AUTH_URL`). Without either, the app refuses to boot in production, because Auth.js would otherwise reject every sign-in with `UntrustedHost`.
+
+`make smoke-deploy` runs that compose file locally against MinIO and dex, signs in, publishes, and verifies the published signature. CI runs it on every pull request.
 
 The container applies migrations itself on startup (`prisma migrate deploy` via its entrypoint), so no separate migration step is needed for a single instance. If you run **multiple replicas**, disable that by overriding the entrypoint/command to `node server.js` and run migrations as a one-off release step instead, so concurrent boots don't race:
 

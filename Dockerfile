@@ -37,6 +37,9 @@ RUN pnpm exec prisma generate && pnpm run build
 FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
+# The standalone server binds to $HOSTNAME, which Docker sets to the container
+# ID. Bind every interface so in-container health checks reach 127.0.0.1.
+ENV HOSTNAME=0.0.0.0
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 # Isolated migration toolchain in /migrate. The prisma CLI and dotenv are devDeps
 # omitted from the standalone trace, and npm's flat layout cannot be merged into
