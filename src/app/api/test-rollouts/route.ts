@@ -1,6 +1,6 @@
-import type { Prisma } from '@/generated/prisma/client';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@/generated/prisma/client';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { generateSalt } from '@/lib/crypto';
 import { prisma } from '@/lib/db';
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 		if (type === 'TEST') {
 			// Give each group a position in the order sent (see orderedTestGroups).
 			data.variants = withGroupPositions(
-				variants as unknown as StoredTestVariants,
+				variants,
 			) as unknown as Prisma.InputJsonValue;
 		} else {
 			data.percentage = percentage;
