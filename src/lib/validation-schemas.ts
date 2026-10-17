@@ -225,6 +225,15 @@ export const updateTestRolloutSchema = z.object({
 	archived: z.boolean().optional(),
 });
 
+// --- Lifecycle schemas -------------------------------------------------------
+
+// POST /api/test-rollouts/[id]/complete. `winner` names the winning group and is
+// required for tests (enforced in test-rollout-lifecycle.ts, which knows the
+// record's type); rollouts send an empty body.
+export const completeTestRolloutSchema = z.object({
+	winner: z.string().min(1).optional(),
+});
+
 // --- Helper ------------------------------------------------------------------
 
 /**

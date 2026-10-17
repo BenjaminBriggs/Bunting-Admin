@@ -55,6 +55,7 @@ interface TestFormProps {
 	saveError?: string | null;
 	onSubmit: (payload: TestFormSubmit) => void;
 	onComplete?: () => void;
+	onAbandon?: () => void;
 	onDelete?: () => void;
 	cancelHref?: string;
 }
@@ -139,6 +140,7 @@ export default function TestForm({
 	saveError,
 	onSubmit,
 	onComplete,
+	onAbandon,
 	onDelete,
 	cancelHref = '/dashboard/tests',
 }: TestFormProps) {
@@ -456,19 +458,32 @@ export default function TestForm({
 				</Box>
 				{isEdit && (
 					<Stack direction="row" spacing={1}>
-						<Button
-							variant="outlined"
-							size="small"
-							startIcon={
-								<Ms
-									name="check_circle"
-									sx={{ fontSize: 17, color: '#3F7A2D' }}
-								/>
-							}
-							onClick={onComplete}
-						>
-							Complete
-						</Button>
+						{/* Finished tests cannot be completed or abandoned again. */}
+						{!initial.archived && (
+							<>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={
+										<Ms
+											name="check_circle"
+											sx={{ fontSize: 17, color: '#3F7A2D' }}
+										/>
+									}
+									onClick={onComplete}
+								>
+									Complete…
+								</Button>
+								<Button
+									variant="outlined"
+									size="small"
+									startIcon={<Ms name="stop_circle" sx={{ fontSize: 17 }} />}
+									onClick={onAbandon}
+								>
+									Abandon…
+								</Button>
+							</>
+						)}
 						<Button
 							variant="outlined"
 							size="small"
