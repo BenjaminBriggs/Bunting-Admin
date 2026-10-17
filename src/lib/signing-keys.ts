@@ -11,13 +11,13 @@
  * an app with zero or two ACTIVE keys.
  *
  * Export/import moves a private key between instances as a passphrase-encrypted
- * PKCS#8 PEM. Never log key material or passphrases from this module.
+ * file (see key-export.ts). Never log key material or passphrases from this
+ * module.
  */
 
 import 'server-only';
 import { createPrivateKey, createPublicKey } from 'crypto';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { Prisma, type SigningKeyStatus } from '@/generated/prisma/client';
 import {
 	generateRSAKeyPair,
@@ -25,6 +25,12 @@ import {
 	validatePrivateKeyPEM,
 } from './crypto';
 import { prisma } from './db';
+import {
+	KeyExportDecryptionError,
+	openSigningKey,
+	sealSigningKey,
+	type SigningKeyExport,
+} from './key-export';
 import { loadPrivateKey, storePrivateKey } from './key-protection';
 
 /** A lifecycle rule violation the route maps straight to an HTTP status. */
@@ -246,35 +252,7 @@ export async function deleteSigningKey(
 }
 
 // --- Export / import ---------------------------------------------------------
-
-export const KEY_EXPORT_FORMAT = 'bunting-signing-key';
-export const KEY_EXPORT_FORMAT_VERSION = 1;
-export const MIN_EXPORT_PASSPHRASE_LENGTH = 12;
-
-/** Passphrase rules shared by export and import. */
-export const exportPassphraseSchema = z
-	.string()
-	.min(
-		MIN_EXPORT_PASSPHRASE_LENGTH,
-		`Passphrase must be at least ${MIN_EXPORT_PASSPHRASE_LENGTH} characters`,
-	)
-	.max(1024);
-
-/** The file an admin downloads from export and uploads to import. */
-export const signingKeyExportSchema = z.object({
-	format: z.literal(KEY_EXPORT_FORMAT),
-	formatVersion: z.literal(KEY_EXPORT_FORMAT_VERSION),
-	// Informational: where the key came from. Import targets an explicit app.
-	appIdentifier: z.string(),
-	kid: z.string(),
-	algorithm: z.literal('RS256'),
-	status: z.enum(['ACTIVE', 'STANDBY', 'RETIRED']),
-	createdAt: z.string(),
-	// PKCS#8 PEM encrypted with aes-256-cbc under the export passphrase.
-	privateKeyPem: z.string().max(16384),
-});
-
-export type SigningKeyExport = z.infer<typeof signingKeyExportSchema>;
+// The file format and its crypto live in key-export.ts.
 
 /**
  * Export a key's private half, re-encrypted under an operator passphrase so it
@@ -302,27 +280,23 @@ export async function exportSigningKey(
 	}
 
 	const pem = await loadPrivateKey(key.privateKey);
-	const encryptedPem = createPrivateKey(pem).export({
+	const pkcs8Der = createPrivateKey(pem).export({
 		type: 'pkcs8',
-		format: 'pem',
-		cipher: 'aes-256-cbc',
-		passphrase,
+		format: 'der',
 	});
-
-	return {
-		appId: key.appId,
-		keyId: key.id,
-		envelope: {
-			format: KEY_EXPORT_FORMAT,
-			formatVersion: KEY_EXPORT_FORMAT_VERSION,
+	const envelope = await sealSigningKey(
+		pkcs8Der,
+		{
 			appIdentifier: key.app.identifier,
 			kid: key.kid,
 			algorithm: 'RS256',
 			status: key.status,
 			createdAt: key.createdAt.toISOString(),
-			privateKeyPem: encryptedPem,
 		},
-	};
+		passphrase,
+	);
+
+	return { appId: key.appId, keyId: key.id, envelope };
 }
 
 /**
@@ -344,28 +318,30 @@ export async function importSigningKey(
 			400,
 		);
 	}
-	if (
-		!envelope.privateKeyPem
-			.trimStart()
-			.startsWith('-----BEGIN ENCRYPTED PRIVATE KEY-----')
-	) {
-		throw new SigningKeyError(
-			'The key file must contain a passphrase-encrypted PKCS#8 private key',
-			400,
-		);
+	let pkcs8Der: Buffer;
+	try {
+		pkcs8Der = await openSigningKey(envelope, passphrase);
+	} catch (error) {
+		if (error instanceof KeyExportDecryptionError) {
+			// Deliberately generic: a wrong passphrase and a tampered file look the same.
+			throw new SigningKeyError(
+				'Could not decrypt the key. Check the passphrase and that the file is an unmodified Bunting key export.',
+				400,
+			);
+		}
+		throw error;
 	}
 
 	let keyObject: ReturnType<typeof createPrivateKey>;
 	try {
 		keyObject = createPrivateKey({
-			key: envelope.privateKeyPem,
-			format: 'pem',
-			passphrase,
+			key: pkcs8Der,
+			format: 'der',
+			type: 'pkcs8',
 		});
 	} catch {
-		// Deliberately generic: don't echo decryption internals.
 		throw new SigningKeyError(
-			'Could not decrypt the key. Check the passphrase and that the file is an unmodified Bunting key export.',
+			'The key file does not contain a valid PKCS#8 private key',
 			400,
 		);
 	}

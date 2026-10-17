@@ -4,13 +4,12 @@ import { z } from 'zod';
 import { logActivity } from '@/lib/activity-log';
 import { requireAdmin } from '@/lib/authz';
 import { prisma } from '@/lib/db';
-import { logger } from '@/lib/logger';
 import {
 	exportPassphraseSchema,
-	importSigningKey,
-	signingKeyErrorResponse,
 	signingKeyExportSchema,
-} from '@/lib/signing-keys';
+} from '@/lib/key-export';
+import { logger } from '@/lib/logger';
+import { importSigningKey, signingKeyErrorResponse } from '@/lib/signing-keys';
 
 const importKeySchema = z.object({
 	appId: z.string(), // target app

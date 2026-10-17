@@ -25,37 +25,41 @@ export interface SigningResult {
 }
 
 /**
- * Ensure an app has an ACTIVE signing key.
+ * Ensure an app has an ACTIVE signing key and at least one STANDBY key.
  *
- * - An ACTIVE key exists: nothing to do.
  * - No ACTIVE key but a STANDBY one: promote the oldest STANDBY key. It has been
  *   in bootstrap files the longest, so the most shipped binaries trust it.
- *   Never mint a fresh key while a trusted one exists.
- * - No trusted key at all (a new app, or one whose keys are all RETIRED): mint an
- *   ACTIVE key plus a STANDBY key, so binaries built from the first bootstrap
- *   file already trust the key a later rotation switches to.
+ *   Never mint a fresh ACTIVE key while a trusted one exists.
+ * - No ACTIVE or STANDBY key at all (a new app, or one whose keys are all
+ *   RETIRED): mint an ACTIVE key.
+ * - Then, if no STANDBY key is left (e.g. an app migrated from the single-key
+ *   model, or its last standby was promoted or retired): mint one, so every
+ *   bootstrap file downloaded from now on already trusts the key a later
+ *   rotation switches to.
  *
- * RETIRED keys are never re-activated.
+ * RETIRED keys are never re-activated. Runs on every publish and bootstrap
+ * download; the common case (both keys present) is a single read.
  */
 export async function ensureSigningKey(appId: string): Promise<void> {
 	try {
-		// Two passes cover the one race that matters: a STANDBY key seen in the
-		// pre-check is retired before we take the lock, so we need fresh keys.
-		for (let attempt = 0; attempt < 2; attempt++) {
+		// Retry covers a race between the unlocked pre-check and the locked
+		// re-check (e.g. a STANDBY key retired in between), which can need more
+		// fresh keys than were minted.
+		for (let attempt = 0; attempt < 3; attempt++) {
 			const trusted = await prisma.signingKey.findMany({
 				where: { appId, status: { in: ['ACTIVE', 'STANDBY'] } },
 				select: { status: true },
 			});
-			if (trusted.some((k) => k.status === 'ACTIVE')) {
+			const needed = keysToMint(trusted);
+			if (needed === 0 && trusted.some((k) => k.status === 'ACTIVE')) {
 				return;
 			}
 
 			// Generate outside the transaction (slow); discarded if another caller
 			// wins the race.
-			const fresh =
-				trusted.length === 0
-					? await Promise.all([mintSigningKey(), mintSigningKey()])
-					: null;
+			const fresh = await Promise.all(
+				Array.from({ length: needed }, () => mintSigningKey()),
+			);
 
 			const done = await prisma.$transaction(async (tx) => {
 				await lockAppSigningKeys(tx, appId);
@@ -64,26 +68,29 @@ export async function ensureSigningKey(appId: string): Promise<void> {
 					select: { id: true, status: true },
 					orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
 				});
-				if (current.some((k) => k.status === 'ACTIVE')) {
-					return true;
-				}
-				if (current.length > 0) {
-					await tx.signingKey.update({
-						where: { id: current[0].id },
-						data: { status: 'ACTIVE' },
-					});
-					return true;
-				}
-				if (!fresh) {
+				if (keysToMint(current) > fresh.length) {
 					return false;
 				}
-				const [active, standby] = fresh;
-				await tx.signingKey.create({
-					data: { appId, ...active, status: 'ACTIVE' },
-				});
-				await tx.signingKey.create({
-					data: { appId, ...standby, status: 'STANDBY' },
-				});
+
+				let standbys = current.filter((k) => k.status === 'STANDBY');
+				if (!current.some((k) => k.status === 'ACTIVE')) {
+					if (standbys.length > 0) {
+						await tx.signingKey.update({
+							where: { id: standbys[0].id },
+							data: { status: 'ACTIVE' },
+						});
+						standbys = standbys.slice(1);
+					} else {
+						await tx.signingKey.create({
+							data: { appId, ...fresh.shift()!, status: 'ACTIVE' },
+						});
+					}
+				}
+				if (standbys.length === 0) {
+					await tx.signingKey.create({
+						data: { appId, ...fresh.shift()!, status: 'STANDBY' },
+					});
+				}
 				return true;
 			});
 			if (done) {
@@ -95,6 +102,24 @@ export async function ensureSigningKey(appId: string): Promise<void> {
 		logger.error({ err: error }, 'Failed to ensure signing key');
 		throw new Error('Failed to ensure signing key exists');
 	}
+}
+
+/**
+ * How many keys ensureSigningKey must mint for this set of ACTIVE/STANDBY keys:
+ * one ACTIVE if there is nothing to promote, plus one STANDBY if none would be
+ * left afterwards.
+ */
+function keysToMint(trusted: Array<{ status: SigningKeyStatus }>): number {
+	const hasActive = trusted.some((k) => k.status === 'ACTIVE');
+	const standbys = trusted.filter((k) => k.status === 'STANDBY').length;
+	if (hasActive) {
+		return standbys === 0 ? 1 : 0;
+	}
+	if (standbys === 0) {
+		return 2;
+	}
+	// The oldest STANDBY is promoted; mint a replacement if it was the only one.
+	return standbys === 1 ? 1 : 0;
 }
 
 /**
@@ -168,18 +193,15 @@ export async function getPublicKeysForApp(appId: string): Promise<
 }
 
 /**
- * The `public_keys` list for a bootstrap file (plist or JSON). An app with no
- * trusted key gets an ACTIVE + STANDBY pair minted first, so a bootstrap file
- * never ships without a key the publish pipeline can sign with.
+ * The `public_keys` list for a bootstrap file (plist or JSON). Ensures the app
+ * has an ACTIVE and a STANDBY key first, so every build made from the file can
+ * survive one rotation, and the file never ships without a signing key.
  */
 export async function getBootstrapPublicKeys(
 	appId: string,
 ): Promise<Array<{ kid: string; pem: string }>> {
-	let keys = await getPublicKeysForApp(appId);
-	if (keys.length === 0) {
-		await ensureSigningKey(appId);
-		keys = await getPublicKeysForApp(appId);
-	}
+	await ensureSigningKey(appId);
+	const keys = await getPublicKeysForApp(appId);
 	return keys.map((key) => ({ kid: key.kid, pem: key.pem }));
 }
 

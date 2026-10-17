@@ -19,7 +19,11 @@ import {
 } from '@/app/api/keys/route';
 import { prisma } from '@/lib/db';
 import { ensureSigningKey, signConfigDetached } from '@/lib/jws-signer';
-import type { SigningKeyExport } from '@/lib/signing-keys';
+import {
+	openSigningKey,
+	sealSigningKey,
+	type SigningKeyExport,
+} from '@/lib/key-export';
 import { server } from '../msw/server';
 
 // Proxy auth: the role comes from the access list by the x-forwarded-email
@@ -255,6 +259,23 @@ describe('app creation and ensureSigningKey', () => {
 		expect(retired.map((k) => k.kid)).toEqual(['d'.repeat(32)]);
 	});
 
+	test('promoting the only STANDBY key mints a replacement STANDBY', async () => {
+		const app = await createApp('promote-only-standby');
+		await prisma.signingKey.create({
+			data: {
+				appId: app.id,
+				kid: '2'.repeat(32),
+				privateKey: 'x',
+				publicKey: 'pem',
+				status: 'STANDBY',
+			},
+		});
+		await ensureSigningKey(app.id);
+		const { active, standby } = await keysByStatus(app.id);
+		expect(active.map((k) => k.kid)).toEqual(['2'.repeat(32)]);
+		expect(standby).toHaveLength(1);
+	});
+
 	test('concurrent ensureSigningKey calls leave exactly one ACTIVE key', async () => {
 		const app = await createApp('race-app');
 		await Promise.all([
@@ -304,6 +325,78 @@ describe('bootstrap files', () => {
 		);
 		expect(kids).toEqual([newActive, oldActive]);
 		expect(plist).not.toContain(retiredKid);
+	});
+
+	test('an app with an ACTIVE key but no STANDBY (migrated single-key app) gets a STANDBY minted before any bootstrap is served', async () => {
+		const legacyKid = 'e'.repeat(32);
+		const pem = '-----BEGIN PUBLIC KEY-----\nLEGACY\n-----END PUBLIC KEY-----';
+		const jsonApp = await createApp('single-key-json');
+		const plistApp = await createApp('single-key-plist');
+		const publishApp = await createApp('single-key-publish');
+		for (const [app, kid] of [
+			[jsonApp, legacyKid],
+			[plistApp, 'f'.repeat(32)],
+			[publishApp, '1'.repeat(32)],
+		] as const) {
+			await prisma.signingKey.create({
+				data: {
+					appId: app.id,
+					kid,
+					privateKey: 'x',
+					publicKey: pem,
+					status: 'ACTIVE',
+				},
+			});
+		}
+
+		const jsonRes = await getBootstrapJson(
+			req(`/api/bootstrap/json?appId=${jsonApp.id}`),
+		);
+		const doc = (await jsonRes.json()) as {
+			public_keys: Array<{ kid: string }>;
+		};
+		let keys = await keysByStatus(jsonApp.id);
+		expect(keys.active.map((k) => k.kid)).toEqual([legacyKid]);
+		expect(keys.standby).toHaveLength(1);
+		expect(doc.public_keys.map((k) => k.kid)).toEqual([
+			legacyKid,
+			keys.standby[0].kid,
+		]);
+
+		const plistRes = await getBootstrapPlist(
+			req(`/api/bootstrap/plist?appId=${plistApp.id}`),
+		);
+		const plist = await plistRes.text();
+		keys = await keysByStatus(plistApp.id);
+		expect(keys.active.map((k) => k.kid)).toEqual(['f'.repeat(32)]);
+		expect(keys.standby).toHaveLength(1);
+		expect(plist).toContain(`<string>${keys.standby[0].kid}</string>`);
+
+		// The publish path (ensureSigningKey) does the same, once.
+		await ensureSigningKey(publishApp.id);
+		await ensureSigningKey(publishApp.id);
+		keys = await keysByStatus(publishApp.id);
+		expect(keys.active.map((k) => k.kid)).toEqual(['1'.repeat(32)]);
+		expect(keys.standby).toHaveLength(1);
+	});
+
+	test('retiring the last STANDBY key gets it replaced on the next bootstrap download', async () => {
+		const app = await createApp('replace-standby-app');
+		await ensureSigningKey(app.id);
+		const { standby } = await keysByStatus(app.id);
+		expect((await setStatus(app.id, standby[0].kid, 'RETIRED')).status).toBe(
+			200,
+		);
+		expect((await keysByStatus(app.id)).standby).toHaveLength(0);
+
+		const res = await getBootstrapJson(
+			req(`/api/bootstrap/json?appId=${app.id}`),
+		);
+		const doc = (await res.json()) as { public_keys: Array<{ kid: string }> };
+		const keys = await keysByStatus(app.id);
+		expect(keys.standby).toHaveLength(1);
+		expect(keys.standby[0].kid).not.toBe(standby[0].kid);
+		expect(doc.public_keys).toHaveLength(2);
 	});
 
 	test('an app with no keys gets a minted ACTIVE + STANDBY pair, never the legacy placeholder', async () => {
@@ -509,10 +602,17 @@ describe('export and import', () => {
 			algorithm: 'RS256',
 			status: 'STANDBY',
 		});
-		expect(envelope.privateKeyPem).toMatch(
-			/^-----BEGIN ENCRYPTED PRIVATE KEY-----/,
-		);
-		expect(JSON.stringify(envelope)).not.toContain('BEGIN PRIVATE KEY');
+		expect(envelope.kdf).toMatchObject({
+			name: 'scrypt',
+			N: 2 ** 17,
+			r: 8,
+			p: 1,
+		});
+		expect(Buffer.from(envelope.kdf.salt, 'base64')).toHaveLength(16);
+		expect(envelope.cipher.name).toBe('aes-256-gcm');
+		expect(Buffer.from(envelope.cipher.iv, 'base64')).toHaveLength(12);
+		expect(Buffer.from(envelope.cipher.tag, 'base64')).toHaveLength(16);
+		expect(JSON.stringify(envelope)).not.toContain('PRIVATE KEY');
 
 		// kids are unique per instance: importing while the original exists fails.
 		const duplicate = await importKey(target.id, envelope);
@@ -587,12 +687,36 @@ describe('export and import', () => {
 		});
 		expect(badKid.status).toBe(400);
 
-		const plaintext = await importKey(other.id, {
+		// Metadata is authenticated: editing it (even to other valid values)
+		// makes decryption fail, as does editing the ciphertext.
+		for (const tampered of [
+			{ ...envelope, status: 'RETIRED' as const },
+			{ ...envelope, appIdentifier: 'someone-else' },
+			{ ...envelope, createdAt: '2020-01-01T00:00:00.000Z' },
+			{ ...envelope, kid: '0'.repeat(32) },
+			{ ...envelope, kdf: { ...envelope.kdf, N: 2 ** 16 } },
+			{
+				...envelope,
+				ciphertext: Buffer.from(
+					Buffer.from(envelope.ciphertext, 'base64').map((b, i) =>
+						i === 0 ? b ^ 1 : b,
+					),
+				).toString('base64'),
+			},
+		]) {
+			const res = await importKey(other.id, tampered);
+			expect(res.status).toBe(400);
+			expect(((await res.json()) as { error: string }).error).toMatch(
+				/Could not decrypt the key/,
+			);
+		}
+
+		// Out-of-range scrypt cost is rejected before any derivation.
+		const expensive = await importKey(other.id, {
 			...envelope,
-			privateKeyPem:
-				'-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----',
+			kdf: { ...envelope.kdf, N: 2 ** 20 },
 		});
-		expect(plaintext.status).toBe(400);
+		expect(expensive.status).toBe(400);
 
 		const wrongFormat = await importKey(other.id, {
 			...envelope,
@@ -603,11 +727,14 @@ describe('export and import', () => {
 		const noApp = await importKey('missing-app', envelope);
 		expect(noApp.status).toBe(404);
 
-		// Same key material under a different (valid) kid is still a duplicate.
-		const renamed = await importKey(other.id, {
-			...envelope,
-			kid: '0'.repeat(32),
-		});
+		// Same key material re-sealed under a different (valid) kid is still a
+		// duplicate.
+		const resealed = await sealSigningKey(
+			await openSigningKey(envelope, PASSPHRASE),
+			{ ...envelope, kid: '0'.repeat(32) },
+			PASSPHRASE,
+		);
+		const renamed = await importKey(other.id, resealed);
 		expect(renamed.status).toBe(409);
 		expect(await prisma.signingKey.count({ where: { appId: other.id } })).toBe(
 			0,

@@ -661,9 +661,10 @@ export function SigningKeysCard({
 			</Typography>
 			{keys.length > 0 && !hasStandby && (
 				<Alert severity="warning" sx={{ mt: 1.5 }}>
-					This app has no standby key. Create one and download a fresh bootstrap
-					file before your next app release, otherwise rotating keys later will
-					break the builds you ship now.
+					This app has no standby key yet. One is created automatically the next
+					time a bootstrap file is downloaded or a config is published, so new
+					builds can survive a rotation. Builds made from older bootstrap files
+					only trust the keys listed when they were downloaded.
 				</Alert>
 			)}
 

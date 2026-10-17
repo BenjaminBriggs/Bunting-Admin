@@ -3,12 +3,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activity-log';
 import { requireAdmin } from '@/lib/authz';
+import { exportPassphraseSchema } from '@/lib/key-export';
 import { logger } from '@/lib/logger';
-import {
-	exportPassphraseSchema,
-	exportSigningKey,
-	signingKeyErrorResponse,
-} from '@/lib/signing-keys';
+import { exportSigningKey, signingKeyErrorResponse } from '@/lib/signing-keys';
 
 const exportKeySchema = z.object({
 	keyId: z.string(), // the key's kid
@@ -16,8 +13,9 @@ const exportKeySchema = z.object({
 });
 
 // POST /api/keys/export - Download a signing key's private half, encrypted under
-// an operator passphrase (PKCS#8, aes-256-cbc). This is the only way to back up
-// a key outside the database, or move it to another instance.
+// an operator passphrase (scrypt + AES-256-GCM, see key-export.ts). This is the
+// only way to back up a key outside the database, or move it to another
+// instance.
 export async function POST(request: NextRequest) {
 	try {
 		const authz = await requireAdmin(request.headers);
