@@ -1,4 +1,5 @@
 import {
+	assignGroupPositions,
 	buildTestUpdatePayload,
 	buildTestVariants,
 	orderedTestGroups,
@@ -270,5 +271,38 @@ describe('buildTestUpdatePayload', () => {
 			group: '',
 		});
 		expect(payload.group).toBeNull();
+	});
+});
+
+describe('assignGroupPositions', () => {
+	test('keeps stored positions by name, appends new groups, uses sent positions as given', () => {
+		expect(
+			assignGroupPositions(stored(), {
+				new_one: { percentage: 10 },
+				control: { percentage: 40 },
+				treatment: { percentage: 50, position: 7 },
+			}),
+		).toEqual({
+			new_one: { percentage: 10, position: 8 },
+			control: { percentage: 40, position: 1 },
+			treatment: { percentage: 50, position: 7 },
+		});
+	});
+
+	test('numbers a legacy stored row in its current order first', () => {
+		expect(
+			assignGroupPositions(legacy(), {
+				treatment: { percentage: 50 },
+				control: { percentage: 50 },
+			}),
+		).toEqual({
+			treatment: { percentage: 50, position: 1 },
+			control: { percentage: 50, position: 0 },
+		});
+	});
+
+	test('passes null (clear) and undefined (absent) through', () => {
+		expect(assignGroupPositions(stored(), null)).toBeNull();
+		expect(assignGroupPositions(stored(), undefined)).toBeUndefined();
 	});
 });

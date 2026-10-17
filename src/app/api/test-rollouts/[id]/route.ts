@@ -4,6 +4,10 @@ import { Prisma } from '@/generated/prisma/client';
 import { actorFromHeaders, logActivity } from '@/lib/activity-log';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import {
+	assignGroupPositions,
+	type StoredTestVariants,
+} from '@/lib/test-group-variants';
 import { REACTIVATE_FINISHED_MESSAGE } from '@/lib/test-rollout-lifecycle';
 import {
 	updateTestRolloutSchema,
@@ -92,7 +96,8 @@ export async function PUT(
 
 		// Partial update: a field absent from the body is left unchanged (Prisma
 		// skips `undefined`). Only an explicit `null` clears a nullable column;
-		// the nullable JSON blobs need Prisma.DbNull for that.
+		// the nullable JSON blobs need Prisma.DbNull for that. Test group
+		// positions are server-owned (see assignGroupPositions).
 		const testRollout = await prisma.testRollout.update({
 			where: {
 				id,
@@ -105,7 +110,14 @@ export async function PUT(
 				conditions,
 				flagIds,
 				archived,
-				variants: nullableJson(variants),
+				variants: nullableJson(
+					existing.type === 'TEST'
+						? assignGroupPositions(
+								existing.variants as unknown as StoredTestVariants | null,
+								variants,
+							)
+						: variants,
+				),
 				rolloutValues: nullableJson(rolloutValues),
 				updatedAt: new Date(),
 			},

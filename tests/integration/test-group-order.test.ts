@@ -325,3 +325,144 @@ describe('test group order', () => {
 		expect(res.status).toBe(400);
 	});
 });
+
+describe('group positions are server-owned on update routes', () => {
+	// A `variants` body as a client might send it: every group without its
+	// position, in jsonb (shortest-name-first) key order.
+	const stripPositions = (variants: StoredTestVariants) =>
+		Object.fromEntries(
+			Object.entries(variants)
+				.sort(([a], [b]) => a.length - b.length)
+				.map(([name, { position: _position, ...group }]) => [name, group]),
+		);
+
+	const positionsOf = async (id: string) =>
+		Object.fromEntries(
+			Object.entries((await load(id)).variants).map(([name, g]) => [
+				name,
+				g.position,
+			]),
+		);
+
+	test.each([
+		['PUT /api/tests/[id]', 'tests'],
+		['PUT /api/test-rollouts/[id]', 'test-rollouts'],
+	])(
+		'%s without positions on a positioned row keeps the order',
+		async (_, route) => {
+			const { app, id } = await createTest([
+				['treatment_long_name', 30],
+				['control', 70],
+			]);
+			const body = {
+				variants: stripPositions((await load(id)).variants),
+			};
+
+			const put = route === 'tests' ? putTest : putTestRollout;
+			const res = await put(
+				request('PUT', `/api/${route}/${id}`, body),
+				ctx(id),
+			);
+			expect(res.status).toBe(200);
+
+			expect(await positionsOf(id)).toEqual({
+				treatment_long_name: 0,
+				control: 1,
+			});
+			const config = await generateConfigFromDb(app.id);
+			expect(groupsOf(config, 'checkout_test')).toEqual([
+				['treatment_long_name', 30],
+				['control', 70],
+			]);
+		},
+	);
+
+	test('a PUT without positions on a legacy row keeps its current order and records it', async () => {
+		const app = await seedLegacyApp();
+		const legacy = await prisma.testRollout.findFirstOrThrow({
+			where: { appId: app.id, key: 'checkout_test' },
+		});
+		const before = await generateConfigFromDb(app.id);
+
+		// Same groups in insertion order, which is not the emitted order.
+		const stored = (await load(legacy.id)).variants;
+		const res = await putTest(
+			request('PUT', `/api/tests/${legacy.id}`, {
+				variants: {
+					treatment_long_name: stored.treatment_long_name,
+					control: stored.control,
+					b: stored.b,
+				},
+			}),
+			ctx(legacy.id),
+		);
+		expect(res.status).toBe(200);
+
+		expect(await positionsOf(legacy.id)).toEqual({
+			b: 0,
+			control: 1,
+			treatment_long_name: 2,
+		});
+		const after = await generateConfigFromDb(app.id);
+		expect(after.tests.checkout_test.groups).toEqual(
+			before.tests.checkout_test.groups,
+		);
+		expect(JSON.stringify(after)).toBe(JSON.stringify(before));
+	});
+
+	test('a new group sent without a position is appended after the highest position', async () => {
+		const { app, id } = await createTest([
+			['treatment', 50],
+			['control', 50],
+		]);
+		const stored = (await load(id)).variants;
+
+		// "a" sorts first in jsonb and is sent first.
+		const res = await putTest(
+			request('PUT', `/api/tests/${id}`, {
+				variants: {
+					a: { percentage: 20 },
+					...stripPositions({
+						treatment: { ...stored.treatment, percentage: 40 },
+						control: { ...stored.control, percentage: 40 },
+					}),
+				},
+			}),
+			ctx(id),
+		);
+		expect(res.status).toBe(200);
+
+		expect(await positionsOf(id)).toEqual({ treatment: 0, control: 1, a: 2 });
+		const config = await generateConfigFromDb(app.id);
+		expect(groupsOf(config, 'checkout_test')).toEqual([
+			['treatment', 40],
+			['control', 40],
+			['a', 20],
+		]);
+	});
+
+	test('positions a client sends are used as given', async () => {
+		const { app, id } = await createTest([
+			['treatment', 30],
+			['control', 70],
+		]);
+		const stored = (await load(id)).variants;
+
+		const res = await putTestRollout(
+			request('PUT', `/api/test-rollouts/${id}`, {
+				variants: {
+					treatment: { ...stored.treatment, position: 5 },
+					control: { ...stored.control, position: 1 },
+				},
+			}),
+			ctx(id),
+		);
+		expect(res.status).toBe(200);
+
+		const config = await generateConfigFromDb(app.id);
+		expect(groupsOf(config, 'checkout_test')).toEqual([
+			['control', 70],
+			['treatment', 30],
+		]);
+	});
+});

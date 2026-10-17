@@ -262,7 +262,9 @@ Create an A/B test.
 
 A `salt` is generated server-side. `variants` is built as `{ [name]: { percentage, position, values: { development: null, beta: null, production: null } } }`, where `position` is the group's index in `variantNames`. `flagIds` starts as `[]`.
 
-**Group order.** SDKs bucket users into groups by cumulative percentage in the order of the artifact's `groups`, so that order decides which users land in which group. It comes from each group's integer `position` (Postgres does not keep JSON key order), and editing a test never changes the position of a group it keeps, renamed or not; added groups get the next positions. Tests stored before positions existed have none and keep the order they were already published with until their first edit records it. Clients that write `variants` (`PUT /api/tests/[id]`, `PUT /api/test-rollouts/[id]`) must send each group's `position` back unchanged.
+**Group order.** SDKs bucket users into groups by cumulative percentage in the order of the artifact's `groups`, so that order decides which users land in which group. It comes from each group's integer `position` (Postgres does not keep JSON key order), and editing a test never changes the position of a group it keeps, renamed or not; added groups get the next positions. Tests stored before positions existed have none and keep the order they were already published with until their first edit records it.
+
+Positions are optional on writes and assigned by the server. When `PUT /api/tests/[id]` or `PUT /api/test-rollouts/[id]` writes `variants`, a group sent without a whole-number `position` keeps the stored position of the group with the same name, or is appended after the highest position; positions that are sent are used as given. A group renamed without its `position` therefore counts as a new group and is appended. On a test stored before positions existed, the server first numbers the stored groups in their current published order.
 
 **Response 201** — created `TestRollout` object.
 

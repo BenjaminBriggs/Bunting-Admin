@@ -66,6 +66,22 @@ export function withGroupPositions(
 	);
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+// The stored groups with positions: as stored when every group has one, else
+// numbered in their current emitted order (withGroupPositions). That is how a
+// legacy row's first write records the order its users are bucketed in today.
+function positionedStored(
+	stored: StoredTestVariants | null | undefined,
+): StoredTestVariants {
+	const variants = stored ?? {};
+	return allPositioned(Object.entries(variants))
+		? variants
+		: withGroupPositions(variants);
+}
+
 /**
  * The stored `variants` for the groups the edit form submits. The form only
  * edits group names and weights; per-flag values are authored from the Flags
@@ -87,16 +103,11 @@ export function buildTestVariants(
 	stored: StoredTestVariants | null | undefined,
 	groups: EditedTestGroup[],
 ): StoredTestVariants {
-	const ordered = orderedTestGroups(stored);
-	const positioned = allPositioned(ordered);
-	const storedGroups = new Map(
-		ordered.map(([name, group], index) => [
-			name,
-			{ group, position: positioned ? (group.position ?? index) : index },
-		]),
-	);
+	const base = positionedStored(stored);
 	const keptOf = (g: EditedTestGroup) =>
-		g.storedName === undefined ? undefined : storedGroups.get(g.storedName);
+		g.storedName !== undefined && Object.hasOwn(base, g.storedName)
+			? base[g.storedName]
+			: undefined;
 
 	let nextPosition =
 		Math.max(-1, ...groups.map((g) => keptOf(g)?.position ?? -1)) + 1;
@@ -110,13 +121,55 @@ export function buildTestVariants(
 			);
 		}
 		const kept = keptOf(group);
-		// Spread the stored group so its values (and anything else stored on it)
-		// carry over; only the percentage comes from the form.
+		// Spread the stored group so its values, position (and anything else
+		// stored on it) carry over; only the percentage comes from the form.
 		variants[group.name] = kept
-			? { ...kept.group, percentage: group.weight, position: kept.position }
+			? { ...kept, percentage: group.weight }
 			: { percentage: group.weight, position: nextPosition++ };
 	}
 	return variants;
+}
+
+/**
+ * Positions are server-owned: update routes that write a test's `variants`
+ * pass the body through this, so a client that omits positions cannot reorder
+ * groups and move users. An incoming group without a whole-number `position`
+ * keeps the position of the stored group with the same name, or is appended
+ * after the highest position. Positions a client sends are used as given.
+ * A legacy stored row is first numbered in its current emitted order, as
+ * buildTestVariants does on first save. Anything that is not a map of group
+ * objects (null to clear, a malformed body) is returned unchanged.
+ */
+export function assignGroupPositions<T>(
+	stored: StoredTestVariants | null | undefined,
+	incoming: T,
+): T {
+	if (!isObject(incoming)) {
+		return incoming;
+	}
+	const base = positionedStored(stored);
+	const sent = (group: unknown): number | undefined =>
+		isObject(group) && Number.isInteger(group.position)
+			? (group.position as number)
+			: undefined;
+
+	let nextPosition =
+		Math.max(
+			-1,
+			...Object.values(base).map((g) => g.position ?? -1),
+			...Object.values(incoming).map((g) => sent(g) ?? -1),
+		) + 1;
+	return Object.fromEntries(
+		Object.entries(incoming).map(([name, group]) => {
+			if (!isObject(group) || sent(group) !== undefined) {
+				return [name, group];
+			}
+			const position = Object.hasOwn(base, name)
+				? (base[name].position ?? nextPosition++)
+				: nextPosition++;
+			return [name, { ...group, position }];
+		}),
+	) as T;
 }
 
 /**
