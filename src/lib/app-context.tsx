@@ -1,11 +1,12 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { type App, fetchApps } from './api';
+import { type App, type CurrentUser, fetchApps, fetchCurrentUser } from './api';
 
 interface AppContextType {
+	/** The caller and their role, as resolved server-side by /api/me. */
+	currentUser: CurrentUser | null;
 	apps: App[];
 	selectedApp: App | null;
 	loading: boolean;
@@ -17,7 +18,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-	const { status } = useSession();
+	const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 	const [apps, setApps] = useState<App[]>([]);
 	const [selectedApp, setSelectedAppState] = useState<App | null>(null);
 	const [loading, setLoading] = useState(true);
@@ -55,16 +56,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
 		setSelectedAppState(app);
 	};
 
-	// Initial load - only when authenticated. (Auto-selection of the first app is
-	// handled inside refreshApps' reconciliation, so no separate effect is needed.)
+	// Initial load - only when authenticated. The caller is resolved server-side
+	// (/api/me) rather than from the NextAuth client session, which does not exist
+	// in proxy auth mode. (Auto-selection of the first app is handled inside
+	// refreshApps' reconciliation, so no separate effect is needed.)
 	useEffect(() => {
-		if (status === 'authenticated') {
-			// eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: refreshApps sets a loading flag before an async fetch once authenticated
-			void refreshApps();
-		}
-	}, [status]);
+		let cancelled = false;
+		const loadUserAndApps = async () => {
+			try {
+				const user = await fetchCurrentUser();
+				if (cancelled) {
+					return;
+				}
+				setCurrentUser(user);
+				if (user) {
+					await refreshApps();
+				}
+			} catch (err) {
+				setError(
+					err instanceof Error ? err.message : 'Failed to load current user',
+				);
+				setLoading(false);
+			}
+		};
+		void loadUserAndApps();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	const value: AppContextType = {
+		currentUser,
 		apps,
 		selectedApp,
 		loading,

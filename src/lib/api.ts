@@ -56,6 +56,26 @@ export interface App {
 	};
 }
 
+// The caller as the server sees them (works in oidc and proxy auth modes).
+export interface CurrentUser {
+	email: string;
+	role: 'ADMIN' | 'DEVELOPER';
+}
+
+// Returns null when the request is not authenticated.
+export async function fetchCurrentUser(): Promise<CurrentUser | null> {
+	const response = await fetch('/api/me');
+	if (response.status === 401) {
+		return null;
+	}
+	if (!response.ok) {
+		throw new Error(
+			await errorMessage(response, 'Failed to load current user'),
+		);
+	}
+	return parseJson(response);
+}
+
 // Re-export types for backward compatibility
 export type Flag = DBFlag;
 export type TestRollout = DBTestRollout;

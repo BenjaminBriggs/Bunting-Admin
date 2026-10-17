@@ -16,7 +16,6 @@ import {
 } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { DeleteAppDialog } from '@/components/settings/DeleteAppDialog';
 import {
@@ -75,16 +74,19 @@ const sectionTitleSx = {
 
 export default function SettingsPage() {
 	const router = useRouter();
-	const { data: session } = useSession();
-	const isAdmin = session?.user.role === 'ADMIN';
-	// The app chosen in the dashboard's app switcher, shared with every page.
+	// The app chosen in the dashboard's app switcher, shared with every page,
+	// and the caller's role as resolved server-side (works in proxy auth mode,
+	// where there is no NextAuth client session). Display gating only: the API
+	// enforces admin access itself.
 	const {
+		currentUser,
 		apps,
 		selectedApp,
 		loading,
 		error: appsError,
 		refreshApps,
 	} = useApp();
+	const isAdmin = currentUser?.role === 'ADMIN';
 	const [error, setError] = useState<string | null>(null);
 	const signingKeys = useSigningKeys(selectedApp?.id);
 	const [tab, setTab] = useState<'settings' | 'sdk' | 'fingerprint'>(
