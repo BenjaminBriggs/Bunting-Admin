@@ -120,6 +120,48 @@ export const createRolloutSchema = z.object({
 	appId: id,
 });
 
+// Stored A/B test variants: group name → { percentage, values }. Each group's
+// percentage is an integer from 0 to 100 and the groups sum to at most 100;
+// users bucketed past the total are not in the test. SDKs decode percentages as
+// integers, so a fractional or out-of-range one would make them drop the test.
+const testVariantsSchema = z
+	.record(
+		z.string().min(1),
+		z
+			.object({ percentage: z.number().int().min(0).max(100).optional() })
+			.passthrough(),
+	)
+	.superRefine((variants, ctx) => {
+		const total = Object.values(variants).reduce(
+			(sum, variant) => sum + (variant.percentage ?? 0),
+			0,
+		);
+		if (total > 100) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: `Test group percentages sum to ${total}; they must add up to 100 or less`,
+			});
+		}
+	});
+
+// Apply testVariantsSchema without narrowing the output type: `variants` is
+// written straight to a nullable Json column (see updateTestRolloutSchema).
+const checkedTestVariants = z.any().superRefine((value, ctx) => {
+	if (value === undefined || value === null) {
+		return;
+	}
+	const result = testVariantsSchema.safeParse(value);
+	if (!result.success) {
+		for (const issue of result.error.issues) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: issue.message,
+				path: issue.path,
+			});
+		}
+	}
+});
+
 // Unified create used by /api/test-rollouts. type discriminates the payload.
 export const createTestRolloutSchema = z
 	.object({
@@ -130,8 +172,8 @@ export const createTestRolloutSchema = z
 		type: z.enum(['TEST', 'ROLLOUT']),
 		conditions: z.array(conditionSchema).optional(),
 		flagIds: z.array(z.string()).optional(),
-		variants: z.record(z.string(), z.unknown()).optional(),
-		percentage: z.number().min(0).max(100).optional(),
+		variants: checkedTestVariants.optional(),
+		percentage: z.number().int().min(0).max(100).optional(),
 	})
 	.refine((d) => d.type !== 'ROLLOUT' || d.percentage !== undefined, {
 		message: 'percentage is required for ROLLOUT',
@@ -218,9 +260,9 @@ export const updateTestRolloutSchema = z.object({
 	flagIds: z.array(z.string()).optional(),
 	// Opaque JSON blobs written straight to Prisma; typed loosely so `x || null`
 	// stays assignable to the nullable Json column input.
-	variants: z.any().optional(),
+	variants: checkedTestVariants.optional(),
 	rolloutValues: z.any().optional(),
-	percentage: z.number().min(0).max(100).optional(),
+	percentage: z.number().int().min(0).max(100).optional(),
 	archived: z.boolean().optional(),
 });
 

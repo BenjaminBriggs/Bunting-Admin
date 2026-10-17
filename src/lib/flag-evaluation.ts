@@ -6,6 +6,7 @@
  * synchronous: the admin has no async data source for it.
  */
 
+import { UNRECOGNIZED } from '@/lib/artifact-decoder';
 import { assignVariant, isInRollout } from '@/lib/bucketing';
 import { logger } from '@/lib/logger';
 import type {
@@ -76,6 +77,10 @@ export function evaluateFlag(
 
 	// Step 3: Evaluate each variant in order
 	for (const variant of variants) {
+		// An unrecognized placeholder from artifact-decoder.ts never matches.
+		if ((variant.type as string) === UNRECOGNIZED) {
+			continue;
+		}
 		if (variant.type === 'conditional') {
 			// Conditional variant: evaluate all conditions
 			if (evaluateConditions(variant.conditions ?? [], context)) {
@@ -120,10 +125,13 @@ export function evaluateFlag(
 
 /**
  * Resolve a `test` variant's value: preconditions → deterministic bucketing
- * into `test.groups` → the group's value in `variant.values`. Falls back to
- * an arbitrary `variant.values` entry, then `variant.value`, for malformed
- * (groupless) legacy tests — matching FlagEvaluator.swift's evaluateTest
- * steps 4-5. Returns undefined if the variant should be skipped entirely.
+ * into `test.groups` → the group's value in `variant.values`.
+ *
+ * Returns undefined, so evaluation falls through to the next variant and then
+ * the default, when the user is not in the test: preconditions fail, the
+ * bucket lands past the groups' total (groups summing to under 100 leave a
+ * remainder), the assigned group has no value in this variant, or the test
+ * has no groups at all.
  */
 function evaluateTestVariant(
 	test: Test,
@@ -142,21 +150,10 @@ function evaluateTestVariant(
 		context.localId,
 		test.groups ?? [],
 	);
-	if (groupName) {
-		const value = variant.values?.[groupName];
-		if (value !== undefined) {
-			return value;
-		}
+	if (!groupName) {
+		return undefined;
 	}
-
-	if (variant.values) {
-		const fallbackValues = Object.values(variant.values);
-		if (fallbackValues.length > 0) {
-			return fallbackValues[0];
-		}
-	}
-
-	return variant.value;
+	return variant.values?.[groupName];
 }
 
 /** Preconditions pass and the bucket falls within `rollout.percentage`. */
@@ -258,6 +255,12 @@ export function evaluateCondition(
 			return evaluateCustomCondition(condition, context);
 
 		default:
+			// A condition artifact-decoder.ts could not understand (unknown type
+			// or operator, malformed values) is expected in decoded artifacts and
+			// fails closed without noise.
+			if ((type as string) === UNRECOGNIZED) {
+				return false;
+			}
 			// All ConditionType values are handled above; this guards malformed
 			// runtime data whose `type` escapes the union.
 			logger.warn({ type: String(type) }, 'Unknown condition type');

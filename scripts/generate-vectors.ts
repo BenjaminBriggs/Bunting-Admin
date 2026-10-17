@@ -17,6 +17,12 @@ import { sign as cryptoSign } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { importPKCS8 } from 'jose';
+import {
+	decodeArtifact,
+	decodeIssues,
+	type DecodeResult,
+	isLossless,
+} from '@/lib/artifact-decoder';
 import { buildBootstrapDocument } from '@/lib/bootstrap';
 import { assignVariant, bucketFor } from '@/lib/bucketing';
 import { signDetached } from '@/lib/detached-signature';
@@ -41,7 +47,7 @@ import type {
 	Test,
 } from '@/types';
 
-const BUNDLE_VERSION = '2026-07-02.2';
+const BUNDLE_VERSION = '2026-10-17.1';
 const CONFORMANCE_DIR = join(process.cwd(), 'conformance');
 const KEYS_DIR = join(CONFORMANCE_DIR, 'keys');
 
@@ -222,7 +228,31 @@ const flags: Record<string, EnvironmentFlag> = {
 	'types/whole_double': makeFlag('double', 2),
 	'types/whole_int': makeFlag('int', 42),
 	'types/fractional_date': makeFlag('date', '2026-07-02T00:00:00.123Z'),
+	'types/whole_second_date': makeFlag('date', '2026-07-02T00:00:00Z'),
 	'types/json_flag': makeFlag('json', '{"sections":["home","profile"]}'),
+	// C2: values decode by declared type, never by shape. Each of these looks
+	// like a different type and must come back exactly as written.
+	'types/bracket_string': makeFlag('string', '[Beta] Hi'),
+	'types/brace_string': makeFlag('string', '{not json}'),
+	'types/iso_looking_string': makeFlag('string', '2026-01-01T00:00:00Z'),
+	'types/numeric_string': makeFlag('string', '42'),
+	'types/json_scalar': makeFlag('json', '42'),
+	// C3: groups summing to 60 leave a remainder that is not in the test, so
+	// those users fall through to the next variant (order 2), not a group.
+	'test/remainder_experiment': makeFlag('string', 'not-in-test', [
+		testVariant(1, 'remainder_experiment', {
+			alpha: 'alpha-value',
+			beta: 'beta-value',
+		}),
+		conditional(2, 'next-variant', [cond('region', 'in', ['US'])]),
+	]),
+	// C3: group "without_value" has no value in this variant, so users bucketed
+	// into it are not in the test either and get the environment default.
+	'test/partial_values_experiment': makeFlag('string', 'not-in-test', [
+		testVariant(1, 'partial_values_experiment', {
+			with_value: 'with-value',
+		}),
+	]),
 };
 
 const tests: Record<string, Test> = {
@@ -234,6 +264,26 @@ const tests: Record<string, Test> = {
 		groups: [
 			{ name: 'control', percentage: 50 },
 			{ name: 'treatment', percentage: 50 },
+		],
+	},
+	remainder_experiment: {
+		name: 'remainder_experiment',
+		type: 'test',
+		salt: 'remainder-salt',
+		conditions: [],
+		groups: [
+			{ name: 'alpha', percentage: 30 },
+			{ name: 'beta', percentage: 30 },
+		],
+	},
+	partial_values_experiment: {
+		name: 'partial_values_experiment',
+		type: 'test',
+		salt: 'partial-salt',
+		conditions: [],
+		groups: [
+			{ name: 'with_value', percentage: 50 },
+			{ name: 'without_value', percentage: 50 },
 		],
 	},
 };
@@ -309,6 +359,26 @@ function toEvalContext(
 ): EvaluationContext {
 	const { local_id, ...userAttributes } = ctx;
 	return { environment, localId: local_id, userAttributes };
+}
+
+/**
+ * The first canonical UUID local ID that `assignVariant` puts in `group` for
+ * this test (`null` = the remainder past every group). Searching with the real
+ * bucketer keeps the fixture honest: nothing about the bucket is hand-picked.
+ */
+function localIdInGroup(test: Test, group: string | null): string {
+	for (let i = 1; i <= 10000; i++) {
+		const id =
+			`AAAAAAAA-0000-4000-8000-${String(i).padStart(12, '0')}`.toUpperCase();
+		if (assignVariant(test.salt, id, test.groups ?? []) === group) {
+			return id;
+		}
+	}
+	throw new Error(`no local ID lands in group ${String(group)}`);
+}
+
+function withLocalId(localId: string): WireContext {
+	return { ...baseContext, local_id: localId };
 }
 
 // ---------------------------------------------------------------------------
@@ -517,6 +587,38 @@ const evaluationCaseInputs: EvaluationCaseInput[] = [
 		context: baseContext,
 		environment: 'production',
 	},
+	...[
+		'types/whole_second_date',
+		'types/bracket_string',
+		'types/brace_string',
+		'types/iso_looking_string',
+		'types/numeric_string',
+		'types/json_scalar',
+	].map(
+		(flag_key): EvaluationCaseInput => ({
+			flag_key,
+			context: baseContext,
+			environment: 'production',
+		}),
+	),
+	// C3 remainder: one user per group, one past the groups' 60% total.
+	...(['alpha', 'beta', null] as const).map(
+		(group): EvaluationCaseInput => ({
+			flag_key: 'test/remainder_experiment',
+			context: withLocalId(localIdInGroup(tests.remainder_experiment, group)),
+			environment: 'production',
+		}),
+	),
+	// C3 missing group value: the assigned group exists but has no value here.
+	...(['with_value', 'without_value'] as const).map(
+		(group): EvaluationCaseInput => ({
+			flag_key: 'test/partial_values_experiment',
+			context: withLocalId(
+				localIdInGroup(tests.partial_values_experiment, group),
+			),
+			environment: 'production',
+		}),
+	),
 ];
 
 /**
@@ -530,6 +632,7 @@ function describeSource(
 	result: ReturnType<typeof evaluateFlag>,
 	environment: Environment,
 	context: EvaluationContext,
+	source: Pick<ConfigArtifact, 'tests'> = artifact,
 ): string {
 	if (result.reason === 'default') {
 		return `${environment} default`;
@@ -544,7 +647,7 @@ function describeSource(
 		return `conditional variant (order ${variant.order})`;
 	}
 	if (result.reason === 'test') {
-		const test = variant.test ? tests[variant.test] : undefined;
+		const test = variant.test ? source.tests[variant.test] : undefined;
 		if (!test) {
 			throw new Error(`test "${String(variant.test)}" missing from fixture`);
 		}
@@ -590,17 +693,18 @@ const fingerprintContextInputs: Array<{
 function selectionsFor(
 	context: WireContext,
 	environment: FingerprintEnv,
+	source: ConfigArtifact = artifact,
 ): Record<string, number> {
 	const evalContext = toEvalContext(context, environment);
 	const selections: Record<string, number> = {};
-	for (const [key, flag] of Object.entries(flags)) {
-		const result = evaluateFlag(flag, environment, evalContext, artifact);
-		const source = describeSource(result, environment, evalContext);
-		const paths = enumeratePaths(artifact, flag, environment);
-		const idx = paths.findIndex((p) => p.reason === source);
+	for (const [key, flag] of Object.entries(source.flags)) {
+		const result = evaluateFlag(flag, environment, evalContext, source);
+		const label = describeSource(result, environment, evalContext, source);
+		const paths = enumeratePaths(source, flag, environment);
+		const idx = paths.findIndex((p) => p.reason === label);
 		if (idx < 0) {
 			throw new Error(
-				`selection index not found for flag "${key}" (source "${source}")`,
+				`selection index not found for flag "${key}" (source "${label}")`,
 			);
 		}
 		selections[key] = idx;
@@ -741,8 +845,28 @@ function buildBootstrapCases() {
 		fetchPolicy: null,
 	});
 
+	// Rotation-safe bootstrap: the active key first, then a standby key the app
+	// also trusts. SDKs must keep every key, in order.
+	const wrongPubPem = readFileSync(join(KEYS_DIR, 'wrong-key.pub.pem'), 'utf8');
+	const multiKeyDocument = buildBootstrapDocument({
+		appIdentifier: 'conformance-app',
+		endpointUrl: 'https://cdn.example.com/conformance/config.json',
+		publicKeys: [
+			{ kid: 'conformance-key', pem: testPubPem },
+			{ kid: 'conformance-standby-key', pem: wrongPubPem },
+		],
+		fetchPolicy: null,
+	});
+
 	return [
 		{ name: 'valid', valid: true, document: validDocument, reason: '' },
+		{
+			name: 'valid_multi_key',
+			valid: true,
+			document: multiKeyDocument,
+			reason: '',
+			expected_kids: ['conformance-key', 'conformance-standby-key'],
+		},
 		{
 			name: 'missing_endpoint',
 			valid: false,
@@ -765,6 +889,366 @@ function buildBootstrapCases() {
 			reason: 'endpoint_url must end with config.json',
 		},
 	];
+}
+
+// ---------------------------------------------------------------------------
+// decoding.json
+// ---------------------------------------------------------------------------
+
+// Hand-built wire artifacts: the admin never publishes most of this (publish
+// validation refuses it), but SDKs must still decode it per the v1 contract in
+// src/lib/artifact-decoder.ts. Expected outcomes come from that decoder and the
+// reference evaluator, never from hand-written answers.
+
+const header = {
+	schema_version: 1,
+	config_version: BUNDLE_VERSION,
+	published_at: '2026-07-02T00:00:00.000Z',
+	app_identifier: 'conformance-app',
+};
+
+/** A flag whose three environments share one default and variant list. */
+function rawFlag(
+	type: string,
+	defaultValue: unknown,
+	variants: unknown[] = [],
+	extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+	const env = { default: defaultValue, variants };
+	return {
+		type,
+		...extra,
+		development: env,
+		beta: env,
+		production: env,
+	};
+}
+
+// A string value swapped for raw text after JSON.stringify, for number
+// spellings it can't emit (it always writes 2.0 as 2).
+const RAW_TWO_POINT_ZERO = '__RAW_2_0__';
+
+const tolerantArtifact = {
+	...header,
+	// Unknown keys are ignored at every level.
+	future_top_level_field: { anything: true },
+	flags: {
+		'ok/bool': rawFlag(
+			'bool',
+			false,
+			[
+				{
+					type: 'conditional',
+					order: 1,
+					value: true,
+					conditions: [{ type: 'platform', operator: 'in', values: ['ios'] }],
+				},
+			],
+			{ owner: 'team-a' },
+		),
+		'ok/rollout': rawFlag('bool', false, [
+			{ type: 'rollout', order: 1, rollout: 'fine_rollout', value: true },
+		]),
+
+		// C1: each of these flags is skipped; the rest of the artifact survives.
+		'skip/unknown_type': rawFlag('color', 'red'),
+		'skip/missing_environment': {
+			type: 'bool',
+			development: { default: false },
+			production: { default: false },
+		},
+		'skip/default_wrong_type': rawFlag('int', '5'),
+		'skip/json_raw_object': rawFlag('json', { sections: ['home'] }),
+		'skip/date_only': rawFlag('date', '2026-07-02'),
+		'skip/date_with_offset': rawFlag('date', '2026-07-02T00:00:00+01:00'),
+		'skip/int_fractional': rawFlag('int', 2.5),
+		'skip/null_default': rawFlag('string', null),
+		'skip/variants_not_array': {
+			type: 'bool',
+			development: { default: false, variants: {} },
+			beta: { default: false },
+			production: { default: false },
+		},
+		'skip/not_an_object': 'bool',
+
+		// C2: typed decoding by declared type.
+		'typed/int_written_as_float': rawFlag('int', RAW_TWO_POINT_ZERO),
+		'typed/double_written_as_int': rawFlag('double', 3),
+		'typed/bracket_string': rawFlag('string', '[Beta] Hi'),
+		'typed/iso_looking_string': rawFlag('string', '2026-01-01T00:00:00Z'),
+		'typed/json_scalar': rawFlag('json', '42'),
+		'typed/json_leading_newline': rawFlag('json', '\n{"a":1}'),
+		'typed/date_fractional': rawFlag('date', '2026-07-02T10:00:04.796Z'),
+		'typed/date_whole_seconds': rawFlag('date', '2026-07-02T10:00:04Z'),
+
+		// C1: bad variants become never-matching placeholders (one fingerprint
+		// path each), a variant without an order is dropped, and conditions an
+		// SDK doesn't understand never match. Only order 9 can match.
+		'variants/placeholders': rawFlag('string', 'default', [
+			{ type: 'geo_fence', order: 1, value: 'unknown-variant-type' },
+			{
+				type: 'conditional',
+				order: 2,
+				value: 5,
+				conditions: [{ type: 'platform', operator: 'in', values: ['ios'] }],
+			},
+			{ type: 'conditional', value: 'no-order' },
+			{
+				type: 'conditional',
+				order: 3,
+				value: 'unknown-condition-type',
+				conditions: [{ type: 'moon_phase', operator: 'in', values: ['full'] }],
+			},
+			{
+				type: 'conditional',
+				order: 4,
+				value: 'unknown-operator',
+				conditions: [
+					{ type: 'platform', operator: 'matches_regex', values: ['ios'] },
+				],
+			},
+			{
+				type: 'conditional',
+				order: 5,
+				value: 'numeric-condition-values',
+				conditions: [
+					{ type: 'build_number', operator: 'equals', values: [100] },
+				],
+			},
+			{ type: 'test', order: 6, test: 'dropped_test', values: { a: 't' } },
+			{ type: 'rollout', order: 7, rollout: 'dropped_rollout', value: 'r' },
+			{ type: 'rollout', order: 8, value: 'missing-rollout-reference' },
+			{
+				type: 'conditional',
+				order: 9,
+				value: 'first-real-match',
+				conditions: [{ type: 'platform', operator: 'in', values: ['ios'] }],
+			},
+		]),
+		// An unknown operator fails closed even where an evaluator might ignore
+		// the operator (custom_attribute only reads its values).
+		'variants/custom_attribute_unknown_operator': rawFlag('bool', false, [
+			{
+				type: 'conditional',
+				order: 1,
+				value: true,
+				conditions: [
+					{
+						type: 'custom_attribute',
+						operator: 'regex',
+						values: ['manufacturer', 'apple'],
+					},
+				],
+			},
+		]),
+		'variants/test_remainder': rawFlag('string', 'not-in-test', [
+			{
+				type: 'test',
+				order: 1,
+				test: 'small_test',
+				values: { only: 'in-test' },
+			},
+		]),
+		'variants/test_unknown_precondition': rawFlag('string', 'not-in-test', [
+			{
+				type: 'test',
+				order: 1,
+				test: 'unknown_precondition_test',
+				values: { everyone: 'in-test' },
+			},
+		]),
+	},
+	tests: {
+		small_test: {
+			name: 'small_test',
+			type: 'test',
+			salt: 'small-salt',
+			conditions: [],
+			groups: [{ name: 'only', percentage: 10 }],
+		},
+		unknown_precondition_test: {
+			name: 'unknown_precondition_test',
+			type: 'test',
+			salt: 'precondition-salt',
+			conditions: [{ type: 'moon_phase', operator: 'in', values: ['full'] }],
+			groups: [{ name: 'everyone', percentage: 100 }],
+		},
+		dropped_test: {
+			name: 'dropped_test',
+			type: 'test',
+			salt: 'dropped-salt',
+			conditions: [],
+			groups: [
+				{ name: 'a', percentage: 60 },
+				{ name: 'b', percentage: 60 },
+			],
+		},
+		fractional_test: {
+			name: 'fractional_test',
+			type: 'test',
+			salt: 'fractional-salt',
+			conditions: [],
+			groups: [{ name: 'a', percentage: 12.5 }],
+		},
+	},
+	rollouts: {
+		fine_rollout: {
+			name: 'fine_rollout',
+			type: 'rollout',
+			salt: 'fine-salt',
+			conditions: [],
+			percentage: 100,
+		},
+		dropped_rollout: {
+			name: 'dropped_rollout',
+			type: 'rollout',
+			salt: 'dropped-salt',
+			conditions: [],
+			percentage: 150,
+		},
+		fractional_rollout: {
+			name: 'fractional_rollout',
+			type: 'rollout',
+			salt: 'fractional-salt',
+			conditions: [],
+			percentage: 12.5,
+		},
+	},
+};
+
+const tolerantText = JSON.stringify(tolerantArtifact).replaceAll(
+	JSON.stringify(RAW_TWO_POINT_ZERO),
+	'2.0',
+);
+
+const decodingInputs: Array<{ name: string; text: string }> = [
+	{ name: 'tolerant', text: tolerantText },
+	{
+		name: 'minimal_without_tests_or_rollouts',
+		text: JSON.stringify({ ...header, flags: {} }),
+	},
+	{
+		name: 'rejected_invalid_json',
+		text: JSON.stringify({ ...header, flags: {} }).slice(0, -2),
+	},
+	{
+		name: 'rejected_unsupported_schema_version',
+		text: JSON.stringify({ ...header, schema_version: 2, flags: {} }),
+	},
+	{
+		name: 'rejected_missing_flags',
+		text: JSON.stringify({ ...header }),
+	},
+	{
+		name: 'rejected_tests_not_object',
+		text: JSON.stringify({ ...header, flags: {}, tests: [] }),
+	},
+	{
+		name: 'rejected_published_at_not_instant',
+		text: JSON.stringify({ ...header, published_at: '2026-07-02', flags: {} }),
+	},
+];
+
+/** The decoded shape SDK runners compare against their own decoded models. */
+function summarizeDecoded(result: DecodeResult) {
+	if (!result.accepted || !result.artifact) {
+		return { accepted: false, reason: result.rejection ?? '' };
+	}
+	const decoded = result.artifact;
+	const flagSummaries: Record<string, unknown> = {};
+	for (const key of Object.keys(decoded.flags).sort()) {
+		const flag = decoded.flags[key];
+		const environments: Record<string, unknown> = {};
+		for (const env of ['development', 'beta', 'production'] as const) {
+			environments[env] = {
+				default: flag[env].default,
+				variants: (flag[env].variants ?? []).map((variant) => ({
+					order: variant.order,
+					kind: variant.type,
+				})),
+			};
+		}
+		flagSummaries[key] = { type: flag.type, environments };
+	}
+	return {
+		accepted: true,
+		flags: flagSummaries,
+		skipped_flags: result.skippedFlags
+			.map((issue) => /^flags\["(.+?)"\]/.exec(issue.path)?.[1] ?? issue.path)
+			.sort(),
+		tests: Object.keys(decoded.tests).sort(),
+		rollouts: Object.keys(decoded.rollouts).sort(),
+	};
+}
+
+function buildDecodingCases() {
+	return decodingInputs.map(({ name, text }) => {
+		const result = decodeArtifact(text);
+		const base = {
+			name,
+			artifact_b64: Buffer.from(text, 'utf8').toString('base64'),
+			expected: summarizeDecoded(result),
+		};
+		if (!result.accepted || !result.artifact) {
+			return base;
+		}
+		const decoded = result.artifact;
+
+		const smallTest = decoded.tests.small_test as Test | undefined;
+		const evaluationInputs: EvaluationCaseInput[] = [];
+		for (const flag_key of Object.keys(decoded.flags).sort()) {
+			evaluationInputs.push({
+				flag_key,
+				context: baseContext,
+				environment: 'production',
+			});
+		}
+		if (smallTest) {
+			evaluationInputs.push(
+				...(['only', null] as const).map(
+					(group): EvaluationCaseInput => ({
+						flag_key: 'variants/test_remainder',
+						context: withLocalId(localIdInGroup(smallTest, group)),
+						environment: 'production',
+					}),
+				),
+			);
+		}
+
+		const evaluations = evaluationInputs.map((input) => {
+			const evalContext = toEvalContext(input.context, input.environment);
+			const result = evaluateFlag(
+				decoded.flags[input.flag_key],
+				input.environment,
+				evalContext,
+				decoded,
+			);
+			return {
+				context: input.context,
+				flag_key: input.flag_key,
+				environment: input.environment,
+				expected_value: result.value,
+				expected_source: describeSource(
+					result,
+					input.environment,
+					evalContext,
+					decoded,
+				),
+			};
+		});
+
+		const fingerprint = {
+			context: baseContext,
+			environment: 'production' as FingerprintEnv,
+			code: encodeFingerprint(
+				decoded,
+				'production',
+				selectionsFor(baseContext, 'production', decoded),
+			),
+		};
+
+		return { ...base, evaluations, fingerprint };
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -818,6 +1302,15 @@ async function main() {
 		mkdirSync(CONFORMANCE_DIR, { recursive: true });
 	}
 
+	// The main fixture must survive SDK decoding untouched, or every other set
+	// would be certifying against an artifact SDKs see differently.
+	const fixtureDecode = decodeArtifact(JSON.stringify(artifact));
+	if (!isLossless(fixtureDecode)) {
+		throw new Error(
+			`fixture artifact is not lossless under the SDK decoder: ${JSON.stringify(decodeIssues(fixtureDecode))}`,
+		);
+	}
+
 	const bucketingCases = buildBucketingCases();
 	writeJSON('bucketing.json', {
 		version: BUNDLE_VERSION,
@@ -850,6 +1343,13 @@ async function main() {
 		cases: bootstrapCases,
 	});
 
+	const decodingCases = buildDecodingCases();
+	writeJSON('decoding.json', {
+		version: BUNDLE_VERSION,
+		note: 'artifact_b64 is the exact config.json text. Decode it with the SDK decoder, compare the decoded model to expected (values compared by the flag type: dates as instants, numbers numerically), then run evaluations and the fingerprint against the decoded artifact.',
+		cases: decodingCases,
+	});
+
 	writeJSON('manifest.json', {
 		version: BUNDLE_VERSION,
 		sets: {
@@ -858,6 +1358,7 @@ async function main() {
 			fingerprint: { file: 'fingerprint.json', count: fingerprintCases.length },
 			signature: { file: 'signature.json', count: signatureCases.length },
 			bootstrap: { file: 'bootstrap.json', count: bootstrapCases.length },
+			decoding: { file: 'decoding.json', count: decodingCases.length },
 		},
 	});
 }
