@@ -260,11 +260,13 @@ Create an A/B test.
 | `variantNames` | `string[]`    | required — length must equal `variantCount`, no empty names  |
 | `appId`        | string        | required                                                     |
 
-A `salt` is generated server-side. `variants` is built as `{ [name]: { percentage, values: { development: null, beta: null, production: null } } }`. `flagIds` starts as `[]`.
+A `salt` is generated server-side. `variants` is built as `{ [name]: { percentage, position, values: { development: null, beta: null, production: null } } }`, where `position` is the group's index in `variantNames`. `flagIds` starts as `[]`.
+
+**Group order.** SDKs bucket users into groups by cumulative percentage in the order of the artifact's `groups`, so that order decides which users land in which group. It comes from each group's integer `position` (Postgres does not keep JSON key order), and editing a test never changes the position of a group it keeps, renamed or not; added groups get the next positions. Tests stored before positions existed have none and keep the order they were already published with until their first edit records it. Clients that write `variants` (`PUT /api/tests/[id]`, `PUT /api/test-rollouts/[id]`) must send each group's `position` back unchanged.
 
 **Response 201** — created `TestRollout` object.
 
-**Errors:** `400` if traffic split doesn't sum to 100, count/names mismatch, or empty variant names.
+**Errors:** `400` if traffic split doesn't sum to 100, count/names mismatch, or empty or repeated variant names.
 
 ---
 
@@ -444,6 +446,8 @@ Create a test or rollout. `key` is auto-generated from `name`.
 | `flagIds`     | `string[]`                | optional                                                                                   |
 | `variants`    | `Record<string, unknown>` | required when `type = "TEST"`                                                              |
 | `percentage`  | integer 0–100             | required when `type = "ROLLOUT"`                                                           |
+
+Test groups are given a `position` in the order sent (or in their existing `position` order if every group has one); see [group order](#post-apitests).
 
 **Response 201** — created `TestRollout` object.
 

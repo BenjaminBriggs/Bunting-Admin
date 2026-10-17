@@ -1,0 +1,186 @@
+{
+	"schema_version": 1,
+	"config_version": "",
+	"published_at": "",
+	"app_identifier": "legacy-groups",
+	"flags": {
+		"checkout/button_color": {
+			"type": "string",
+			"description": "",
+			"development": {
+				"default": "grey",
+				"variants": [
+					{
+						"type": "test",
+						"order": 10,
+						"test": "checkout_test",
+						"values": {
+							"b": "blue",
+							"control": "grey",
+							"treatment_long_name": "green"
+						}
+					}
+				]
+			},
+			"beta": {
+				"default": "grey",
+				"variants": [
+					{
+						"type": "test",
+						"order": 10,
+						"test": "checkout_test",
+						"values": {
+							"b": "blue",
+							"control": "grey",
+							"treatment_long_name": "green"
+						}
+					}
+				]
+			},
+			"production": {
+				"default": "grey",
+				"variants": [
+					{
+						"type": "conditional",
+						"order": 1,
+						"value": "black",
+						"conditions": [
+							{
+								"type": "platform",
+								"values": ["ios"],
+								"operator": "in"
+							}
+						]
+					},
+					{
+						"type": "test",
+						"order": 11,
+						"test": "checkout_test",
+						"values": {
+							"b": "blue",
+							"control": "grey",
+							"treatment_long_name": "green"
+						}
+					},
+					{
+						"type": "rollout",
+						"order": 21,
+						"rollout": "color_rollout",
+						"value": "red"
+					}
+				]
+			}
+		},
+		"checkout/item_limit": {
+			"type": "int",
+			"description": "",
+			"development": {
+				"default": 5,
+				"variants": [
+					{
+						"type": "test",
+						"order": 10,
+						"test": "checkout_test",
+						"values": {
+							"b": 10,
+							"control": 5,
+							"treatment_long_name": 8
+						}
+					}
+				]
+			},
+			"beta": {
+				"default": 5,
+				"variants": [
+					{
+						"type": "test",
+						"order": 10,
+						"test": "checkout_test",
+						"values": {
+							"b": 10,
+							"control": 5,
+							"treatment_long_name": 8
+						}
+					}
+				]
+			},
+			"production": {
+				"default": 5,
+				"variants": [
+					{
+						"type": "test",
+						"order": 10,
+						"test": "checkout_test",
+						"values": {
+							"b": 10,
+							"control": 5,
+							"treatment_long_name": 8
+						}
+					},
+					{
+						"type": "test",
+						"order": 20,
+						"test": "limit_test",
+						"values": {
+							"zeta": 20,
+							"alpha_group": 1
+						}
+					}
+				]
+			}
+		}
+	},
+	"tests": {
+		"checkout_test": {
+			"name": "Checkout test",
+			"type": "test",
+			"salt": "salt_checkout_test",
+			"conditions": [],
+			"groups": [
+				{
+					"name": "b",
+					"percentage": 30
+				},
+				{
+					"name": "control",
+					"percentage": 40
+				},
+				{
+					"name": "treatment_long_name",
+					"percentage": 30
+				}
+			]
+		},
+		"limit_test": {
+			"name": "Limit test",
+			"type": "test",
+			"salt": "salt_limit_test",
+			"conditions": [
+				{
+					"type": "app_version",
+					"values": ["2.0.0"],
+					"operator": "greater_than_or_equal"
+				}
+			],
+			"groups": [
+				{
+					"name": "zeta",
+					"percentage": 50
+				},
+				{
+					"name": "alpha_group",
+					"percentage": 50
+				}
+			]
+		}
+	},
+	"rollouts": {
+		"color_rollout": {
+			"name": "Color rollout",
+			"type": "rollout",
+			"salt": "salt_color_rollout",
+			"conditions": [],
+			"percentage": 10
+		}
+	}
+}

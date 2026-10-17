@@ -74,11 +74,13 @@ async function seedRollout(appId: string, flagId: string) {
 	});
 }
 
-// Two groups with per-flag values, like the Flags page writes them.
+// Two groups with positions and per-flag values, like the create route and
+// the Flags page write them.
 function storedGroups(flagId: string): StoredTestVariants {
 	return {
 		control: {
 			percentage: 50,
+			position: 0,
 			values: {
 				development: { [flagId]: 'grey' },
 				beta: { [flagId]: 'grey' },
@@ -87,6 +89,7 @@ function storedGroups(flagId: string): StoredTestVariants {
 		},
 		treatment: {
 			percentage: 50,
+			position: 1,
 			values: {
 				development: { [flagId]: 'green' },
 				beta: { [flagId]: 'green' },
@@ -325,7 +328,7 @@ describe('test edit keeps per-flag group values', () => {
 			{ name: 'blue', weight: 33 },
 		]);
 
-		expect(variants.blue).toEqual({ percentage: 33 });
+		expect(variants.blue).toEqual({ percentage: 33, position: 2 });
 		expect(variants.control.values).toEqual(before.control.values);
 		expect(variants.treatment.values).toEqual(before.treatment.values);
 
@@ -350,7 +353,7 @@ describe('test edit keeps per-flag group values', () => {
 
 		expect(variants).toEqual({
 			treatment: { ...before.treatment, percentage: 50 },
-			blue: { percentage: 50 },
+			blue: { percentage: 50, position: 2 },
 		});
 		const config = await generateConfigFromDb(app.id);
 		expect(config.flags.button_color.beta.variants?.[0].values).toEqual({

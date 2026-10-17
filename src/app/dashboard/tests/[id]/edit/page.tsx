@@ -27,7 +27,10 @@ import {
 	updateTestRollout,
 } from '@/lib/api';
 import { useChanges } from '@/lib/changes-context';
-import { buildTestUpdatePayload } from '@/lib/test-group-variants';
+import {
+	buildTestUpdatePayload,
+	orderedTestGroups,
+} from '@/lib/test-group-variants';
 import type { Condition, TestVariant } from '@/types';
 
 function isEvenSplit(groups: TestGroupValue[]): boolean {
@@ -167,7 +170,8 @@ export default function EditTestPage() {
 		);
 	}
 
-	const groups: TestGroupValue[] = Object.entries(test.variants ?? {}).map(
+	// Rows in bucketing order, so groups the form appends come after them.
+	const groups: TestGroupValue[] = orderedTestGroups(test.variants).map(
 		([name, data]: [string, TestVariant]) => ({
 			name,
 			weight: data.percentage,
@@ -219,7 +223,7 @@ export default function EditTestPage() {
 					kind="test"
 					name={test.name}
 					hasConditions={test.conditions.length > 0}
-					groups={Object.keys(test.variants ?? {})}
+					groups={groups.map((g) => g.name)}
 					busy={finishBusy}
 					error={finishError}
 					onConfirm={(winner) => void handleFinish(winner)}

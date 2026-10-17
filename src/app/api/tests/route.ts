@@ -94,20 +94,32 @@ export async function POST(request: NextRequest) {
 			);
 		}
 
+		// Groups are stored by name, so a repeated name would merge two groups.
+		if (new Set(variantNames).size !== variantNames.length) {
+			return NextResponse.json(
+				{ error: 'Variant names must be unique' },
+				{ status: 400 },
+			);
+		}
+
 		// Generate salt for consistent user bucketing
 		const salt = generateSalt();
 
-		// Create variants object with default null values for each environment
+		// Create variants object with default null values for each environment.
+		// `position` fixes each group's bucketing order to the authored order (see
+		// orderedTestGroups).
 		const variants: Record<
 			string,
 			{
 				percentage: number;
+				position: number;
 				values: { development: null; beta: null; production: null };
 			}
 		> = {};
 		variantNames.forEach((variantName, index) => {
 			variants[variantName] = {
 				percentage: trafficSplit[index],
+				position: index,
 				values: {
 					development: null,
 					beta: null,

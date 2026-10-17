@@ -61,7 +61,7 @@ describe('TestForm (edit) group identity', () => {
 		]);
 	});
 
-	it('an added group has no stored group, so the edit sends it without values', () => {
+	it('an added group has no stored group, so the edit appends it without values', () => {
 		const onSubmit = renderEdit();
 
 		fireEvent.click(screen.getByText('Add group'));
@@ -81,15 +81,15 @@ describe('TestForm (edit) group identity', () => {
 		};
 		const body = buildTestUpdatePayload(
 			{
-				control: { percentage: 50, values },
-				treatment: { percentage: 50, values },
+				control: { percentage: 50, position: 0, values },
+				treatment: { percentage: 50, position: 1, values },
 			},
 			submitted,
 		);
 		expect(body.variants).toEqual({
-			control: { percentage: 34, values },
-			treatment: { percentage: 33, values },
-			'Group 3': { percentage: 33 },
+			control: { percentage: 34, position: 0, values },
+			treatment: { percentage: 33, position: 1, values },
+			'Group 3': { percentage: 33, position: 2 },
 		});
 	});
 

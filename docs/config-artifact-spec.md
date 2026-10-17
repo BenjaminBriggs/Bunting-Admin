@@ -243,7 +243,9 @@ A/B experiments with deterministic user bucketing.
 | `type`       | yes      | Always `"test"`.                                                                                                                                   |
 | `salt`       | yes      | Unique, immutable random string. Changing it remaps all users.                                                                                     |
 | `conditions` | yes      | Entry conditions; only users matching all conditions participate (`[]` when none).                                                                 |
-| `groups`     | no       | Array of `{ name, percentage }`. Omitted when the test has no groups. Percentages should sum to ≤ 100. The SDK buckets users into a group by name. |
+| `groups`     | no       | Array of `{ name, percentage }`. Omitted when the test has no groups. Percentages should sum to ≤ 100. Array order is the bucket order; see below. |
+
+**Group order.** The SDK maps a user's bucket to a group by cumulative percentage in `groups` array order, so the order decides which users land in which group. The admin emits groups in the order of each group's stored `position`, which edits never change for a group they keep (renamed or not); new groups are appended. Tests stored before positions existed keep the order they were first published with.
 
 ---
 
