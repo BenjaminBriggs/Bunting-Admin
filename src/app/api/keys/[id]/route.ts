@@ -5,9 +5,17 @@ import { logActivity } from '@/lib/activity-log';
 import { requireAdmin } from '@/lib/authz';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import {
+	activateSigningKey,
+	deleteSigningKey,
+	retireSigningKey,
+	signingKeyErrorResponse,
+} from '@/lib/signing-keys';
 
+// STANDBY is never set directly: a key only drops to STANDBY when another key
+// is activated, so an app can't be left without a signing key.
 const updateKeySchema = z.object({
-	isActive: z.boolean().optional(),
+	status: z.enum(['ACTIVE', 'RETIRED']),
 });
 
 interface RouteParams {
@@ -38,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 				kid: true,
 				publicKey: true,
 				algorithm: true,
-				isActive: true,
+				status: true,
 				createdAt: true,
 				app: {
 					select: {
@@ -69,7 +77,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 	}
 }
 
-// PUT /api/keys/[id] - Update signing key (activate/deactivate)
+// PUT /api/keys/[id] - Lifecycle transition: activate (STANDBY -> ACTIVE) or
+// retire (STANDBY -> RETIRED)
 export async function PUT(request: NextRequest, { params }: RouteParams) {
 	const { id: keyId } = await params;
 	try {
@@ -89,52 +98,44 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 		}
 
 		const body: unknown = await request.json();
-		const { isActive } = updateKeySchema.parse(body);
+		const { status } = updateKeySchema.parse(body);
 
-		// Verify key exists
-		const existingKey = await prisma.signingKey.findUnique({
-			where: { appId_kid: { appId, kid: keyId } },
-			select: { id: true, isActive: true },
-		});
-
-		if (!existingKey) {
-			return NextResponse.json(
-				{ error: 'Signing key not found' },
-				{ status: 404 },
-			);
-		}
-
-		// If activating this key, deactivate others
-		await prisma.$transaction(async (tx) => {
-			if (isActive && !existingKey.isActive) {
-				// Deactivate all other keys for this app
-				await tx.signingKey.updateMany({
-					where: { appId, isActive: true },
-					data: { isActive: false },
+		if (status === 'ACTIVE') {
+			const result = await activateSigningKey(appId, keyId);
+			if (result.changed) {
+				await logActivity({
+					actor: authz.email,
+					action: 'activate',
+					entityType: 'signing_key',
+					entityId: result.keyId,
+					appId,
+					summary: `Activated signing key ${keyId}`,
+					changes: { previousActiveKid: result.previousActiveKid },
 				});
 			}
-
-			// Update the target key
-			await tx.signingKey.update({
-				where: { appId_kid: { appId, kid: keyId } },
-				data: { isActive },
+			return NextResponse.json({
+				message: 'Signing key activated',
+				keyId,
+				status,
+				previousActiveKeyId: result.previousActiveKid,
 			});
-		});
+		}
 
-		const actor = authz.email;
-		await logActivity({
-			actor,
-			action: 'update',
-			entityType: 'signing_key',
-			entityId: keyId,
-			appId,
-			summary: 'Updated signing key',
-		});
-
+		const result = await retireSigningKey(appId, keyId);
+		if (result.changed) {
+			await logActivity({
+				actor: authz.email,
+				action: 'retire',
+				entityType: 'signing_key',
+				entityId: result.keyId,
+				appId,
+				summary: `Retired signing key ${keyId}`,
+			});
+		}
 		return NextResponse.json({
-			message: 'Signing key updated successfully',
+			message: 'Signing key retired',
 			keyId,
-			isActive,
+			status,
 		});
 	} catch (error) {
 		if (error instanceof z.ZodError) {
@@ -142,6 +143,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 				{ error: 'Invalid request data', details: error.issues },
 				{ status: 400 },
 			);
+		}
+		const keyError = signingKeyErrorResponse(error);
+		if (keyError) {
+			return keyError;
 		}
 
 		logger.error({ err: error }, 'Failed to update signing key');
@@ -152,7 +157,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 	}
 }
 
-// DELETE /api/keys/[id] - Delete signing key (must not be active)
+// DELETE /api/keys/[id] - Delete a signing key (must be RETIRED)
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
 	const { id: keyId } = await params;
 	try {
@@ -171,39 +176,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 			);
 		}
 
-		// Verify key exists and is not active
-		const existingKey = await prisma.signingKey.findUnique({
-			where: { appId_kid: { appId, kid: keyId } },
-			select: { id: true, isActive: true },
-		});
+		const result = await deleteSigningKey(appId, keyId);
 
-		if (!existingKey) {
-			return NextResponse.json(
-				{ error: 'Signing key not found' },
-				{ status: 404 },
-			);
-		}
-
-		if (existingKey.isActive) {
-			return NextResponse.json(
-				{ error: 'Cannot delete active signing key. Deactivate it first.' },
-				{ status: 400 },
-			);
-		}
-
-		// Delete the key
-		await prisma.signingKey.delete({
-			where: { appId_kid: { appId, kid: keyId } },
-		});
-
-		const actor = authz.email;
 		await logActivity({
-			actor,
+			actor: authz.email,
 			action: 'delete',
 			entityType: 'signing_key',
-			entityId: keyId,
+			entityId: result.keyId,
 			appId,
-			summary: 'Deleted signing key',
+			summary: `Deleted signing key ${keyId}`,
 		});
 
 		return NextResponse.json({
@@ -211,6 +192,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 			keyId,
 		});
 	} catch (error) {
+		const keyError = signingKeyErrorResponse(error);
+		if (keyError) {
+			return keyError;
+		}
+
 		logger.error({ err: error }, 'Failed to delete signing key');
 		return NextResponse.json(
 			{ error: 'Failed to delete signing key' },

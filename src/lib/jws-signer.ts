@@ -7,11 +7,16 @@
 
 import 'server-only';
 import { importPKCS8 } from 'jose';
+import type { SigningKeyStatus } from '@/generated/prisma/client';
 import { logger } from '@/lib/logger';
-import { generateRSAKeyPair } from './crypto';
 import { prisma } from './db';
 import { signDetached } from './detached-signature';
-import { loadPrivateKey, storePrivateKey } from './key-protection';
+import { loadPrivateKey } from './key-protection';
+import {
+	lockAppSigningKeys,
+	mintSigningKey,
+	sortByStatus,
+} from './signing-keys';
 
 export interface SigningResult {
 	signature: string; // Compact JWS string
@@ -20,40 +25,72 @@ export interface SigningResult {
 }
 
 /**
- * Ensure an app has at least one active signing key, generating one if needed.
- * Activates an existing inactive key before minting a new one.
+ * Ensure an app has an ACTIVE signing key.
+ *
+ * - An ACTIVE key exists: nothing to do.
+ * - No ACTIVE key but a STANDBY one: promote the oldest STANDBY key. It has been
+ *   in bootstrap files the longest, so the most shipped binaries trust it.
+ *   Never mint a fresh key while a trusted one exists.
+ * - No trusted key at all (a new app, or one whose keys are all RETIRED): mint an
+ *   ACTIVE key plus a STANDBY key, so binaries built from the first bootstrap
+ *   file already trust the key a later rotation switches to.
+ *
+ * RETIRED keys are never re-activated.
  */
 export async function ensureSigningKey(appId: string): Promise<void> {
 	try {
-		const existingActiveKey = await prisma.signingKey.findFirst({
-			where: { appId, isActive: true },
-		});
-		if (existingActiveKey) {
-			return;
-		}
-
-		const existingInactiveKey = await prisma.signingKey.findFirst({
-			where: { appId, isActive: false },
-		});
-		if (existingInactiveKey) {
-			await prisma.signingKey.update({
-				where: { id: existingInactiveKey.id },
-				data: { isActive: true },
+		// Two passes cover the one race that matters: a STANDBY key seen in the
+		// pre-check is retired before we take the lock, so we need fresh keys.
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const trusted = await prisma.signingKey.findMany({
+				where: { appId, status: { in: ['ACTIVE', 'STANDBY'] } },
+				select: { status: true },
 			});
-			return;
-		}
+			if (trusted.some((k) => k.status === 'ACTIVE')) {
+				return;
+			}
 
-		const keyPair = await generateRSAKeyPair();
-		await prisma.signingKey.create({
-			data: {
-				appId,
-				kid: keyPair.kid,
-				privateKey: await storePrivateKey(keyPair.privateKey),
-				publicKey: keyPair.publicKey,
-				algorithm: keyPair.algorithm,
-				isActive: true,
-			},
-		});
+			// Generate outside the transaction (slow); discarded if another caller
+			// wins the race.
+			const fresh =
+				trusted.length === 0
+					? await Promise.all([mintSigningKey(), mintSigningKey()])
+					: null;
+
+			const done = await prisma.$transaction(async (tx) => {
+				await lockAppSigningKeys(tx, appId);
+				const current = await tx.signingKey.findMany({
+					where: { appId, status: { in: ['ACTIVE', 'STANDBY'] } },
+					select: { id: true, status: true },
+					orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+				});
+				if (current.some((k) => k.status === 'ACTIVE')) {
+					return true;
+				}
+				if (current.length > 0) {
+					await tx.signingKey.update({
+						where: { id: current[0].id },
+						data: { status: 'ACTIVE' },
+					});
+					return true;
+				}
+				if (!fresh) {
+					return false;
+				}
+				const [active, standby] = fresh;
+				await tx.signingKey.create({
+					data: { appId, ...active, status: 'ACTIVE' },
+				});
+				await tx.signingKey.create({
+					data: { appId, ...standby, status: 'STANDBY' },
+				});
+				return true;
+			});
+			if (done) {
+				return;
+			}
+		}
+		throw new Error('Signing keys changed concurrently');
 	} catch (error) {
 		logger.error({ err: error }, 'Failed to ensure signing key');
 		throw new Error('Failed to ensure signing key exists');
@@ -72,7 +109,7 @@ export async function signConfigDetached(
 	configString: string,
 ): Promise<SigningResult> {
 	const signingKey = await prisma.signingKey.findFirst({
-		where: { appId, isActive: true },
+		where: { appId, status: 'ACTIVE' },
 		orderBy: { createdAt: 'desc' },
 	});
 
@@ -92,35 +129,37 @@ export async function signConfigDetached(
 }
 
 /**
- * Get all public keys for an app (for distribution to SDKs)
+ * Public keys the SDK should trust for an app: every non-RETIRED key, ACTIVE
+ * first, then STANDBY (newest first). This is what the bootstrap files embed.
  */
 export async function getPublicKeysForApp(appId: string): Promise<
 	Array<{
 		kid: string;
 		pem: string;
 		algorithm: string;
-		isActive: boolean;
+		status: SigningKeyStatus;
+		createdAt: Date;
 	}>
 > {
 	try {
 		const signingKeys = await prisma.signingKey.findMany({
-			where: { appId },
+			where: { appId, status: { in: ['ACTIVE', 'STANDBY'] } },
 			select: {
 				kid: true,
 				publicKey: true,
 				algorithm: true,
-				isActive: true,
+				status: true,
+				createdAt: true,
 			},
-			orderBy: {
-				createdAt: 'desc',
-			},
+			orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
 		});
 
-		return signingKeys.map((key) => ({
+		return sortByStatus(signingKeys).map((key) => ({
 			kid: key.kid,
 			pem: key.publicKey,
 			algorithm: key.algorithm,
-			isActive: key.isActive,
+			status: key.status,
+			createdAt: key.createdAt,
 		}));
 	} catch (error) {
 		logger.error({ err: error }, 'Failed to get public keys');
@@ -129,33 +168,19 @@ export async function getPublicKeysForApp(appId: string): Promise<
 }
 
 /**
- * Rotate signing keys for an app
- * Deactivates the current key and activates a new one
+ * The `public_keys` list for a bootstrap file (plist or JSON). An app with no
+ * trusted key gets an ACTIVE + STANDBY pair minted first, so a bootstrap file
+ * never ships without a key the publish pipeline can sign with.
  */
-export async function rotateSigningKeys(
+export async function getBootstrapPublicKeys(
 	appId: string,
-	newKeyId: string,
-): Promise<void> {
-	try {
-		await prisma.$transaction(async (tx) => {
-			// Deactivate all existing keys
-			await tx.signingKey.updateMany({
-				where: { appId, isActive: true },
-				data: { isActive: false },
-			});
-
-			// Activate the new key (throws P2025 if the key does not exist)
-			await tx.signingKey.update({
-				where: { appId_kid: { appId, kid: newKeyId } },
-				data: { isActive: true },
-			});
-		});
-	} catch (error) {
-		logger.error({ err: error }, 'Key rotation failed');
-		throw new Error(
-			`Failed to rotate keys: ${error instanceof Error ? error.message : 'Unknown error'}`,
-		);
+): Promise<Array<{ kid: string; pem: string }>> {
+	let keys = await getPublicKeysForApp(appId);
+	if (keys.length === 0) {
+		await ensureSigningKey(appId);
+		keys = await getPublicKeysForApp(appId);
 	}
+	return keys.map((key) => ({ kid: key.kid, pem: key.pem }));
 }
 
 /**

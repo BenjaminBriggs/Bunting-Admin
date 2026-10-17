@@ -20,7 +20,7 @@ model App {
   name          String
   identifier    String   @unique // User-defined app identifier
   artifactUrl   String   @map("artifact_url")
-  publicKeys    Json     @map("public_keys") // Array of {kid, pem}
+  publicKeys    Json     @map("public_keys") // Deprecated: never read; new apps store []. Trusted keys live in SigningKey
   fetchPolicy   Json     @map("fetch_policy") // {min_interval_seconds, hard_ttl_days}
   storageConfig Json     @map("storage_config") // {bucket, region, endpoint?, accessKeyId?, secretAccessKey?}
   createdAt     DateTime @default(now()) @map("created_at")
@@ -128,7 +128,7 @@ model AuditLog {
 model ActivityLog {
   id         String   @id @default(cuid())
   actor      String // Email of the user who made the change, or 'system'/'unknown'
-  action     String // create | update | delete | archive | rotate
+  action     String // create | update | delete | archive | unarchive | rotate | activate | retire | export | import
   entityType String   @map("entity_type") // flag | test | rollout | app | signing_key | user | access_list
   entityId   String   @map("entity_id")
   appId      String?  @map("app_id") // App scope when applicable; null for global entities
@@ -240,18 +240,30 @@ model Publication {
   @@map("publications")
 }
 
-model SigningKey {
-  id         String   @id @default(cuid())
-  kid        String   @unique // Key ID for JWS header
-  privateKey String   @map("private_key") // RSA private key in PEM format
-  publicKey  String   @map("public_key") // RSA public key in PEM format
-  algorithm  String   @default("RS256") // Signing algorithm
-  isActive   Boolean  @default(true) @map("is_active") // Whether this key is currently used for signing
-  createdAt  DateTime @default(now()) @map("created_at")
+// Signing-key lifecycle. Exactly one ACTIVE key per app signs publishes.
+// STANDBY keys don't sign but are trusted: they ship in the bootstrap file so a
+// later activation doesn't break binaries already in the field. RETIRED keys are
+// dropped from the bootstrap, can never be re-activated, and are the only keys
+// that can be deleted.
+enum SigningKeyStatus {
+  ACTIVE  @map("active")
+  STANDBY @map("standby")
+  RETIRED @map("retired")
+}
 
-  // Relations
+model SigningKey {
+  id         String           @id @default(cuid())
+  kid        String           @unique // Key ID for JWS header
+  privateKey String           @map("private_key") // Encrypted envelope (see key-protection.ts)
+  publicKey  String           @map("public_key") // RSA public key in PEM format
+  algorithm  String           @default("RS256") // Signing algorithm
+  status     SigningKeyStatus @default(STANDBY)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  // Relations. Restrict, not Cascade: deleting an app must never silently
+  // destroy the keys its shipped binaries trust (see DELETE /api/apps/[id]).
   appId String @map("app_id")
-  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+  app   App    @relation(fields: [appId], references: [id], onDelete: Restrict)
 
   @@unique([appId, kid]) // Unique key ID per app
   @@map("signing_keys")

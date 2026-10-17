@@ -51,7 +51,7 @@ export async function createTestApp(): Promise<{
 			privateKey: keyPair.privateKey,
 			publicKey: keyPair.publicKey,
 			algorithm: keyPair.algorithm,
-			isActive: true,
+			status: 'ACTIVE',
 		},
 	});
 
@@ -170,7 +170,7 @@ export async function testPublicKeyDistribution(
 			message: 'Public key distribution successful',
 			details: {
 				keyCount: publicKeys.length,
-				activeKeys: publicKeys.filter((k) => k.isActive).length,
+				activeKeys: publicKeys.filter((k) => k.status === 'ACTIVE').length,
 				kids: publicKeys.map((k) => k.kid),
 			},
 		};
