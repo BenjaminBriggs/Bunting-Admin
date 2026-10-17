@@ -189,8 +189,10 @@ export const updateFlagSchema = z.object({
 	archived: z.boolean().optional(),
 });
 
+// Test and rollout keys are immutable after creation (like flag keys): the
+// published artifact references them by key from flag variants, so none of the
+// update schemas accept `key`. Zod strips it from the body.
 export const updateTestSchema = z.object({
-	key: z.string().min(1).optional(),
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
@@ -200,7 +202,6 @@ export const updateTestSchema = z.object({
 });
 
 export const updateRolloutSchema = z.object({
-	key: z.string().min(1).optional(),
 	name: z.string().min(1).optional(),
 	description: z.string().nullable().optional(),
 	conditions: z.array(conditionSchema).optional(),
